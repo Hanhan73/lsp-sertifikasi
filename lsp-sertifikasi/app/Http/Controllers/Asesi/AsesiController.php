@@ -21,12 +21,12 @@ class AsesiController extends Controller
     public function dashboard()
     {
         $user = auth()->user();
-        
+
         // Check first login - redirect if password not changed
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         $asesmen = Asesmen::with(['tuk', 'skema', 'payment', 'schedule', 'certificate', 'registrar'])
             ->where('user_id', $user->id)
             ->first();
@@ -54,15 +54,15 @@ class AsesiController extends Controller
     public function completeData()
     {
         $user = auth()->user();
-        
+
         // Check first login
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         // Check if already has asesmen
         $asesmen = Asesmen::where('user_id', $user->id)->first();
-        
+
         // If no asesmen, create new for mandiri self-registration
         if (!$asesmen) {
             $asesmen = Asesmen::create([
@@ -73,7 +73,7 @@ class AsesiController extends Controller
                 'is_collective' => false,
             ]);
         }
-        
+
         if ($asesmen && $asesmen->status !== 'registered') {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Data Anda sudah dilengkapi.');
@@ -100,7 +100,7 @@ class AsesiController extends Controller
             'birth_date' => 'required|date',
             'gender' => 'required|in:L,P',
             'address' => 'required|string',
-            'city_code' => 'required|string|size:4',
+            'city_code' => 'required|string|size:2',
             'province_code' => 'required|string|size:2',
             'phone' => 'required|string|max:15',
             'education' => 'required|string',
@@ -133,7 +133,7 @@ class AsesiController extends Controller
         if ($asesmen && $asesmen->tuk_id) {
             $request->merge(['tuk_id' => $asesmen->tuk_id]);
         }
-        
+
         if ($asesmen) {
             // Update existing (collective registration)
             $updateData = [
@@ -167,18 +167,17 @@ class AsesiController extends Controller
             $asesmen->update($updateData);
 
             $message = 'Data berhasil dilengkapi!';
-            
+
             if ($asesmen->is_collective) {
                 $message .= ' (Pendaftaran Kolektif - Menunggu verifikasi Admin LSP)';
                 if ($validated['training_flag']) {
                     $message .= ' Anda memilih untuk mengikuti pelatihan. Biaya tambahan Rp 1.500.000 akan ditambahkan ke total biaya.';
                 }
             }
-
         } else {
             // Create new (regular/mandiri registration)
             $skema = Skema::find($validated['skema_id']);
-            
+
             // Auto calculate fee untuk mandiri
             $baseFee = $skema->fee;
             $trainingFee = $validated['training_flag'] ? 1500000 : 0;
@@ -222,7 +221,7 @@ class AsesiController extends Controller
             Log::info("Auto-verified mandiri registration - Asesmen #{$asesmen->id}, Fee: Rp {$totalFee}, Training: " . ($validated['training_flag'] ? 'Yes' : 'No'));
 
             $message = 'Data berhasil dilengkapi dan terverifikasi otomatis! Silakan lakukan pembayaran.';
-            
+
             if ($validated['training_flag']) {
                 $message .= ' (Termasuk biaya pelatihan Rp 1.500.000)';
             }
@@ -238,12 +237,12 @@ class AsesiController extends Controller
     public function payment()
     {
         $user = auth()->user();
-        
+
         // Check first login
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         $asesmen = Asesmen::with(['payment', 'skema', 'tuk'])
             ->where('user_id', $user->id)
             ->firstOrFail();
@@ -267,12 +266,12 @@ class AsesiController extends Controller
     public function preAssessment()
     {
         $user = auth()->user();
-        
+
         // Check first login
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         $asesmen = Asesmen::where('user_id', $user->id)
             ->where('status', 'scheduled')
             ->firstOrFail();
@@ -344,7 +343,7 @@ class AsesiController extends Controller
         }
 
         $path = storage_path('app/public/' . $asesmen->certificate->pdf_path);
-        
+
         if (!file_exists($path)) {
             abort(404, 'File sertifikat tidak ditemukan');
         }
@@ -358,12 +357,12 @@ class AsesiController extends Controller
     public function tracking()
     {
         $user = auth()->user();
-        
+
         // Check first login
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         $asesmen = Asesmen::with(['tuk', 'skema', 'payment', 'schedule', 'certificate', 'verifier', 'assessor', 'registrar'])
             ->where('user_id', $user->id)
             ->firstOrFail();
@@ -389,7 +388,7 @@ class AsesiController extends Controller
     public function showFirstLogin()
     {
         $user = auth()->user();
-        
+
         // If already changed password, redirect to dashboard
         if (!$user->isFirstLogin()) {
             return redirect()->route('asesi.dashboard');
@@ -408,7 +407,7 @@ class AsesiController extends Controller
         ]);
 
         $user = auth()->user();
-        
+
         $user->update([
             'password' => Hash::make($request->password),
             'password_changed_at' => now(),
@@ -423,7 +422,7 @@ class AsesiController extends Controller
     public function downloadInvoice()
     {
         $user = auth()->user();
-        
+
         $asesmen = Asesmen::with(['payment', 'payments', 'skema', 'tuk'])
             ->where('user_id', $user->id)
             ->firstOrFail();
@@ -439,7 +438,7 @@ class AsesiController extends Controller
                 ->where('status', 'verified')
                 ->orderBy('created_at', 'desc')
                 ->first();
-                
+
             if (!$payment) {
                 return redirect()->route('asesi.dashboard')
                     ->with('error', 'Belum ada pembayaran yang terverifikasi');
@@ -447,7 +446,7 @@ class AsesiController extends Controller
         } else {
             // Single phase or mandiri
             $payment = $asesmen->payment;
-            
+
             if (!$payment || $payment->status !== 'verified') {
                 return redirect()->route('asesi.dashboard')
                     ->with('error', 'Pembayaran belum terverifikasi');
@@ -478,16 +477,16 @@ class AsesiController extends Controller
 
         return $pdf->download($filename);
     }
-    
+
     public function paymentStatus()
     {
         $user = auth()->user();
-        
+
         // Check first login
         if ($user->isFirstLogin()) {
             return redirect()->route('asesi.first-login');
         }
-        
+
         $asesmen = Asesmen::with(['payment', 'payments', 'skema', 'tuk'])
             ->where('user_id', $user->id)
             ->firstOrFail();

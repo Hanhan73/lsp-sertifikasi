@@ -4,15 +4,7 @@
 @section('page-title', 'Pembayaran Sertifikasi')
 
 @section('sidebar')
-<a href="{{ route('asesi.dashboard') }}" class="nav-link">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-<a href="{{ route('asesi.payment') }}" class="nav-link active">
-    <i class="bi bi-credit-card"></i> Pembayaran
-</a>
-<a href="{{ route('asesi.tracking') }}" class="nav-link">
-    <i class="bi bi-list-check"></i> Tracking Status
-</a>
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')

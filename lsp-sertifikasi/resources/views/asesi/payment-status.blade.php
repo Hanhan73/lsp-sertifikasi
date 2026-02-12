@@ -4,12 +4,7 @@
 @section('page-title', 'Status Pembayaran')
 
 @section('sidebar')
-<a href="{{ route('asesi.dashboard') }}" class="nav-link">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-<a href="{{ route('asesi.tracking') }}" class="nav-link">
-    <i class="bi bi-geo-alt"></i> Tracking Status
-</a>
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')

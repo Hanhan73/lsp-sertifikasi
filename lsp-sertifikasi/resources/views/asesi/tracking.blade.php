@@ -4,22 +4,7 @@
 @section('page-title', 'Tracking Status Sertifikasi')
 
 @section('sidebar')
-<a href="{{ route('asesi.dashboard') }}" class="nav-link">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-<a href="{{ route('asesi.tracking') }}" class="nav-link active">
-    <i class="bi bi-geo-alt"></i> Tracking Status
-</a>
-@if($asesmen && in_array($asesmen->status, ['scheduled', 'pre_assessment_completed']))
-<a href="{{ route('asesi.pre-assessment') }}" class="nav-link">
-    <i class="bi bi-file-earmark-text"></i> Pra-Asesmen
-</a>
-@endif
-@if($asesmen && $asesmen->status === 'certified')
-<a href="{{ route('asesi.certificate') }}" class="nav-link">
-    <i class="bi bi-award"></i> Sertifikat
-</a>
-@endif
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')

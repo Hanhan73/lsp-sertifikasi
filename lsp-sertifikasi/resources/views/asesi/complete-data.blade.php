@@ -4,15 +4,7 @@
 @section('page-title', 'Lengkapi Data Pribadi')
 
 @section('sidebar')
-<a href="{{ route('asesi.dashboard') }}" class="nav-link">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-<a href="{{ route('asesi.complete-data') }}" class="nav-link active">
-    <i class="bi bi-person-fill"></i> Lengkapi Data
-</a>
-<a href="{{ route('asesi.tracking') }}" class="nav-link">
-    <i class="bi bi-list-check"></i> Tracking Status
-</a>
+@include('asesi.partials.sidebar')
 @endsection
 
 @push('styles')
@@ -102,7 +94,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">NIK KTP <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('nik') is-invalid @enderror" name="nik"
-                                maxlength="16" value="{{ old('nik', $asesmen->nik ?? '') }}" required>
+                                maxlength="16" pattern="\d{16}" value="{{ old('nik', $asesmen->nik ?? '') }}" required>
                             <small class="text-muted">16 digit</small>
                             @error('nik')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -163,9 +155,9 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Kode Provinsi <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('province_code') is-invalid @enderror"
+                            <input type="text" class="form-control locked-field @error('province_code') is-invalid @enderror"
                                 name="province_code" maxlength="2"
-                                value="{{ old('province_code', $asesmen->province_code ?? '') }}" required>
+                                value="{{ old('province_code', $asesmen->province_code ?? '') }}" required readonly>
                             <small class="text-muted">2 digit awal dari NIK</small>
                             @error('province_code')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -174,10 +166,10 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Kode Kota <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('city_code') is-invalid @enderror"
-                                name="city_code" maxlength="4" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
-                                required>
-                            <small class="text-muted">4 digit awal dari NIK</small>
+                            <input type="text" class="form-control locked-field @error('city_code') is-invalid @enderror"
+                                name="city_code" maxlength="2" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
+                                required readonly>
+                            <small class="text-muted">2 digit setelah kode provinsi NIK</small>
                             @error('city_code')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -499,44 +491,64 @@
 
 @push('scripts')
 <script>
-// Function to select training option
-function selectTraining(wantTraining) {
-    // Remove selected class from both
-    document.getElementById('option-no').classList.remove('selected');
-    document.getElementById('option-yes').classList.remove('selected');
-
-    // Add selected class to clicked option
-    if (wantTraining) {
-        document.getElementById('option-yes').classList.add('selected');
-        document.getElementById('training-yes').checked = true;
-    } else {
-        document.getElementById('option-no').classList.add('selected');
-        document.getElementById('training-no').checked = true;
-    }
-
-    // Update modal confirmation
-    updateModalConfirmation();
-}
-
-// Update modal to show training confirmation
-function updateModalConfirmation() {
-    const trainingYes = document.getElementById('training-yes').checked;
-    const confirmationDiv = document.getElementById('training-confirmation');
-
-    if (trainingYes) {
-        confirmationDiv.style.display = 'block';
-    } else {
-        confirmationDiv.style.display = 'none';
-    }
-}
-
-// Submit form
-function submitAsesiForm() {
-    document.querySelector('form[action="{{ route('asesi.store-data')}}"]').submit();
-}
-
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+
+    const nikInput = document.querySelector('input[name="nik"]');
+    const provinceInput = document.querySelector('input[name="province_code"]');
+    const cityInput = document.querySelector('input[name="city_code"]');
+
+    nikInput.addEventListener('input', function() {
+        const nik = this.value.replace(/\D/g, ''); // hanya angka
+
+        if (nik.length >= 2) {
+            provinceInput.value = nik.substring(0, 2);
+        } else {
+            provinceInput.value = '';
+        }
+
+        if (nik.length >= 2) {
+            cityInput.value = nik.substring(2, 4);
+        } else {
+            cityInput.value = '';
+        }
+    });
+
+    // Function to select training option
+    function selectTraining(wantTraining) {
+        // Remove selected class from both
+        document.getElementById('option-no').classList.remove('selected');
+        document.getElementById('option-yes').classList.remove('selected');
+
+        // Add selected class to clicked option
+        if (wantTraining) {
+            document.getElementById('option-yes').classList.add('selected');
+            document.getElementById('training-yes').checked = true;
+        } else {
+            document.getElementById('option-no').classList.add('selected');
+            document.getElementById('training-no').checked = true;
+        }
+
+        // Update modal confirmation
+        updateModalConfirmation();
+    }
+
+    // Update modal to show training confirmation
+    function updateModalConfirmation() {
+        const trainingYes = document.getElementById('training-yes').checked;
+        const confirmationDiv = document.getElementById('training-confirmation');
+
+        if (trainingYes) {
+            confirmationDiv.style.display = 'block';
+        } else {
+            confirmationDiv.style.display = 'none';
+        }
+    }
+
+    // Submit form
+    function submitAsesiForm() {
+        document.querySelector('form[action="{{ route('asesi.store-data')}}"]').submit();
+    }
+
     // Set initial selected state based on checked radio
     const trainingYes = document.getElementById('training-yes').checked;
     if (trainingYes) {

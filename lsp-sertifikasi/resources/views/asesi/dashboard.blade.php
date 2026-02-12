@@ -4,24 +4,7 @@
 @section('page-title', 'Dashboard')
 
 @section('sidebar')
-<a href="{{ route('asesi.dashboard') }}" class="nav-link active">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-@if($asesmen && $asesmen->status !== 'registered')
-<a href="{{ route('asesi.tracking') }}" class="nav-link">
-    <i class="bi bi-geo-alt"></i> Tracking Status
-</a>
-@endif
-@if($asesmen && in_array($asesmen->status, ['scheduled', 'pre_assessment_completed']))
-<a href="{{ route('asesi.pre-assessment') }}" class="nav-link">
-    <i class="bi bi-file-earmark-text"></i> Pra-Asesmen
-</a>
-@endif
-@if($asesmen && $asesmen->status === 'certified')
-<a href="{{ route('asesi.certificate') }}" class="nav-link">
-    <i class="bi bi-award"></i> Sertifikat
-</a>
-@endif
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')
@@ -46,10 +29,10 @@
 </div>
 
 @if($asesmen)
-<!-- Status Card -->
 <div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
+    <!-- Status Card -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="bi bi-info-circle"></i> Status Pendaftaran</h5>
             </div>
@@ -127,10 +110,10 @@
                     </div>
                 </div>
 
-                <!-- 🔥 PAYMENT PHASE INFO for Collective 2 Fase -->
+                {{-- Payment Phase Info for Collective 2 Fase --}}
                 @if($asesmen->is_collective && $asesmen->payment_phases === 'two_phase')
                 <hr>
-                <div class="alert alert-info">
+                <div class="alert alert-info mb-0">
                     <h6 class="mb-2"><i class="bi bi-cash-coin"></i> Informasi Pembayaran 2 Fase</h6>
                     <div class="row">
                         <div class="col-md-6">
@@ -180,52 +163,14 @@
                 @endif
             </div>
         </div>
-    </div>
 
-    <div class="col-md-4">
+        {{-- Timeline Ringkas --}}
         <div class="card">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-list-task"></i> Quick Actions</h6>
-            </div>
-            <div class="card-body">
-                @if($asesmen->status === 'registered')
-                <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-sm w-100 mb-2">
-                    <i class="bi bi-pencil"></i> Lengkapi Data Pribadi
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Timeline Proses</h5>
+                <a href="{{ route('asesi.tracking') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-eye"></i> Lihat Detail
                 </a>
-                @endif
-
-                @if($asesmen->status === 'verified' && !$asesmen->is_collective)
-                <a href="{{ route('asesi.payment') }}" class="btn btn-success btn-sm w-100 mb-2">
-                    <i class="bi bi-credit-card"></i> Lakukan Pembayaran
-                </a>
-                @endif
-
-                @if($asesmen->status === 'scheduled')
-                <a href="{{ route('asesi.pre-assessment') }}" class="btn btn-warning btn-sm w-100 mb-2">
-                    <i class="bi bi-file-earmark-text"></i> Isi Pra-Asesmen
-                </a>
-                @endif
-
-                @if($asesmen->status === 'certified')
-                <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm w-100 mb-2">
-                    <i class="bi bi-download"></i> Download Sertifikat
-                </a>
-                @endif
-
-                <a href="{{ route('asesi.tracking') }}" class="btn btn-outline-primary btn-sm w-100">
-                    <i class="bi bi-geo-alt"></i> Tracking Detail
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Timeline - UPDATED untuk skip admin verification di mandiri -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Timeline Proses Sertifikasi</h5>
             </div>
             <div class="card-body">
                 <div class="timeline">
@@ -256,9 +201,9 @@
                         </div>
                     </div>
 
-                    <!-- 🔥 3. SKIP ADMIN VERIFICATION untuk MANDIRI -->
+                    {{-- Skip verification untuk mandiri --}}
                     @if($asesmen->is_collective)
-                    <!-- TUK Verification (Collective Only) -->
+                    <!-- TUK Verification -->
                     <div class="timeline-item {{ $asesmen->tuk_verified_at ? 'completed' : ($asesmen->status === 'data_completed' ? 'active' : '') }}">
                         <div class="timeline-marker">
                             <i class="bi {{ $asesmen->tuk_verified_at ? 'bi-check-circle' : 'bi-circle' }}"></i>
@@ -271,14 +216,14 @@
                         </div>
                     </div>
 
-                    <!-- Admin Fee Setup (Collective Only) -->
+                    <!-- Admin Fee Setup -->
                     <div
                         class="timeline-item {{ $asesmen->admin_verified_at ? 'completed' : ($asesmen->tuk_verified_at && !$asesmen->admin_verified_at ? 'active' : '') }}">
                         <div class="timeline-marker">
                             <i class="bi {{ $asesmen->admin_verified_at ? 'bi-check-circle' : 'bi-circle' }}"></i>
                         </div>
                         <div class="timeline-content">
-                            <h6>Penetapan Biaya (Admin LSP)</h6>
+                            <h6>Penetapan Biaya</h6>
                             <p class="text-muted mb-0">
                                 {{ $asesmen->admin_verified_at ? $asesmen->admin_verified_at->format('d M Y') : 'Menunggu' }}
                             </p>
@@ -286,55 +231,26 @@
                     </div>
                     @endif
 
-                    <!-- 4. Payment -->
+                    <!-- 3. Payment -->
                     <div class="timeline-item {{ $asesmen->status === 'verified' ? 'active' : ($asesmen->status === 'paid' || in_array($asesmen->status, ['scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'completed' : '') }}">
                         <div class="timeline-marker">
                             <i
                                 class="bi {{ in_array($asesmen->status, ['paid', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
                         </div>
                         <div class="timeline-content">
-                            <h6>Pembayaran
-                                @if($asesmen->is_collective && $asesmen->payment_phases === 'two_phase')
-                                <span class="badge bg-primary badge-sm">2 Fase</span>
-                                @endif
-                            </h6>
+                            <h6>Pembayaran</h6>
                             <p class="text-muted mb-0">
                                 @if($asesmen->payment)
                                 {{ $asesmen->payment->verified_at ? $asesmen->payment->verified_at->format('d M Y') :
                                 'Menunggu Verifikasi' }}
-                                <a href="{{ route('asesi.payment.status') }}" class="btn btn-primary btn-lg">
-                                    <i class="bi bi-file-earmark-pdf"></i> Download Invoice (PDF)
-                                </a>
                                 @else
                                 Belum Bayar
                                 @endif
                             </p>
-                            @if($asesmen->is_collective && $asesmen->payment_phases === 'two_phase')
-                            <small class="text-muted">
-                                @php
-                                $phase1Paid = $asesmen->payments()->where('payment_phase',
-                                'phase_1')->where('status', 'verified')->exists();
-                                $phase2Paid = $asesmen->payments()->where('payment_phase',
-                                'phase_2')->where('status', 'verified')->exists();
-                                @endphp
-                                Fase 1:
-                                @if($phase1Paid)
-                                <i class="bi bi-check-circle text-success"></i>
-                                @else
-                                <i class="bi bi-circle text-muted"></i>
-                                @endif
-                                | Fase 2:
-                                @if($phase2Paid)
-                                <i class="bi bi-check-circle text-success"></i>
-                                @else
-                                <i class="bi bi-circle text-muted"></i>
-                                @endif
-                            </small>
-                            @endif
                         </div>
                     </div>
 
-                    <!-- 5. Scheduled -->
+                    <!-- 4. Scheduled -->
                     <div
                         class="timeline-item {{ $asesmen->status === 'scheduled' ? 'active' : ($asesmen->status === 'pre_assessment_completed' || in_array($asesmen->status, ['assessed', 'certified']) ? 'completed' : '') }}">
                         <div class="timeline-marker">
@@ -342,7 +258,7 @@
                                 class="bi {{ in_array($asesmen->status, ['pre_assessment_completed', 'assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
                         </div>
                         <div class="timeline-content">
-                            <h6>Penjadwalan Asesmen</h6>
+                            <h6>Penjadwalan</h6>
                             <p class="text-muted mb-0">
                                 @if($asesmen->schedule)
                                 {{ $asesmen->schedule->assessment_date->format('d M Y') }}
@@ -353,23 +269,7 @@
                         </div>
                     </div>
 
-                    <!-- 6. Pre-Assessment -->
-                    <div
-                        class="timeline-item {{ $asesmen->status === 'pre_assessment_completed' ? 'active' : (in_array($asesmen->status, ['assessed', 'certified']) ? 'completed' : '') }}">
-                        <div class="timeline-marker">
-                            <i
-                                class="bi {{ in_array($asesmen->status, ['assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Pra-Asesmen</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->status === 'pre_assessment_completed' || in_array($asesmen->status,
-                                ['assessed', 'certified']) ? 'Selesai' : 'Belum Dilakukan' }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- 7. Assessment -->
+                    <!-- 5. Assessment -->
                     <div
                         class="timeline-item {{ $asesmen->status === 'assessed' ? 'active' : ($asesmen->status === 'certified' ? 'completed' : '') }}">
                         <div class="timeline-marker">
@@ -381,16 +281,10 @@
                             <p class="text-muted mb-0">
                                 {{ $asesmen->assessed_at ? $asesmen->assessed_at->format('d M Y') : 'Belum Dilakukan' }}
                             </p>
-                            @if($asesmen->result)
-                            <span
-                                class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} badge-sm mt-1">
-                                {{ strtoupper($asesmen->result) }}
-                            </span>
-                            @endif
                         </div>
                     </div>
 
-                    <!-- 8. Certificate -->
+                    <!-- 6. Certificate -->
                     <div class="timeline-item {{ $asesmen->status === 'certified' ? 'completed' : '' }}">
                         <div class="timeline-marker">
                             <i class="bi {{ $asesmen->status === 'certified' ? 'bi-check-circle' : 'bi-circle' }}">
@@ -411,48 +305,99 @@
             </div>
         </div>
     </div>
-</div>
 
-<!-- Collective Batch Info -->
-@if($batchInfo)
-<div class="row mt-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-people"></i> Informasi Batch Kolektif</h5>
+    <!-- Right Sidebar -->
+    <div class="col-lg-4">
+        {{-- Quick Actions --}}
+        <div class="card mb-3">
+            <div class="card-header bg-white">
+                <h6 class="mb-0"><i class="bi bi-lightning-fill"></i> Quick Actions</h6>
             </div>
             <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Batch ID:</strong> {{ $batchInfo['batch_id'] }}</p>
-                        <p><strong>Total Peserta:</strong> {{ $batchInfo['total_members'] }} orang</p>
-                        <p><strong>TUK:</strong> {{ $batchInfo['tuk']->name ?? '-' }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <p><strong>Skema Pembayaran:</strong>
-                            @if($batchInfo['payment_phases'] === 'single')
-                            <span class="badge bg-success">1 Fase (Full Payment)</span>
-                            @else
-                            <span class="badge bg-primary">2 Fase (Split Payment)</span>
-                            @endif
-                        </p>
-                        <p><strong>Status Pembayaran:</strong>
-                            @if($batchInfo['payment_status'] === 'paid' || $batchInfo['payment_status'] === 'fully_paid')
-                            <span class="badge bg-success">Lunas</span>
-                            @elseif($batchInfo['payment_status'] === 'phase_1_paid')
-                            <span class="badge bg-warning">Fase 1 Lunas</span>
-                            @else
-                            <span class="badge bg-secondary">Belum Bayar</span>
-                            @endif
-                        </p>
-                        <p><strong>Didaftarkan Oleh:</strong> {{ $batchInfo['registered_by']->name ?? '-' }}</p>
-                    </div>
-                </div>
+                @if($asesmen->status === 'registered')
+                <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-sm w-100 mb-2">
+                    <i class="bi bi-pencil"></i> Lengkapi Data Pribadi
+                </a>
+                @endif
+
+                @if($asesmen->status === 'verified' && !$asesmen->is_collective)
+                <a href="{{ route('asesi.payment') }}" class="btn btn-success btn-sm w-100 mb-2">
+                    <i class="bi bi-credit-card"></i> Lakukan Pembayaran
+                </a>
+                @endif
+
+                @if($asesmen->payment)
+                <a href="{{ route('asesi.payment.status') }}" class="btn btn-info btn-sm w-100 mb-2">
+                    <i class="bi bi-receipt"></i> Lihat Invoice
+                </a>
+                @endif
+
+                @if($asesmen->status === 'scheduled')
+                <a href="{{ route('asesi.pre-assessment') }}" class="btn btn-warning btn-sm w-100 mb-2">
+                    <i class="bi bi-file-earmark-text"></i> Isi Pra-Asesmen
+                </a>
+                @endif
+
+                @if($asesmen->status === 'certified')
+                <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm w-100 mb-2">
+                    <i class="bi bi-download"></i> Download Sertifikat
+                </a>
+                @endif
+
+                <a href="{{ route('asesi.tracking') }}" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-eye"></i> Lihat Detail Timeline
+                </a>
             </div>
         </div>
+
+        {{-- Jadwal Asesmen (jika ada) --}}
+        @if($asesmen->schedule)
+        <div class="card mb-3 border-warning">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Jadwal Asesmen</h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-2">
+                    <h4 class="mb-0">{{ $asesmen->schedule->assessment_date->format('d') }}</h4>
+                    <p class="mb-0">{{ $asesmen->schedule->assessment_date->format('F Y') }}</p>
+                </div>
+                <hr>
+                <p class="mb-1"><strong>Waktu:</strong></p>
+                <p class="text-muted">{{ $asesmen->schedule->start_time }} - {{ $asesmen->schedule->end_time }}</p>
+                
+                @if($asesmen->schedule->location)
+                <p class="mb-1"><strong>Lokasi:</strong></p>
+                <p class="text-muted mb-0">{{ $asesmen->schedule->location }}</p>
+                @endif
+            </div>
+        </div>
+        @endif
+
+        {{-- Info Batch (untuk kolektif) --}}
+        @if($batchInfo)
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h6 class="mb-0"><i class="bi bi-people"></i> Info Batch</h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>Batch ID:</strong></p>
+                <p class="text-muted">{{ $batchInfo['batch_id'] }}</p>
+                
+                <p class="mb-1"><strong>Total Peserta:</strong></p>
+                <p class="text-muted">{{ $batchInfo['total_members'] }} orang</p>
+                
+                <p class="mb-1"><strong>TUK:</strong></p>
+                <p class="text-muted mb-0">{{ $batchInfo['tuk']->name ?? '-' }}</p>
+                
+                <hr>
+                <a href="{{ route('asesi.batch-info') }}" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="bi bi-eye"></i> Lihat Detail
+                </a>
+            </div>
+        </div>
+        @endif
     </div>
 </div>
-@endif
 @else
 <!-- No Asesmen Yet -->
 <div class="row">
@@ -461,7 +406,8 @@
             <div class="card-body text-center py-5">
                 <i class="bi bi-person-plus" style="font-size: 4rem; color: #0d6efd;"></i>
                 <h4 class="mt-3">Mulai Pendaftaran Sertifikasi</h4>
-                <p class="text-muted">Anda belum terdaftar sebagai asesi. Silakan lengkapi data pribadi untuk memulai proses sertifikasi.</p>
+                <p class="text-muted">Anda belum terdaftar sebagai asesi. Silakan lengkapi data pribadi untuk memulai
+                    proses sertifikasi.</p>
                 <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-lg mt-3">
                     <i class="bi bi-pencil"></i> Daftar Sekarang
                 </a>

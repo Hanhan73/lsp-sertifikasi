@@ -4,7 +4,7 @@
 @section('page-title', 'Status Pembayaran Kolektif')
 
 @section('sidebar')
-@include('tuk.partials.tuk-sidebar')
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')

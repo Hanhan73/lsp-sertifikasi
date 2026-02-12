@@ -1,0 +1,555 @@
+@extends('layouts.app')
+
+@section('title', 'Lengkapi Data Pribadi')
+@section('page-title', 'Lengkapi Data Pribadi')
+
+@section('sidebar')
+<a href="{{ route('asesi.dashboard') }}" class="nav-link">
+    <i class="bi bi-speedometer2"></i> Dashboard
+</a>
+<a href="{{ route('asesi.complete-data') }}" class="nav-link active">
+    <i class="bi bi-person-fill"></i> Lengkapi Data
+</a>
+<a href="{{ route('asesi.tracking') }}" class="nav-link">
+    <i class="bi bi-list-check"></i> Tracking Status
+</a>
+@endsection
+
+@push('styles')
+<style>
+.locked-field {
+    background-color: #f1f3f5 !important;
+    color: #6c757d;
+    cursor: not-allowed;
+}
+
+.locked-field option {
+    color: #6c757d;
+}
+
+.training-section {
+    border: 2px solid #0d6efd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+    background-color: #f8f9fa;
+}
+
+.training-option {
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+}
+
+.training-option:hover {
+    border-color: #0d6efd;
+    background-color: #e7f1ff;
+}
+
+.training-option.selected {
+    border-color: #0d6efd;
+    background-color: #cfe2ff;
+}
+
+.training-option input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.price-badge {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #198754;
+}
+</style>
+@endpush
+
+@section('content')
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Form Data Pribadi Asesi</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Lengkapi semua data dengan benar sesuai dokumen resmi
+                    (KTP/Ijazah).
+                    Data yang sudah disubmit akan diverifikasi.
+                </div>
+
+                <form method="POST" action="{{ route('asesi.store-data') }}" enctype="multipart/form-data">
+                    @csrf
+
+                    <!-- Data Pribadi -->
+                    <h6 class="border-bottom pb-2 mb-3">Data Pribadi</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('full_name') is-invalid @enderror"
+                                name="full_name" value="{{ old('full_name', $asesmen->full_name ?? '') }}" required>
+                            <small class="text-muted">Sesuai KTP/Ijazah</small>
+                            @error('full_name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">NIK KTP <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('nik') is-invalid @enderror" name="nik"
+                                maxlength="16" value="{{ old('nik', $asesmen->nik ?? '') }}" required>
+                            <small class="text-muted">16 digit</small>
+                            @error('nik')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tempat Lahir <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('birth_place') is-invalid @enderror"
+                                name="birth_place" value="{{ old('birth_place', $asesmen->birth_place ?? '') }}"
+                                required>
+                            @error('birth_place')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('birth_date') is-invalid @enderror"
+                                name="birth_date" value="{{ old('birth_date', $asesmen->birth_date ?? '') }}" required>
+                            @error('birth_date')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
+                            <select class="form-select @error('gender') is-invalid @enderror" name="gender" required>
+                                <option value="">Pilih</option>
+                                <option value="L" {{ old('gender', $asesmen->gender ?? '') == 'L' ? 'selected' : '' }}>
+                                    Laki-laki</option>
+                                <option value="P" {{ old('gender', $asesmen->gender ?? '') == 'P' ? 'selected' : '' }}>
+                                    Perempuan</option>
+                            </select>
+                            @error('gender')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Telepon/HP <span class="text-danger">*</span></label>
+                            <input type="tel" class="form-control @error('phone') is-invalid @enderror" name="phone"
+                                value="{{ old('phone', $asesmen->phone ?? '') }}" required>
+                            @error('phone')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Alamat Tempat Tinggal <span class="text-danger">*</span></label>
+                            <textarea class="form-control @error('address') is-invalid @enderror" name="address"
+                                rows="3" required>{{ old('address', $asesmen->address ?? '') }}</textarea>
+                            <small class="text-muted">Sesuai KTP</small>
+                            @error('address')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Kode Provinsi <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('province_code') is-invalid @enderror"
+                                name="province_code" maxlength="2"
+                                value="{{ old('province_code', $asesmen->province_code ?? '') }}" required>
+                            <small class="text-muted">2 digit awal dari NIK</small>
+                            @error('province_code')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Kode Kota <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('city_code') is-invalid @enderror"
+                                name="city_code" maxlength="4" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
+                                required>
+                            <small class="text-muted">4 digit awal dari NIK</small>
+                            @error('city_code')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Data Pendidikan & Pekerjaan -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Data Pendidikan & Pekerjaan</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Pendidikan Terakhir <span class="text-danger">*</span></label>
+                            <select class="form-select @error('education') is-invalid @enderror" name="education"
+                                required>
+                                <option value="">Pilih</option>
+                                <option value="SD" {{ old('education') == 'SD' ? 'selected' : '' }}>SD</option>
+                                <option value="SMP" {{ old('education') == 'SMP' ? 'selected' : '' }}>SMP</option>
+                                <option value="SMA/SMK" {{ old('education') == 'SMA/SMK' ? 'selected' : '' }}>SMA/SMK
+                                </option>
+                                <option value="D3" {{ old('education') == 'D3' ? 'selected' : '' }}>D3</option>
+                                <option value="S1" {{ old('education') == 'S1' ? 'selected' : '' }}>S1</option>
+                                <option value="S2" {{ old('education') == 'S2' ? 'selected' : '' }}>S2</option>
+                                <option value="S3" {{ old('education') == 'S3' ? 'selected' : '' }}>S3</option>
+                            </select>
+                            @error('education')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Pekerjaan <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('occupation') is-invalid @enderror"
+                                name="occupation" value="{{ old('occupation') }}" required>
+                            @error('occupation')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Sumber Anggaran <span class="text-danger">*</span></label>
+                            <select class="form-select @error('budget_source') is-invalid @enderror"
+                                name="budget_source" required>
+                                <option value="">Pilih</option>
+                                <option value="Mandiri">Mandiri</option>
+                                <option value="APBN/APBD">APBN/APBD</option>
+                                <option value="Lembaga">Lembaga</option>
+                            </select>
+                            @error('budget_source')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Asal Lembaga <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('institution') is-invalid @enderror"
+                                name="institution" value="{{ old('institution') }}" required>
+                            @error('institution')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- Data Sertifikasi -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Data Sertifikasi</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Skema Sertifikasi</label>
+
+                            @if($asesmen->skema_id != null)
+                            <select class="form-select locked-field" name="skema_id" disabled
+                                style="pointer-events: none; background-color: #e9ecef; appearance: none;">
+                                <option selected>
+                                    {{ $asesmen->skema->name ?? 'Skema terkunci' }}
+                                </option>
+                            </select>
+
+                            <input type="hidden" name="skema_id" value="{{ $asesmen->skema_id }}">
+                            @else
+                            <select class="form-select @error('skema_id') is-invalid @enderror" name="skema_id"
+                                required>
+                                <option value="">Pilih Skema</option>
+                                @foreach($skemas as $skema)
+                                <option value="{{ $skema->id }}" {{ old('skema_id') == $skema->id ? 'selected' : '' }}>
+                                    {{ $skema->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                            @endif
+
+                            @error('skema_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Lokasi Ujian (TUK)</label>
+
+                            @if($asesmen->tuk_id != null)
+                            <select class="form-select locked-field" name="tuk_id" disabled
+                                style="pointer-events: none; background-color: #e9ecef; appearance: none;">
+                                <option selected>
+                                    {{ $asesmen->tuk->name ?? 'TUK terkunci' }}
+                                </option>
+                            </select>
+
+                            <input type="hidden" name="tuk_id" value="{{ $asesmen->tuk_id }}">
+                            @else
+                            <select class="form-select @error('tuk_id') is-invalid @enderror" name="tuk_id" required>
+                                <option value="">Pilih TUK</option>
+                                @foreach($tuks as $tuk)
+                                <option value="{{ $tuk->id }}" {{ old('tuk_id') == $tuk->id ? 'selected' : '' }}>
+                                    {{ $tuk->name }} - {{ $tuk->address }}
+                                </option>
+                                @endforeach
+                            </select>
+                            @endif
+
+                            @error('tuk_id')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        @if($asesmen->is_collective || $asesmen->lock_tuk)
+                        <div class="col-12">
+                            <div class="alert alert-warning mt-2">
+                                <i class="bi bi-lock-fill"></i>
+                                Data Skema & TUK sudah ditentukan dan tidak dapat diubah.
+                            </div>
+                        </div>
+                        @endif
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tanggal Sertifikasi yang Dipilih <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
+                                name="preferred_date" value="{{ old('preferred_date') }}" required>
+                            @error('preferred_date')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <!-- SECTION PELATIHAN (NEW) -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">
+                        <i class="bi bi-mortarboard-fill"></i> Pelatihan (Opsional)
+                    </h6>
+
+                    <div class="training-section">
+                        <div class="mb-3">
+                            <h6 class="text-primary">
+                                <i class="bi bi-question-circle-fill"></i>
+                                Apakah Anda ingin mengikuti pelatihan sebelum asesmen?
+                            </h6>
+                            <p class="text-muted mb-3">
+                                Pelatihan akan membantu Anda mempersiapkan diri dengan lebih baik untuk menghadapi
+                                proses asesmen.
+                            </p>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="training-option" onclick="selectTraining(false)" id="option-no">
+                                    <div class="d-flex align-items-start">
+                                        <input type="radio" name="training_flag" value="0" id="training-no"
+                                            {{ old('training_flag', $asesmen->training_flag ?? '0') == '0' ? 'checked' : '' }}>
+                                        <div class="ms-3 flex-grow-1">
+                                            <label for="training-no" class="form-label fw-bold mb-1"
+                                                style="cursor: pointer;">
+                                                <i class="bi bi-x-circle text-danger"></i> Tidak, Hanya Asesmen
+                                            </label>
+                                            <p class="text-muted small mb-0">
+                                                Saya siap untuk langsung mengikuti asesmen.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="training-option" onclick="selectTraining(true)" id="option-yes">
+                                    <div class="d-flex align-items-start">
+                                        <input type="radio" name="training_flag" value="1" id="training-yes"
+                                            {{ old('training_flag', $asesmen->training_flag ?? '0') == '1' ? 'checked' : '' }}>
+                                        <div class="ms-3 flex-grow-1">
+                                            <label for="training-yes" class="form-label fw-bold mb-1"
+                                                style="cursor: pointer;">
+                                                <i class="bi bi-check-circle text-success"></i> Ya, Ikut Pelatihan
+                                            </label>
+                                            <p class="text-muted small mb-2">
+                                                Saya ingin mengikuti pelatihan.
+                                            </p>
+                                            <div class="alert alert-warning mb-0 py-2">
+                                                <small>
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                    <strong>Biaya Tambahan:</strong>
+                                                    <span class="price-badge ms-2">Rp 1.500.000</span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info mt-3 mb-0">
+                            <small>
+                                <i class="bi bi-lightbulb-fill"></i>
+                                <strong>Catatan:</strong>
+                                Biaya pelatihan akan ditambahkan ke total biaya sertifikasi Anda dan akan diinformasikan
+                                setelah verifikasi.
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Upload Dokumen -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-4">Upload Dokumen</h6>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Pas Foto Formal (3x4) <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control @error('photo') is-invalid @enderror" name="photo"
+                                accept="image/*" required>
+                            <small class="text-muted">Format: JPG/PNG, Max: 10MB, Latar merah</small>
+                            @error('photo')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">KTP <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control @error('ktp') is-invalid @enderror" name="ktp"
+                                accept="application/pdf" required>
+                            <small class="text-muted">Format: PDF, Max: 10MB</small>
+                            @error('ktp')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Ijazah/Transkrip <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control @error('document') is-invalid @enderror"
+                                name="document" accept="application/pdf" required>
+                            <small class="text-muted">Format: PDF, Max: 10MB</small>
+                            @error('document')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal"
+                            data-bs-target="#confirmSubmitModal">
+                            <i class="bi bi-save"></i> Submit Data
+                        </button>
+                        <a href="{{ route('asesi.dashboard') }}" class="btn btn-secondary btn-lg">
+                            <i class="bi bi-x-circle"></i> Batal
+                        </a>
+                    </div>
+                </form>
+
+                <!-- Modal Konfirmasi Submit -->
+                <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-labelledby="confirmSubmitLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning">
+                                <h5 class="modal-title" id="confirmSubmitLabel">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Konfirmasi Pengiriman Data
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+
+                            <div class="modal-body">
+                                <p class="mb-2">
+                                    Apakah Anda yakin semua data yang diisi sudah:
+                                </p>
+                                <ul>
+                                    <li>Sesuai dengan <strong>KTP / Ijazah</strong></li>
+                                    <li>Tidak ada kesalahan penulisan</li>
+                                    <li>Dokumen yang diunggah sudah benar</li>
+                                    <li>Pilihan pelatihan sudah sesuai keinginan</li>
+                                </ul>
+
+                                <div id="training-confirmation" style="display: none;">
+                                    <div class="alert alert-warning mb-3">
+                                        <i class="bi bi-mortarboard-fill"></i>
+                                        <strong>Anda memilih: IKUT PELATIHAN</strong><br>
+                                        <small>Biaya tambahan Rp 1.500.000 akan ditambahkan ke total biaya
+                                            sertifikasi.</small>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-danger mt-3 mb-0">
+                                    <i class="bi bi-info-circle-fill"></i>
+                                    <strong>Perhatian:</strong>
+                                    Data yang sudah dikirim <u>tidak dapat diubah</u> setelah diverifikasi oleh Admin
+                                    LSP.
+                                </div>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-arrow-left"></i> Periksa Ulang
+                                </button>
+
+                                <!-- INI YANG BENAR-BENAR SUBMIT -->
+                                <button type="button" class="btn btn-danger" onclick="submitAsesiForm()">
+                                    <i class="bi bi-check-circle-fill"></i> Ya, Kirim Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+// Function to select training option
+function selectTraining(wantTraining) {
+    // Remove selected class from both
+    document.getElementById('option-no').classList.remove('selected');
+    document.getElementById('option-yes').classList.remove('selected');
+
+    // Add selected class to clicked option
+    if (wantTraining) {
+        document.getElementById('option-yes').classList.add('selected');
+        document.getElementById('training-yes').checked = true;
+    } else {
+        document.getElementById('option-no').classList.add('selected');
+        document.getElementById('training-no').checked = true;
+    }
+
+    // Update modal confirmation
+    updateModalConfirmation();
+}
+
+// Update modal to show training confirmation
+function updateModalConfirmation() {
+    const trainingYes = document.getElementById('training-yes').checked;
+    const confirmationDiv = document.getElementById('training-confirmation');
+
+    if (trainingYes) {
+        confirmationDiv.style.display = 'block';
+    } else {
+        confirmationDiv.style.display = 'none';
+    }
+}
+
+// Submit form
+function submitAsesiForm() {
+    document.querySelector('form[action="{{ route('asesi.store-data')}}"]').submit();
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial selected state based on checked radio
+    const trainingYes = document.getElementById('training-yes').checked;
+    if (trainingYes) {
+        document.getElementById('option-yes').classList.add('selected');
+    } else {
+        document.getElementById('option-no').classList.add('selected');
+    }
+
+    // Update modal when modal is shown
+    document.getElementById('confirmSubmitModal').addEventListener('show.bs.modal', function() {
+        updateModalConfirmation();
+    });
+});
+</script>
+@endpush
+@endsection

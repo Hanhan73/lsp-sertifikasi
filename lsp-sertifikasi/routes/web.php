@@ -9,7 +9,9 @@ use App\Http\Controllers\Tuk\TukController;
 use App\Http\Controllers\Tuk\TukVerificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
-
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /*
 |--------------------------------------------------------------------------
@@ -45,7 +47,79 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.update-password');
     Route::post('/profile/photo', [ProfileController::class, 'uploadPhoto'])->name('profile.upload-photo');
     Route::delete('/profile/photo', [ProfileController::class, 'deletePhoto'])->name('profile.delete-photo');
+
+    // Route untuk melihat halaman notice (jika user login tapi belum verifikasi)
+    Route::get('/email/verify', function () {
+        $user = Auth::user();
+        
+        // ✅ Jika sudah verified, redirect ke dashboard
+        if ($user->hasVerifiedEmail()) {
+            if ($user->isAsesi()) {
+                if ($user->isFirstLogin()) {
+                    return redirect()->route('asesi.first-login');
+                }
+                return redirect()->route('asesi.dashboard')
+                    ->with('info', 'Email Anda sudah terverifikasi.');
+            }
+            return redirect()->route('home');
+        }
+        
+        return view('auth.verify-email');
+    })->name('verification.notice');
+
+    // Route untuk mengirim ulang email verifikasi
+    Route::post('/email/verification-notification', function (Request $request) {
+        // ✅ Cek apakah sudah verified
+        if ($request->user()->hasVerifiedEmail()) {
+            return back()->with('info', 'Email Anda sudah terverifikasi.');
+        }
+        
+        $request->user()->sendEmailVerificationNotification();
+        return back()->with('resent', true);
+    })->middleware(['throttle:6,1'])->name('verification.send');
 });
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        Log::info('VERIFICATION ROUTE HIT!');
+        Log::info('User ID from URL: ' . $request->route('id'));
+        Log::info('Authenticated User: ' . ($request->user() ? $request->user()->email : 'No User'));
+
+        // ✅ Validasi manual ID & hash (menggantikan authorize() yang error)
+        if ((string) $request->user()->getKey() !== (string) $request->route('id')) {
+            abort(403, 'Unauthorized verification attempt.');
+        }
+
+        if (sha1($request->user()->getEmailForVerification()) !== (string) $request->route('hash')) {
+            abort(403, 'Invalid verification hash.');
+        }
+
+        // ✅ Fulfill verification
+        if (!$request->user()->hasVerifiedEmail()) {
+            $request->user()->markEmailAsVerified();
+            event(new \Illuminate\Auth\Events\Verified($request->user()));
+        }
+
+        Log::info('Email verification fulfilled for user: ' . $request->user()->email);
+
+        // ✅ Redirect ke dashboard sesuai role
+        $user = $request->user();
+        
+        if ($user->isAsesi()) {
+            if ($user->isFirstLogin()) {
+                return redirect()->route('asesi.first-login')
+                    ->with('success', 'Email berhasil diverifikasi! Silakan ganti password Anda.');
+            }
+            return redirect()->route('asesi.dashboard')
+                ->with('verified', true);
+        }
+
+        return redirect()->route('home')
+            ->with('success', 'Email berhasil diverifikasi!');
+            
+    })->middleware(['signed'])->name('verification.verify'); // ✅ Signed tetap ada
+});
+
 /*
 |--------------------------------------------------------------------------
 | Payment Routes (Midtrans)
@@ -98,8 +172,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications');
     Route::get('/verifications/{asesmen}', [AdminVerificationController::class, 'show'])->name('verifications.show');
     Route::post('/verifications/{asesmen}', [AdminVerificationController::class, 'process'])->name('verifications.process');
-    Route::post('/verifications/batch/process', [AdminVerificationController::class, 'processBatch'])->name('verifications.batch');
-
     
     // NEW: Batch Verification for Collective
     Route::post('/verifications/batch', [AdminController::class, 'processBatchVerification'])->name('verifications.batch');
@@ -126,54 +198,49 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->group(function () {
-    // NEW: First Login - Force Password Change
-    Route::get('/first-login', [AsesiController::class, 'firstLogin'])->name('first-login');
-    Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])->name('first-login.update');
-    
-    // Dashboard
-    Route::get('/dashboard', [AsesiController::class, 'dashboard'])->name('dashboard');
-    
-    // Complete Data
-    Route::get('/complete-data', [AsesiController::class, 'completeData'])->name('complete-data');
-    Route::post('/complete-data', [AsesiController::class, 'storeData'])->name('store-data');
-    
-    // Payment (will redirect if collective)
-    Route::get('/payment', [AsesiController::class, 'payment'])->name('payment');
-    Route::get('/payment/status', [AsesiController::class, 'paymentStatus'])->name('payment.status');
-    
-    // Invoice download
-    Route::get('/payment/invoice', [AsesiController::class, 'downloadInvoice'])->name('payment.invoice');
 
-    // Pre-Assessment
-    Route::get('/pre-assessment', [AsesiController::class, 'preAssessment'])->name('pre-assessment');
-    Route::post('/pre-assessment', [AsesiController::class, 'submitPreAssessment'])->name('pre-assessment.submit');
-    
-    // Certificate
-    Route::get('/certificate', [AsesiController::class, 'certificate'])->name('certificate');
-    Route::get('/certificate/download', [AsesiController::class, 'downloadCertificate'])->name('certificate.download');
-    
-    // Tracking
-    Route::get('/tracking', [AsesiController::class, 'tracking'])->name('tracking');
-});
+    Route::middleware(['check.first.login'])
+        ->group(function () {
+            Route::get('/first-login', [AsesiController::class, 'firstLogin'])
+                ->name('first-login');
 
-Route::prefix('asesi')->middleware(['auth', 'role:asesi'])->name('asesi.')->group(function () {
-    // First Login Routes (NO CheckFirstLogin middleware!)
-    Route::get('/first-login', [AsesiController::class, 'showFirstLogin'])->name('first-login');
-    Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])->name('update-first-password');
-    
-    // Other routes WITH CheckFirstLogin middleware
-    Route::middleware(['check.first.login'])->group(function () {
+            Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])
+                ->name('first-login.update');
+        });
+
+    // ROUTE UNTUK MANDIRI (WAJIB VERIFIED)
+    Route::middleware(['verified'])
+        ->group(function () {
+
+        // Dashboard
         Route::get('/dashboard', [AsesiController::class, 'dashboard'])->name('dashboard');
+        
+        // Complete Data
         Route::get('/complete-data', [AsesiController::class, 'completeData'])->name('complete-data');
         Route::post('/complete-data', [AsesiController::class, 'storeData'])->name('store-data');
+        
+        // Payment (will redirect if collective)
         Route::get('/payment', [AsesiController::class, 'payment'])->name('payment');
+        Route::get('/payment/status', [AsesiController::class, 'paymentStatus'])->name('payment.status');
+        
+        // Invoice download
+        Route::get('/payment/invoice', [AsesiController::class, 'downloadInvoice'])->name('payment.invoice');
+
+        // Pre-Assessment
         Route::get('/pre-assessment', [AsesiController::class, 'preAssessment'])->name('pre-assessment');
-        Route::post('/pre-assessment', [AsesiController::class, 'submitPreAssessment'])->name('submit-pre-assessment');
+        Route::post('/pre-assessment', [AsesiController::class, 'submitPreAssessment'])->name('pre-assessment.submit');
+        
+        // Certificate
         Route::get('/certificate', [AsesiController::class, 'certificate'])->name('certificate');
-        Route::get('/certificate/download', [AsesiController::class, 'downloadCertificate'])->name('download-certificate');
+        Route::get('/certificate/download', [AsesiController::class, 'downloadCertificate'])->name('certificate.download');
+        
+        // Tracking
         Route::get('/tracking', [AsesiController::class, 'tracking'])->name('tracking');
     });
 });
+
+
+
 
 /*
 |--------------------------------------------------------------------------

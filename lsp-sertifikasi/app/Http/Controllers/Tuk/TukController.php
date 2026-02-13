@@ -121,6 +121,7 @@ class TukController extends Controller
                     'role' => 'asesi',
                     'is_active' => true,
                     'password_changed_at' => null,
+                    'email_verified_at' => now(), // ✅ Mandiri user sudah verifikasi email
                 ]);
 
                 // Create asesmen record

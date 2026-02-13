@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -34,14 +36,19 @@ class AuthController extends Controller
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $request->session()->regenerate();
 
-            // Redirect based on role
             $user = Auth::user();
-            
+                
             if (!$user->is_active) {
                 Auth::logout();
                 return back()->withErrors([
                     'email' => 'Akun Anda tidak aktif. Hubungi administrator.',
                 ]);
+            }
+
+            // ✅ PERBAIKAN: Jangan logout, redirect ke halaman verifikasi
+            if ($user->role === 'asesi' && $user->mustVerifyEmail() && !$user->hasVerifiedEmail()) {
+                return redirect()->route('verification.notice')
+                    ->with('warning', 'Harap verifikasi email Anda terlebih dahulu.');
             }
 
             switch ($user->role) {
@@ -50,6 +57,9 @@ class AuthController extends Controller
                 case 'tuk':
                     return redirect()->intended(route('tuk.dashboard'));
                 case 'asesi':
+                    if ($user->isFirstLogin()) {
+                        return redirect()->route('asesi.first-login');
+                    }
                     return redirect()->intended(route('asesi.dashboard'));
                 default:
                     return redirect('/');
@@ -74,25 +84,34 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8|confirmed',
         ]);
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
             'role' => 'asesi',
             'is_active' => true,
-            'password_changed_at' => now(), // Set immediately for mandiri
+            'password_changed_at' => now(), // Mandiri user sudah set password sendiri
         ]);
 
-        Auth::login($user);
+        // ✅ Trigger email verification
+        try {
+            event(new Registered($user));
+            Log::info("Email verification sent - User #{$user->id}, Email: {$user->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send verification email: " . $e->getMessage());
+            // Tetap redirect dengan warning
+            return redirect()->route('login')
+                ->with('warning', 'Registrasi berhasil! Namun email verifikasi gagal dikirim. Silakan hubungi admin atau coba login.');
+        }
 
-        return redirect()->route('asesi.dashboard')
-            ->with('success', 'Registrasi berhasil! Silakan lengkapi data pribadi Anda.');
+        return redirect()->route('login')
+            ->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun.');
     }
 
     /**
@@ -100,12 +119,16 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        $userName = Auth::user()->name ?? 'Unknown';
+        
         Auth::logout();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        Log::info("User logged out: {$userName}");
+
+        return redirect()->route('login')->with('success', 'Berhasil logout!');
     }
 
     // ==================== PASSWORD RESET ====================

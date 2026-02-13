@@ -8,6 +8,50 @@
 @endsection
 
 @section('content')
+
+{{-- ✅ Alert Verifikasi Email Berhasil --}}
+@if (session('verified'))
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill me-3" style="font-size: 2rem;"></i>
+        <div>
+            <h5 class="alert-heading mb-1">
+                <i class="bi bi-shield-check"></i> Email Berhasil Diverifikasi!
+            </h5>
+            <p class="mb-0">
+                Selamat! Akun Anda sudah terverifikasi. Anda sekarang dapat mengakses semua fitur sistem sertifikasi.
+            </p>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
+{{-- ✅ Alert Success/Warning/Info dari Session --}}
+@if (session('success'))
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <i class="bi bi-check-circle me-2"></i>
+    {{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
+@if (session('warning'))
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i>
+    {{ session('warning') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
+@if (session('info'))
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+    <i class="bi bi-info-circle me-2"></i>
+    {{ session('info') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+
 <!-- Welcome -->
 <div class="row mb-4">
     <div class="col">
@@ -477,6 +521,27 @@
 .badge-status {
     font-size: 0.875rem;
     padding: 0.375rem 0.75rem;
+}
+
+/* ✅ Alert Animation */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert {
+    animation: slideDown 0.5s ease-out;
+}
+
+/* ✅ Success Alert Custom Style */
+.alert-success {
+    border-left: 5px solid #28a745;
 }
 </style>
 @endpush

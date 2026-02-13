@@ -5,41 +5,28 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Notifications\VerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'name',
         'email',
         'password',
         'role',
-        'photo_path',
-        'password_changed_at',
         'is_active',
+        'password_changed_at',
+        'email_verified_at',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
@@ -47,80 +34,126 @@ class User extends Authenticatable
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Check if user is admin
-     */
-    public function isAdmin(): bool
+    // ========== RELATIONSHIPS ==========
+    
+    public function asesmen()
     {
-        return $this->role === 'admin';
+        return $this->hasOne(Asesmen::class);
     }
 
-    /**
-     * Check if user is TUK
-     */
-    public function isTuk(): bool
-    {
-        return $this->role === 'tuk';
-    }
-
-    /**
-     * Check if user is Asesi
-     */
-    public function isAsesi(): bool
-    {
-        return $this->role === 'asesi';
-    }
-
-    /**
-     * Get TUK associated with this user
-     */
-    public function tuk()
-    {
-        return $this->hasOne(Tuk::class);
-    }
-
-    /**
-     * Get asesmens for this user (asesi)
-     */
     public function asesmens()
     {
         return $this->hasMany(Asesmen::class);
     }
 
-    /**
-     * Get asesmens registered by this user (TUK)
-     */
+    public function tuk()
+    {
+        return $this->hasOne(Tuk::class);
+    }
+
     public function registeredAsesmens()
     {
         return $this->hasMany(Asesmen::class, 'registered_by');
     }
 
-    /**
-     * Get photo URL
-     */
-    public function getPhotoUrlAttribute()
+    // ========== EMAIL VERIFICATION ==========
+
+    public function mustVerifyEmail(): bool
     {
-        if ($this->photo_path) {
-            return asset('storage/' . $this->photo_path);
+        // Admin & TUK never require verification
+        if (in_array($this->role, ['admin', 'tuk'])) {
+            return false;
         }
-        return asset('images/default-avatar.png');
+
+        // Asesi mandiri harus verifikasi
+        if ($this->role === 'asesi') {
+            // Load asesmen jika belum di-load
+            if (!$this->relationLoaded('asesmen')) {
+                $this->load('asesmen');
+            }
+            
+            // Collective asesi skip verification
+            if ($this->asesmen && $this->asesmen->is_collective) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function hasVerifiedEmail(): bool
+    {
+        if (!$this->mustVerifyEmail()) {
+            return true;
+        }
+
+        return !is_null($this->email_verified_at);
     }
 
     /**
-     * Check if this is first login (for collective registration)
+     * ✅ Mark email as verified
      */
+    public function markEmailAsVerified()
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+        ])->save();
+    }
+
+    /**
+     * ✅ Get email for verification
+     */
+    public function getEmailForVerification()
+    {
+        return $this->email;
+    }
+
+    /**
+     * ✅ Override sendEmailVerificationNotification untuk custom email
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new VerifyEmail);
+    }
+
+    // ========== HELPER METHODS ==========
+
     public function isFirstLogin(): bool
     {
-        // Only for asesi who were registered collectively (has registered_by)
         if (!$this->isAsesi()) {
             return false;
         }
         
-        // Check if user has asesmen with collective registration
-        $asesmen = $this->asesmens()->first();
+        // Load asesmen jika belum
+        if (!$this->relationLoaded('asesmen')) {
+            $this->load('asesmen');
+        }
         
-        return $asesmen && 
-            $asesmen->is_collective && 
+        return $this->asesmen && 
+            $this->asesmen->is_collective && 
             !$this->password_changed_at;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isTuk(): bool
+    {
+        return $this->role === 'tuk';
+    }
+
+    public function isAsesi(): bool
+    {
+        return $this->role === 'asesi';
+    }
+
+    public function getPhotoUrlAttribute()
+    {
+        if ($this->photo_path ?? false) {
+            return asset('storage/' . $this->photo_path);
+        }
+        return asset('images/default-avatar.png');
     }
 }

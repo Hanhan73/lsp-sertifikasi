@@ -459,7 +459,7 @@
 
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Skema Sertifikasi<span class="text-danger">*</span></label>
+                            <label class="form-label">Skema Sertifikasi <span class="text-danger">*</span></label>
 
                             @if($asesmen->skema_id != null)
                             <select class="form-select locked-field" name="skema_id" disabled
@@ -488,7 +488,7 @@
                         </div>
 
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Lokasi Ujian (TUK)<span class="text-danger">*</span></label>
+                            <label class="form-label">Lokasi Ujian (TUK) <span class="text-danger">*</span></label>
 
                             @if($asesmen->tuk_id != null)
                             <select class="form-select locked-field" name="tuk_id" disabled

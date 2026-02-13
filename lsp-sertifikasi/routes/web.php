@@ -201,7 +201,7 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
 
     Route::middleware(['check.first.login'])
         ->group(function () {
-            Route::get('/first-login', [AsesiController::class, 'firstLogin'])
+            Route::get('/first-login', [AsesiController::class, 'showFirstLogin'])
                 ->name('first-login');
 
             Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])

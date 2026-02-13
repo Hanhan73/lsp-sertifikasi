@@ -65,21 +65,21 @@
         <div class="card">
             <div class="card-header {{ $viewOnly ? 'bg-info' : 'bg-primary' }} text-white">
                 <h5 class="mb-0">
-                    <i class="bi {{ $viewOnly ? 'bi-eye' : 'bi-clipboard-data' }}"></i> 
+                    <i class="bi {{ $viewOnly ? 'bi-eye' : 'bi-clipboard-data' }}"></i>
                     {{ $viewOnly ? 'Data Pribadi Asesi (View Only)' : 'Form Data Pribadi Asesi' }}
                 </h5>
             </div>
             <div class="card-body">
-            @if($viewOnly)
+                @if($viewOnly)
                 {{-- ✅ VIEW-ONLY MODE --}}
                 <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> 
-                    Data Anda sudah disubmit dan sedang dalam proses verifikasi. 
+                    <i class="bi bi-info-circle"></i>
+                    Data Anda sudah disubmit dan sedang dalam proses verifikasi.
                     Data tidak dapat diubah setelah diverifikasi oleh Admin LSP.
                 </div>
 
                 <div class="alert alert-success">
-                    <i class="bi bi-check-circle"></i> 
+                    <i class="bi bi-check-circle"></i>
                     <strong>Status:</strong> {{ $asesmen->status_label }}
                 </div>
 
@@ -177,7 +177,8 @@
                                     </tr>
                                     <tr>
                                         <td><strong>Tanggal Dipilih</strong></td>
-                                        <td>: {{ \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') }}</td>
+                                        <td>: {{ \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') }}
+                                        </td>
                                     </tr>
                                 </table>
                             </div>
@@ -185,32 +186,33 @@
                                 <table class="table table-borderless table-sm">
                                     <tr>
                                         <td width="150"><strong>Jenis Pendaftaran</strong></td>
-                                        <td>: 
+                                        <td>:
                                             @if($asesmen->is_collective)
-                                                <span class="badge bg-primary">Kolektif</span>
+                                            <span class="badge bg-primary">Kolektif</span>
                                             @else
-                                                <span class="badge bg-success">Mandiri</span>
+                                            <span class="badge bg-success">Mandiri</span>
                                             @endif
                                         </td>
                                     </tr>
                                     <tr>
                                         <td><strong>Pelatihan</strong></td>
-                                        <td>: 
+                                        <td>:
                                             @if($asesmen->training_flag)
-                                                <span class="badge bg-success">
-                                                    <i class="bi bi-check-circle"></i> Ya (+ Rp 1.500.000)
-                                                </span>
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle"></i> Ya (+ Rp 1.500.000)
+                                            </span>
                                             @else
-                                                <span class="badge bg-secondary">
-                                                    <i class="bi bi-x-circle"></i> Tidak
-                                                </span>
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-x-circle"></i> Tidak
+                                            </span>
                                             @endif
                                         </td>
                                     </tr>
                                     @if($asesmen->fee_amount)
                                     <tr>
                                         <td><strong>Total Biaya</strong></td>
-                                        <td>: <span class="text-success fw-bold">Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</span></td>
+                                        <td>: <span class="text-success fw-bold">Rp
+                                                {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</span></td>
                                     </tr>
                                     @endif
                                 </table>
@@ -229,49 +231,49 @@
                             <div class="col-md-4 text-center">
                                 <h6>Pas Foto</h6>
                                 @if($asesmen->photo_path)
-                                    <img src="{{ asset('storage/' . $asesmen->photo_path) }}" alt="Foto" class="img-thumbnail mb-2"
-                                        style="max-height: 200px;">
-                                    <br>
-                                    <a href="{{ asset('storage/' . $asesmen->photo_path) }}" target="_blank"
-                                        class="btn btn-sm btn-primary">
-                                        <i class="bi bi-eye"></i> Lihat
-                                    </a>
+                                <img src="{{ asset('storage/' . $asesmen->photo_path) }}" alt="Foto"
+                                    class="img-thumbnail mb-2" style="max-height: 200px;">
+                                <br>
+                                <a href="{{ asset('storage/' . $asesmen->photo_path) }}" target="_blank"
+                                    class="btn btn-sm btn-primary">
+                                    <i class="bi bi-eye"></i> Lihat
+                                </a>
                                 @else
-                                    <div class="alert alert-warning">
-                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
-                                    </div>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                </div>
                                 @endif
                             </div>
                             <div class="col-md-4 text-center">
                                 <h6>KTP</h6>
                                 @if($asesmen->ktp_path)
-                                    <iframe src="{{ asset('storage/' . $asesmen->ktp_path) }}"
-                                        style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
-                                    <br>
-                                    <a href="{{ asset('storage/' . $asesmen->ktp_path) }}" target="_blank"
-                                        class="btn btn-sm btn-primary">
-                                        <i class="bi bi-download"></i> Download
-                                    </a>
+                                <iframe src="{{ asset('storage/' . $asesmen->ktp_path) }}"
+                                    style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
+                                <br>
+                                <a href="{{ asset('storage/' . $asesmen->ktp_path) }}" target="_blank"
+                                    class="btn btn-sm btn-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
                                 @else
-                                    <div class="alert alert-warning">
-                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
-                                    </div>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                </div>
                                 @endif
                             </div>
                             <div class="col-md-4 text-center">
                                 <h6>Ijazah/Transkrip</h6>
                                 @if($asesmen->document_path)
-                                    <iframe src="{{ asset('storage/' . $asesmen->document_path) }}"
-                                        style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
-                                    <br>
-                                    <a href="{{ asset('storage/' . $asesmen->document_path) }}" target="_blank"
-                                        class="btn btn-sm btn-primary">
-                                        <i class="bi bi-download"></i> Download
-                                    </a>
+                                <iframe src="{{ asset('storage/' . $asesmen->document_path) }}"
+                                    style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
+                                <br>
+                                <a href="{{ asset('storage/' . $asesmen->document_path) }}" target="_blank"
+                                    class="btn btn-sm btn-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
                                 @else
-                                    <div class="alert alert-warning">
-                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
-                                    </div>
+                                <div class="alert alert-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                </div>
                                 @endif
                             </div>
                         </div>
@@ -289,7 +291,7 @@
                 </div>
 
                 @else
-                    {{-- ✅ EDITABLE FORM MODE --}}
+                {{-- ✅ EDITABLE FORM MODE --}}
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> Lengkapi semua data dengan benar sesuai dokumen resmi
                     (KTP/Ijazah).
@@ -377,7 +379,8 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Kode Provinsi <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control locked-field @error('province_code') is-invalid @enderror"
+                            <input type="text"
+                                class="form-control locked-field @error('province_code') is-invalid @enderror"
                                 name="province_code" maxlength="2"
                                 value="{{ old('province_code', $asesmen->province_code ?? '') }}" required readonly>
                             <small class="text-muted">2 digit awal dari NIK</small>
@@ -388,7 +391,8 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Kode Kota <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control locked-field @error('city_code') is-invalid @enderror"
+                            <input type="text"
+                                class="form-control locked-field @error('city_code') is-invalid @enderror"
                                 name="city_code" maxlength="2" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
                                 required readonly>
                             <small class="text-muted">2 digit setelah kode provinsi NIK</small>
@@ -463,7 +467,7 @@
 
                             @if($asesmen->skema_id != null)
                             <select class="form-select locked-field" name="skema_id" disabled
-                                style="pointer-events: none; background-color: #e9ecef; appearance: none;">
+                                style="pointer-events: none; background-color: #e9ecef; appearance: none;" required>
                                 <option selected>
                                     {{ $asesmen->skema->name ?? 'Skema terkunci' }}
                                 </option>
@@ -747,7 +751,8 @@ function updateModalConfirmation() {
 
 // ✅ Fungsi global untuk submit form
 function submitAsesiForm() {
-    document.querySelector('form[action="{{ route('asesi.store-data') }}"]').submit();
+    document.querySelector('form[action="{{ route('
+        asesi.store - data ') }}"]').submit();
 }
 
 // ✅ DOM Ready untuk inisialisasi
@@ -778,7 +783,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial selected state based on checked radio
     const trainingYesRadio = document.getElementById('training-yes');
     const trainingNoRadio = document.getElementById('training-no');
-    
+
     if (trainingYesRadio && trainingYesRadio.checked) {
         document.getElementById('option-yes').classList.add('selected');
     } else if (trainingNoRadio) {

@@ -103,13 +103,22 @@ class AsesiController extends Controller
             'occupation' => 'required|string',
             'budget_source' => 'required|string',
             'institution' => 'required|string',
-            'tuk_id' => 'nullable|exists:tuks,id',
-            'skema_id' => 'nullable|exists:skemas,id',
+            'tuk_id' => 'required|exists:tuks,id',
+            'skema_id' => 'required|exists:skemas,id',
             'preferred_date' => 'required|date',
             'photo' => 'required|image|max:10240',
             'ktp' => 'required|mimes:pdf|max:10240',
             'document' => 'required|mimes:pdf|max:10240',
             'training_flag' => 'required|boolean',
+        ],[
+            'nik.size' => 'NIK harus terdiri dari 16 karakter.',
+            'nik.unique' => 'NIK sudah terdaftar pada asesmen lain.',
+            'photo.max' => 'Ukuran foto maksimal 10MB.',
+            'ktp.mimes' => 'KTP harus berupa file PDF.',
+            'ktp.max' => 'Ukuran file KTP maksimal 10MB.',
+            'document.mimes' => 'Dokumen pendukung harus berupa file PDF.',
+            'document.max' => 'Ukuran file dokumen pendukung maksimal 10MB.',
+            'required' => 'Field :attribute wajib diisi.',        
         ]);
 
         $user = auth()->user();

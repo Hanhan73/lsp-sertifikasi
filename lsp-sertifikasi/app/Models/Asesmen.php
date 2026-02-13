@@ -395,7 +395,7 @@ class Asesmen extends Model
             case 'registered':
                 return 'Lengkapi data pribadi';
             case 'data_completed':
-                return 'Menunggu verifikasi otomatis'; // Will be instant for mandiri
+                return 'Menunggu verifikasi'; // Will be instant for mandiri
             case 'verified':
                 return 'Lakukan pembayaran';
             case 'paid':

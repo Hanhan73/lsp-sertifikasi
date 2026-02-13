@@ -48,9 +48,8 @@ class AsesiController extends Controller
         return view('asesi.dashboard', compact('asesmen', 'batchInfo'));
     }
 
-    /**
-     * Complete Personal Data - Form
-     */
+    /* Complete Personal Data - Form
+    */
     public function completeData()
     {
         $user = auth()->user();
@@ -74,10 +73,8 @@ class AsesiController extends Controller
             ]);
         }
 
-        if ($asesmen && $asesmen->status !== 'registered') {
-            return redirect()->route('asesi.dashboard')
-                ->with('info', 'Data Anda sudah dilengkapi.');
-        }
+        // ✅ PERUBAHAN: Jika status sudah bukan 'registered', tampilkan dalam mode view-only
+        $viewOnly = $asesmen->status !== 'registered';
 
         $tuks = Tuk::where('is_active', true)->get();
         $skemas = Skema::where('is_active', true)->get();
@@ -85,9 +82,8 @@ class AsesiController extends Controller
         // Check if this is collective registration
         $isCollective = $asesmen && $asesmen->is_collective;
 
-        return view('asesi.complete-data', compact('asesmen', 'tuks', 'skemas', 'isCollective'));
+        return view('asesi.complete-data', compact('asesmen', 'tuks', 'skemas', 'isCollective', 'viewOnly'));
     }
-
     /**
      * Complete Personal Data - Store
      */

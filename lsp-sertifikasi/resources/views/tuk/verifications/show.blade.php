@@ -221,7 +221,7 @@
 
     <!-- Right Column - Verification Form -->
     <div class="col-lg-4">
-        <div class="card sticky-top" style="top: 20px;">
+        <div class="card" style="top: 20px;">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0"><i class="bi bi-check-circle"></i> Verifikasi TUK</h5>
             </div>
@@ -235,24 +235,7 @@
                         Setelah verifikasi TUK, Admin LSP akan menetapkan biaya.
                     </p>
                 </div>
-                @else
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>Pendaftaran Mandiri</strong>
-                    <p class="mb-0 mt-2 small">
-                        Setelah verifikasi TUK, Admin LSP akan menetapkan biaya untuk asesi ini.
-                    </p>
-                </div>
                 @endif
-
-                <div class="alert alert-warning">
-                    <strong><i class="bi bi-exclamation-triangle"></i> Periksa dengan Teliti:</strong>
-                    <ul class="mb-0 mt-2 small">
-                        <li>Kelengkapan data pribadi</li>
-                        <li>Kesesuaian dokumen (KTP, Foto, Ijazah)</li>
-                        <li>Validitas informasi</li>
-                    </ul>
-                </div>
 
                 <form action="{{ route('tuk.verifications.process', $asesmen) }}" method="POST">
                     @csrf

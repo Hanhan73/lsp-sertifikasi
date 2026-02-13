@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Lengkapi Data Pribadi')
-@section('page-title', 'Lengkapi Data Pribadi')
+@section('title', $viewOnly ? 'Lihat Data Pribadi' : 'Lengkapi Data Pribadi')
+@section('page-title', $viewOnly ? 'Lihat Data Pribadi' : 'Lengkapi Data Pribadi')
 
 @section('sidebar')
 @include('asesi.partials.sidebar')
@@ -59,15 +59,237 @@
 }
 </style>
 @endpush
-
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-clipboard-data"></i> Form Data Pribadi Asesi</h5>
+            <div class="card-header {{ $viewOnly ? 'bg-info' : 'bg-primary' }} text-white">
+                <h5 class="mb-0">
+                    <i class="bi {{ $viewOnly ? 'bi-eye' : 'bi-clipboard-data' }}"></i> 
+                    {{ $viewOnly ? 'Data Pribadi Asesi (View Only)' : 'Form Data Pribadi Asesi' }}
+                </h5>
             </div>
             <div class="card-body">
+            @if($viewOnly)
+                {{-- ✅ VIEW-ONLY MODE --}}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> 
+                    Data Anda sudah disubmit dan sedang dalam proses verifikasi. 
+                    Data tidak dapat diubah setelah diverifikasi oleh Admin LSP.
+                </div>
+
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> 
+                    <strong>Status:</strong> {{ $asesmen->status_label }}
+                </div>
+
+                {{-- Personal Data --}}
+                <div class="card mb-3">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-person"></i> Data Pribadi</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-borderless table-sm">
+                                    <tr>
+                                        <td width="150"><strong>Nama Lengkap</strong></td>
+                                        <td>: {{ $asesmen->full_name }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>NIK</strong></td>
+                                        <td>: {{ $asesmen->nik }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tempat Lahir</strong></td>
+                                        <td>: {{ $asesmen->birth_place }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tanggal Lahir</strong></td>
+                                        <td>: {{ \Carbon\Carbon::parse($asesmen->birth_date)->format('d F Y') }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Jenis Kelamin</strong></td>
+                                        <td>: {{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Email</strong></td>
+                                        <td>: {{ auth()->user()->email }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Telepon</strong></td>
+                                        <td>: {{ $asesmen->phone }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-borderless table-sm">
+                                    <tr>
+                                        <td width="150"><strong>Alamat</strong></td>
+                                        <td>: {{ $asesmen->address }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Kode Provinsi</strong></td>
+                                        <td>: {{ $asesmen->province_code }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Kode Kota</strong></td>
+                                        <td>: {{ $asesmen->city_code }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Pendidikan</strong></td>
+                                        <td>: {{ $asesmen->education }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Pekerjaan</strong></td>
+                                        <td>: {{ $asesmen->occupation }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Sumber Anggaran</strong></td>
+                                        <td>: {{ $asesmen->budget_source }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Asal Lembaga</strong></td>
+                                        <td>: {{ $asesmen->institution }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Data Sertifikasi --}}
+                <div class="card mb-3">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-award"></i> Data Sertifikasi</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <table class="table table-borderless table-sm">
+                                    <tr>
+                                        <td width="150"><strong>Skema Sertifikasi</strong></td>
+                                        <td>: {{ $asesmen->skema->name ?? '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>TUK</strong></td>
+                                        <td>: {{ $asesmen->tuk->name ?? '-' }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tanggal Dipilih</strong></td>
+                                        <td>: {{ \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <table class="table table-borderless table-sm">
+                                    <tr>
+                                        <td width="150"><strong>Jenis Pendaftaran</strong></td>
+                                        <td>: 
+                                            @if($asesmen->is_collective)
+                                                <span class="badge bg-primary">Kolektif</span>
+                                            @else
+                                                <span class="badge bg-success">Mandiri</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Pelatihan</strong></td>
+                                        <td>: 
+                                            @if($asesmen->training_flag)
+                                                <span class="badge bg-success">
+                                                    <i class="bi bi-check-circle"></i> Ya (+ Rp 1.500.000)
+                                                </span>
+                                            @else
+                                                <span class="badge bg-secondary">
+                                                    <i class="bi bi-x-circle"></i> Tidak
+                                                </span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @if($asesmen->fee_amount)
+                                    <tr>
+                                        <td><strong>Total Biaya</strong></td>
+                                        <td>: <span class="text-success fw-bold">Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</span></td>
+                                    </tr>
+                                    @endif
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Documents --}}
+                <div class="card mb-3">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark"></i> Dokumen</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <h6>Pas Foto</h6>
+                                @if($asesmen->photo_path)
+                                    <img src="{{ asset('storage/' . $asesmen->photo_path) }}" alt="Foto" class="img-thumbnail mb-2"
+                                        style="max-height: 200px;">
+                                    <br>
+                                    <a href="{{ asset('storage/' . $asesmen->photo_path) }}" target="_blank"
+                                        class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye"></i> Lihat
+                                    </a>
+                                @else
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <h6>KTP</h6>
+                                @if($asesmen->ktp_path)
+                                    <iframe src="{{ asset('storage/' . $asesmen->ktp_path) }}"
+                                        style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
+                                    <br>
+                                    <a href="{{ asset('storage/' . $asesmen->ktp_path) }}" target="_blank"
+                                        class="btn btn-sm btn-primary">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                @else
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                    </div>
+                                @endif
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <h6>Ijazah/Transkrip</h6>
+                                @if($asesmen->document_path)
+                                    <iframe src="{{ asset('storage/' . $asesmen->document_path) }}"
+                                        style="width: 100%; height: 200px; border: 1px solid #ddd;" class="mb-2"></iframe>
+                                    <br>
+                                    <a href="{{ asset('storage/' . $asesmen->document_path) }}" target="_blank"
+                                        class="btn btn-sm btn-primary">
+                                        <i class="bi bi-download"></i> Download
+                                    </a>
+                                @else
+                                    <div class="alert alert-warning">
+                                        <i class="bi bi-exclamation-triangle"></i> Belum upload
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Action Buttons --}}
+                <div class="mt-4">
+                    <a href="{{ route('asesi.dashboard') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
+                    </a>
+                    <a href="{{ route('asesi.tracking') }}" class="btn btn-info btn-lg">
+                        <i class="bi bi-clock-history"></i> Lihat Timeline
+                    </a>
+                </div>
+
+                @else
+                    {{-- ✅ EDITABLE FORM MODE --}}
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i> Lengkapi semua data dengan benar sesuai dokumen resmi
                     (KTP/Ijazah).
@@ -430,6 +652,7 @@
                         </a>
                     </div>
                 </form>
+                @endif
 
                 <!-- Modal Konfirmasi Submit -->
                 <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-labelledby="confirmSubmitLabel"
@@ -491,76 +714,101 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+// ✅ Fungsi global untuk select training
+function selectTraining(wantTraining) {
+    // Remove selected class from both
+    document.getElementById('option-no').classList.remove('selected');
+    document.getElementById('option-yes').classList.remove('selected');
 
+    // Add selected class to clicked option
+    if (wantTraining) {
+        document.getElementById('option-yes').classList.add('selected');
+        document.getElementById('training-yes').checked = true;
+    } else {
+        document.getElementById('option-no').classList.add('selected');
+        document.getElementById('training-no').checked = true;
+    }
+
+    // Update modal confirmation
+    updateModalConfirmation();
+}
+
+// ✅ Fungsi global untuk update modal
+function updateModalConfirmation() {
+    const trainingYes = document.getElementById('training-yes');
+    const confirmationDiv = document.getElementById('training-confirmation');
+
+    if (trainingYes && trainingYes.checked) {
+        confirmationDiv.style.display = 'block';
+    } else {
+        confirmationDiv.style.display = 'none';
+    }
+}
+
+// ✅ Fungsi global untuk submit form
+function submitAsesiForm() {
+    document.querySelector('form[action="{{ route('asesi.store-data') }}"]').submit();
+}
+
+// ✅ DOM Ready untuk inisialisasi
+document.addEventListener('DOMContentLoaded', function() {
     const nikInput = document.querySelector('input[name="nik"]');
     const provinceInput = document.querySelector('input[name="province_code"]');
     const cityInput = document.querySelector('input[name="city_code"]');
 
-    nikInput.addEventListener('input', function() {
-        const nik = this.value.replace(/\D/g, ''); // hanya angka
+    // Auto-fill province & city code from NIK
+    if (nikInput) {
+        nikInput.addEventListener('input', function() {
+            const nik = this.value.replace(/\D/g, ''); // hanya angka
 
-        if (nik.length >= 2) {
-            provinceInput.value = nik.substring(0, 2);
-        } else {
-            provinceInput.value = '';
-        }
+            if (nik.length >= 2) {
+                provinceInput.value = nik.substring(0, 2);
+            } else {
+                provinceInput.value = '';
+            }
 
-        if (nik.length >= 2) {
-            cityInput.value = nik.substring(2, 4);
-        } else {
-            cityInput.value = '';
-        }
-    });
-
-    // Function to select training option
-    function selectTraining(wantTraining) {
-        // Remove selected class from both
-        document.getElementById('option-no').classList.remove('selected');
-        document.getElementById('option-yes').classList.remove('selected');
-
-        // Add selected class to clicked option
-        if (wantTraining) {
-            document.getElementById('option-yes').classList.add('selected');
-            document.getElementById('training-yes').checked = true;
-        } else {
-            document.getElementById('option-no').classList.add('selected');
-            document.getElementById('training-no').checked = true;
-        }
-
-        // Update modal confirmation
-        updateModalConfirmation();
-    }
-
-    // Update modal to show training confirmation
-    function updateModalConfirmation() {
-        const trainingYes = document.getElementById('training-yes').checked;
-        const confirmationDiv = document.getElementById('training-confirmation');
-
-        if (trainingYes) {
-            confirmationDiv.style.display = 'block';
-        } else {
-            confirmationDiv.style.display = 'none';
-        }
-    }
-
-    // Submit form
-    function submitAsesiForm() {
-        document.querySelector('form[action="{{ route('asesi.store-data')}}"]').submit();
+            if (nik.length >= 4) {
+                cityInput.value = nik.substring(2, 4);
+            } else {
+                cityInput.value = '';
+            }
+        });
     }
 
     // Set initial selected state based on checked radio
-    const trainingYes = document.getElementById('training-yes').checked;
-    if (trainingYes) {
+    const trainingYesRadio = document.getElementById('training-yes');
+    const trainingNoRadio = document.getElementById('training-no');
+    
+    if (trainingYesRadio && trainingYesRadio.checked) {
         document.getElementById('option-yes').classList.add('selected');
-    } else {
+    } else if (trainingNoRadio) {
         document.getElementById('option-no').classList.add('selected');
     }
 
     // Update modal when modal is shown
-    document.getElementById('confirmSubmitModal').addEventListener('show.bs.modal', function() {
-        updateModalConfirmation();
-    });
+    const confirmModal = document.getElementById('confirmSubmitModal');
+    if (confirmModal) {
+        confirmModal.addEventListener('show.bs.modal', function() {
+            updateModalConfirmation();
+        });
+    }
+
+    // Add click event to radio buttons (backup jika onclick div tidak jalan)
+    if (trainingYesRadio) {
+        trainingYesRadio.addEventListener('change', function() {
+            if (this.checked) {
+                selectTraining(true);
+            }
+        });
+    }
+
+    if (trainingNoRadio) {
+        trainingNoRadio.addEventListener('change', function() {
+            if (this.checked) {
+                selectTraining(false);
+            }
+        });
+    }
 });
 </script>
 @endpush

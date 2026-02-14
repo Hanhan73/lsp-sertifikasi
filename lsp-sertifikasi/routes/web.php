@@ -212,6 +212,9 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         // Dashboard
         Route::get('/dashboard', [AsesiController::class, 'dashboard'])->name('dashboard');
         
+
+        Route::get('/batch-info', [AsesiController::class, 'batchInfo'])->name('batch-info');
+
         // Complete Data
         Route::get('/complete-data', [AsesiController::class, 'completeData'])->name('complete-data');
         Route::post('/complete-data', [AsesiController::class, 'storeData'])->name('store-data');

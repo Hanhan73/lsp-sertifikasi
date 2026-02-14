@@ -425,6 +425,54 @@ class AsesiController extends Controller
             ->with('success', 'Password berhasil diubah! Silakan lengkapi data pribadi Anda.');
     }
 
+    /**
+     * Batch Info - untuk asesi kolektif
+     */
+    public function batchInfo()
+    {
+        $user = auth()->user();
+
+        // Check first login
+        if ($user->isFirstLogin()) {
+            return redirect()->route('asesi.first-login');
+        }
+
+        $asesmen = Asesmen::with(['tuk', 'skema', 'registrar', 'payments'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        // Only for collective registration
+        if (!$asesmen->is_collective || !$asesmen->collective_batch_id) {
+            return redirect()->route('asesi.dashboard')
+                ->with('warning', 'Halaman ini hanya untuk pendaftaran kolektif.');
+        }
+
+        // Get all batch members
+        $batchMembers = Asesmen::with(['user', 'schedule', 'certificate'])
+            ->where('collective_batch_id', $asesmen->collective_batch_id)
+            ->orderBy('full_name')
+            ->get();
+
+        // Payment info
+        $paymentInfo = [
+            'phases' => $asesmen->payment_phases,
+            'status' => $asesmen->getBatchPaymentStatus(),
+            'total_fee' => $batchMembers->sum('fee_amount'),
+            'verified_payments' => $asesmen->payments()->where('status', 'verified')->get(),
+        ];
+
+        // Batch statistics
+        $stats = [
+            'total_members' => $batchMembers->count(),
+            'data_completed' => $batchMembers->where('status', '!=', 'registered')->count(),
+            'verified' => $batchMembers->where('status', 'verified')->count(),
+            'scheduled' => $batchMembers->whereIn('status', ['scheduled', 'pre_assessment_completed', 'assessed'])->count(),
+            'certified' => $batchMembers->where('status', 'certified')->count(),
+        ];
+
+        return view('asesi.batch-info', compact('asesmen', 'batchMembers', 'paymentInfo', 'stats'));
+    }
+
     public function downloadInvoice()
     {
         $user = auth()->user();

@@ -128,12 +128,12 @@
     @endif
 
     {{-- Batch Info - hanya untuk kolektif --}}
-    <!-- @if($asesmen->is_collective && $asesmen->collective_batch_id)
+    @if($asesmen->is_collective && $asesmen->collective_batch_id)
         <a href="{{ route('asesi.batch-info') }}" 
            class="nav-link {{ $currentRoute == 'asesi.batch-info' ? 'active' : '' }}">
             <i class="bi bi-people"></i> Info Batch Kolektif
         </a>
-    @endif -->
+    @endif
 @endif
 
 

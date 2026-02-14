@@ -105,15 +105,18 @@ class AuthController extends Controller
             Log::info("Email verification sent - User #{$user->id}, Email: {$user->email}");
         } catch (\Exception $e) {
             Log::error("Failed to send verification email: " . $e->getMessage());
-            // Tetap redirect dengan warning
-            return redirect()->route('login')
-                ->with('warning', 'Registrasi berhasil! Namun email verifikasi gagal dikirim. Silakan hubungi admin atau coba login.');
         }
 
-        return redirect()->route('login')
+        // ✅ AUTO LOGIN setelah register
+        Auth::login($user);
+        
+        // ✅ Regenerate session untuk keamanan
+        $request->session()->regenerate();
+
+        // ✅ Redirect langsung ke halaman verify email
+        return redirect()->route('verification.notice')
             ->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun.');
     }
-
     /**
      * Handle logout
      */

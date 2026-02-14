@@ -466,7 +466,7 @@ class AsesiController extends Controller
         $tuk = $asesmen->tuk;
         $asesmens = collect([$asesmen]);
 
-        // Generate PDF
+        // ✅ PERBAIKAN: Set public path manual
         $pdf = Pdf::loadView('pdf.invoice', compact(
             'payment',
             'invoiceNumber',
@@ -477,6 +477,11 @@ class AsesiController extends Controller
             'batchId',
             'tuk'
         ));
+
+        // ✅ Set options untuk DomPDF
+        $pdf->setOption('enable_remote', true);
+        $pdf->setOption('isRemoteEnabled', true);
+        $pdf->setOption('chroot', public_path());
 
         $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';
 

@@ -20,17 +20,13 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
 <a href="{{ route('admin.verifications') }}"
     class="nav-link {{ Str::startsWith($route, 'admin.verifications') ? 'active' : '' }}">
     <i class="bi bi-cash-coin"></i> Penetapan Biaya
-    @if($pendingVerifications > 0)
-    <span class="badge bg-warning ms-2">{{ $pendingVerifications }}</span>
-    @endif
+
 </a>
 
 <a href="{{ route('admin.payments') }}"
     class="nav-link {{ Str::startsWith($route, 'admin.payments') ? 'active' : '' }}">
     <i class="bi bi-credit-card"></i> Monitor Pembayaran
-    @if($pendingPayments > 0)
-    <span class="badge bg-danger ms-2">{{ $pendingPayments }}</span>
-    @endif
+
 </a>
 
 <a href="{{ route('admin.assessments') }}"

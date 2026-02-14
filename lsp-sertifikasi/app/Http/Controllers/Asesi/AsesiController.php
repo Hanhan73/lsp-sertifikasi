@@ -473,7 +473,7 @@ class AsesiController extends Controller
             'asesmens',
             'batchId',
             'tuk'
-        ));
+        ))->setPaper('a4', 'portrait');
 
         
         $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';

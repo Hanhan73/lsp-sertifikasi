@@ -5,7 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice #{{ $invoiceNumber }}</title>
+
     <style>
+    @page {
+        margin: 20px 25px;
+    }
+
     * {
         margin: 0;
         padding: 0;
@@ -20,7 +25,6 @@
 
     .container {
         width: 100%;
-        max-width: 800px;
         margin: 0 auto;
         padding: 20px;
     }

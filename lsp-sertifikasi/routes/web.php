@@ -296,3 +296,13 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::post('/verifications/batch/process', [TukVerificationController::class, 'processBatch'])->name('verifications.batch');
 
 });
+
+Route::get('/debug-paths', function() {
+    return [
+        'base_path' => base_path(),
+        'public_path' => public_path(),
+        'storage_path' => storage_path(),
+        'public_exists' => file_exists(public_path()),
+        'storage_exists' => file_exists(storage_path()),
+    ];
+})->middleware('auth');

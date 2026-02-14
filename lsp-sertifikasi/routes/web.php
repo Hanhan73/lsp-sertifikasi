@@ -199,17 +199,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 */
 Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->group(function () {
 
-    Route::middleware(['check.first.login'])
-        ->group(function () {
-            Route::get('/first-login', [AsesiController::class, 'showFirstLogin'])
-                ->name('first-login');
+    Route::get('/first-login', [AsesiController::class, 'showFirstLogin'])
+        ->name('first-login');
 
-            Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])
-                ->name('first-login.update');
-        });
+    Route::post('/first-login', [AsesiController::class, 'updateFirstPassword'])
+        ->name('first-login.update');
 
     // ROUTE UNTUK MANDIRI (WAJIB VERIFIED)
-    Route::middleware(['verified'])
+    Route::middleware(['verified', 'check.first.login'])
         ->group(function () {
 
         // Dashboard

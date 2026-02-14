@@ -420,7 +420,8 @@ class AsesiController extends Controller
 
         Log::info("First login password changed - User #{$user->id}");
 
-        return redirect()->route('/asesi/dashboard')
+        // ✅ FIX: Perbaiki route name
+        return redirect()->route('asesi.dashboard')
             ->with('success', 'Password berhasil diubah! Silakan lengkapi data pribadi Anda.');
     }
 

@@ -485,7 +485,9 @@ class AsesiController extends Controller
 
         $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';
 
-        return $pdf->download($filename);
+            return $pdf->stream($filename, [
+        'Attachment' => true, // Set true untuk download, false untuk view
+    ]);
     }
 
     public function paymentStatus()

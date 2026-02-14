@@ -475,8 +475,6 @@ class AsesiController extends Controller
             'tuk'
         ));
 
-        // ✅ Set options minimal
-        $pdf->setOption('enable_remote', false); // Disable remote untuk avoid path issues
         
         $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';
 

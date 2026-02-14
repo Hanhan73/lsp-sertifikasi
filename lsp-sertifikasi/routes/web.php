@@ -304,5 +304,6 @@ Route::get('/debug-paths', function() {
         'storage_path' => storage_path(),
         'public_exists' => file_exists(public_path()),
         'storage_exists' => file_exists(storage_path()),
+        'index_php_exists' => file_exists(public_path('index.php')),
     ];
 })->middleware('auth');

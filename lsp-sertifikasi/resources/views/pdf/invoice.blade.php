@@ -30,7 +30,7 @@
     }
 
     .header {
-        border-bottom: 3px solid #2196F3;
+        border-bottom: 3px solid #9cd2ff;
         padding-bottom: 20px;
         margin-bottom: 30px;
     }

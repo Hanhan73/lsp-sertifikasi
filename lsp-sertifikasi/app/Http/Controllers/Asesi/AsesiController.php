@@ -437,7 +437,6 @@ class AsesiController extends Controller
                 ->with('error', 'Belum ada pembayaran yang terverifikasi');
         }
 
-        // For collective with 2 phases - get the latest verified payment
         if ($asesmen->is_collective && $asesmen->payment_phases === 'two_phase') {
             $payment = $asesmen->payments()
                 ->where('status', 'verified')
@@ -449,7 +448,6 @@ class AsesiController extends Controller
                     ->with('error', 'Belum ada pembayaran yang terverifikasi');
             }
         } else {
-            // Single phase or mandiri
             $payment = $asesmen->payment;
 
             if (!$payment || $payment->status !== 'verified') {
@@ -458,7 +456,6 @@ class AsesiController extends Controller
             }
         }
 
-        // Generate invoice data
         $invoiceNumber = 'INV-' . str_pad($asesmen->id, 6, '0', STR_PAD_LEFT) . '-' . date('Ymd');
         $isCollective = $asesmen->is_collective;
         $phase = $payment->payment_phase ?? 'full';
@@ -466,7 +463,7 @@ class AsesiController extends Controller
         $tuk = $asesmen->tuk;
         $asesmens = collect([$asesmen]);
 
-        // ✅ PERBAIKAN: Set public path manual
+        // ✅ Generate PDF tanpa public path dependency
         $pdf = Pdf::loadView('pdf.invoice', compact(
             'payment',
             'invoiceNumber',
@@ -478,16 +475,13 @@ class AsesiController extends Controller
             'tuk'
         ));
 
-        // ✅ Set options untuk DomPDF
-        $pdf->setOption('enable_remote', true);
-        $pdf->setOption('isRemoteEnabled', true);
-        $pdf->setOption('chroot', public_path());
-
+        // ✅ Set options minimal
+        $pdf->setOption('enable_remote', false); // Disable remote untuk avoid path issues
+        
         $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';
 
-            return $pdf->stream($filename, [
-        'Attachment' => true, // Set true untuk download, false untuk view
-    ]);
+        // ✅ Use stream with attachment
+        return $pdf->stream($filename, ['Attachment' => true]);
     }
 
     public function paymentStatus()

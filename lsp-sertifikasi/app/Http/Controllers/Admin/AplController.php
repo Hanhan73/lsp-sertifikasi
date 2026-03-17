@@ -143,7 +143,6 @@ class AplController extends Controller
 
         $aplsatu->update([
             'status'              => 'returned',
-            'catatan_rekomendasi' => $request->catatan,
             'verified_by'         => auth()->id(),
             'verified_at'         => now(),
         ]);

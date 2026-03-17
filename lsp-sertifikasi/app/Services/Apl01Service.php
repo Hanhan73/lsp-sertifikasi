@@ -81,8 +81,6 @@ class Apl01Service
                 'tanggal_ttd_pemohon'  => now(),
                 'nama_ttd_pemohon'     => $aplsatu->nama_lengkap,
                 'submitted_at'         => now(),
-                // Bersihkan catatan sebelumnya jika re-submit
-                'catatan_rekomendasi'  => null,
             ]);
 
             \Log::info('[APL01-SERVICE] submitApl01 OK', ['aplsatu_id' => $aplsatu->id]);

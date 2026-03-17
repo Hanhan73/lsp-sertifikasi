@@ -91,11 +91,6 @@
         <strong>APL-01 Dikembalikan oleh Admin</strong><br>
         <span class="small">Admin meminta Anda untuk memperbaiki data APL-01. Silakan buka formulir dan perbaiki data
             sesuai catatan.</span>
-        @if($aplsatu->catatan_rekomendasi)
-        <div class="mt-2 p-2 bg-white rounded border border-danger">
-            <small><strong>Catatan Admin:</strong><br>{{ $aplsatu->catatan_rekomendasi }}</small>
-        </div>
-        @endif
         <a href="{{ route('asesi.apl01') }}" class="btn btn-danger btn-sm mt-2">
             <i class="bi bi-pencil me-1"></i> Perbaiki APL-01 Sekarang
         </a>

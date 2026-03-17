@@ -20,7 +20,7 @@ class AplSatu extends Model
         // Data Sertifikasi
         'tujuan_asesmen', 'tujuan_asesmen_lainnya',
         // Rekomendasi LSP
-        'rekomendasi', 'catatan_rekomendasi',
+        'rekomendasi', 
         // Tanda Tangan
         'ttd_pemohon', 'tanggal_ttd_pemohon', 'nama_ttd_pemohon',
         'ttd_admin', 'tanggal_ttd_admin', 'nama_ttd_admin',

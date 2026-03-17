@@ -215,7 +215,7 @@
             <strong>Instruksi:</strong><br>
             &bull; Baca setiap pertanyaan di kolom sebelah kiri<br>
             &bull; Beri tanda centang (&#10004;) pada kotak jika Anda yakin dapat melakukan tugas yang dijelaskan.<br>
-            &bull; Isi kolom di sebelah kanan dengan menuliskan bukti yang Anda miliki, dengan panduan pertanyaan &quot;Apa&quot;, &quot;Bagaimana&quot;, &quot;Kapan&quot; dan &quot;Dimana&quot; terkait bukti tersebut.
+            &bull; Isi kolom di sebelah kanan dengan menuliskan bukti yang relevan anda miliki untuk menunjukkan  bahwa anda melakukan pekerjaan.
         </td>
     </tr>
 </table>

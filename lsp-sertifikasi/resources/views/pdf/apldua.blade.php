@@ -264,10 +264,10 @@
             @endif
         </td>
         <td class="col-k">
-            <span class="cb-wrap">{{ $jaw?->jawaban === 'K' ? '✓' : '' }}</span>
+            <span class="cb-wrap">{{ $jaw?->jawaban === 'K' ? 'V' : '' }}</span>
         </td>
         <td class="col-bk">
-            <span class="cb-wrap">{{ $jaw?->jawaban === 'BK' ? '✓' : '' }}</span>
+            <span class="cb-wrap">{{ $jaw?->jawaban === 'BK' ? 'V' : '' }}</span>
         </td>
         <td class="col-bukti" style="word-break:break-word;">
             {{ $jaw?->bukti ?? '' }}

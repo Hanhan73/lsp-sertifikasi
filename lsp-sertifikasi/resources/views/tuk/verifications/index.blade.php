@@ -170,16 +170,38 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
-    // Initialize DataTable for each tab
-    $('.data-table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-        },
-        order: [
-            [0, 'asc']
-        ],
-        pageLength: 25
-    });
+    // Make sure the table exists before trying to initialize DataTables
+    if ($('#verification-table').length) {
+        $('#verification-table').DataTable({
+            // Optional: Add language for Indonesian
+            "language": {
+                "lengthMenu": "Tampilkan _MENU_ data per halaman",
+                "zeroRecords": "Tidak ada data yang ditemukan",
+                "info": "Menampilkan halaman _PAGE_ dari _PAGES_",
+                "infoEmpty": "Tidak ada data tersedia",
+                "infoFiltered": "(disaring dari _MAX_ total data)",
+                "search": "Cari:",
+                "paginate": {
+                    "first": "Pertama",
+                    "last": "Terakhir",
+                    "next": "Selanjutnya",
+                    "previous": "Sebelumnya"
+                }
+            },
+            // Optional: Define column targets if needed
+            "columnDefs": [{
+                    "targets": 0,
+                    "orderable": false
+                }, // Disable sorting on the 'No' column
+                {
+                    "targets": 8,
+                    "orderable": false
+                } // Disable sorting on the 'Aksi' column
+            ],
+            // Optional: Set default page length
+            "pageLength": 25
+        });
+    }
 });
 </script>
 @endpush

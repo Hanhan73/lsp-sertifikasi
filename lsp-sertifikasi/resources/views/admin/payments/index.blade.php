@@ -250,9 +250,10 @@ function viewDetail(paymentId) {
     $('#detailModal').modal('show');
     $('#detail-content').html('<div class="text-center"><div class="spinner-border"></div></div>');
 
-    // Load payment details via AJAX
-    $.get('/admin/payments/' + paymentId + '/detail', function(data) {
-        $('#detail-content').html(data);
+    $.get('/admin/payments/' + paymentId + '/detail', function(response) {
+        if (response.success) {
+            $('#detail-content').html(response.html);
+        }
     }).fail(function() {
         $('#detail-content').html('<div class="alert alert-danger">Gagal memuat detail</div>');
     });

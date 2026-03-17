@@ -117,7 +117,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover datatable">
+            <table class="table table-hover" id="recent-asesmens-table">
                 <thead>
                     <tr>
                         <th>No Registrasi</th>
@@ -127,26 +127,27 @@
                         <th>Jenis</th>
                         <th>Status</th>
                         <th>Tanggal</th>
-                        <th>Aksi</th>
+                        <th width="80">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($asesmens as $asesmen)
+                    @forelse($asesmens as $asesmen)
                     <tr>
                         <td><strong>#{{ $asesmen->id }}</strong></td>
                         <td>
                             {{ $asesmen->full_name ?? $asesmen->user->name }}
                             @if($asesmen->is_collective)
-                            <br><small class="text-muted">{{ $asesmen->collective_batch_id }}</small>
+                            <br><small class="text-muted"><i class="bi bi-layers"></i>
+                                {{ $asesmen->collective_batch_id }}</small>
                             @endif
                         </td>
                         <td>{{ $asesmen->tuk->name ?? '-' }}</td>
                         <td>{{ $asesmen->skema->name ?? '-' }}</td>
                         <td>
                             @if($asesmen->is_collective)
-                            <span class="badge bg-primary">Kolektif</span>
+                            <span class="badge bg-primary"><i class="bi bi-people"></i> Kolektif</span>
                             @else
-                            <span class="badge bg-success">Mandiri</span>
+                            <span class="badge bg-success"><i class="bi bi-person"></i> Mandiri</span>
                             @endif
                         </td>
                         <td>
@@ -162,9 +163,38 @@
                             </button>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="8" class="text-center text-muted py-3">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mb-0 mt-2">Belum ada data asesi</p>
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle"></i> Detail Asesi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detail-content">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Tutup
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -172,16 +202,96 @@
 
 @push('scripts')
 <script>
-$(function() {
+$(document).ready(function() {
+    // Initialize tooltips
     $('[data-bs-toggle="tooltip"]').tooltip();
+
+    // Initialize DataTable
+    if ($.fn.DataTable.isDataTable('#recent-asesmens-table')) {
+        $('#recent-asesmens-table').DataTable().destroy();
+    }
+
+    $('#recent-asesmens-table').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+        },
+        order: [
+            [6, 'desc']
+        ], // Sort by date column
+        pageLength: 10,
+        responsive: true,
+        columnDefs: [{
+                orderable: false,
+                targets: 7
+            } // Disable sorting on action column
+        ]
+    });
 });
 
-function viewDetail(id) {
-    Swal.fire({
-        title: 'Detail Asesi',
-        text: 'Fitur detail akan segera tersedia',
-        icon: 'info'
+// ✅ PERBAIKAN: Function untuk view detail
+function viewDetail(asesmenId) {
+    console.log('View detail for asesmen:', asesmenId);
+
+    // Show modal immediately
+    $('#detailModal').modal('show');
+
+    // Show loading
+    $('#detail-content').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Memuat data asesi...</p>
+        </div>
+    `);
+
+    // Fetch detail via AJAX
+    $.ajax({
+        url: `/admin/asesmens/${asesmenId}/detail`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log('Success response:', response);
+            if (response.success) {
+                $('#detail-content').html(response.html);
+            } else {
+                $('#detail-content').html(`
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        ${response.message || 'Gagal memuat data'}
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading detail:', {
+                xhr,
+                status,
+                error
+            });
+
+            let errorMessage = 'Terjadi kesalahan saat memuat data';
+            if (xhr.status === 404) {
+                errorMessage = 'Data asesi tidak ditemukan';
+            } else if (xhr.status === 403) {
+                errorMessage = 'Anda tidak memiliki akses untuk melihat data ini';
+            } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+
+            $('#detail-content').html(`
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    <strong>Error!</strong> ${errorMessage}
+                </div>
+            `);
+        }
     });
+}
+
+// Alternative function (jika ada yang masih menggunakan nama lama)
+function showAsesmenDetail(asesmenId) {
+    viewDetail(asesmenId);
 }
 </script>
 @endpush

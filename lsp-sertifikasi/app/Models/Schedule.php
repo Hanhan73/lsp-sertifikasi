@@ -11,8 +11,13 @@ class Schedule extends Model
     use HasFactory;
 
     protected $fillable = [
-        'asesmen_id',
+        'tuk_id', // ✅ TAMBAH: jadwal milik TUK, bukan milik 1 asesi
+        'skema_id', // ✅ TAMBAH: jadwal untuk skema tertentu
         'assessment_date',
+        'asesor_id',
+        'assigned_by',
+        'assigned_at',
+        'assignment_notes',
         'start_time',
         'end_time',
         'location',
@@ -25,11 +30,28 @@ class Schedule extends Model
     ];
 
     /**
-     * Get the asesmen for this schedule
+     * ✅ FIXED: hasMany, bukan belongsTo
+     * 1 jadwal bisa punya banyak asesi
      */
-    public function asesmen()
+    public function asesmens()
     {
-        return $this->belongsTo(Asesmen::class);
+        return $this->hasMany(Asesmen::class);
+    }
+
+    /**
+     * Get the TUK
+     */
+    public function tuk()
+    {
+        return $this->belongsTo(Tuk::class);
+    }
+
+    /**
+     * Get the skema
+     */
+    public function skema()
+    {
+        return $this->belongsTo(Skema::class);
     }
 
     /**
@@ -38,6 +60,26 @@ class Schedule extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function asesor()
+    {
+        return $this->belongsTo(Asesor::class, 'asesor_id');
+    }
+
+    public function assignedBy()
+    {
+        return $this->belongsTo(User::class, 'assigned_by');
+    }
+
+    public function assignmentHistories()
+    {
+        return $this->hasMany(ScheduleAsesorHistory::class)->orderBy('action_at', 'desc');
+    }
+
+    public function getIsAssignedAttribute(): bool
+    {
+        return $this->asesor_id !== null;
     }
 
     /**

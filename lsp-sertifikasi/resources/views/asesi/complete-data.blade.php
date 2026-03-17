@@ -524,88 +524,102 @@
                         </div>
                         @endif
 
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Tanggal Sertifikasi yang Dipilih <span
-                                    class="text-danger">*</span></label>
-                            <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
-                                name="preferred_date" value="{{ old('preferred_date') }}" required>
-                            @error('preferred_date')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+                        @if(!$isCollective)
+                            <!-- Hanya tampil untuk Mandiri -->
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tanggal Sertifikasi yang Dipilih <span class="text-danger">*</span></label>
+                                <input type="date" 
+                                    class="form-control @error('preferred_date') is-invalid @enderror"
+                                    name="preferred_date" 
+                                    value="{{ old('preferred_date') }}" 
+                                    required>
+                                @error('preferred_date')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @else
+                            <!-- Untuk kolektif, tanggal sudah diset oleh TUK -->
+                            <div class="col-12 mb-3">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Pendaftaran Kolektif:</strong> Tanggal asesmen dan opsi pelatihan sudah ditentukan oleh TUK Anda.
+                                </div>
+                            </div>
+                        @endif
                     </div>
+                    @if(!$isCollective)
+                        <!-- SECTION PELATIHAN (NEW) -->
+                        <h6 class="border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-mortarboard-fill"></i> Pelatihan (Opsional)
+                        </h6>
 
-                    <!-- SECTION PELATIHAN (NEW) -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">
-                        <i class="bi bi-mortarboard-fill"></i> Pelatihan (Opsional)
-                    </h6>
+                        <div class="training-section">
+                            <div class="mb-3">
+                                <h6 class="text-primary">
+                                    <i class="bi bi-question-circle-fill"></i>
+                                    Apakah Anda ingin mengikuti pelatihan sebelum asesmen?
+                                </h6>
+                                <p class="text-muted mb-3">
+                                    Pelatihan akan membantu Anda mempersiapkan diri dengan lebih baik untuk menghadapi
+                                    proses asesmen.
+                                </p>
+                            </div>
 
-                    <div class="training-section">
-                        <div class="mb-3">
-                            <h6 class="text-primary">
-                                <i class="bi bi-question-circle-fill"></i>
-                                Apakah Anda ingin mengikuti pelatihan sebelum asesmen?
-                            </h6>
-                            <p class="text-muted mb-3">
-                                Pelatihan akan membantu Anda mempersiapkan diri dengan lebih baik untuk menghadapi
-                                proses asesmen.
-                            </p>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="training-option" onclick="selectTraining(false)" id="option-no">
-                                    <div class="d-flex align-items-start">
-                                        <input type="radio" name="training_flag" value="0" id="training-no"
-                                            {{ old('training_flag', $asesmen->training_flag ?? '0') == '0' ? 'checked' : '' }}>
-                                        <div class="ms-3 flex-grow-1">
-                                            <label for="training-no" class="form-label fw-bold mb-1"
-                                                style="cursor: pointer;">
-                                                <i class="bi bi-x-circle text-danger"></i> Tidak, Hanya Asesmen
-                                            </label>
-                                            <p class="text-muted small mb-0">
-                                                Saya siap untuk langsung mengikuti asesmen.
-                                            </p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="training-option" onclick="selectTraining(false)" id="option-no">
+                                        <div class="d-flex align-items-start">
+                                            <input type="radio" name="training_flag" value="0" id="training-no"
+                                                {{ old('training_flag', $asesmen->training_flag ?? '0') == '0' ? 'checked' : '' }}>
+                                            <div class="ms-3 flex-grow-1">
+                                                <label for="training-no" class="form-label fw-bold mb-1"
+                                                    style="cursor: pointer;">
+                                                    <i class="bi bi-x-circle text-danger"></i> Tidak, Hanya Asesmen
+                                                </label>
+                                                <p class="text-muted small mb-0">
+                                                    Saya siap untuk langsung mengikuti asesmen.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="col-md-6">
-                                <div class="training-option" onclick="selectTraining(true)" id="option-yes">
-                                    <div class="d-flex align-items-start">
-                                        <input type="radio" name="training_flag" value="1" id="training-yes"
-                                            {{ old('training_flag', $asesmen->training_flag ?? '0') == '1' ? 'checked' : '' }}>
-                                        <div class="ms-3 flex-grow-1">
-                                            <label for="training-yes" class="form-label fw-bold mb-1"
-                                                style="cursor: pointer;">
-                                                <i class="bi bi-check-circle text-success"></i> Ya, Ikut Pelatihan
-                                            </label>
-                                            <p class="text-muted small mb-2">
-                                                Saya ingin mengikuti pelatihan.
-                                            </p>
-                                            <div class="alert alert-warning mb-0 py-2">
-                                                <small>
-                                                    <i class="bi bi-info-circle-fill"></i>
-                                                    <strong>Biaya Tambahan:</strong>
-                                                    <span class="price-badge ms-2">Rp 1.500.000</span>
-                                                </small>
+                                <div class="col-md-6">
+                                    <div class="training-option" onclick="selectTraining(true)" id="option-yes">
+                                        <div class="d-flex align-items-start">
+                                            <input type="radio" name="training_flag" value="1" id="training-yes"
+                                                {{ old('training_flag', $asesmen->training_flag ?? '0') == '1' ? 'checked' : '' }}>
+                                            <div class="ms-3 flex-grow-1">
+                                                <label for="training-yes" class="form-label fw-bold mb-1"
+                                                    style="cursor: pointer;">
+                                                    <i class="bi bi-check-circle text-success"></i> Ya, Ikut Pelatihan
+                                                </label>
+                                                <p class="text-muted small mb-2">
+                                                    Saya ingin mengikuti pelatihan.
+                                                </p>
+                                                <div class="alert alert-warning mb-0 py-2">
+                                                    <small>
+                                                        <i class="bi bi-info-circle-fill"></i>
+                                                        <strong>Biaya Tambahan:</strong>
+                                                        <span class="price-badge ms-2">Rp 1.500.000</span>
+                                                    </small>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div class="alert alert-info mt-3 mb-0">
-                            <small>
-                                <i class="bi bi-lightbulb-fill"></i>
-                                <strong>Catatan:</strong>
-                                Biaya pelatihan akan ditambahkan ke total biaya sertifikasi Anda dan akan diinformasikan
-                                setelah verifikasi.
-                            </small>
+                            <div class="alert alert-info mt-3 mb-0">
+                                <small>
+                                    <i class="bi bi-lightbulb-fill"></i>
+                                    <strong>Catatan:</strong>
+                                    Biaya pelatihan akan ditambahkan ke total biaya sertifikasi Anda dan akan diinformasikan
+                                    setelah verifikasi.
+                                </small>
+                            </div>
                         </div>
-                    </div>
+                    @endif
 
                     <!-- Upload Dokumen -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Upload Dokumen</h6>

@@ -61,6 +61,8 @@ class AuthController extends Controller
                         return redirect()->route('asesi.first-login');
                     }
                     return redirect()->intended(route('asesi.dashboard'));
+                case 'asesor':
+                    return redirect()->intended(route('asesor.dashboard'));
                 default:
                     return redirect('/');
             }

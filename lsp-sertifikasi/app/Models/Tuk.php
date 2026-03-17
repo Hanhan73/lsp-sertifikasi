@@ -16,8 +16,10 @@ class Tuk extends Model
         'email',
         'phone',
         'manager_name',
+        'treasurer_name', // ✅ NEW
         'staff_name',
         'logo_path',
+        'sk_document_path', // ✅ NEW
         'user_id',
         'is_active',
     ];
@@ -43,6 +45,14 @@ class Tuk extends Model
     }
 
     /**
+     * Get schedules for this TUK
+     */
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class);
+    }
+
+    /**
      * Get logo URL
      */
     public function getLogoUrlAttribute()
@@ -51,5 +61,24 @@ class Tuk extends Model
             return asset('storage/' . $this->logo_path);
         }
         return asset('images/default-logo.png'); // Default logo
+    }
+
+    /**
+     * ✅ NEW: Get SK document URL
+     */
+    public function getSkDocumentUrlAttribute()
+    {
+        if ($this->sk_document_path) {
+            return asset('storage/' . $this->sk_document_path);
+        }
+        return null;
+    }
+
+    /**
+     * ✅ NEW: Check if TUK has SK document
+     */
+    public function hasSkDocument()
+    {
+        return !empty($this->sk_document_path);
     }
 }

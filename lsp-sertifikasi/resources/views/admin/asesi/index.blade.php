@@ -89,10 +89,8 @@
                 <label class="form-label small">Filter TUK</label>
                 <select id="filter-tuk" class="form-select form-select-sm">
                     <option value="">Semua TUK</option>
-                    @foreach($asesmens->pluck('tuk')->unique('id')->sortBy('name') as $tuk)
-                    @if($tuk)
+                    @foreach($asesmens->pluck('tuk')->unique('id')->filter()->sortBy('name') as $tuk)
                     <option value="{{ $tuk->id }}">{{ $tuk->name }}</option>
-                    @endif
                     @endforeach
                 </select>
             </div>
@@ -100,10 +98,8 @@
                 <label class="form-label small">Filter Skema</label>
                 <select id="filter-skema" class="form-select form-select-sm">
                     <option value="">Semua Skema</option>
-                    @foreach($asesmens->pluck('skema')->unique('id')->sortBy('name') as $skema)
-                    @if($skema)
+                    @foreach($asesmens->pluck('skema')->unique('id')->filter()->sortBy('name') as $skema)
                     <option value="{{ $skema->id }}">{{ $skema->name }}</option>
-                    @endif
                     @endforeach
                 </select>
             </div>
@@ -129,25 +125,26 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($asesmens as $asesmen)
+                    @forelse($asesmens as $asesmen)
                     <tr data-status="{{ $asesmen->status }}"
                         data-type="{{ $asesmen->is_collective ? 'collective' : 'mandiri' }}"
                         data-tuk="{{ $asesmen->tuk_id }}" data-skema="{{ $asesmen->skema_id }}">
                         <td><strong>#{{ $asesmen->id }}</strong></td>
                         <td>
-                            {{ $asesmen->full_name ?? $asesmen->user->name }}
+                            {{ $asesmen->full_name ?? $asesmen->user->name ?? '-' }}
                             @if($asesmen->is_collective)
-                            <br><small class="text-muted">{{ $asesmen->collective_batch_id }}</small>
+                            <br><small class="text-muted"><i class="bi bi-layers"></i>
+                                {{ $asesmen->collective_batch_id }}</small>
                             @endif
                         </td>
-                        <td>{{ $asesmen->email }}</td>
+                        <td><small>{{ $asesmen->email ?? $asesmen->user->email ?? '-' }}</small></td>
                         <td>{{ $asesmen->tuk->name ?? '-' }}</td>
-                        <td>{{ $asesmen->skema->name ?? '-' }}</td>
+                        <td><small>{{ $asesmen->skema->name ?? '-' }}</small></td>
                         <td>
                             @if($asesmen->is_collective)
-                            <span class="badge bg-primary">Kolektif</span>
+                            <span class="badge bg-primary"><i class="bi bi-people"></i> Kolektif</span>
                             @else
-                            <span class="badge bg-success">Mandiri</span>
+                            <span class="badge bg-success"><i class="bi bi-person"></i> Mandiri</span>
                             @endif
                         </td>
                         <td>
@@ -182,7 +179,7 @@
                             <span class="text-muted">-</span>
                             @endif
                         </td>
-                        <td>{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                        <td><small>{{ $asesmen->registration_date->format('d/m/Y') }}</small></td>
                         <td>
                             <button class="btn btn-sm btn-info" onclick="viewDetail({{ $asesmen->id }})"
                                 data-bs-toggle="tooltip" title="Lihat Detail">
@@ -190,7 +187,14 @@
                             </button>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                            <p class="mb-0 mt-2">Belum ada data asesi</p>
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -199,14 +203,21 @@
 
 <!-- Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detail Asesi</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-badge"></i> Detail Asesi
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="detail-content">
                 <!-- Content loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Tutup
+                </button>
             </div>
         </div>
     </div>
@@ -216,58 +227,128 @@
 @push('scripts')
 <script>
 $(document).ready(function() {
+    // Initialize tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+
+    // Destroy existing DataTable if exists
+    if ($.fn.DataTable.isDataTable('#asesi-table')) {
+        $('#asesi-table').DataTable().destroy();
+    }
+
     // Initialize DataTable
     const table = $('#asesi-table').DataTable({
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
         },
         order: [
             [10, 'desc']
         ], // Sort by registration date
         pageLength: 25,
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
+        responsive: true,
+        columnDefs: [{
+                orderable: false,
+                targets: 11
+            } // Disable sorting on action column
         ]
     });
 
-    // Filters
+    // Custom filter function
+    $.fn.dataTable.ext.search.push(
+        function(settings, data, dataIndex) {
+            const status = $('#filter-status').val();
+            const type = $('#filter-type').val();
+            const tuk = $('#filter-tuk').val();
+            const skema = $('#filter-skema').val();
+
+            const row = table.row(dataIndex).node();
+            const rowStatus = $(row).data('status');
+            const rowType = $(row).data('type');
+            const rowTuk = $(row).data('tuk');
+            const rowSkema = $(row).data('skema');
+
+            if (status && rowStatus !== status) return false;
+            if (type && rowType !== type) return false;
+            if (tuk && rowTuk != tuk) return false;
+            if (skema && rowSkema != skema) return false;
+
+            return true;
+        }
+    );
+
+    // Filters - trigger redraw
     $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function() {
-        const status = $('#filter-status').val();
-        const type = $('#filter-type').val();
-        const tuk = $('#filter-tuk').val();
-        const skema = $('#filter-skema').val();
-
-        table.rows().every(function() {
-            const row = $(this.node());
-            let show = true;
-
-            if (status && row.data('status') !== status) show = false;
-            if (type && row.data('type') !== type) show = false;
-            if (tuk && row.data('tuk') != tuk) show = false;
-            if (skema && row.data('skema') != skema) show = false;
-
-            row.toggle(show);
-        });
+        table.draw();
     });
 });
 
+// View detail function
 function viewDetail(id) {
-    $('#detailModal').modal('show');
-    $('#detail-content').html('<div class="text-center"><div class="spinner-border"></div></div>');
+    console.log('View detail for asesi:', id);
 
-    $.get(`/admin/asesi/${id}/detail`, function(data) {
-        $('#detail-content').html(data);
-    }).fail(function() {
-        $('#detail-content').html('<div class="alert alert-danger">Gagal memuat data</div>');
+    // Show modal
+    $('#detailModal').modal('show');
+
+    // Show loading
+    $('#detail-content').html(`
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Memuat data asesi...</p>
+        </div>
+    `);
+
+    // Fetch detail via AJAX
+    $.ajax({
+        url: `/admin/asesi/${id}/detail`,
+        method: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            console.log('Success response:', response);
+            if (response.success) {
+                $('#detail-content').html(response.html);
+            } else {
+                $('#detail-content').html(`
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        ${response.message || 'Gagal memuat data'}
+                    </div>
+                `);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error loading detail:', {
+                xhr,
+                status,
+                error
+            });
+
+            let errorMessage = 'Terjadi kesalahan saat memuat data';
+            if (xhr.status === 404) {
+                errorMessage = 'Data asesi tidak ditemukan';
+            } else if (xhr.status === 403) {
+                errorMessage = 'Anda tidak memiliki akses untuk melihat data ini';
+            } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            }
+
+            $('#detail-content').html(`
+                <div class="alert alert-danger">
+                    <i class="bi bi-x-circle"></i>
+                    <strong>Error!</strong> ${errorMessage}
+                </div>
+            `);
+        }
     });
 }
 
+// Export data function
 function exportData() {
     Swal.fire({
         title: 'Export Data',
         text: 'Fitur export akan segera tersedia',
-        icon: 'info'
+        icon: 'info',
+        confirmButtonText: 'OK'
     });
 }
 </script>

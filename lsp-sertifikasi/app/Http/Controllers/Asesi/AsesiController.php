@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\Apl01Service;
+use App\Models\AplSatu;
+use App\Models\AplSatuBukti;
+use App\Models\AplDua;
+use App\Models\AplDuaJawaban;
 
 class AsesiController extends Controller
 {
@@ -84,8 +89,9 @@ class AsesiController extends Controller
 
         return view('asesi.complete-data', compact('asesmen', 'tuks', 'skemas', 'isCollective', 'viewOnly'));
     }
+    
     /**
-     * Complete Personal Data - Store
+     * Complete Personal Data - Store - UPDATED
      */
     public function storeData(Request $request)
     {
@@ -103,22 +109,13 @@ class AsesiController extends Controller
             'occupation' => 'required|string',
             'budget_source' => 'required|string',
             'institution' => 'required|string',
-            'tuk_id' => 'required|exists:tuks,id',
+            'tuk_id' => 'required_if:is_collective,false|nullable|exists:tuks,id',
             'skema_id' => 'required|exists:skemas,id',
-            'preferred_date' => 'required|date',
+            'preferred_date' => 'required_if:is_collective,false|nullable|date',
             'photo' => 'required|image|max:10240',
             'ktp' => 'required|mimes:pdf|max:10240',
             'document' => 'required|mimes:pdf|max:10240',
-            'training_flag' => 'required|boolean',
-        ],[
-            'nik.size' => 'NIK harus terdiri dari 16 karakter.',
-            'nik.unique' => 'NIK sudah terdaftar pada asesmen lain.',
-            'photo.max' => 'Ukuran foto maksimal 10MB.',
-            'ktp.mimes' => 'KTP harus berupa file PDF.',
-            'ktp.max' => 'Ukuran file KTP maksimal 10MB.',
-            'document.mimes' => 'Dokumen pendukung harus berupa file PDF.',
-            'document.max' => 'Ukuran file dokumen pendukung maksimal 10MB.',
-            'required' => 'Field :attribute wajib diisi.',        
+            'training_flag' => 'required_if:is_collective,false|boolean',
         ]);
 
         $user = auth()->user();
@@ -128,7 +125,6 @@ class AsesiController extends Controller
         $ktpPath = $request->file('ktp')->store('uploads/ktp', 'public');
         $documentPath = $request->file('document')->store('uploads/documents', 'public');
 
-        // Check if asesmen exists (collective registration)
         $asesmen = Asesmen::where('user_id', $user->id)->first();
 
         if ($asesmen && $asesmen->skema_id) {
@@ -155,16 +151,16 @@ class AsesiController extends Controller
                 'occupation' => $validated['occupation'],
                 'budget_source' => $validated['budget_source'],
                 'institution' => $validated['institution'],
-                'preferred_date' => $validated['preferred_date'],
                 'photo_path' => $photoPath,
                 'ktp_path' => $ktpPath,
                 'document_path' => $documentPath,
                 'status' => 'data_completed',
-                'training_flag' => $validated['training_flag'],
             ];
 
-            // Only update TUK and Skema if NOT collective
+            // Kolektif: preferred_date & training_flag diatur oleh TUK (tidak diisi asesi)
             if (!$asesmen->is_collective) {
+                $updateData['preferred_date'] = $validated['preferred_date'];
+                $updateData['training_flag'] = $validated['training_flag'];
                 $updateData['tuk_id'] = $validated['tuk_id'];
                 $updateData['skema_id'] = $validated['skema_id'];
             }
@@ -174,10 +170,7 @@ class AsesiController extends Controller
             $message = 'Data berhasil dilengkapi!';
 
             if ($asesmen->is_collective) {
-                $message .= ' (Pendaftaran Kolektif - Menunggu verifikasi Admin LSP)';
-                if ($validated['training_flag']) {
-                    $message .= ' Anda memilih untuk mengikuti pelatihan. Biaya tambahan Rp 1.500.000 akan ditambahkan ke total biaya.';
-                }
+                $message .= ' (Pendaftaran Kolektif - Menunggu verifikasi TUK)';
             }
         } else {
             // Create new (regular/mandiri registration)
@@ -190,7 +183,7 @@ class AsesiController extends Controller
 
             $asesmen = Asesmen::create([
                 'user_id' => $user->id,
-                'tuk_id' => $validated['tuk_id'],
+                'tuk_id' => null, // Akan di-assign oleh Admin nanti
                 'skema_id' => $validated['skema_id'],
                 'full_name' => $validated['full_name'],
                 'nik' => $validated['nik'],
@@ -210,22 +203,15 @@ class AsesiController extends Controller
                 'ktp_path' => $ktpPath,
                 'document_path' => $documentPath,
                 'registration_date' => now(),
-                'status' => 'data_completed',
+                'status' => 'data_completed', // Langsung ke admin, bukan auto-verified
                 'is_collective' => false,
                 'training_flag' => $validated['training_flag'],
                 'fee_amount' => $totalFee,
             ]);
 
-            // Auto verify untuk mandiri
-            $asesmen->update([
-                'status' => 'verified',
-                'admin_verified_by' => null,
-                'admin_verified_at' => now(),
-            ]);
+            Log::info("Mandiri registration - Asesmen #{$asesmen->id}, Fee: Rp {$totalFee}, Training: " . ($validated['training_flag'] ? 'Yes' : 'No'));
 
-            Log::info("Auto-verified mandiri registration - Asesmen #{$asesmen->id}, Fee: Rp {$totalFee}, Training: " . ($validated['training_flag'] ? 'Yes' : 'No'));
-
-            $message = 'Data berhasil dilengkapi dan terverifikasi otomatis! Silakan lakukan pembayaran.';
+            $message = 'Data berhasil dilengkapi! Menunggu verifikasi dan assignment ke TUK oleh Admin LSP.';
 
             if ($validated['training_flag']) {
                 $message .= ' (Termasuk biaya pelatihan Rp 1.500.000)';
@@ -316,6 +302,24 @@ class AsesiController extends Controller
 
         return redirect()->route('asesi.dashboard')
             ->with('success', 'Pra-asesmen berhasil disubmit!');
+    }
+
+    /**
+     * Schedule - Halaman jadwal asesmen asesi
+     */
+    public function schedule()
+    {
+        $user = auth()->user();
+
+        $asesmen = Asesmen::with(['tuk', 'skema', 'schedule.asesor', 'aplsatu.buktiKelengkapan', 'apldua.jawabans'])
+            ->where('user_id', $user->id)
+            ->whereNotNull('schedule_id')
+            ->firstOrFail();
+
+        $schedule = $asesmen->schedule;
+        $aplsatu = $asesmen->aplsatu;
+        $apldua  = $asesmen->apldua;
+        return view('asesi.schedule.index', compact('asesmen', 'schedule', 'aplsatu', 'apldua'));
     }
 
     /**
@@ -546,4 +550,444 @@ class AsesiController extends Controller
 
         return view('asesi.payment-status', compact('asesmen'));
     }
+
+    /**
+     * APL-01 form page
+     */
+    public function aplsatuForm()
+    {
+        $asesmen = auth()->user()->asesmens()->with(['skema.unitKompetensis', 'tuk'])->latest()->first();
+
+        if (!$asesmen) {
+            return redirect()->route('asesi.dashboard')
+                ->with('error', 'Belum ada data asesmen.');
+        }
+
+        $service = new Apl01Service();
+        $aplsatu = $service->getOrCreateApl01($asesmen);
+
+        // Initialize bukti dokumen jika belum ada
+        if ($aplsatu->buktiKelengkapan->isEmpty()) {
+            $service->initializeBuktiDokumen($aplsatu);
+            $aplsatu->load('buktiKelengkapan');
+        }
+
+        return view('asesi.aplsatu.form', compact('asesmen', 'aplsatu'));
+    }
+
+    public function aplsatuUpdate(Request $request)
+    {
+        Log::info('[APL01-UPDATE] Request masuk', [
+            'user_id'    => auth()->id(),
+            'ip'         => $request->ip(),
+            'all_keys'   => array_keys($request->all()),
+            'payload'    => $request->except(['_token']),
+        ]);
+
+        $validated = null;
+        try {
+            $validated = $request->validate([
+                'nama_lengkap'           => 'required|string|max:255',
+                'nik'                    => 'required|string|size:16',
+                'tempat_lahir'           => 'required|string',
+                'tanggal_lahir'          => 'required|date',
+                'jenis_kelamin'          => 'required|in:Laki-laki,Perempuan',
+                'kebangsaan'             => 'nullable|string',
+                'alamat_rumah'           => 'required|string',
+                'kode_pos'               => 'nullable|string|max:10',
+                'telp_rumah'             => 'nullable|string|max:20',
+                'hp'                     => 'required|string|max:20',
+                'email'                  => 'required|email',
+                'kualifikasi_pendidikan' => 'nullable|string',
+                'nama_institusi'         => 'nullable|string|max:255',
+                'jabatan'                => 'nullable|string|max:255',
+                'alamat_kantor'          => 'nullable|string',
+                'kode_pos_kantor'        => 'nullable|string|max:10',
+                'telp_kantor_detail'     => 'nullable|string|max:20',
+                'fax_kantor'             => 'nullable|string|max:20',
+                'email_kantor'           => 'nullable|email',
+                'tujuan_asesmen'         => 'required|in:Sertifikasi,PKT,RPL,Lainnya',
+                'tujuan_asesmen_lainnya' => 'nullable|string|max:255',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('[APL01-UPDATE] Validation FAILED', [
+                'user_id' => auth()->id(),
+                'errors'  => $e->errors(),
+                'payload' => $request->except(['_token']),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors'  => $e->errors(),
+            ], 422);
+        }
+
+        Log::info('[APL01-UPDATE] Validation OK', ['validated' => $validated]);
+
+        $asesmen = auth()->user()->asesmens()->latest()->first();
+
+        if (!$asesmen) {
+            Log::error('[APL01-UPDATE] Asesmen tidak ditemukan untuk user ' . auth()->id());
+            return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
+        }
+
+        Log::info('[APL01-UPDATE] Asesmen found', ['asesmen_id' => $asesmen->id]);
+
+        $service = new Apl01Service();
+        $aplsatu = $asesmen->aplsatu;
+
+        if (!$aplsatu) {
+            Log::info('[APL01-UPDATE] APL-01 belum ada, creating...');
+            $aplsatu = $service->getOrCreateApl01($asesmen);
+        }
+
+        Log::info('[APL01-UPDATE] APL-01 status', ['aplsatu_id' => $aplsatu->id, 'status' => $aplsatu->status]);
+
+        if ($aplsatu->status !== 'draft') {
+            Log::warning('[APL01-UPDATE] APL-01 bukan draft, update ditolak', ['status' => $aplsatu->status]);
+            return response()->json(['success' => false, 'message' => 'APL-01 sudah tidak dapat diubah.'], 403);
+        }
+
+        $updateData = $request->only([
+            'nama_lengkap', 'nik', 'tempat_lahir', 'tanggal_lahir',
+            'jenis_kelamin', 'kebangsaan', 'alamat_rumah', 'kode_pos',
+            'telp_rumah', 'hp', 'email', 'kualifikasi_pendidikan',
+            'nama_institusi', 'jabatan', 'alamat_kantor', 'kode_pos_kantor',
+            'telp_kantor_detail', 'fax_kantor', 'email_kantor',
+            'tujuan_asesmen', 'tujuan_asesmen_lainnya',
+        ]);
+
+        Log::info('[APL01-UPDATE] Calling updateApl01 with data', ['updateData' => $updateData]);
+
+        $result = $service->updateApl01($aplsatu, $updateData);
+
+        Log::info('[APL01-UPDATE] updateApl01 result', ['result' => $result]);
+
+        if ($result) {
+            // Verify actual DB values after save
+            $aplsatu->refresh();
+            Log::info('[APL01-UPDATE] ✅ After save — DB values', $aplsatu->only(array_keys($updateData)));
+
+            return response()->json(['success' => true, 'message' => 'Data berhasil disimpan!']);
+        }
+
+        Log::error('[APL01-UPDATE] ❌ updateApl01 returned false');
+        return response()->json(['success' => false, 'message' => 'Gagal menyimpan data.'], 500);
+    }
+
+// ── aplsatuBuktiSave ── ganti isi method dengan ini:
+
+public function aplsatuBuktiSave(Request $request)
+    {
+        Log::info('[APL01-BUKTI] Request masuk', [
+            'user_id' => auth()->id(),
+            'payload' => $request->all(),
+        ]);
+
+        try {
+            $request->validate([
+                'rows'        => 'required|array',
+                'rows.*.id'   => 'required|integer',
+                // Status dari asesi selalu 'Tidak Ada' — admin yang update
+                'rows.*.status' => 'nullable|in:Ada Memenuhi Syarat,Ada Tidak Memenuhi Syarat,Tidak Ada',
+                'rows.*.link'   => 'nullable|max:500',
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('[APL01-BUKTI] Validation FAILED', ['errors' => $e->errors()]);
+            return response()->json(['success' => false, 'message' => 'Validasi gagal.', 'errors' => $e->errors()], 422);
+        }
+
+        $asesmen = auth()->user()->asesmens()->latest()->first();
+        if (!$asesmen || !$asesmen->aplsatu) {
+            return response()->json(['success' => false, 'message' => 'APL-01 tidak ditemukan.'], 404);
+        }
+
+        $aplsatu  = $asesmen->aplsatu;
+        $validIds = $aplsatu->buktiKelengkapan->pluck('id')->toArray();
+
+        if ($aplsatu->status !== 'draft') {
+            return response()->json(['success' => false, 'message' => 'APL-01 sudah tidak dapat diubah.'], 403);
+        }
+
+        $updated = 0;
+        $gdriveLink = null;
+
+        foreach ($request->rows as $row) {
+            if (!in_array((int)$row['id'], $validIds)) continue;
+
+            // Ambil link GDrive dari baris pertama yang ada linknya
+            if (!empty($row['link'])) {
+                $gdriveLink = $row['link'];
+            }
+
+            // Asesi HANYA menyimpan link GDrive. Status tidak diubah dari sisi asesi.
+            $affected = \App\Models\AplSatuBukti::where('id', $row['id'])->update([
+                'gdrive_file_url' => $row['link'] ?: null,
+                'uploaded_by'     => auth()->id(),
+                'uploaded_at'     => now(),
+                // Status TIDAK diubah — tetap default 'Tidak Ada', admin yang verifikasi
+            ]);
+
+            Log::info('[APL01-BUKTI] Update gdrive link', [
+                'bukti_id' => $row['id'],
+                'link'     => $row['link'] ?: '(empty)',
+                'affected' => $affected,
+            ]);
+
+            $updated += $affected;
+        }
+
+        Log::info('[APL01-BUKTI] ✅ Done', ['updated' => $updated, 'gdrive_link' => $gdriveLink]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Link Google Drive berhasil disimpan.",
+        ]);
+    }
+
+    /**
+     * Submit APL-01 dengan tanda tangan - FIXED
+     */
+    public function aplsatuSubmit(Request $request)
+    {
+        $request->validate([
+            'signature' => 'required|string', // base64 image
+        ]);
+
+        $asesmen = auth()->user()->asesmens()->latest()->first();
+
+        if (!$asesmen || !$asesmen->aplsatu) {
+            return response()->json(['success' => false, 'message' => 'APL-01 tidak ditemukan.'], 404);
+        }
+
+        $aplsatu = $asesmen->aplsatu;
+
+        if ($aplsatu->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'APL-01 sudah tidak dapat disubmit.',
+            ], 400);
+        }
+
+        // Strip data URI prefix if present
+        $signature = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
+
+        $service = new Apl01Service();
+
+        if ($service->submitApl01($aplsatu, $signature)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'APL-01 berhasil disubmit!',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Gagal submit APL-01.',
+        ], 500);
+    }
+
+    /**
+     * Preview / Download PDF APL-01 - FIXED
+     */
+    public function aplsatuPdf(Request $request)
+    {
+        $asesmen = auth()->user()->asesmens()->latest()->first();
+
+        if (!$asesmen) {
+            abort(404, 'Asesmen tidak ditemukan');
+        }
+
+        $aplsatu = $asesmen->aplsatu()->with('buktiKelengkapan')->first();
+
+        if (!$aplsatu) {
+            abort(404, 'APL-01 belum dibuat');
+        }
+
+        $asesmen->load(['skema.unitKompetensis', 'tuk']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.aplsatu', [
+            'aplsatu' => $aplsatu,
+            'asesmen' => $asesmen,
+        ]);
+
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'APL-01_' . str_replace(' ', '_', $aplsatu->nama_lengkap) . '.pdf';
+
+        if ($request->get('preview')) {
+            return $pdf->stream($filename);
+        }
+
+        return $pdf->download($filename);
+    }
+
+
+    public function apldua()
+    {
+        $user    = auth()->user();
+        $asesmen = $user->asesmens()
+            ->with([
+                'skema.unitKompetensis.elemens.kuks',
+                'schedule',
+            ])
+            ->whereNotNull('schedule_id')
+            ->latest()
+            ->firstOrFail();
+
+        // Cari atau buat APL-02
+        $apldua = $asesmen->apldua ?? \App\Models\AplDua::create([
+            'asesmen_id' => $asesmen->id,
+            'status'     => 'draft',
+        ]);
+
+        // Pastikan semua elemen sudah punya row jawaban (inisialisasi)
+        if ($apldua->jawabans->isEmpty()) {
+            $units = $asesmen->skema->unitKompetensis->load('elemens');
+            foreach ($units as $unit) {
+                foreach ($unit->elemens as $elemen) {
+                    \App\Models\AplDuaJawaban::firstOrCreate([
+                        'apl_02_id' => $apldua->id,
+                        'elemen_id' => $elemen->id,
+                    ]);
+                }
+            }
+            $apldua->load('jawabans');
+        }
+
+        // Index jawaban by elemen_id untuk kemudahan di view
+        $jawabanMap = $apldua->jawabans->keyBy('elemen_id');
+
+        return view('asesi.apldua.form', compact('asesmen', 'apldua', 'jawabanMap'));
+    }
+
+    /**
+     * Auto-save jawaban APL-02 (AJAX)
+     */
+    public function apldua_save(Request $request)
+    {
+        $request->validate([
+            'rows'              => 'required|array',
+            'rows.*.elemen_id'  => 'required|integer|exists:elemens,id',
+            'rows.*.jawaban'    => 'nullable|in:K,BK',
+            'rows.*.bukti'      => 'nullable|string|max:1000',
+        ]);
+
+        $asesmen = auth()->user()->asesmens()->whereNotNull('schedule_id')->latest()->first();
+        if (!$asesmen) {
+            return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
+        }
+
+        $apldua = $asesmen->apldua;
+        if (!$apldua) {
+            return response()->json(['success' => false, 'message' => 'APL-02 tidak ditemukan.'], 404);
+        }
+        if (!$apldua->is_editable) {
+            return response()->json(['success' => false, 'message' => 'APL-02 sudah tidak dapat diubah.'], 403);
+        }
+
+        foreach ($request->rows as $row) {
+            \App\Models\AplDuaJawaban::updateOrCreate(
+                ['apl_02_id' => $apldua->id, 'elemen_id' => $row['elemen_id']],
+                ['jawaban' => $row['jawaban'] ?? null, 'bukti' => $row['bukti'] ?? null]
+            );
+        }
+
+        // Hitung progress
+        $total    = $apldua->jawabans()->count();
+        $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
+
+        \Log::info('[APL02-SAVE] Saved', [
+            'apldua_id' => $apldua->id,
+            'rows'      => count($request->rows),
+            'progress'  => "{$answered}/{$total}",
+        ]);
+
+        return response()->json([
+            'success'  => true,
+            'message'  => 'Tersimpan.',
+            'progress' => ['answered' => $answered, 'total' => $total],
+        ]);
+    }
+
+    /**
+     * Submit APL-02 dengan tanda tangan asesi
+     */
+    public function apldua_submit(Request $request)
+    {
+        $request->validate([
+            'signature' => 'required|string',
+        ]);
+
+        $asesmen = auth()->user()->asesmens()->whereNotNull('schedule_id')->latest()->first();
+        if (!$asesmen) {
+            return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
+        }
+
+        $apldua = $asesmen->apldua;
+        if (!$apldua) {
+            return response()->json(['success' => false, 'message' => 'APL-02 tidak ditemukan.'], 404);
+        }
+        if (!$apldua->is_editable) {
+            return response()->json(['success' => false, 'message' => 'APL-02 sudah disubmit.'], 400);
+        }
+
+        // Validasi semua elemen sudah dijawab
+        $total    = $apldua->jawabans()->count();
+        $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
+        if ($answered < $total) {
+            return response()->json([
+                'success' => false,
+                'message' => "Semua elemen harus dijawab terlebih dahulu. ({$answered}/{$total} sudah diisi)",
+            ], 422);
+        }
+
+        $sig = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
+
+        $apldua->update([
+            'status'           => 'submitted',
+            'ttd_asesi'        => $sig,
+            'nama_ttd_asesi'   => $asesmen->full_name,
+            'tanggal_ttd_asesi' => now(),
+            'submitted_at'     => now(),
+        ]);
+
+        \Log::info('[APL02-SUBMIT] Submitted', ['apldua_id' => $apldua->id]);
+
+        return response()->json(['success' => true, 'message' => 'APL-02 berhasil disubmit!']);
+    }
+    
+    /**
+     * Preview / Download PDF APL-02 (hanya jika sudah verified)
+     */ 
+    public function aplduaPdf(Request $request)
+    {
+        $asesmen = auth()->user()->asesmens()
+            ->with([
+                'skema.unitKompetensis.elemens.kuks',
+                'schedule.asesor',
+                'apldua.jawabans',
+            ])
+            ->whereNotNull('schedule_id')
+            ->latest()
+            ->firstOrFail();
+
+        $apldua = $asesmen->apldua;
+
+        if (!$apldua || !in_array($apldua->status, ['verified', 'approved'])) {
+            abort(403, 'APL-02 belum diverifikasi.');
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.apldua', [
+            'apldua'  => $apldua,
+            'asesmen' => $asesmen,
+        ])->setPaper('A4', 'portrait');
+
+        $filename = 'APL-02_' . str_replace(' ', '_', $asesmen->full_name) . '.pdf';
+
+        return $request->get('preview')
+            ? $pdf->stream($filename)
+            : $pdf->download($filename);
+    }
+
 }

@@ -102,20 +102,31 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Tanggal Asesmen <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" name="assessment_date" required
-                                    min="{{ date('Y-m-d') }}">
+                                <input type="date" class="form-control @error('assessment_date') is-invalid @enderror" 
+                                    name="assessment_date" required min="{{ date('Y-m-d') }}" value="{{ old('assessment_date') }}">
+                                @error('assessment_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Waktu Mulai <span class="text-danger">*</span></label>
-                                <input type="time" class="form-control" name="start_time" required>
+                                <input type="time" class="form-control @error('start_time') is-invalid @enderror" 
+                                    name="start_time" required value="{{ old('start_time') }}">
+                                @error('start_time')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label">Waktu Selesai <span class="text-danger">*</span></label>
-                                <input type="time" class="form-control" name="end_time" required>
+                                <input type="time" class="form-control @error('end_time') is-invalid @enderror" 
+                                    name="end_time" required value="{{ old('end_time') }}">
+                                @error('end_time')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -123,8 +134,12 @@
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Lokasi Asesmen <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" name="location"
-                                    placeholder="Contoh: Ruang Asesmen TUK, Gedung A Lt. 2" required>
+                                <input type="text" class="form-control @error('location') is-invalid @enderror" 
+                                    name="location" placeholder="Contoh: Ruang Asesmen TUK, Gedung A Lt. 2" 
+                                    required value="{{ old('location') }}">
+                                @error('location')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -132,8 +147,12 @@
                         <div class="col-md-12">
                             <div class="mb-3">
                                 <label class="form-label">Catatan (Opsional)</label>
-                                <textarea class="form-control" name="notes" rows="3"
-                                    placeholder="Catatan tambahan untuk peserta asesmen"></textarea>
+                                <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                    name="notes" rows="3" 
+                                    placeholder="Catatan tambahan untuk peserta asesmen">{{ old('notes') }}</textarea>
+                                @error('notes')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -177,7 +196,7 @@
         </div>
         @else
         @php
-        // Group by date + time + location
+        // Group schedules by date + time + location
         $groupedSchedules = $scheduled->groupBy(function($schedule) {
             return $schedule->assessment_date->format('Y-m-d') . '|' .
                    $schedule->start_time . '|' .
@@ -205,15 +224,16 @@
                         list($date, $startTime, $endTime, $location) = explode('|', $groupKey);
                         $firstSchedule = $schedules->first();
                         
-                        // Count collective vs mandiri
-                        $collectiveCount = $schedules->where('asesmen.is_collective', true)->count();
-                        $mandiriCount = $schedules->where('asesmen.is_collective', false)->count();
+                        // Get all asesmens from schedules
+                        $allAsesmens = $schedules->flatMap(fn($s) => $s->asesmens);
+                        $collectiveCount = $allAsesmens->where('is_collective', true)->count();
+                        $mandiriCount = $allAsesmens->where('is_collective', false)->count();
                         
-                        // Get unique skemas
-                        $skemas = $schedules->pluck('asesmen.skema.name')->unique()->filter();
-                        $skemaDisplay = $skemas->count() > 1 
-                            ? $skemas->first() . ' +' . ($skemas->count() - 1) 
-                            : $skemas->first();
+                        // Get unique skema names
+                        $skemaNames = $allAsesmens->pluck('skema.name')->unique()->filter()->values();
+                        $skemaDisplay = $skemaNames->count() > 1 
+                            ? $skemaNames->first() . ' (+' . ($skemaNames->count() - 1) . ')'
+                            : ($skemaNames->first() ?? 'N/A');
                     @endphp
                     <tr>
                         <td>{{ $loop->iteration }}</td>
@@ -230,10 +250,12 @@
                             {{ Str::limit($location, 30) }}
                         </td>
                         <td>
-                            <span class="badge bg-info">{{ $skemaDisplay }}</span>
+                            <span class="badge bg-info" title="{{ $skemaNames->implode(', ') }}">
+                                {{ $skemaDisplay }}
+                            </span>
                         </td>
                         <td class="text-center">
-                            <span class="badge bg-primary fs-6">{{ $schedules->count() }}</span>
+                            <span class="badge bg-primary fs-6">{{ $allAsesmens->count() }}</span>
                             <br>
                             <small class="text-muted">
                                 @if($collectiveCount > 0)
@@ -362,29 +384,38 @@
 @php
     list($date, $startTime, $endTime, $location) = explode('|', $groupKey);
     $firstSchedule = $schedules->first();
-    $collectiveCount = $schedules->where('asesmen.is_collective', true)->count();
-    $mandiriCount = $schedules->where('asesmen.is_collective', false)->count();
-    $skemas = $schedules->pluck('asesmen.skema.name')->unique()->filter()->implode(', ');
     
-    // Build participants array
+    // Get all asesmens from all schedules in this group
+    $allAsesmens = $schedules->flatMap(fn($s) => $s->asesmens);
+    $collectiveCount = $allAsesmens->where('is_collective', true)->count();
+    $mandiriCount = $allAsesmens->where('is_collective', false)->count();
+    $skemas = $allAsesmens->pluck('skema.name')->unique()->filter()->implode(', ');
+    
+    // Build participants array from asesmens
     $participants = [];
-    foreach($schedules->sortBy('asesmen.full_name') as $schedule) {
-        $participants[] = [
-            'id' => $schedule->id,
-            'regNo' => $schedule->asesmen->id,
-            'name' => $schedule->asesmen->full_name ?? $schedule->asesmen->user->name,
-            'email' => $schedule->asesmen->user->email ?? $schedule->asesmen->email ?? '-',
-            'skema' => $schedule->asesmen->skema->name ?? '-',
-            'isCollective' => $schedule->asesmen->is_collective,
-            'batchId' => $schedule->asesmen->collective_batch_id ?? '-',
-            'status' => $schedule->asesmen->status_label,
-            'statusBadge' => $schedule->asesmen->status_badge,
-        ];
+    foreach($schedules as $schedule) {
+        foreach($schedule->asesmens->sortBy('full_name') as $asesmen) {
+            $participants[] = [
+                'scheduleId' => $schedule->id,
+                'regNo' => $asesmen->id,
+                'name' => $asesmen->full_name ?? $asesmen->user->name ?? 'N/A',
+                'email' => $asesmen->user->email ?? $asesmen->email ?? '-',
+                'skema' => $asesmen->skema->name ?? '-',
+                'isCollective' => $asesmen->is_collective,
+                'batchId' => $asesmen->collective_batch_id ?? '-',
+                'status' => $asesmen->status_label,
+                'statusBadge' => $asesmen->status_badge,
+            ];
+        }
     }
+    
+    // Store schedule IDs for export functionality
+    $scheduleIds = $schedules->pluck('id')->toArray();
 @endphp
 <script type="application/json" id="schedule-data-{{ md5($groupKey) }}">
 {!! json_encode([
     'groupKey' => $groupKey,
+    'scheduleIds' => $scheduleIds,
     'date' => $date,
     'dateFormatted' => \Carbon\Carbon::parse($date)->isoFormat('dddd, D MMMM Y'),
     'startTime' => $startTime,
@@ -394,7 +425,7 @@
     'createdAt' => $firstSchedule->created_at->diffForHumans(),
     'collectiveCount' => $collectiveCount,
     'mandiriCount' => $mandiriCount,
-    'totalCount' => $schedules->count(),
+    'totalCount' => $allAsesmens->count(),
     'skemas' => $skemas,
     'participants' => $participants
 ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}
@@ -444,12 +475,12 @@ $(document).ready(function() {
         }
     }
 
-    // Form validation
+    // Form validation with time checking
     $('#batch-schedule-form').submit(function(e) {
+        e.preventDefault();
+        
         const checked = $('.asesmen-checkbox:checked').length;
-
         if (checked === 0) {
-            e.preventDefault();
             Swal.fire({
                 icon: 'warning',
                 title: 'Pilih Asesi',
@@ -459,69 +490,54 @@ $(document).ready(function() {
             return false;
         }
 
-        e.preventDefault();
+        // Validate time
+        const startTime = $('input[name="start_time"]').val();
+        const endTime = $('input[name="end_time"]').val();
+        
+        if (startTime && endTime && startTime >= endTime) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Waktu Tidak Valid',
+                text: 'Waktu selesai harus lebih besar dari waktu mulai',
+                confirmButtonText: 'OK'
+            });
+            return false;
+        }
+
         Swal.fire({
             icon: 'question',
             title: 'Konfirmasi Penjadwalan',
-            text: `Apakah Anda yakin ingin membuat jadwal untuk ${checked} asesi?`,
+            html: `
+                <p>Apakah Anda yakin ingin membuat jadwal untuk <strong>${checked} asesi</strong>?</p>
+                <small class="text-muted">Pastikan semua data sudah benar sebelum melanjutkan.</small>
+            `,
             showCancelButton: true,
             confirmButtonText: 'Ya, Buat Jadwal',
-            cancelButtonText: 'Batal'
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#0d6efd'
         }).then((result) => {
             if (result.isConfirmed) {
-                this.submit();
-            }
-        });
-    });
-
-    // Edit Schedule Form Submit
-    $('#editScheduleForm').submit(function(e) {
-        e.preventDefault();
-
-        const scheduleId = $('#edit-schedule-id').val();
-        const formData = {
-            assessment_date: $('#edit-assessment-date').val(),
-            start_time: $('#edit-start-time').val(),
-            end_time: $('#edit-end-time').val(),
-            location: $('#edit-location').val(),
-            notes: $('#edit-notes').val(),
-            _token: $('meta[name="csrf-token"]').attr('content'),
-            _method: 'PUT'
-        };
-
-        $.ajax({
-            url: `/tuk/schedules/${scheduleId}/update-ajax`,
-            method: 'POST',
-            data: formData,
-            success: function(response) {
-                if (response.success) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil!',
-                        text: response.message,
-                        timer: 2000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        $('#editScheduleModal').modal('hide');
-                        location.reload();
-                    });
-                }
-            },
-            error: function(xhr) {
+                // Show loading
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Error!',
-                    text: xhr.responseJSON?.message || 'Gagal mengupdate jadwal',
-                    confirmButtonText: 'OK'
+                    title: 'Memproses...',
+                    text: 'Sedang membuat jadwal asesmen',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
                 });
+                e.target.submit();
             }
         });
     });
+
+    // Auto-update select all checkbox on page load
+    updateSummary();
 });
 
 // Show Schedule Detail Modal
 function showScheduleDetail(scheduleId) {
-    // Get data from hidden script tag
     const dataScript = document.getElementById(`schedule-data-${scheduleId}`);
     if (!dataScript) {
         console.error('Schedule data not found for ID:', scheduleId);
@@ -571,7 +587,7 @@ function showScheduleDetail(scheduleId) {
                 <div class="card border-info">
                     <div class="card-body">
                         <small class="text-muted d-block">Skema Sertifikasi</small>
-                        <div class="fw-bold">${data.skemas}</div>
+                        <div class="fw-bold text-truncate" title="${data.skemas}">${data.skemas}</div>
                     </div>
                 </div>
             </div>
@@ -579,7 +595,7 @@ function showScheduleDetail(scheduleId) {
         $('#modal-stats').html(statsHtml);
 
         // Show notes if exists
-        if (data.notes) {
+        if (data.notes && data.notes.trim() !== '') {
             $('#modal-notes-text').text(data.notes);
             $('#modal-notes').show();
         } else {
@@ -588,42 +604,52 @@ function showScheduleDetail(scheduleId) {
 
         // Populate participants table
         let participantsHtml = '';
-        data.participants.forEach((p, index) => {
-            participantsHtml += `
+        if (data.participants && data.participants.length > 0) {
+            data.participants.forEach((p, index) => {
+                participantsHtml += `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td><strong>#${p.regNo}</strong></td>
+                        <td><strong>${escapeHtml(p.name)}</strong></td>
+                        <td><small>${escapeHtml(p.email)}</small></td>
+                        <td><small>${escapeHtml(p.skema)}</small></td>
+                        <td>
+                            <span class="badge bg-${p.isCollective ? 'primary' : 'success'}">
+                                <i class="bi bi-${p.isCollective ? 'people' : 'person'}"></i>
+                                ${p.isCollective ? 'Kolektif' : 'Mandiri'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-${p.statusBadge}">${escapeHtml(p.status)}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-info" onclick="viewSchedule(${p.scheduleId})" title="Detail">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-warning" onclick="editSchedule(${p.scheduleId})" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteSchedule(${p.scheduleId})" title="Hapus">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        } else {
+            participantsHtml = `
                 <tr>
-                    <td>${index + 1}</td>
-                    <td><strong>#${p.regNo}</strong></td>
-                    <td><strong>${p.name}</strong></td>
-                    <td><small>${p.email}</small></td>
-                    <td><small>${p.skema}</small></td>
-                    <td>
-                        <span class="badge bg-${p.isCollective ? 'primary' : 'success'}">
-                            <i class="bi bi-${p.isCollective ? 'people' : 'person'}"></i>
-                            ${p.isCollective ? 'Kolektif' : 'Mandiri'}
-                        </span>
-                    </td>
-                    <td>
-                        <span class="badge bg-${p.statusBadge}">${p.status}</span>
-                    </td>
-                    <td>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-info" onclick="viewSchedule(${p.id})" title="Detail">
-                                <i class="bi bi-eye"></i>
-                            </button>
-                            <button class="btn btn-warning" onclick="editSchedule(${p.id})" title="Edit">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-danger" onclick="deleteSchedule(${p.id})" title="Hapus">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                    <td colspan="8" class="text-center text-muted py-3">
+                        <i class="bi bi-inbox"></i> Tidak ada peserta
                     </td>
                 </tr>
             `;
-        });
+        }
         $('#modal-participants-tbody').html(participantsHtml);
 
-        // Show created at
+        // Populate footer
         $('#modal-created-at').html(`
             <i class="bi bi-calendar-check"></i> Dibuat: ${data.createdAt}
         `);
@@ -642,17 +668,189 @@ function showScheduleDetail(scheduleId) {
     }
 }
 
-// Print from modal
-function printScheduleFromModal() {
-    Swal.fire({
-        icon: 'info',
-        title: 'Fitur Cetak',
-        text: 'Fitur cetak daftar hadir sedang dalam pengembangan',
-        confirmButtonText: 'OK'
-    });
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text ? String(text).replace(/[&<>"']/g, m => map[m]) : '';
 }
 
-// Export from modal
+function printScheduleFromModal() {
+    if (!currentScheduleData) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Data schedule tidak ditemukan',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
+    // Create printable content
+    const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Daftar Hadir Asesmen - ${currentScheduleData.dateFormatted}</title>
+            <meta charset="UTF-8">
+            <style>
+                @page { 
+                    size: A4 landscape;
+                    margin: 15mm; 
+                }
+                body { 
+                    margin: 0; 
+                    padding: 20px; 
+                    font-family: Arial, sans-serif; 
+                    font-size: 12px;
+                }
+                h1 { 
+                    font-size: 18px; 
+                    text-align: center; 
+                    margin-bottom: 5px;
+                }
+                h2 {
+                    font-size: 14px;
+                    text-align: center;
+                    margin-top: 0;
+                    font-weight: normal;
+                    color: #666;
+                }
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-top: 15px; 
+                }
+                th, td { 
+                    border: 1px solid #000; 
+                    padding: 8px; 
+                    text-align: left; 
+                }
+                th { 
+                    background-color: #f0f0f0; 
+                    font-weight: bold;
+                }
+                .info { 
+                    margin-bottom: 20px; 
+                    line-height: 1.6;
+                }
+                .info p {
+                    margin: 5px 0;
+                }
+                @media print {
+                    body { 
+                        padding: 10px;
+                    }
+                    button {
+                        display: none;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>DAFTAR HADIR ASESMEN</h1>
+            <h2>Lembaga Sertifikasi Profesi</h2>
+            
+            <div class="info">
+                <table style="border: none; margin-bottom: 20px;">
+                    <tr style="border: none;">
+                        <td style="border: none; width: 150px;"><strong>Tanggal</strong></td>
+                        <td style="border: none;">: ${currentScheduleData.dateFormatted}</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="border: none;"><strong>Waktu</strong></td>
+                        <td style="border: none;">: ${currentScheduleData.startTime} - ${currentScheduleData.endTime} WIB</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="border: none;"><strong>Lokasi</strong></td>
+                        <td style="border: none;">: ${escapeHtml(currentScheduleData.location)}</td>
+                    </tr>
+                    <tr style="border: none;">
+                        <td style="border: none;"><strong>Total Peserta</strong></td>
+                        <td style="border: none;">: ${currentScheduleData.totalCount} orang</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">No</th>
+                        <th style="width: 100px;">No. Reg</th>
+                        <th>Nama Lengkap</th>
+                        <th style="width: 200px;">Skema</th>
+                        <th style="width: 100px;">Jenis</th>
+                        <th style="width: 150px;">Tanda Tangan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${currentScheduleData.participants.map((p, index) => `
+                        <tr>
+                            <td style="text-align: center;">${index + 1}</td>
+                            <td>#${p.regNo}</td>
+                            <td>${escapeHtml(p.name)}</td>
+                            <td>${escapeHtml(p.skema)}</td>
+                            <td style="text-align: center;">${p.isCollective ? 'Kolektif' : 'Mandiri'}</td>
+                            <td>&nbsp;</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            
+            ${currentScheduleData.notes ? `
+                <div style="margin-top: 20px; padding: 10px; background-color: #f8f9fa; border-left: 4px solid #0d6efd;">
+                    <strong>Catatan:</strong> ${escapeHtml(currentScheduleData.notes)}
+                </div>
+            ` : ''}
+            
+            <div style="margin-top: 30px;">
+                <table style="border: none; width: 100%;">
+                    <tr style="border: none;">
+                        <td style="border: none; width: 50%; text-align: center;">
+                            <p>Mengetahui,</p>
+                            <p style="margin-top: 80px; border-top: 1px solid #000; display: inline-block; padding-top: 5px; min-width: 200px;">
+                                Pimpinan TUK
+                            </p>
+                        </td>
+                        <td style="border: none; width: 50%; text-align: center;">
+                            <p>Asesor,</p>
+                            <p style="margin-top: 80px; border-top: 1px solid #000; display: inline-block; padding-top: 5px; min-width: 200px;">
+                                Nama Asesor
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            <\/script>
+        </body>
+        </html>
+    `;
+    
+    // Open print window
+    const printWindow = window.open('', '_blank', 'width=1000,height=700');
+    if (printWindow) {
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+    } else {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Gagal membuka jendela cetak. Pastikan popup tidak diblokir.',
+            confirmButtonText: 'OK'
+        });
+    }
+}
+
 function exportScheduleFromModal() {
     if (!currentScheduleData) {
         Swal.fire({
@@ -668,11 +866,11 @@ function exportScheduleFromModal() {
         title: 'Export ke Excel?',
         html: `
             <p class="mb-2">Data yang akan di-export:</p>
-            <div class="text-start">
+            <div class="text-start" style="background-color: #f8f9fa; padding: 15px; border-radius: 5px;">
                 <small>
                     <strong>Tanggal:</strong> ${currentScheduleData.dateFormatted}<br>
-                    <strong>Waktu:</strong> ${currentScheduleData.startTime} - ${currentScheduleData.endTime}<br>
-                    <strong>Lokasi:</strong> ${currentScheduleData.location}<br>
+                    <strong>Waktu:</strong> ${currentScheduleData.startTime} - ${currentScheduleData.endTime} WIB<br>
+                    <strong>Lokasi:</strong> ${escapeHtml(currentScheduleData.location)}<br>
                     <strong>Total:</strong> ${currentScheduleData.totalCount} peserta
                 </small>
             </div>
@@ -684,7 +882,6 @@ function exportScheduleFromModal() {
         confirmButtonColor: '#28a745',
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show loading
             Swal.fire({
                 title: 'Memproses...',
                 html: 'Sedang membuat file Excel',
@@ -695,35 +892,46 @@ function exportScheduleFromModal() {
                 }
             });
 
-            // Find the schedule ID from the groupKey
-            const scheduleId = Object.keys(window.scheduleGroupData).find(
-                key => window.scheduleGroupData[key] === currentScheduleData.groupKey
-            );
+            // Get the first schedule ID from the group
+            const scheduleId = currentScheduleData.scheduleIds && currentScheduleData.scheduleIds.length > 0 
+                ? currentScheduleData.scheduleIds[0] 
+                : null;
+
+            if (!scheduleId) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Schedule ID tidak ditemukan',
+                    confirmButtonText: 'OK'
+                });
+                return;
+            }
 
             // Create form and submit
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = `/tuk/schedules/export/${scheduleId}`;
 
-            // Add CSRF token
+            // CSRF Token
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
             csrfInput.name = '_token';
             csrfInput.value = $('meta[name="csrf-token"]').attr('content');
             form.appendChild(csrfInput);
 
-            // Add group data
+            // Group data
             const groupInput = document.createElement('input');
             groupInput.type = 'hidden';
             groupInput.name = 'group_data';
             groupInput.value = currentScheduleData.groupKey;
             form.appendChild(groupInput);
 
+            // Submit form
             document.body.appendChild(form);
             form.submit();
             document.body.removeChild(form);
 
-            // Close loading after a delay
+            // Show success message after delay
             setTimeout(() => {
                 Swal.close();
                 Swal.fire({
@@ -733,79 +941,145 @@ function exportScheduleFromModal() {
                     timer: 2000,
                     showConfirmButton: false
                 });
-            }, 2000);
+            }, 1500);
         }
     });
 }
 
-// View Schedule
 function viewSchedule(id) {
+    if (!id) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Schedule ID tidak valid',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
     $.ajax({
         url: `/tuk/schedules/${id}/view`,
         method: 'GET',
+        beforeSend: function() {
+            Swal.fire({
+                title: 'Loading...',
+                text: 'Memuat data jadwal',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        },
         success: function(response) {
+            Swal.close();
             if (response.success) {
                 const data = response.schedule;
-
                 $('#view-reg-no').text('#' + data.id);
-                $('#view-asesi-name').text(data.asesmen_name);
-                $('#view-skema').text(data.skema);
-                $('#view-status').text(data.status).removeClass().addClass('badge bg-primary');
-                $('#view-date').text(data.assessment_date);
-                $('#view-time').text(data.start_time + ' - ' + data.end_time);
-                $('#view-location').text(data.location);
+                $('#view-asesi-name').text(data.asesmen_name || 'N/A');
+                $('#view-skema').text(data.skema || '-');
+                $('#view-status').text(data.status || '-').removeClass().addClass('badge bg-primary');
+                $('#view-date').text(data.assessment_date || '-');
+                $('#view-time').text((data.start_time || '-') + ' - ' + (data.end_time || '-'));
+                $('#view-location').text(data.location || '-');
                 $('#view-notes').text(data.notes || 'Tidak ada catatan');
-
                 $('#viewScheduleModal').modal('show');
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: response.message || 'Gagal memuat data jadwal',
+                    confirmButtonText: 'OK'
+                });
             }
         },
         error: function(xhr) {
+            Swal.close();
+            const errorMessage = xhr.responseJSON?.message || 'Gagal memuat data jadwal';
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Gagal memuat data jadwal',
+                text: errorMessage,
                 confirmButtonText: 'OK'
             });
         }
     });
 }
 
-// Edit Schedule
 function editSchedule(id) {
+    if (!id) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Schedule ID tidak valid',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
     $.ajax({
         url: `/tuk/schedules/${id}/edit`,
         method: 'GET',
+        beforeSend: function() {
+            Swal.fire({
+                title: 'Loading...',
+                text: 'Memuat data jadwal',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        },
         success: function(response) {
+            Swal.close();
             if (response.success) {
                 const data = response.schedule;
-
                 $('#edit-schedule-id').val(data.id);
-                $('#edit-asesi-name').text(data.asesmen_name);
-                $('#edit-assessment-date').val(data.assessment_date);
-                $('#edit-start-time').val(data.start_time);
-                $('#edit-end-time').val(data.end_time);
-                $('#edit-location').val(data.location);
-                $('#edit-notes').val(data.notes);
-
+                $('#edit-asesi-name').text(data.asesmen_names || data.asesmen_name || 'N/A');
+                $('#edit-assessment-date').val(data.assessment_date || '');
+                $('#edit-start-time').val(data.start_time || '');
+                $('#edit-end-time').val(data.end_time || '');
+                $('#edit-location').val(data.location || '');
+                $('#edit-notes').val(data.notes || '');
                 $('#editScheduleModal').modal('show');
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: response.message || 'Gagal memuat data jadwal',
+                    confirmButtonText: 'OK'
+                });
             }
         },
         error: function(xhr) {
+            Swal.close();
+            const errorMessage = xhr.responseJSON?.message || 'Gagal memuat data jadwal';
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: 'Gagal memuat data jadwal',
+                text: errorMessage,
                 confirmButtonText: 'OK'
             });
         }
     });
 }
 
-// Delete Schedule
 function deleteSchedule(id) {
+    if (!id) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Schedule ID tidak valid',
+            confirmButtonText: 'OK'
+        });
+        return;
+    }
+
     Swal.fire({
         title: 'Hapus Jadwal?',
-        text: 'Status asesi akan dikembalikan ke "Sudah Bayar"',
+        html: `
+            <p>Apakah Anda yakin ingin menghapus jadwal ini?</p>
+            <small class="text-danger">Status asesi akan dikembalikan ke "Sudah Bayar"</small>
+        `,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -821,24 +1095,42 @@ function deleteSchedule(id) {
                     _token: $('meta[name="csrf-token"]').attr('content'),
                     _method: 'DELETE'
                 },
+                beforeSend: function() {
+                    Swal.fire({
+                        title: 'Menghapus...',
+                        text: 'Sedang menghapus jadwal',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                },
                 success: function(response) {
                     if (response.success) {
                         Swal.fire({
                             icon: 'success',
                             title: 'Terhapus!',
-                            text: response.message,
+                            text: response.message || 'Jadwal berhasil dihapus',
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
                             location.reload();
                         });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: response.message || 'Gagal menghapus jadwal',
+                            confirmButtonText: 'OK'
+                        });
                     }
                 },
                 error: function(xhr) {
+                    const errorMessage = xhr.responseJSON?.message || 'Gagal menghapus jadwal';
                     Swal.fire({
                         icon: 'error',
                         title: 'Error!',
-                        text: xhr.responseJSON?.message || 'Gagal menghapus jadwal',
+                        text: errorMessage,
                         confirmButtonText: 'OK'
                     });
                 }

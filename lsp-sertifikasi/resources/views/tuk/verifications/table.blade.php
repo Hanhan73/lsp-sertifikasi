@@ -1,5 +1,5 @@
 <div class="table-responsive">
-    <table class="table table-hover data-table">
+    <table class="table table-hover data-table" id="verification-table">
         <thead>
             <tr>
                 <th>No</th>

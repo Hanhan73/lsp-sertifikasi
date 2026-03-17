@@ -44,7 +44,82 @@
                         @enderror
                     </div>
 
-                    <!-- Payment Phases - UPDATED -->
+                    <!-- NEW: Tanggal Asesmen untuk Batch -->
+                    <div class="mb-4">
+                        <label class="form-label">Tanggal Asesmen <span class="text-danger">*</span></label>
+                        <input type="date" 
+                            class="form-select @error('preferred_date') is-invalid @enderror" 
+                            name="preferred_date" 
+                            min="{{ date('Y-m-d', strtotime('+1 day')) }}"
+                            required>
+                        <small class="text-muted">Tanggal untuk semua peserta dalam batch ini</small>
+                        @error('preferred_date')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <!-- NEW: Pelatihan untuk Batch -->
+                    <div class="mb-4">
+                        <label class="form-label">Pelatihan <span class="text-danger">*</span></label>
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            Pilih apakah semua peserta dalam batch ini akan mengikuti pelatihan atau tidak:
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="training-option" onclick="selectTraining(false)" id="option-no">
+                                    <div class="d-flex align-items-start">
+                                        <input type="radio" 
+                                            name="training_flag" 
+                                            value="0" 
+                                            id="training-no"
+                                            checked
+                                            required>
+                                        <div class="ms-3 flex-grow-1">
+                                            <label for="training-no" class="form-label fw-bold mb-1" style="cursor: pointer;">
+                                                <i class="bi bi-x-circle text-danger"></i> Tanpa Pelatihan
+                                            </label>
+                                            <p class="text-muted small mb-0">
+                                                Semua peserta langsung asesmen tanpa pelatihan
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="training-option" onclick="selectTraining(true)" id="option-yes">
+                                    <div class="d-flex align-items-start">
+                                        <input type="radio" 
+                                            name="training_flag" 
+                                            value="1" 
+                                            id="training-yes"
+                                            required>
+                                        <div class="ms-3 flex-grow-1">
+                                            <label for="training-yes" class="form-label fw-bold mb-1" style="cursor: pointer;">
+                                                <i class="bi bi-check-circle text-success"></i> Dengan Pelatihan
+                                            </label>
+                                            <p class="text-muted small mb-2">
+                                                Semua peserta ikut pelatihan sebelum asesmen
+                                            </p>
+                                            <div class="alert alert-warning mb-0 py-2">
+                                                <small>
+                                                    <i class="bi bi-info-circle-fill"></i>
+                                                    <strong>Biaya Tambahan:</strong>
+                                                    <span class="price-badge ms-2">Rp 1.500.000 / peserta</span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @error('training_flag')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <!-- Payment Phases - UPDATED: Tanpa Input Persentase -->
                     <div class="mb-4">
                         <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
                         <div class="alert alert-info mb-3">
@@ -55,51 +130,56 @@
                             <div class="col-md-6">
                                 <div class="form-check card p-3 mb-2 payment-phase-option"
                                     onclick="selectPhase('single')" id="phase-single">
-                                    <input class="form-check-input" type="radio" name="payment_phases" value="single"
-                                        id="phases_single" checked required>
+                                    <input class="form-check-input" 
+                                        type="radio" 
+                                        name="payment_phases" 
+                                        value="single"
+                                        id="phases_single" 
+                                        checked 
+                                        required>
                                     <label class="form-check-label" for="phases_single" style="cursor: pointer;">
-                                        <strong><i class="bi bi-cash-stack text-success"></i> 1 Fase (Full
-                                            Payment)</strong>
+                                        <strong><i class="bi bi-cash-stack text-success"></i> 1 Fase (Full Payment)</strong>
                                         <p class="text-muted mb-0 mt-1 small">
                                             Pembayaran <strong>100%</strong> dilakukan <strong>1 kali</strong> setelah
-                                            Admin LSP memverifikasi semua peserta dan menentukan biaya.
+                                            Admin LSP menentukan biaya.
                                         </p>
-                                        <div class="alert alert-success mt-2 mb-0 py-2">
-                                        </div>
                                     </label>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check card p-3 mb-2 payment-phase-option"
                                     onclick="selectPhase('two_phase')" id="phase-two">
-                                    <input class="form-check-input" type="radio" name="payment_phases" value="two_phase"
-                                        id="phases_two" required>
+                                    <input class="form-check-input" 
+                                        type="radio" 
+                                        name="payment_phases" 
+                                        value="two_phase"
+                                        id="phases_two" 
+                                        required>
                                     <label class="form-check-label" for="phases_two" style="cursor: pointer;">
-                                        <strong><i class="bi bi-cash-coin text-primary"></i> 2 Fase (Split
-                                            Payment)</strong>
+                                        <strong><i class="bi bi-cash-coin text-primary"></i> 2 Fase (Split Payment)</strong>
                                         <p class="text-muted mb-0 mt-1 small">
-                                            Pembayaran dibagi <strong>2 tahap</strong>:
+                                            Pembayaran dibagi <strong>2 tahap</strong> dengan nominal yang ditentukan Admin LSP.
                                         </p>
-                                        <ul class="small text-muted mb-2 mt-1">
-                                            <li><strong>Fase 1 (50%)</strong>: Setelah Admin verifikasi</li>
-                                            <li><strong>Fase 2 (50%)</strong>: Setelah asesmen selesai, sebelum download
-                                                sertifikat</li>
+                                        <ul class="small text-muted mb-0 mt-1">
+                                            <li><strong>Fase 1</strong>: Setelah Admin verifikasi (nominal flexible)</li>
+                                            <li><strong>Fase 2</strong>: Setelah asesmen selesai (sisanya)</li>
                                         </ul>
-                                        <div class="alert alert-info mt-2 mb-0 py-2">
-                                        </div>
                                     </label>
                                 </div>
                             </div>
                         </div>
+
+                        <!-- ❌ HAPUS bagian phase-percentage-input ini -->
+
                         @error('payment_phases')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
-                    </div>
+                            </di>
 
                     <hr>
 
                     <!-- Participants List -->
-                    <!-- Participants List -->
+
                     <div id="participants-container">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6>Daftar Peserta</h6>
@@ -276,16 +356,52 @@
     width: 18px;
     height: 18px;
 }
+
+/* NEW: Training option styling */
+.training-option {
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    background: white;
+}
+
+.training-option:hover {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+}
+
+.training-option.selected {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.training-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 5px;
+}
+
+.price-badge {
+    background-color: #fff3cd;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-let participantCount = 0; // Start from 0
+let participantCount = 0;
 let importedData = [];
 
 $(document).ready(function() {
+    // Add initial participant
+    addParticipant();
+    
     // File input change handler
     $('#participant-file').change(function(e) {
         const file = e.target.files[0];
@@ -294,7 +410,6 @@ $(document).ready(function() {
             return;
         }
         
-        // Show loading
         Swal.fire({
             title: 'Memproses...',
             html: 'Membaca file Excel/CSV',
@@ -304,21 +419,16 @@ $(document).ready(function() {
             }
         });
         
-        // Parse file using SheetJS
         const reader = new FileReader();
         
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Get first sheet
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                 
-                // Validate and preview
                 validateAndPreview(jsonData);
-                
                 Swal.close();
                 
             } catch (error) {
@@ -333,13 +443,11 @@ $(document).ready(function() {
         reader.readAsArrayBuffer(file);
     });
     
-    // Import button handler
     $('#import-btn').click(function() {
         importData();
         $('#uploadModal').modal('hide');
     });
     
-    // Existing add participant code...
     $('#add-participant').click(function() {
         addParticipant();
     });
@@ -373,16 +481,15 @@ function validateAndPreview(data) {
     let errors = [];
     let previewHtml = '';
     
-    importedData = []; // Reset
+    importedData = [];
     
     data.forEach((row, index) => {
-        const rowNumber = index + 2; // +2 karena row 1 header
+        const rowNumber = index + 2;
         const name = row['Nama Lengkap'] || row['nama_lengkap'] || '';
         const email = row['Email'] || row['email'] || '';
         
         let rowErrors = [];
         
-        // Validate
         if (!name) {
             rowErrors.push('Nama wajib diisi');
         }
@@ -400,7 +507,6 @@ function validateAndPreview(data) {
             importedData.push({ name, email });
         }
         
-        // Build preview row
         const statusClass = isValid ? 'success' : 'danger';
         const statusIcon = isValid ? 'check-circle' : 'x-circle';
         const statusText = isValid ? 'Valid' : rowErrors.join(', ');
@@ -424,11 +530,9 @@ function validateAndPreview(data) {
         }
     });
     
-    // Show preview
     $('#preview-tbody').html(previewHtml);
     $('#preview-area').show();
     
-    // Show errors if any
     if (errors.length > 0) {
         let errorHtml = '<strong>Data tidak valid pada baris:</strong><ul>';
         errors.forEach(err => {
@@ -443,27 +547,22 @@ function validateAndPreview(data) {
         $('#import-btn').prop('disabled', false);
     }
     
-    // Update import button text
     $('#import-btn').html(
         `<i class="bi bi-check-circle"></i> Import ${validCount} Peserta Valid`
     );
 }
 
 function importData() {
-    // Clear existing participants
     $('#participants-list').empty();
     participantCount = 0;
     
-    // Add imported participants
     importedData.forEach((participant, index) => {
         addParticipant(participant.name, participant.email);
     });
     
-    // Show success message
     $('#import-summary').show();
     $('#import-count').text(importedData.length);
     
-    // Reset modal
     $('#participant-file').val('');
     $('#preview-area').hide();
     $('#import-btn').prop('disabled', true);
@@ -512,7 +611,7 @@ function updateParticipantNumbers() {
     $('.participant-number').each(function(index) {
         $(this).text(index + 1);
     });
-    $('.remove-participant').toggle(participantCount > 0);
+    $('.remove-participant').toggle(participantCount > 1); // Hide if only 1 participant
 }
 
 function updateSummary() {
@@ -523,7 +622,7 @@ function updateSummary() {
 function updatePaymentMethodText() {
     const phase = $('input[name="payment_phases"]:checked').val();
     $('#payment-method-text').text(
-        phase === 'single' ? '1 Fase (Full Payment)' : '2 Fase (50% + 50%)'
+        phase === 'single' ? '1 Fase (Full Payment)' : '2 Fase (Admin akan tentukan nominal)'
     );
 }
 
@@ -540,13 +639,26 @@ function selectPhase(phase) {
         $('#phase-two').addClass('selected');
         $('#phases_two').prop('checked', true);
     }
-    $('input[name="payment_phases"]:checked').trigger('change');
+    updatePaymentMethodText();
 }
+
+function selectTraining(withTraining) {
+    $('.training-option').removeClass('selected');
+    if (withTraining) {
+        $('#option-yes').addClass('selected');
+        $('#training-yes').prop('checked', true);
+    } else {
+        $('#option-no').addClass('selected');
+        $('#training-no').prop('checked', true);
+    }
+}
+
+// ❌ HAPUS phase percentage calculator
 
 // Initialize
 $(document).ready(function() {
-    const selectedPhase = $('input[name="payment_phases"]:checked').val();
-    selectPhase(selectedPhase);
+    selectPhase('single');
+    selectTraining(false);
 });
 </script>
 @endpush

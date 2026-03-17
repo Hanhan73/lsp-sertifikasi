@@ -32,6 +32,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password' => 'hashed',
         'password_changed_at' => 'datetime',
         'is_active' => 'boolean',
+        
     ];
 
     // ========== RELATIONSHIPS ==========
@@ -49,6 +50,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function tuk()
     {
         return $this->hasOne(Tuk::class);
+    }
+
+    public function asesor()
+    {
+        return $this->hasOne(Asesor::class);
     }
 
     public function registeredAsesmens()
@@ -147,6 +153,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAsesi(): bool
     {
         return $this->role === 'asesi';
+    }
+
+    public function isAsesor(): bool
+    {
+        return $this->role === 'asesor';
     }
 
     public function getPhotoUrlAttribute()

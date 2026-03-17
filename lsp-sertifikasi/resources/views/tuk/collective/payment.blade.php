@@ -58,7 +58,7 @@
                                 <td><strong>Fase Saat Ini:</strong></td>
                                 <td>
                                     <span class="badge bg-info">
-                                        {{ $currentPhase === 'phase_1' ? 'Fase 1 (50%)' : 'Fase 2 (50%)' }}
+                                        {{ $currentPhase === 'phase_1' ? 'Fase 1' : 'Fase 2' }}
                                     </span>
                                 </td>
                             </tr>
@@ -69,7 +69,7 @@
             </div>
         </div>
 
-        <!-- Phase Info for Two Phase Payment -->
+        <!-- Phase Info for Two Phase Payment - UPDATED: Tanpa Persentase -->
         @if($paymentPhases === 'two_phase')
         <div class="card mb-4 border-primary">
             <div class="card-header bg-primary text-white">
@@ -82,7 +82,7 @@
                             <div class="card-body text-center">
                                 <h6>
                                     <i class="bi bi-1-circle{{ $currentPhase === 'phase_1' ? '-fill text-success' : '' }}"></i>
-                                    Fase 1 (50%)
+                                    Fase 1
                                 </h6>
                                 <p class="text-muted small mb-2">Setelah Admin Verifikasi</p>
                                 @if($phase1Status === 'paid')
@@ -108,7 +108,7 @@
                             <div class="card-body text-center">
                                 <h6>
                                     <i class="bi bi-2-circle{{ $currentPhase === 'phase_2' ? '-fill text-success' : '' }}"></i>
-                                    Fase 2 (50%)
+                                    Fase 2
                                 </h6>
                                 <p class="text-muted small mb-2">Setelah Asesmen Selesai</p>
                                 @if($phase2Status === 'paid')
@@ -129,6 +129,29 @@
                                     <small class="text-muted">/ peserta</small>
                                 </p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Total Breakdown -->
+                @php
+                    $phase1Total = $asesmens->sum('phase_1_amount');
+                    $phase2Total = $asesmens->sum('phase_2_amount');
+                    $grandTotal = $phase1Total + $phase2Total;
+                @endphp
+                <div class="alert alert-info mt-3 mb-0">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Fase 1 Total</small>
+                            <strong>Rp {{ number_format($phase1Total, 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Fase 2 Total</small>
+                            <strong>Rp {{ number_format($phase2Total, 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="col-md-4">
+                            <small class="text-muted d-block">Total Keseluruhan</small>
+                            <strong class="text-primary">Rp {{ number_format($grandTotal, 0, ',', '.') }}</strong>
                         </div>
                     </div>
                 </div>
@@ -155,6 +178,7 @@
                                 @else
                                 <th>Fase 1</th>
                                 <th>Fase 2</th>
+                                <th>Total</th>
                                 @endif
                             </tr>
                         </thead>
@@ -172,7 +196,7 @@
                                 @if($paymentPhases === 'single')
                                 <td>
                                     @if($asesmen->fee_amount)
-                                    Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
+                                    <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
                                     @else
                                     <span class="text-muted">Belum ditentukan</span>
                                     @endif
@@ -196,6 +220,13 @@
                                     <span class="text-muted">-</span>
                                     @endif
                                 </td>
+                                <td>
+                                    @if($asesmen->fee_amount)
+                                    <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
+                                    @else
+                                    <span class="text-muted">-</span>
+                                    @endif
+                                </td>
                                 @endif
                             </tr>
                             @endforeach
@@ -203,8 +234,8 @@
                         @if($canPay && $totalAmount > 0)
                         <tfoot>
                             <tr class="table-success">
-                                <td colspan="{{ $paymentPhases === 'single' ? 4 : 5 }}" class="text-end">
-                                    <strong>TOTAL PEMBAYARAN{{ $paymentPhases === 'two_phase' ? ' ('.strtoupper(str_replace('_', ' ', $currentPhase)).')' : '' }}:</strong>
+                                <td colspan="{{ $paymentPhases === 'single' ? 4 : 6 }}" class="text-end">
+                                    <strong>TOTAL PEMBAYARAN {{ $paymentPhases === 'two_phase' ? '('.strtoupper(str_replace('_', ' ', $currentPhase)).')' : '' }}:</strong>
                                 </td>
                                 <td><strong>Rp {{ number_format($totalAmount, 0, ',', '.') }}</strong></td>
                             </tr>
@@ -227,7 +258,7 @@
                         Semua peserta harus terverifikasi oleh Admin LSP dan biaya harus sudah ditentukan sebelum dapat melakukan pembayaran.
                         @else
                             @if($currentPhase === 'phase_1')
-                            Pembayaran Fase 1 akan tersedia setelah Admin LSP memverifikasi semua peserta dan menentukan biaya.
+                            Pembayaran Fase 1 akan tersedia setelah Admin LSP memverifikasi semua peserta dan menentukan nominal biaya.
                             @else
                             Pembayaran Fase 2 akan tersedia setelah semua peserta menyelesaikan asesmen.
                             @endif
@@ -278,9 +309,9 @@
                     @else
                     <strong>Metode:</strong> 2 Fase - 
                     @if($currentPhase === 'phase_1')
-                    <span class="badge bg-primary">Fase 1 (50%)</span>
+                    <span class="badge bg-primary">Fase 1</span>
                     @else
-                    <span class="badge bg-success">Fase 2 (50%)</span>
+                    <span class="badge bg-success">Fase 2 (Sisa Pembayaran)</span>
                     @endif
                     @endif
                 </div>
@@ -296,9 +327,11 @@
                     @if($paymentPhases === 'two_phase')
                     <small class="text-muted">
                         @if($currentPhase === 'phase_1')
-                        50% dari total biaya (Fase 2: Rp {{ number_format($totalAmount, 0, ',', '.') }} akan dibayar setelah asesmen)
+                        Fase 1 dari total biaya Rp {{ number_format($asesmens->sum('fee_amount'), 0, ',', '.') }}
+                        <br>(Fase 2: Rp {{ number_format($asesmens->sum('phase_2_amount'), 0, ',', '.') }} akan dibayar setelah asesmen)
                         @else
-                        Sisa 50% dari total biaya (Fase 1 sudah dibayar)
+                        Sisa pembayaran dari total biaya Rp {{ number_format($asesmens->sum('fee_amount'), 0, ',', '.') }}
+                        <br>(Fase 1 sebesar Rp {{ number_format($asesmens->sum('phase_1_amount'), 0, ',', '.') }} sudah dibayar)
                         @endif
                     </small>
                     @endif
@@ -322,7 +355,7 @@
 @endsection
 
 @push('scripts')
-@if($canPay && !$allPaid)  <!-- ✅ FIXED: Ganti dari isset($allPaid) -->
+@if($canPay && !$allPaid)
 <!-- Midtrans Snap JS -->
 <script type="text/javascript"
     src="https://app{{ config('midtrans.is_production') ? '' : '.sandbox' }}.midtrans.com/snap/snap.js"
@@ -334,15 +367,7 @@ $(document).ready(function() {
     const batchId = '{{ $batchId }}';
     const phase = '{{ $currentPhase }}';
 
-    // ✅ ADDED: Debug logging
-    console.log('Payment page loaded');
-    console.log('Batch ID:', batchId);
-    console.log('Current Phase:', phase);
-    console.log('Snap available:', typeof snap !== 'undefined');
-
     $('#pay-button').click(function() {
-        console.log('Pay button clicked'); // ✅ ADDED
-        
         $(this).prop('disabled', true);
         $(this).html('<i class="bi bi-hourglass-split"></i> Memproses...');
 
@@ -356,12 +381,7 @@ $(document).ready(function() {
                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
             },
             success: function(response) {
-                console.log('AJAX Response:', response); // ✅ ADDED
-                
                 if (response.success) {
-                    console.log('Snap Token:', response.snap_token); // ✅ ADDED
-                    
-                    // ✅ ADDED: Check if snap is available
                     if (typeof snap === 'undefined') {
                         Swal.fire({
                             icon: 'error',
@@ -375,7 +395,6 @@ $(document).ready(function() {
                     
                     snap.pay(response.snap_token, {
                         onSuccess: function(result) {
-                            console.log('Payment success:', result); // ✅ ADDED
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Pembayaran Berhasil!',
@@ -387,7 +406,6 @@ $(document).ready(function() {
                             });
                         },
                         onPending: function(result) {
-                            console.log('Payment pending:', result); // ✅ ADDED
                             Swal.fire({
                                 icon: 'info',
                                 title: 'Pembayaran Menunggu',
@@ -398,7 +416,6 @@ $(document).ready(function() {
                             });
                         },
                         onError: function(result) {
-                            console.log('Payment error:', result); // ✅ ADDED
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Pembayaran Gagal',
@@ -408,12 +425,10 @@ $(document).ready(function() {
                             resetPayButton();
                         },
                         onClose: function() {
-                            console.log('Payment popup closed'); // ✅ ADDED
                             resetPayButton();
                         }
                     });
                 } else {
-                    console.error('Response not success:', response.message); // ✅ ADDED
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -424,9 +439,6 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                console.error('AJAX Error:', xhr); // ✅ ADDED
-                console.error('Response:', xhr.responseJSON); // ✅ ADDED
-                
                 let errorMsg = 'Terjadi kesalahan pada server.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;

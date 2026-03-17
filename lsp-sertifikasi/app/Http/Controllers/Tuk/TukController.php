@@ -82,38 +82,38 @@ class TukController extends Controller
     }
 
     /**
-     * Collective Registration - Store
+     * Collective Registration - Store - UPDATED
      */
     public function storeCollectiveRegistration(Request $request)
     {
+        // ✅ HAPUS validasi phase_1_percentage
         $request->validate([
             'participants' => 'required|array|min:1',
             'participants.*.name' => 'required|string|max:255',
             'participants.*.email' => 'required|email|unique:users,email',
             'skema_id' => 'required|exists:skemas,id',
-            'payment_phases' => 'required|in:single,two_phase'        
+            'payment_phases' => 'required|in:single,two_phase',
+            // ❌ HAPUS: 'phase_1_percentage' => 'required_if:payment_phases,two_phase|nullable|numeric|min:0|max:100',
+            'preferred_date' => 'required|date|after:today',
+            'training_flag' => 'required|boolean',
         ]);
 
         $tuk = auth()->user()->tuk;
         $registeredCount = 0;
         $errors = [];
         
-        // Generate batch ID untuk kolektif
         $batchId = 'BATCH-' . $tuk->code . '-' . time();
 
         DB::beginTransaction();
         try {
             foreach ($request->participants as $index => $participant) {
-                // Check if email already exists
                 if (User::where('email', $participant['email'])->exists()) {
                     $errors[] = "Email {$participant['email']} sudah terdaftar";
                     continue;
                 }
 
-                // Generate random password (6 digit)
                 $password = 'password123';
                 
-                // Create user account
                 $user = User::create([
                     'name' => $participant['name'],
                     'email' => $participant['email'],
@@ -121,28 +121,31 @@ class TukController extends Controller
                     'role' => 'asesi',
                     'is_active' => true,
                     'password_changed_at' => null,
-                    'email_verified_at' => now(), // ✅ Mandiri user sudah verifikasi email
+                    'email_verified_at' => now(),
                 ]);
 
-                // Create asesmen record
-                Asesmen::create([
+                $asesmenData = [
                     'user_id' => $user->id,
                     'tuk_id' => $tuk->id,
                     'skema_id' => $request->skema_id,
                     'full_name' => $participant['name'],
+                    'preferred_date' => $request->preferred_date,
+                    'training_flag' => $request->training_flag,
                     'registration_date' => now(),
                     'status' => 'registered',
                     'registered_by' => auth()->id(),
                     'is_collective' => true,
                     'collective_batch_id' => $batchId,
                     'payment_phases' => $request->payment_phases,
-                    'collective_paid_by_tuk' => true, // TUK yang akan bayar
-                    'skip_payment' => true, // Skip payment step untuk asesi
+                    'collective_paid_by_tuk' => true,
+                    'skip_payment' => true,
+                ];
 
-                ]);
+                // ❌ HAPUS bagian set phase percentages
+                // Admin yang akan set nominal fase 1 dan fase 2 nanti
 
-                // TODO: Send email with credentials
-                // For now, just log the password
+                Asesmen::create($asesmenData);
+
                 Log::info("Collective Registration - User: {$participant['email']}, Password: {$password}");
 
                 $registeredCount++;
@@ -156,11 +159,7 @@ class TukController extends Controller
                 $message .= " Namun " . count($errors) . " peserta gagal didaftarkan: " . implode(', ', $errors);
             }
 
-            if ($request->payment_timing === 'before') {
-                $message .= " Setelah Admin LSP memverifikasi semua peserta, Anda dapat melakukan pembayaran kolektif.";
-            } else {
-                $message .= " Anda akan melakukan pembayaran kolektif setelah semua peserta menyelesaikan asesmen.";
-            }
+            $message .= " TUK sudah mengatur jadwal dan opsi pelatihan untuk batch ini.";
 
             return redirect()->route('tuk.asesi')
                 ->with('success', $message)
@@ -176,7 +175,6 @@ class TukController extends Controller
                 ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
-
     /**
      * List Asesi
      */
@@ -208,30 +206,31 @@ class TukController extends Controller
         return view('tuk.asesi.index', compact('asesmens', 'collectiveBatches', 'tuk'));
     }
 
-    /**
-     * Scheduling - List asesi yang perlu dijadwalkan
+/**
+     * Scheduling - List asesi yang perlu dijadwalkan - FIXED
      */
     public function schedules()
     {
         $tuk = auth()->user()->tuk;
         
+        // Asesi yang perlu dijadwalkan (status = paid)
         $asesmens = Asesmen::with(['user', 'skema'])
             ->where('tuk_id', $tuk->id)
             ->where('status', 'paid')
             ->get();
 
-        $scheduled = Schedule::with(['asesmen.user'])
-            ->whereHas('asesmen', function($q) use ($tuk) {
-                $q->where('tuk_id', $tuk->id);
-            })
-            ->orderBy('assessment_date', 'asc') // ✅ FIXED: dari scheduled_date ke assessment_date
+        // ✅ FIXED: Schedule has hasMany relationship with asesmens
+        // Get schedules yang ada asesinya dari TUK ini
+        $scheduled = Schedule::with(['asesmens.user', 'asesmens.skema', 'tuk', 'skema'])
+            ->where('tuk_id', $tuk->id) // ✅ Direct where on tuk_id
+            ->orderBy('assessment_date', 'asc')
             ->get();
 
         return view('tuk.schedules.index', compact('asesmens', 'scheduled', 'tuk'));
     }
 
     /**
-     * Batch Create Schedule
+     * Batch Create Schedule - FIXED
      */
     public function batchCreateSchedule(Request $request)
     {
@@ -251,7 +250,24 @@ class TukController extends Controller
         try {
             $scheduledCount = 0;
             $errors = [];
+            
+            // Get first asesmen to determine skema
+            $firstAsesmen = Asesmen::find($request->asesmen_ids[0]);
+            $skemaId = $firstAsesmen->skema_id;
 
+            // ✅ FIXED: Create ONE schedule for this group
+            $schedule = Schedule::create([
+                'tuk_id' => $tuk->id,
+                'skema_id' => $skemaId,
+                'assessment_date' => $request->assessment_date,
+                'start_time' => $request->start_time,
+                'end_time' => $request->end_time,
+                'location' => $request->location,
+                'notes' => $request->notes,
+                'created_by' => auth()->id(),
+            ]);
+
+            // ✅ FIXED: Assign all asesmens to this ONE schedule
             foreach ($request->asesmen_ids as $asesmenId) {
                 $asesmen = Asesmen::find($asesmenId);
 
@@ -268,31 +284,23 @@ class TukController extends Controller
                 }
 
                 // Check if already has schedule
-                if ($asesmen->schedule) {
+                if ($asesmen->schedule_id) {
                     $errors[] = "Asesmen #{$asesmenId} sudah memiliki jadwal";
                     continue;
                 }
 
-                // Create schedule
-                Schedule::create([
-                    'asesmen_id' => $asesmen->id,
-                    'assessment_date' => $request->assessment_date,
-                    'start_time' => $request->start_time,
-                    'end_time' => $request->end_time,
-                    'location' => $request->location,
-                    'notes' => $request->notes,
-                    'created_by' => auth()->id(),
+                // ✅ Assign to schedule
+                $asesmen->update([
+                    'schedule_id' => $schedule->id,
+                    'status' => 'scheduled'
                 ]);
-
-                // Update asesmen status
-                $asesmen->update(['status' => 'scheduled']);
 
                 $scheduledCount++;
             }
 
             DB::commit();
 
-            $message = "$scheduledCount jadwal asesmen berhasil dibuat!";
+            $message = "$scheduledCount asesi berhasil dijadwalkan!";
             
             if (!empty($errors)) {
                 $message .= " Namun " . count($errors) . " gagal: " . implode(', ', $errors);
@@ -305,6 +313,7 @@ class TukController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Batch Schedule Error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return redirect()->back()
                 ->withInput()
@@ -313,51 +322,58 @@ class TukController extends Controller
     }
 
     /**
-     * View Schedule Detail
+     * View Schedule Detail - FIXED
      */
     public function viewSchedule(Schedule $schedule)
     {
         $tuk = auth()->user()->tuk;
         
-        // Verify schedule belongs to this TUK
-        if ($schedule->asesmen->tuk_id != $tuk->id) {
+        // ✅ FIXED: Verify schedule belongs to this TUK
+        if ($schedule->tuk_id != $tuk->id) {
             abort(403);
         }
+
+        // ✅ FIXED: Get first asesmen from the schedule
+        $firstAsesmen = $schedule->asesmens()->first();
 
         return response()->json([
             'success' => true,
             'schedule' => [
                 'id' => $schedule->id,
-                'asesmen_name' => $schedule->asesmen->full_name ?? $schedule->asesmen->user->name,
-                'skema' => $schedule->asesmen->skema->name,
+                'asesmen_name' => $firstAsesmen->full_name ?? $firstAsesmen->user->name,
+                'skema' => $schedule->skema->name,
                 'assessment_date' => $schedule->assessment_date->format('d F Y'),
                 'start_time' => $schedule->start_time,
                 'end_time' => $schedule->end_time,
                 'location' => $schedule->location,
                 'notes' => $schedule->notes,
-                'status' => $schedule->asesmen->status_label,
+                'status' => $firstAsesmen->status_label,
+                'total_asesmens' => $schedule->asesmens->count(),
             ]
         ]);
     }
 
     /**
-     * Edit Schedule - Get data
+     * Edit Schedule - Get data - FIXED
      */
     public function editSchedule(Schedule $schedule)
     {
         $tuk = auth()->user()->tuk;
         
-        // Verify schedule belongs to this TUK
-        if ($schedule->asesmen->tuk_id != $tuk->id) {
+        // ✅ FIXED: Verify schedule belongs to this TUK
+        if ($schedule->tuk_id != $tuk->id) {
             abort(403);
         }
+
+        // ✅ FIXED: Get asesmens list
+        $asesmensNames = $schedule->asesmens->pluck('full_name')->join(', ');
 
         return response()->json([
             'success' => true,
             'schedule' => [
                 'id' => $schedule->id,
-                'asesmen_id' => $schedule->asesmen_id,
-                'asesmen_name' => $schedule->asesmen->full_name ?? $schedule->asesmen->user->name,
+                'asesmen_names' => $asesmensNames,
+                'total_asesmens' => $schedule->asesmens->count(),
                 'assessment_date' => $schedule->assessment_date->format('Y-m-d'),
                 'start_time' => $schedule->start_time,
                 'end_time' => $schedule->end_time,
@@ -368,56 +384,158 @@ class TukController extends Controller
     }
 
     /**
-     * Update Schedule - Submit
-     */
-    public function updateScheduleSubmit(Request $request, Schedule $schedule)
-    {
-        $tuk = auth()->user()->tuk;
-        
-        // Verify schedule belongs to this TUK
-        if ($schedule->asesmen->tuk_id != $tuk->id) {
-            abort(403);
-        }
-
-        $request->validate([
-            'assessment_date' => 'required|date',
-            'start_time' => 'required',
-            'end_time' => 'required|after:start_time',
-            'location' => 'required|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
-
-        $schedule->update([
-            'assessment_date' => $request->assessment_date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
-            'location' => $request->location,
-            'notes' => $request->notes,
-        ]);
-
-        return redirect()->route('tuk.schedules')
-            ->with('success', 'Jadwal asesmen berhasil diupdate!');
-    }
-
-    /**
-     * Delete Schedule
+     * Delete Schedule - FIXED
      */
     public function deleteSchedule(Schedule $schedule)
     {
         $tuk = auth()->user()->tuk;
         
-        // Verify schedule belongs to this TUK
-        if ($schedule->asesmen->tuk_id != $tuk->id) {
+        // ✅ FIXED: Verify schedule belongs to this TUK
+        if ($schedule->tuk_id != $tuk->id) {
             abort(403);
         }
 
-        // Update asesmen status back to 'paid'
-        $schedule->asesmen->update(['status' => 'paid']);
+        DB::beginTransaction();
+        try {
+            // ✅ FIXED: Update all asesmens in this schedule back to 'paid'
+            $schedule->asesmens()->update([
+                'schedule_id' => null,
+                'status' => 'paid'
+            ]);
 
-        $schedule->delete();
+            $schedule->delete();
 
-        return redirect()->route('tuk.schedules')
-            ->with('success', 'Jadwal berhasil dihapus. Status asesi dikembalikan ke "Sudah Bayar".');
+            DB::commit();
+
+            return redirect()->route('tuk.schedules')
+                ->with('success', 'Jadwal berhasil dihapus. Status asesi dikembalikan ke "Sudah Bayar".');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Delete Schedule Error: ' . $e->getMessage());
+            
+            return redirect()->back()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete Schedule via AJAX - FIXED
+     */
+    public function deleteScheduleAjax(Request $request, Schedule $schedule)
+    {
+        $tuk = auth()->user()->tuk;
+        
+        // ✅ FIXED: Verify schedule belongs to this TUK
+        if ($schedule->tuk_id != $tuk->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized'
+            ], 403);
+        }
+
+        DB::beginTransaction();
+        try {
+            // ✅ FIXED: Update all asesmens back to 'paid'
+            $asesmensCount = $schedule->asesmens->count();
+            
+            $schedule->asesmens()->update([
+                'schedule_id' => null,
+                'status' => 'paid'
+            ]);
+            
+            $schedule->delete();
+            
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Jadwal berhasil dihapus! {$asesmensCount} asesi dikembalikan ke status 'Sudah Bayar'."
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Delete Schedule Error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export Schedule Batch to Excel - FIXED
+     */
+    public function exportScheduleBatch(Request $request, $groupKey)
+    {
+        $tuk = auth()->user()->tuk;
+        
+        // Decode the group key
+        $groupData = $request->input('group_data');
+        
+        if (!$groupData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Group data tidak ditemukan'
+            ], 400);
+        }
+        
+        // Parse group data
+        $groupArray = explode('|', $groupData);
+        if (count($groupArray) !== 4) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid group data format'
+            ], 400);
+        }
+        
+        list($date, $startTime, $endTime, $location) = $groupArray;
+        
+        // ✅ FIXED: Get schedules directly by tuk_id
+        $schedules = Schedule::with(['asesmens.user', 'asesmens.skema'])
+            ->where('tuk_id', $tuk->id)
+            ->whereDate('assessment_date', $date)
+            ->where('start_time', $startTime)
+            ->where('end_time', $endTime)
+            ->where('location', $location)
+            ->orderBy('assessment_date', 'asc')
+            ->get();
+        
+        if ($schedules->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada jadwal yang ditemukan'
+            ], 404);
+        }
+        
+        // Prepare group info for Excel
+        $groupInfo = [
+            'date' => \Carbon\Carbon::parse($date)->isoFormat('dddd, D MMMM Y'),
+            'time' => $startTime . ' - ' . $endTime . ' WIB',
+            'location' => $location,
+        ];
+        
+        try {
+            $scheduleIds = $schedules->pluck('id')->toArray();
+            
+            // Generate filename
+            $filename = 'Daftar_Asesmen_' . \Carbon\Carbon::parse($date)->format('Ymd') . '_' . str_replace(':', '', $startTime) . '.xlsx';
+            
+            // Return Excel download
+            return \Maatwebsite\Excel\Facades\Excel::download(
+                new \App\Exports\ScheduleExport($scheduleIds, $groupInfo),
+                $filename
+            );
+            
+        } catch (\Exception $e) {
+            Log::error('Export Schedule Error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Error saat export: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -828,47 +946,6 @@ class TukController extends Controller
     }
 
     /**
-     * Delete Schedule via AJAX
-     */
-    public function deleteScheduleAjax(Request $request, Schedule $schedule)
-    {
-        $tuk = auth()->user()->tuk;
-        
-        // Verify schedule belongs to this TUK
-        if ($schedule->asesmen->tuk_id != $tuk->id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
-        }
-
-        DB::beginTransaction();
-        try {
-            // Update asesmen status back to 'paid'
-            $schedule->asesmen->update(['status' => 'paid']);
-            
-            $asesmenName = $schedule->asesmen->full_name ?? $schedule->asesmen->user->name;
-            $schedule->delete();
-            
-            DB::commit();
-
-            return response()->json([
-                'success' => true,
-                'message' => "Jadwal untuk {$asesmenName} berhasil dihapus!"
-            ]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Delete Schedule Error: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-    /**
      * Update Schedule via AJAX
      */
     public function updateScheduleAjax(Request $request, Schedule $schedule)
@@ -922,81 +999,6 @@ class TukController extends Controller
         }
     }
 
-    /**
-     * Export Schedule Batch to Excel
-     */
-    public function exportScheduleBatch(Request $request, $groupKey)
-    {
-        $tuk = auth()->user()->tuk;
-        
-        // Decode the group key
-        $groupData = $request->input('group_data');
-        
-        if (!$groupData) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Group data tidak ditemukan'
-            ], 400);
-        }
-        
-        // Parse group data
-        $groupArray = explode('|', $groupData);
-        if (count($groupArray) !== 4) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid group data format'
-            ], 400);
-        }
-        
-        list($date, $startTime, $endTime, $location) = $groupArray;
-        
-        // Get all schedules in this group
-        $schedules = Schedule::with(['asesmen'])
-            ->whereHas('asesmen', function($q) use ($tuk) {
-                $q->where('tuk_id', $tuk->id);
-            })
-            ->whereDate('assessment_date', $date)
-            ->where('start_time', $startTime)
-            ->where('end_time', $endTime)
-            ->where('location', $location)
-            ->orderBy('assessment_date', 'asc')
-            ->get();
-        
-        if ($schedules->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Tidak ada jadwal yang ditemukan'
-            ], 404);
-        }
-        
-        // Prepare group info for Excel
-        $groupInfo = [
-            'date' => \Carbon\Carbon::parse($date)->isoFormat('dddd, D MMMM Y'),
-            'time' => $startTime . ' - ' . $endTime . ' WIB',
-            'location' => $location,
-        ];
-        
-        try {
-            $scheduleIds = $schedules->pluck('id')->toArray();
-            
-            // Generate filename
-            $filename = 'Daftar_Asesmen_' . \Carbon\Carbon::parse($date)->format('Ymd') . '_' . str_replace(':', '', $startTime) . '.xlsx';
-            
-            // Return Excel download
-            return \Maatwebsite\Excel\Facades\Excel::download(
-                new \App\Exports\ScheduleExport($scheduleIds, $groupInfo),
-                $filename
-            );
-            
-        } catch (\Exception $e) {
-            Log::error('Export Schedule Error: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Error saat export: ' . $e->getMessage()
-            ], 500);
-        }
-    }
 
     /**
      * Download template for collective registration
@@ -1260,5 +1262,105 @@ class TukController extends Controller
             'totalAmount',
             'tuk'
         ));
+    }
+
+    /**
+     * Show verification form for single asesi
+     */
+    public function showVerification(Asesmen $asesmen)
+    {
+        $tuk = auth()->user()->tuk;
+        
+        // Verify asesmen belongs to this TUK
+        if ($asesmen->tuk_id != $tuk->id) {
+            abort(403);
+        }
+        
+        return view('tuk.verifications.show', compact('asesmen', 'tuk'));
+    }
+
+    /**
+     * Show list of collective payment batches
+     */
+    public function collectivePayments()
+    {
+        $tuk = auth()->user()->tuk;
+        
+        // Get all collective batches from this TUK
+        $batches = Asesmen::where('tuk_id', $tuk->id)
+            ->whereNotNull('collective_batch_id')
+            ->where('is_collective', true)
+            ->where('collective_paid_by_tuk', true)
+            ->with(['skema', 'payments'])
+            ->get()
+            ->groupBy('collective_batch_id')
+            ->map(function($batch) {
+                $firstAsesmen = $batch->first();
+                
+                // Determine payment status and phase
+                $paymentStatus = 'unpaid';
+                $currentPhase = null;
+                $canPayPhase1 = false;
+                $canPayPhase2 = false;
+                
+                if ($firstAsesmen->payment_phases === 'single') {
+                    // Single phase payment
+                    $allPaid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'verified')->exists());
+                    $anyPending = $batch->some(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'pending')->exists());
+                    
+                    if ($allPaid) {
+                        $paymentStatus = 'paid';
+                    } elseif ($anyPending) {
+                        $paymentStatus = 'pending';
+                    } else {
+                        $paymentStatus = 'unpaid';
+                        $canPayPhase1 = $batch->every(fn($a) => $a->status === 'verified' && $a->fee_amount > 0);
+                    }
+                    
+                    $currentPhase = 'full';
+                } else {
+                    // Two phase payment
+                    $phase1Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists());
+                    $phase2Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists());
+                    
+                    if ($phase1Paid && $phase2Paid) {
+                        $paymentStatus = 'fully_paid';
+                        $currentPhase = 'phase_2';
+                    } elseif ($phase1Paid) {
+                        $paymentStatus = 'phase_1_paid';
+                        $currentPhase = 'phase_2';
+                        
+                        // Check if can pay phase 2
+                        $allAssessed = $batch->every(fn($a) => in_array($a->status, ['assessed', 'certified']));
+                        $canPayPhase2 = $allAssessed;
+                    } else {
+                        $paymentStatus = 'unpaid';
+                        $currentPhase = 'phase_1';
+                        
+                        // Check if can pay phase 1
+                        $canPayPhase1 = $batch->every(fn($a) => $a->status === 'verified' && $a->fee_amount > 0);
+                    }
+                }
+                
+                return [
+                    'batch_id' => $firstAsesmen->collective_batch_id,
+                    'skema' => $firstAsesmen->skema,
+                    'total_participants' => $batch->count(),
+                    'registration_date' => $firstAsesmen->registration_date,
+                    'payment_phases' => $firstAsesmen->payment_phases,
+                    'payment_status' => $paymentStatus,
+                    'current_phase' => $currentPhase,
+                    'can_pay_phase_1' => $canPayPhase1,
+                    'can_pay_phase_2' => $canPayPhase2,
+                    'total_amount' => $batch->sum('fee_amount'),
+                    'phase_1_amount' => $batch->sum('phase_1_amount'),
+                    'phase_2_amount' => $batch->sum('phase_2_amount'),
+                    'asesmens' => $batch,
+                ];
+            })
+            ->sortByDesc('registration_date')
+            ->values();
+        
+        return view('tuk.payments.index', compact('batches', 'tuk'));
     }
 }

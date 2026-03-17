@@ -37,11 +37,11 @@
                                 <td>:
                                     @if($paymentPhases === 'single')
                                     <span class="badge bg-success">
-                                        <i class="bi bi-1-circle"></i> 1 Fase (100%)
+                                        <i class="bi bi-1-circle"></i> 1 Fase
                                     </span>
                                     @else
                                     <span class="badge bg-primary">
-                                        <i class="bi bi-2-circle"></i> 2 Fase (50% + 50%)
+                                        <i class="bi bi-2-circle"></i> 2 Fase
                                     </span>
                                     @endif
                                 </td>
@@ -76,7 +76,7 @@
                             </tr>
                             @if($paymentPhases === 'two_phase')
                             <tr>
-                                <td><strong>Fase 1 (50%)</strong></td>
+                                <td><strong>Fase 1</strong></td>
                                 <td>:
                                     @if($phase1Status === 'paid')
                                     <span class="badge bg-success">Lunas</span>
@@ -86,7 +86,7 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Fase 2 (50%)</strong></td>
+                                <td><strong>Fase 2</strong></td>
                                 <td>:
                                     @if($phase2Status === 'paid')
                                     <span class="badge bg-success">Lunas</span>

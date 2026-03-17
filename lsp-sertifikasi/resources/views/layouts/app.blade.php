@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- DataTables -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 
     <style>
     :root {
@@ -146,6 +147,73 @@
             transform: scale(1.2);
         }
     }
+
+
+    .sidebar-divider {
+        padding: 0.75rem 1rem;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar-divider span {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Badge positioning in sidebar */
+    .nav-link {
+        display: flex;
+        align-items: center;
+        position: relative;
+    }
+
+    .nav-link .badge {
+        position: absolute;
+        right: 1rem;
+    }
+
+    .nav-link i {
+        margin-right: 0.75rem;
+        width: 20px;
+        text-align: center;
+    }
+
+    @media print {
+
+        /* Hide unnecessary elements */
+        .sidebar,
+        .navbar,
+        .btn,
+        .card-header button,
+        .filter-form {
+            display: none !important;
+        }
+
+        /* Full width for content */
+        .main-content {
+            margin-left: 0 !important;
+            width: 100% !important;
+        }
+
+        /* Better table printing */
+        table {
+            font-size: 10pt;
+        }
+
+        /* Page breaks */
+        .card {
+            page-break-inside: avoid;
+        }
+
+        /* Remove backgrounds for print */
+        .card,
+        .table-light {
+            background: white !important;
+        }
+    }
     </style>
 
     @stack('styles')
@@ -230,6 +298,7 @@
     <!-- DataTables -->
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

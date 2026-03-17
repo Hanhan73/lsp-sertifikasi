@@ -148,31 +148,6 @@
         </div>
     </div>
 
-    <!-- Help Card -->
-    <div class="col-lg-4">
-        <div class="card bg-light">
-            <div class="card-body">
-                <h6><i class="bi bi-info-circle"></i> Panduan</h6>
-                <ul class="small mb-0">
-                    <li>Kode TUK harus unik dan tidak boleh diubah setelah dibuat</li>
-                    <li>Logo TUK akan ditampilkan di sertifikat dan dokumen resmi</li>
-                    <li>Email akan digunakan untuk login ke sistem TUK</li>
-                    <li>Password minimal 8 karakter untuk keamanan</li>
-                    <li>Manager dan Staff bersifat opsional, dapat diisi nanti</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="card bg-primary text-white mt-3">
-            <div class="card-body">
-                <h6><i class="bi bi-shield-check"></i> Keamanan</h6>
-                <p class="small mb-0">
-                    Informasi login akan dikirim ke email TUK setelah akun dibuat.
-                    Pastikan email yang dimasukkan valid dan dapat diakses.
-                </p>
-            </div>
-        </div>
-    </div>
 </div>
 @endsection
 

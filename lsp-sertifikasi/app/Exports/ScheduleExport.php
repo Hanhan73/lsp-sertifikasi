@@ -18,6 +18,7 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithS
 {
     protected $scheduleIds;
     protected $groupInfo;
+    protected $rowNumber = 0;
 
     public function __construct($scheduleIds, $groupInfo = [])
     {
@@ -26,14 +27,33 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithS
     }
 
     /**
-     * Get the schedules collection
+     * ✅ FIXED: Get asesmens from schedules (not schedules themselves)
      */
     public function collection()
     {
-        return Schedule::with(['asesmen.user', 'asesmen.skema', 'asesmen.tuk'])
+        // Get all schedules with their asesmens
+        $schedules = Schedule::with(['asesmens.user', 'asesmens.skema', 'tuk', 'skema'])
             ->whereIn('id', $this->scheduleIds)
             ->orderBy('assessment_date', 'asc')
             ->get();
+
+        // ✅ FIXED: Flatten to get all asesmens from all schedules
+        $asesmens = $schedules->flatMap(function($schedule) {
+            // Attach schedule data to each asesmen for mapping
+            return $schedule->asesmens->map(function($asesmen) use ($schedule) {
+                $asesmen->schedule_data = [
+                    'assessment_date' => $schedule->assessment_date,
+                    'start_time' => $schedule->start_time,
+                    'end_time' => $schedule->end_time,
+                    'location' => $schedule->location,
+                    'notes' => $schedule->notes,
+                    'tuk_name' => $schedule->tuk->name ?? '-',
+                ];
+                return $asesmen;
+            });
+        });
+
+        return $asesmens->sortBy('full_name')->values();
     }
 
     /**
@@ -73,17 +93,14 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithS
     }
 
     /**
-     * Map data for each row
+     * ✅ FIXED: Map data for each asesmen (not schedule)
      */
-    public function map($schedule): array
+    public function map($asesmen): array
     {
-        static $rowNumber = 0;
-        $rowNumber++;
-
-        $asesmen = $schedule->asesmen;
+        $this->rowNumber++;
         
         return [
-            $rowNumber,
+            $this->rowNumber,
             $asesmen->id,
             $asesmen->nik ?? '-',
             $asesmen->full_name ?? $asesmen->user->name ?? '-',
@@ -100,16 +117,16 @@ class ScheduleExport implements FromCollection, WithHeadings, WithMapping, WithS
             $asesmen->budget_source ?? '-',
             $asesmen->institution ?? '-',
             $asesmen->skema->name ?? '-',
-            $asesmen->tuk->name ?? '-',
-            $schedule->assessment_date->format('d F Y'),
-            $schedule->start_time . ' - ' . $schedule->end_time,
-            $schedule->location,
+            $asesmen->schedule_data['tuk_name'] ?? '-',
+            $asesmen->schedule_data['assessment_date']->format('d F Y'),
+            $asesmen->schedule_data['start_time'] . ' - ' . $asesmen->schedule_data['end_time'],
+            $asesmen->schedule_data['location'],
             $asesmen->is_collective ? 'Kolektif' : 'Mandiri',
             $asesmen->is_collective ? $asesmen->collective_batch_id : '-',
             $asesmen->status_label,
             $asesmen->training_flag ? 'Ya' : 'Tidak',
             'Rp ' . number_format($asesmen->fee_amount, 0, ',', '.'),
-            $schedule->notes ?? '-',
+            $asesmen->schedule_data['notes'] ?? '-',
         ];
     }
 

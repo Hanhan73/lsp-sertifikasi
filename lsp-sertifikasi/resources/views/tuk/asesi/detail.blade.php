@@ -423,7 +423,7 @@
                 @endif
 
                 @if($asesmen->status === 'paid' && !$asesmen->schedule)
-                <a href="{{ route('tuk.schedules.create', ['asesmen_id' => $asesmen->id]) }}"
+                <a href="{{ route('tuk.schedules', ['asesmen_id' => $asesmen->id]) }}"
                     class="btn btn-warning w-100 mb-2">
                     <i class="bi bi-calendar-plus"></i> Buat Jadwal
                 </a>

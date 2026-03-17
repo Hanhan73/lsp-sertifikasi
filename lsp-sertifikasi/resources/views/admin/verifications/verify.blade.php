@@ -4,27 +4,7 @@
 @section('page-title', 'Penetapan Biaya - ' . ($asesmen->full_name ?? $asesmen->user->name))
 
 @section('sidebar')
-<a href="{{ route('admin.dashboard') }}" class="nav-link">
-    <i class="bi bi-speedometer2"></i> Dashboard
-</a>
-<a href="{{ route('admin.tuks') }}" class="nav-link">
-    <i class="bi bi-building"></i> Kelola TUK
-</a>
-<a href="{{ route('admin.skemas') }}" class="nav-link">
-    <i class="bi bi-file-earmark-text"></i> Kelola Skema
-</a>
-<a href="{{ route('admin.verifications') }}" class="nav-link active">
-    <i class="bi bi-cash-coin"></i> Penetapan Biaya
-</a>
-<a href="{{ route('admin.payments') }}" class="nav-link">
-    <i class="bi bi-credit-card"></i> Validasi Pembayaran
-</a>
-<a href="{{ route('admin.assessments') }}" class="nav-link">
-    <i class="bi bi-clipboard-check"></i> Input Hasil Asesmen
-</a>
-<a href="{{ route('admin.asesi') }}" class="nav-link">
-    <i class="bi bi-people"></i> Semua Asesi
-</a>
+@include('admin.partials.sidebar')
 @endsection
 
 @section('content')
@@ -121,7 +101,6 @@
                                 <td><strong>Biaya Skema</strong></td>
                                 <td>: Rp {{ number_format($asesmen->skema->fee ?? 0, 0, ',', '.') }}</td>
                             </tr>
-                            <!-- NEW: Training Flag -->
                             <tr>
                                 <td><strong>Pelatihan</strong></td>
                                 <td>:
@@ -288,12 +267,8 @@
                     <i class="bi bi-info-circle"></i>
                     <strong>Pembayaran 2 Fase</strong>
                     <p class="mb-0 mt-2 small">
-                        TUK akan membayar dalam 2 tahap:
+                        TUK akan membayar dalam 2 tahap dengan nominal yang Anda tentukan.
                     </p>
-                    <ul class="small mb-0 mt-1">
-                        <li><strong>Fase 1 (50%)</strong>: Setelah penetapan biaya ini</li>
-                        <li><strong>Fase 2 (50%)</strong>: Setelah asesmen selesai</li>
-                    </ul>
                 </div>
                 @else
                 <div class="alert alert-info">
@@ -308,17 +283,23 @@
                 <form action="{{ route('admin.verifications.process', $asesmen) }}" method="POST">
                     @csrf
 
+                    @php
+                        // ✅ CALCULATE DEFAULT FEE (termasuk pelatihan)
+                        $baseFee = $asesmen->skema->fee ?? 0;
+                        $trainingFee = $asesmen->training_flag ? 1500000 : 0;
+                        $defaultFee = $baseFee + $trainingFee;
+                    @endphp
+
                     <div class="mb-3">
                         <label class="form-label">Biaya Skema (Referensi)</label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="text" class="form-control"
-                                value="{{ number_format($asesmen->skema->fee ?? 0, 0, ',', '.') }}" readonly>
+                                value="{{ number_format($baseFee, 0, ',', '.') }}" readonly>
                         </div>
                         <small class="text-muted">Harga default dari skema {{ $asesmen->skema->name ?? '-' }}</small>
                     </div>
 
-                    <!-- NEW: Training Fee Info -->
                     @if($asesmen->training_flag)
                     <div class="mb-3">
                         <label class="form-label">Biaya Pelatihan</label>
@@ -328,29 +309,37 @@
                                 readonly>
                         </div>
                         <small class="text-success">
-                            <i class="bi bi-mortarboard-fill"></i> Peserta memilih ikut pelatihan
+                            <i class="bi bi-mortarboard-fill"></i> Peserta ikut pelatihan
                         </small>
                     </div>
+                    @endif
 
                     <div class="mb-3">
                         <label class="form-label">Total Rekomendasi</label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="text" class="form-control"
-                                value="{{ number_format(($asesmen->skema->fee ?? 0) + 1500000, 0, ',', '.') }}"
+                                value="{{ number_format($defaultFee, 0, ',', '.') }}"
                                 readonly>
                         </div>
-                        <small class="text-muted">Skema + Pelatihan</small>
+                        <small class="text-muted">
+                            @if($asesmen->training_flag)
+                            Skema + Pelatihan
+                            @else
+                            Biaya Skema
+                            @endif
+                        </small>
                     </div>
-                    @endif
+
+                    <hr>
 
                     <div class="mb-3">
                         <label class="form-label">Biaya yang Ditetapkan <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="text" class="form-control rupiah @error('fee_amount') is-invalid @enderror"
-                                name="fee_amount" id="fee_amount" required min="0" step="1000"
-                                value="{{ old('fee_amount', ($asesmen->skema->fee ?? 0) + ($asesmen->training_flag ? 1500000 : 0)) }}"
+                                name="fee_amount" id="fee_amount" required
+                                value="{{ old('fee_amount', number_format($defaultFee, 0, ',', '.')) }}"
                                 placeholder="Masukkan biaya">
                         </div>
                         <small class="text-muted">Anda dapat menyesuaikan biaya sesuai kebijakan LSP</small>
@@ -359,19 +348,36 @@
                         @enderror
                     </div>
 
-                    <!-- NEW: Phase Breakdown -->
                     @if($asesmen->payment_phases === 'two_phase')
+                    <div class="mb-3">
+                        <label class="form-label">Nominal Fase 1 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">Rp</span>
+                            <input type="text" 
+                                class="form-control rupiah" 
+                                name="phase_1_amount" 
+                                id="phase_1_amount"
+                                value="{{ old('phase_1_amount', number_format($defaultFee / 2, 0, ',', '.')) }}"
+                                placeholder="0">
+                        </div>
+                        <small class="text-muted">Masukkan nominal Fase 1 (sisanya otomatis jadi Fase 2)</small>
+                    </div>
+
                     <div class="card bg-light mb-3">
                         <div class="card-body">
                             <h6 class="mb-2">Breakdown Pembayaran:</h6>
                             <table class="table table-sm table-borderless mb-0">
                                 <tr>
-                                    <td>Fase 1 (50%):</td>
-                                    <td class="text-end"><strong id="phase_1_display">Rp 0</strong></td>
+                                    <td>Fase 1:</td>
+                                    <td class="text-end"><strong class="text-primary" id="phase_1_display">Rp 0</strong></td>
                                 </tr>
                                 <tr>
-                                    <td>Fase 2 (50%):</td>
-                                    <td class="text-end"><strong id="phase_2_display">Rp 0</strong></td>
+                                    <td>Fase 2:</td>
+                                    <td class="text-end"><strong class="text-success" id="phase_2_display">Rp 0</strong></td>
+                                </tr>
+                                <tr class="table-light">
+                                    <td><strong>Total:</strong></td>
+                                    <td class="text-end"><strong id="total_display">Rp 0</strong></td>
                                 </tr>
                             </table>
                         </div>
@@ -415,21 +421,69 @@
 $(document).ready(function() {
     const paymentPhases = '{{ $asesmen->payment_phases }}';
 
-    // Format currency input and calculate phases
-    $('#fee_amount').on('input', function() {
-        let val = parseFloat($(this).val()) || 0;
+    function updatePhaseBreakdown() {
+        // Get values without formatting
+        const totalFeeRaw = $('#fee_amount').val().replace(/\./g, '');
+        const phase1AmountRaw = $('#phase_1_amount').val().replace(/\./g, '');
+        
+        const totalFee = parseFloat(totalFeeRaw) || 0;
+        const phase1Amount = parseFloat(phase1AmountRaw) || (totalFee / 2);
+        const phase2Amount = totalFee - phase1Amount;
 
         if (paymentPhases === 'two_phase') {
-            const phase1 = val / 2;
-            const phase2 = val / 2;
+            // Validation
+            if (phase1Amount > totalFee) {
+                $('#phase_1_amount').addClass('is-invalid');
+                $('#phase_1_display').html('<span class="text-danger">Tidak valid!</span>');
+                $('#phase_2_display').html('<span class="text-danger">-</span>');
+                $('#total_display').html('<span class="text-danger">-</span>');
+                return;
+            } else if (phase1Amount < 0 || phase2Amount < 0) {
+                $('#phase_1_amount').addClass('is-invalid');
+                $('#phase_1_display').html('<span class="text-danger">Tidak valid!</span>');
+                $('#phase_2_display').html('<span class="text-danger">-</span>');
+                $('#total_display').html('<span class="text-danger">-</span>');
+                return;
+            } else {
+                $('#phase_1_amount').removeClass('is-invalid');
+            }
 
-            $('#phase_1_display').text('Rp ' + phase1.toLocaleString('id-ID'));
-            $('#phase_2_display').text('Rp ' + phase2.toLocaleString('id-ID'));
+            $('#phase_1_display').text('Rp ' + Math.round(phase1Amount).toLocaleString('id-ID'));
+            $('#phase_2_display').text('Rp ' + Math.round(phase2Amount).toLocaleString('id-ID'));
+            $('#total_display').text('Rp ' + Math.round(totalFee).toLocaleString('id-ID'));
+        }
+    }
+
+    // Format rupiah on input
+    $('.rupiah').on('input', function() {
+        let val = $(this).val().replace(/\D/g, '');
+        const cursorPos = this.selectionStart;
+        const oldLength = $(this).val().length;
+        
+        if (val) {
+            val = parseInt(val).toLocaleString('id-ID');
+        }
+        $(this).val(val);
+        
+        // Restore cursor position
+        const newLength = val.length;
+        const newPos = cursorPos + (newLength - oldLength);
+        this.setSelectionRange(newPos, newPos);
+        
+        // Update breakdown
+        updatePhaseBreakdown();
+    });
+    
+    // Initial update
+    updatePhaseBreakdown();
+    
+    // Before form submit, clean the values
+    $('form').on('submit', function() {
+        $('#fee_amount').val($('#fee_amount').val().replace(/\./g, ''));
+        if ($('#phase_1_amount').length) {
+            $('#phase_1_amount').val($('#phase_1_amount').val().replace(/\./g, ''));
         }
     });
-
-    // Trigger on load
-    $('#fee_amount').trigger('input');
 });
 </script>
 @endpush

@@ -74,7 +74,7 @@ class AplController extends Controller
             'verifier',
         ]);
 
-        return view('admin.apl.show-apl01', compact('aplsatu'));
+        return view('admin.apl.show', compact('aplsatu'));
     }
 
     /**

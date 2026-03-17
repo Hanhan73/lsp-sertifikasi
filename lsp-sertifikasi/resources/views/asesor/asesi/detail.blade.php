@@ -134,7 +134,7 @@
                     <span class="badge bg-{{ $aplsatu->status === 'verified' ? 'success' : 'info' }}">
                         {{ ucfirst($aplsatu->status) }}
                     </span>
-                    <a href="{{ route('asesor.apl01.preview', [$schedule, $asesmen]) }}" target="_blank"
+                    <a href="{{ route('asesor.asesi.apl01.preview', [$schedule, $asesmen]) }}" target="_blank"
                        class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-file-earmark-pdf me-1"></i>Lihat PDF
                     </a>
@@ -249,7 +249,7 @@
             </div>
         </div>
         <div class="mb-3 d-flex justify-content-end">
-            <a href="{{ route('asesor.apl02.preview', [$schedule, $asesmen]) }}" target="_blank"
+            <a href="{{ route('asesor.asesi.apl02.preview', [$schedule, $asesmen]) }}" target="_blank"
             class="btn btn-sm btn-outline-success">
                 <i class="bi bi-file-earmark-pdf me-1"></i> Preview PDF APL-02
             </a>

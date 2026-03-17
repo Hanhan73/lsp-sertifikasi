@@ -56,7 +56,7 @@ class AsesmenController extends Controller
         $aplsatu = $asesmen->aplsatu;
         $apldua  = $asesmen->apldua;
 
-        return view('admin.asesmens.show', compact('asesmen', 'aplsatu', 'apldua'));
+        return view('admin.asesmen.show', compact('asesmen', 'aplsatu', 'apldua'));
     }
 
     /**

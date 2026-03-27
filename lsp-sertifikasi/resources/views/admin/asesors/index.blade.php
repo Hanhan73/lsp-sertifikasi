@@ -458,5 +458,89 @@ function confirmDelete(id, nama) {
         }
     });
 }
+
+function buatAkunAsesor(asesorId, nama) {
+    Swal.fire({
+        title: 'Buatkan Akun Login?',
+        html: `Akun login akan dibuat untuk asesor <strong>${nama}</strong>.<br>
+               <small class="text-muted">Password default: <code>asesor123</code></small>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0d6efd',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-person-plus"></i> Ya, Buatkan!',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+ 
+        const btn = document.getElementById('btn-buat-akun-' + asesorId);
+        const resultDiv = document.getElementById('buat-akun-result-' + asesorId);
+ 
+        // Loading state
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Memproses...';
+ 
+        $.ajax({
+            url: '/admin/asesors/' + asesorId + '/buat-akun',
+            method: 'POST',
+            data: {
+                _token: '{{ csrf_token() }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Tampilkan sukses di dalam modal
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-success py-2 text-start mt-1">
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            <strong>Berhasil!</strong><br>
+                            <small>${response.message}</small>
+                        </div>`;
+ 
+                    // Sembunyikan tombol buat akun
+                    btn.style.display = 'none';
+ 
+                    // Toast notifikasi
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: response.info === 'linked'
+                            ? 'Akun berhasil dihubungkan!'
+                            : 'Akun berhasil dibuat!',
+                        text: response.message,
+                        showConfirmButton: false,
+                        timer: 4000,
+                        timerProgressBar: true,
+                    });
+ 
+                    // Refresh badge di tabel (update kolom "Punya Akun")
+                    // Reload halaman setelah 2 detik agar tabel terupdate
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2500);
+ 
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger py-2 text-start mt-1">
+                            <i class="bi bi-x-circle-fill text-danger"></i>
+                            <small>${response.message}</small>
+                        </div>`;
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-person-plus"></i> Buatkan Akun Login';
+                }
+            },
+            error: function(xhr) {
+                const msg = xhr.responseJSON?.message ?? 'Terjadi kesalahan server.';
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger py-2 text-start mt-1">
+                        <i class="bi bi-x-circle-fill text-danger"></i>
+                        <small>${msg}</small>
+                    </div>`;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-person-plus"></i> Buatkan Akun Login';
+            }
+        });
+    });
+}
 </script>
 @endpush

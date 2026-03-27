@@ -21,9 +21,13 @@ use App\Http\Controllers\Admin\AsesorAssignmentController;
 use App\Http\Controllers\Admin\AdminAsesorController;
 use App\Http\Controllers\Admin\AdminVerificationController;
 use App\Http\Controllers\Admin\AdminMandiriVerificationController;
+use App\Http\Controllers\Admin\FrAk01Controller as FrAk01AdminController;
+use App\Http\Controllers\Admin\FrAk04Controller as FrAk04AdminController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
+use App\Http\Controllers\Asesi\FrAk01Controller as FrAk01AsesiController;
+use App\Http\Controllers\Asesi\FrAk04Controller as FrAk04AsesiController;
 
 // TUK
 use App\Http\Controllers\Tuk\TukController;
@@ -31,6 +35,8 @@ use App\Http\Controllers\Tuk\TukVerificationController;
 
 // Asesor
 use App\Http\Controllers\Asesor\AsesorController;
+use App\Http\Controllers\Asesor\FrAk01Controller;
+use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController; 
 
 /*
 |--------------------------------------------------------------------------
@@ -210,6 +216,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/{asesor}/edit', [AdminAsesorController::class, 'edit'])   ->name('edit');
         Route::put('/{asesor}',      [AdminAsesorController::class, 'update']) ->name('update');
         Route::delete('/{asesor}',   [AdminAsesorController::class, 'destroy'])->name('destroy');
+        Route::post('/{asesor}/buat-akun', [AdminAsesorController::class, 'buatAkun'])->name('buat-akun');
+
     });
 
     // ── Verifikasi kolektif & mandiri ──────────────────────────────────────
@@ -263,6 +271,16 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // APL-02
     Route::prefix('apl02')->name('apl02.')->group(function () {
         Route::get('/{apldua}/pdf', [AplController::class, 'pdfApl02'])->name('pdf');
+    });
+
+    // FR.AK.01
+    Route::prefix('frak01')->name('frak01.')->group(function () {
+        Route::get('/{frak01}/pdf', [FrAk01AdminController::class, 'adminPdf'])->name('pdf');
+    });
+
+    // FR.AK.04
+    Route::prefix('frak04')->name('frak04.')->group(function () {
+        Route::get('/{frak04}/pdf', [FrAk04AdminController::class, 'adminPdf'])->name('pdf');
     });
 
     // ── Semua Asesi ────────────────────────────────────────────────────────
@@ -336,6 +354,16 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::post('/apldua/save',   [AsesiController::class, 'apldua_save'])  ->name('apldua.save');
         Route::post('/apldua/submit', [AsesiController::class, 'apldua_submit'])->name('apldua.submit');
         Route::get('/apldua/pdf',     [AsesiController::class, 'aplduaPdf'])    ->name('apldua.pdf');
+
+        // FR.AK.01
+        Route::get('/frak01',       [FrAk01AsesiController::class, 'showAsesi']) ->name('frak01');
+        Route::post('/frak01/sign', [FrAk01AsesiController::class, 'signAsesi']) ->name('frak01.sign');
+        Route::get('/frak01/pdf',   [FrAk01AsesiController::class, 'asesiPdf'])  ->name('frak01.pdf');
+
+        // FR.AK.04 — Banding Asesmen (opsional)
+        Route::get('/frak04',        [FrAk04AsesiController::class, 'showAsesi']) ->name('frak04');
+        Route::post('/frak04/submit',[FrAk04AsesiController::class, 'submitAsesi'])->name('frak04.submit');
+        Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])  ->name('frak04.pdf');
     });
 });
 
@@ -414,12 +442,32 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/apl02/preview',  [AsesorController::class, 'previewApl02'])->name('apl02.preview');
     });
 
+    // FR.AK.01 untuk asesor — hanya bisa akses asesmen yang dijadwalkan ke dia
+    Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak01')->name('frak01.')->group(function () {
+        Route::get('/',        [FrAk01Controller::class, 'show'])       ->name('show');
+        Route::post('/bukti',  [FrAk01Controller::class, 'saveBukti'])  ->name('bukti');   // simpan checkbox bukti
+        Route::post('/sign',   [FrAk01Controller::class, 'signAsesor']) ->name('sign');
+        Route::get('/pdf',     [FrAk01Controller::class, 'previewPdf']) ->name('pdf');
+    });
+
     // Perhatian: route lama pakai name asesor.apl02.verify — tambahkan alias agar tidak break
     Route::post('/schedule/{schedule}/asesi/{asesmen}/apl02/verify',
         [AsesorController::class, 'verifyApl02'])->name('apl02.verify');
 
+    // Alias untuk akses langsung dari dashboard (tanpa masuk ke detail asesmen)
     Route::get('/dokumen/sk', [AsesorController::class, 'dokumentSk'])->name('dokumen.sk');
+
+    // FR.AK.04 untuk asesor — hanya bisa akses asesmen yang dijadwalkan ke dia, dan hanya untuk preview PDF (tanpa tanda tangan)
+    Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak04')->name('frak04.')->group(function () {
+        Route::get('/pdf', [FrAk04AsesorController::class, 'previewPdf'])->name('pdf');
+    });
 });
+
+// Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
+Route::post('/profile/foto-asesor', [ProfileController::class, 'uploadFotoAsesor'])
+     ->name('profile.upload-foto-asesor')
+     ->middleware('role:asesor');
+     
 
 /*
 |--------------------------------------------------------------------------

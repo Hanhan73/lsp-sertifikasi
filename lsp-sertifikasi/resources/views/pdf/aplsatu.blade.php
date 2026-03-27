@@ -5,17 +5,6 @@
     <meta charset="UTF-8">
     <title>FR.APL.01 - {{ $aplsatu->nama_lengkap }}</title>
     <style>
-    /* =====================================================
-   SOLUSI DOMPDF:
-   - DomPDF TIDAK support @page margin secara penuh.
-   - Solusi yang benar: set margin/padding di BODY,
-     bukan di @page dan bukan di wrapper div per halaman.
-   - Body padding akan berlaku di SEMUA halaman secara otomatis,
-     termasuk halaman overflow yang dibuat DomPDF.
-   - Halaman 1 dipisahkan dengan page-break-after pada div-nya.
-   - Bagian 2 & 3 mengalir kontinu — tidak ada forced break di antaranya.
-   - sig-tbl diberi page-break-inside: avoid.
-===================================================== */
     @page {
         size: A4;
         margin: 0;
@@ -32,9 +21,6 @@
         font-size: 11pt;
         line-height: 1.4;
         color: #000;
-        /* KUNCI UTAMA: Padding di body berlaku di SEMUA halaman DomPDF,
-           termasuk halaman overflow — berbeda dengan margin di div yang
-           hanya berlaku pada halaman pertama div itu dimulai. */
         padding: 2.54cm;
     }
 
@@ -105,7 +91,6 @@
         text-decoration: line-through;
     }
 
-    /* Page break setelah Bagian 1 */
     .page-break {
         page-break-after: always;
     }
@@ -160,13 +145,8 @@
         font-size: 9.5pt;
     }
 
-    .unit-tbl td.no-col {
-        text-align: center;
-    }
-
-    .unit-tbl td.std-col {
-        text-align: center;
-    }
+    .unit-tbl td.no-col  { text-align: center; }
+    .unit-tbl td.std-col { text-align: center; }
 
     /* BUKTI KELENGKAPAN TABLE */
     .bukti-tbl {
@@ -190,87 +170,69 @@
         font-size: 10pt;
     }
 
-    .bukti-tbl td.bno {
-        text-align: center;
-        width: 5%;
-    }
+    .bukti-tbl td.bno    { text-align: center; width: 5%; }
+    .bukti-tbl td.bnama  { width: 46%; text-align: left; }
+    .bukti-tbl td.bcheck { text-align: center; width: 12%; vertical-align: middle; padding: 3pt 2pt; }
 
-    .bukti-tbl td.bnama {
-        width: 46%;
-        text-align: left;
-    }
-
-    .bukti-tbl td.bcheck {
-        text-align: center;
-        width: 12%;
-        vertical-align: middle;
-        padding: 3pt 2pt;
-    }
-
-    /* SIGNATURE TABLE */
+    /* ═══════════════════════════════════════
+       SIGNATURE TABLE — diperbaiki
+    ═══════════════════════════════════════ */
     .sig-tbl {
         width: 100%;
         border-collapse: collapse;
         font-size: 11pt;
         margin-top: 6pt;
-        /* Hindari tabel TTD terputah di tengah halaman */
         page-break-inside: avoid;
     }
 
     .sig-tbl td {
         border: 1pt solid #000;
-        padding: 5pt 7pt;
+        padding: 6pt 8pt;
         vertical-align: top;
     }
 
-    .col-left {
-        width: 49%;
-    }
+    .col-left  { width: 49%; }
+    .col-mid   { width: 17%; }
+    .col-right { width: 34%; }
 
-    .col-mid {
-        width: 17%;
-    }
-
-    .col-right {
-        width: 34%;
-    }
-
+    /* Cell yang menampung area TTD */
     .sig-cell {
-        height: 75pt;
         padding: 0 !important;
-        text-align: center;
-        vertical-align: top;
+        border: 1pt solid #000;
     }
 
+    /* Area gambar TTD — tinggi diperbesar, konten di tengah */
     .sig-img-area {
-        height: 55pt;
+        height: 80pt;
         text-align: center;
         vertical-align: middle;
-        padding: 4pt 6pt 0 6pt;
+        /* Trik DomPDF: gunakan padding atas untuk mendorong gambar ke tengah
+           karena vertical-align tidak selalu bekerja di DomPDF */
+        padding-top: 10pt;
+        padding-bottom: 0;
+        padding-left: 6pt;
+        padding-right: 6pt;
     }
 
     .sig-img {
-        max-width: 160pt;
-        max-height: 50pt;
+        /* Lebih besar dari sebelumnya (160×50 → 180×62) */
+        max-width: 180pt;
+        max-height: 62pt;
         display: block;
         margin: 0 auto;
     }
 
+    /* Baris tanggal di bawah TTD */
     .sig-date {
         font-size: 9pt;
-        padding: 3pt 6pt 5pt 6pt;
         text-align: center;
+        padding: 4pt 6pt 6pt 6pt;
+        border-top: 0.5pt solid #ccc;
     }
     </style>
 </head>
 
 <body>
-
-    {{-- ═══════════════════════════════════════════
-     BAGIAN 1
-     page-break-after memastikan Bagian 2 mulai di halaman baru.
-     Body padding sudah mengurus margin untuk semua halaman.
-═══════════════════════════════════════════ --}}
 
     <div class="doc-title">FR.APL.01. PERMOHONAN SERTIFIKASI KOMPETENSI</div>
 
@@ -372,14 +334,7 @@
         </tr>
     </table>
 
-    {{-- Page break setelah Bagian 1 --}}
     <div class="page-break"></div>
-
-    {{-- ═══════════════════════════════════════════
-     BAGIAN 2 & 3 — Mengalir KONTINU
-     Tidak ada forced page-break di antara Bagian 2 dan 3.
-     Body padding sudah mengurus margin atas halaman baru.
-═══════════════════════════════════════════ --}}
 
     <div class="section-heading">Bagian 2 : Data Sertifikasi</div>
     <div class="body-text">Tuliskan Judul dan Nomor Skema Sertifikasi yang anda ajukan berikut Daftar Unit
@@ -390,16 +345,13 @@
         <tr>
             <td style="width:29%" rowspan="2">Skema Sertifikasi<br>
                 @if($asesmen->skema?->jenis_skema === 'kkni')
-                <span>(KKNI/</span><span class="cross-out">Okupasi</span><span>/</span> <span
-                    class="cross-out">Klaster</span><span>)</span>
+                <span>(KKNI/</span><span class="cross-out">Okupasi</span><span>/</span><span class="cross-out">Klaster</span><span>)</span>
                 @elseif ($asesmen->skema?->jenis_skema === 'okupasi')
-                <span class="cross-out">(KKNI</span>/<span>Okupasi/</span><span
-                    class="cross-out">Klaster</span><span>)</span>
+                <span class="cross-out">(KKNI</span>/<span>Okupasi/</span><span class="cross-out">Klaster</span><span>)</span>
                 @elseif ($asesmen->skema?->jenis_skema === 'klaster')
                 <span class="cross-out">KKNI</span>/<span class="cross-out">Okupasi</span>/<span>(Klaster)</span>
                 @else
-                <span class="cross-out">KKNI</span>/<span class="cross-out">Okupasi</span>/<span
-                    class="cross-out">Klaster</span>
+                <span class="cross-out">KKNI</span>/<span class="cross-out">Okupasi</span>/<span class="cross-out">Klaster</span>
                 @endif
             </td>
             <td style="width:10%">Judul</td>
@@ -413,34 +365,25 @@
         </tr>
         <tr>
             <td rowspan="4" colspan="2">Tujuan Asesmen</td>
-            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;">:
-            </td>
-            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'Sertifikasi' ? 'V' : '' }}</span> Sertifikasi
-            </td>
+            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;">:</td>
+            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'Sertifikasi' ? 'V' : '' }}</span> Sertifikasi</td>
         </tr>
         <tr>
-            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;">
-            </td>
-            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'PKT' ? 'V' : '' }}</span> Pengakuan
-                Kompetensi Terkini (PKT)</td>
+            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;"></td>
+            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'PKT' ? 'V' : '' }}</span> Pengakuan Kompetensi Terkini (PKT)</td>
         </tr>
         <tr>
-            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;">
-            </td>
-            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'RPL' ? 'V' : '' }}</span> Rekognisi
-                Pembelajaran Lampau (RPL)</td>
+            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;"></td>
+            <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'RPL' ? 'V' : '' }}</span> Rekognisi Pembelajaran Lampau (RPL)</td>
         </tr>
         <tr>
-            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;">
-            </td>
+            <td style="border-top:0; border-bottom:1pt solid #000; border-left:0; border-right:1pt solid #000;"></td>
             <td><span class="cb-wrap">{{ $aplsatu->tujuan_asesmen === 'Lainnya' ? 'V' : '' }}</span>
-                Lainnya{{ $aplsatu->tujuan_asesmen === 'Lainnya' && $aplsatu->tujuan_asesmen_lainnya ? ' : ' . $aplsatu->tujuan_asesmen_lainnya : '' }}
-            </td>
+                Lainnya{{ $aplsatu->tujuan_asesmen === 'Lainnya' && $aplsatu->tujuan_asesmen_lainnya ? ' : ' . $aplsatu->tujuan_asesmen_lainnya : '' }}</td>
         </tr>
     </table>
 
-    <div style="font-size:11pt; font-weight:bold; margin-top:5pt; margin-bottom:3pt;">Daftar Unit Kompetensi sesuai
-        kemasan:</div>
+    <div style="font-size:11pt; font-weight:bold; margin-top:5pt; margin-bottom:3pt;">Daftar Unit Kompetensi sesuai kemasan:</div>
 
     <table class="unit-tbl">
         <thead>
@@ -467,8 +410,7 @@
 
         <div class="section-heading">Bagian 3 : Bukti Kelengkapan Pemohon</div>
 
-        <div style="font-size:11pt; font-weight:bold; margin-top:4pt; margin-bottom:3pt;">3.1 Bukti Persyaratan Dasar
-            Pemohon</div>
+        <div style="font-size:11pt; font-weight:bold; margin-top:4pt; margin-bottom:3pt;">3.1 Bukti Persyaratan Dasar Pemohon</div>
 
         <table class="bukti-tbl">
             <thead>
@@ -489,11 +431,9 @@
                 <tr>
                     <td class="bno">{{ $no++ }}.</td>
                     <td class="bnama">{{ $bukti->nama_dokumen }}</td>
-                    <td class="bcheck"><span
-                            class="cb-wrap">{{ $bukti->status === 'Ada Memenuhi Syarat'       ? 'V' : '' }}</span></td>
-                    <td class="bcheck"><span
-                            class="cb-wrap">{{ $bukti->status === 'Ada Tidak Memenuhi Syarat' ? 'V' : '' }}</span></td>
-                    <td class="bcheck"><span>{{ $bukti->status === 'Tidak Ada'                 ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span class="cb-wrap">{{ $bukti->status === 'Ada Memenuhi Syarat'       ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span class="cb-wrap">{{ $bukti->status === 'Ada Tidak Memenuhi Syarat' ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span>{{ $bukti->status === 'Tidak Ada' ? 'V' : '' }}</span></td>
                 </tr>
                 @endforeach
             </tbody>
@@ -520,16 +460,17 @@
                 <tr>
                     <td class="bno">{{ $no++ }}.</td>
                     <td class="bnama">{{ $bukti->nama_dokumen }}</td>
-                    <td class="bcheck"><span
-                            class="cb-wrap">{{ $bukti->status === 'Ada Memenuhi Syarat'       ? 'V' : '' }}</span></td>
-                    <td class="bcheck"><span
-                            class="cb-wrap">{{ $bukti->status === 'Ada Tidak Memenuhi Syarat' ? 'V' : '' }}</span></td>
-                    <td class="bcheck"><span>{{ $bukti->status === 'Tidak Ada'                 ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span class="cb-wrap">{{ $bukti->status === 'Ada Memenuhi Syarat'       ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span class="cb-wrap">{{ $bukti->status === 'Ada Tidak Memenuhi Syarat' ? 'V' : '' }}</span></td>
+                    <td class="bcheck"><span>{{ $bukti->status === 'Tidak Ada' ? 'V' : '' }}</span></td>
                 </tr>
                 @endforeach
             </tbody>
         </table>
 
+        {{-- ═══════════════════════════════════════
+             TABEL TANDA TANGAN — APL-01
+        ═══════════════════════════════════════ --}}
         <table class="sig-tbl">
 
             {{-- ── PEMOHON / KANDIDAT ── --}}
@@ -546,7 +487,7 @@
                     <span style="font-size:10pt;"> *) sebagai peserta sertifikasi<br>* coret yang tidak perlu</span>
                 </td>
                 <td colspan="2" style="text-align:center; font-weight:bold; vertical-align:middle;">
-                    Pemohon/ Kandidat :
+                    Pemohon / Kandidat :
                 </td>
             </tr>
             <tr>
@@ -556,7 +497,8 @@
                 </td>
             </tr>
             <tr>
-                <td class="col-mid" style="vertical-align:top; padding-top:4pt;">Tanda tangan/<br>Tanggal</td>
+                <td class="col-mid" style="vertical-align:middle;">Tanda tangan/<br>Tanggal</td>
+                {{-- Cell TTD Pemohon --}}
                 <td class="sig-cell">
                     <div class="sig-img-area">
                         @if($aplsatu->ttd_pemohon)
@@ -565,8 +507,8 @@
                     </div>
                     <div class="sig-date">
                         {{ $aplsatu->tanggal_ttd_pemohon
-                    ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->format('d-m-Y')
-                    : '' }}
+                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->format('d-m-Y')
+                            : '' }}
                     </div>
                 </td>
             </tr>
@@ -590,7 +532,8 @@
                 </td>
             </tr>
             <tr>
-                <td class="col-mid" style="vertical-align:top; padding-top:4pt;">Tanda tangan/<br>Tanggal</td>
+                <td class="col-mid" style="vertical-align:middle;">Tanda tangan/<br>Tanggal</td>
+                {{-- Cell TTD Admin --}}
                 <td class="sig-cell">
                     <div class="sig-img-area">
                         @if($aplsatu->ttd_admin)
@@ -599,8 +542,8 @@
                     </div>
                     <div class="sig-date">
                         {{ $aplsatu->tanggal_ttd_admin
-                    ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->format('d-m-Y')
-                    : '' }}
+                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->format('d-m-Y')
+                            : '' }}
                     </div>
                 </td>
             </tr>

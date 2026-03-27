@@ -36,7 +36,8 @@
         </div>
 
         <hr>
-        {{-- Akun --}}
+
+        {{-- ── Akun Login ── --}}
         @if($asesor->user)
         <div class="alert alert-success py-2 text-start mb-0">
             <i class="bi bi-person-circle"></i>
@@ -44,9 +45,17 @@
             <small>{{ $asesor->user->email }}</small>
         </div>
         @else
-        <div class="alert alert-secondary py-2 text-start mb-0">
+        {{-- Belum punya akun — tampilkan tombol buat akun --}}
+        <div class="alert alert-secondary py-2 text-start mb-2">
             <i class="bi bi-person-x"></i> Belum ada akun login
         </div>
+        <button type="button"
+            class="btn btn-sm btn-outline-primary w-100"
+            id="btn-buat-akun-{{ $asesor->id }}"
+            onclick="buatAkunAsesor({{ $asesor->id }}, '{{ addslashes($asesor->nama) }}')">
+            <i class="bi bi-person-plus"></i> Buatkan Akun Login
+        </button>
+        <div id="buat-akun-result-{{ $asesor->id }}" class="mt-2"></div>
         @endif
     </div>
 

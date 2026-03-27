@@ -39,6 +39,7 @@ class AplController extends Controller
             'asesor',
             'asesmens.aplsatu',         // APL-01 per asesi
             'asesmens.apldua',
+            'asesmens.frak01',
             'asesmens.user',
         ])
         ->orderBy('assessment_date', 'desc')

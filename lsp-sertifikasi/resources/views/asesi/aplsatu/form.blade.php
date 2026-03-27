@@ -489,7 +489,7 @@
 
             {{-- ════════ SECTION 5: REVIEW & TTD ════════ --}}
             <div class="form-section" data-section="5">
-                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Review & Tanda Tangan</h6>
+                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Review &amp; Tanda Tangan</h6>
                 <div class="alert alert-warning mb-4">
                     <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Perhatian Sebelum Submit!</h6>
                     <p class="mb-2">Pastikan semua data sudah benar. <strong>Setelah submit, data tidak dapat diubah.</strong></p>
@@ -499,7 +499,7 @@
                         <li>PDF APL-01 baru dapat diunduh setelah Admin LSP melakukan verifikasi.</li>
                     </ul>
                 </div>
-
+            
                 <div class="card bg-light mb-4">
                     <div class="card-body">
                         <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-person-check me-2"></i>Ringkasan Data</h6>
@@ -518,17 +518,11 @@
                 {{-- Signature Pad --}}
                 <div class="card mb-4">
                     <div class="card-body">
-                        <h6 class="fw-bold mb-1">Tanda Tangan Pemohon</h6>
-                        <p class="text-muted small mb-3">Tanda tangan di kotak di bawah menggunakan mouse atau layar sentuh:</p>
-                        <div id="sig-wrapper">
-                            <canvas id="signature-pad"></canvas>
-                        </div>
-                        <div class="mt-2 d-flex gap-2 align-items-center">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSignature()">
-                                <i class="bi bi-eraser"></i> Hapus Tanda Tangan
-                            </button>
-                            <small class="text-muted">Gunakan mouse atau sentuh layar untuk menandatangani</small>
-                        </div>
+                        @include('partials._signature_pad', [
+                            'padId'    => 'asesi',
+                            'padLabel' => 'Tanda Tangan Pemohon',
+                            'padHeight' => 220,
+                        ])
                     </div>
                 </div>
 
@@ -539,7 +533,7 @@
                         Saya memahami bahwa setelah submit, data tidak dapat diubah lagi.
                     </label>
                 </div>
-
+            
                 <div class="d-flex justify-content-between">
                     <button type="button" class="btn btn-secondary" onclick="prevSection()"><i class="bi bi-arrow-left"></i> Sebelumnya</button>
                     <button type="button" class="btn btn-success" id="btn-submit" onclick="submitForm()">
@@ -559,7 +553,6 @@
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 let currentSection = 1;
-let signaturePad;
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
 // ── Logger ─────────────────────────────────────────────────
@@ -808,39 +801,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (gdriveInput && gdriveInput.value) validateGDriveLink(gdriveInput);
 });
 
-// ── SIGNATURE PAD ──────────────────────────────────────────
-function initSignaturePad() {
-    const canvas = document.getElementById('signature-pad');
-    if (!canvas || signaturePad) return;
-    signaturePad = new SignaturePad(canvas, {
-        backgroundColor: 'rgb(255,255,255)',
-        penColor: 'rgb(0,0,200)',
-        minWidth: 1.5, maxWidth: 3,
-    });
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    canvas.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
-    canvas.addEventListener('touchmove',  e => e.preventDefault(), { passive: false });
-    canvas.addEventListener('touchend',   e => e.preventDefault(), { passive: false });
-    log('initSignaturePad — OK');
-}
-
-function resizeCanvas() {
-    const canvas = document.getElementById('signature-pad');
-    if (!canvas || !signaturePad) return;
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-    const savedData = signaturePad.isEmpty() ? null : signaturePad.toData();
-    canvas.width = canvas.offsetWidth * ratio;
-    canvas.height = 220 * ratio;
-    canvas.style.height = '220px';
-    canvas.getContext('2d').scale(ratio, ratio);
-    signaturePad.clear();
-    if (savedData && savedData.length > 0) signaturePad.fromData(savedData);
-}
-
-function clearSignature() {
-    if (signaturePad) signaturePad.clear();
-}
 
 // ── NAVIGATION ─────────────────────────────────────────────
 function showSection(num) {
@@ -856,7 +816,8 @@ function showSection(num) {
         if (n === num) step.classList.add('active');
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (num === 5) { fillSummary(); setTimeout(initSignaturePad, 150); }
+    if (num === 5) { fillSummary(); setTimeout(() => SigPadManager.init('asesi'), 150); }
+
 }
 
 async function nextSection() {
@@ -1016,7 +977,7 @@ async function submitForm() {
         Swal.fire({ icon: 'warning', title: 'Persetujuan Diperlukan', text: 'Anda harus mencentang pernyataan persetujuan.' });
         return;
     }
-    if (!signaturePad || signaturePad.isEmpty()) {
+    if (SigPadManager.isEmpty('asesi')){
         Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Mohon tanda tangan di kotak yang tersedia.' });
         return;
     }
@@ -1059,7 +1020,7 @@ async function submitForm() {
     await saveProgress();
 
     const submitData = new FormData();
-    submitData.append('signature', signaturePad.toDataURL('image/png'));
+    submitData.append('signature', SigPadManager.getDataURL('asesi'));
 
     try {
         const res = await fetch('{{ route("asesi.apl01.submit") }}', {

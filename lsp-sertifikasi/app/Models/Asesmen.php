@@ -177,6 +177,17 @@ class Asesmen extends Model
         return $this->hasOne(\App\Models\AplDua::class);
     }
 
+    public function frak01()
+    {
+        return $this->hasOne(\App\Models\FrAk01::class, 'asesmen_id');
+    }
+
+    public function frak04()
+    {
+        return $this->hasOne(\App\Models\FrAk04::class, 'asesmen_id');
+    }
+
+    
     // Helper Methods
     
     /**

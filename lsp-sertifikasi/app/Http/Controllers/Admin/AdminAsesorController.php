@@ -20,7 +20,6 @@ class AdminAsesorController extends Controller
     {
         $query = Asesor::query();
 
-        // Filter pencarian
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
@@ -30,12 +29,10 @@ class AdminAsesorController extends Controller
             });
         }
 
-        // Filter status
         if ($status = $request->input('status_reg')) {
             $query->where('status_reg', $status);
         }
 
-        // Filter jenis kelamin
         if ($jk = $request->input('jenis_kelamin')) {
             $query->where('jenis_kelamin', $jk);
         }
@@ -43,10 +40,10 @@ class AdminAsesorController extends Controller
         $asesors = $query->orderBy('nama')->get();
 
         $stats = [
-            'total'   => Asesor::count(),
-            'aktif'   => Asesor::where('status_reg', 'aktif')->count(),
-            'expire'  => Asesor::where('status_reg', 'expire')->count(),
-            'nonaktif'=> Asesor::where('status_reg', 'nonaktif')->count(),
+            'total'    => Asesor::count(),
+            'aktif'    => Asesor::where('status_reg', 'aktif')->count(),
+            'expire'   => Asesor::where('status_reg', 'expire')->count(),
+            'nonaktif' => Asesor::where('status_reg', 'nonaktif')->count(),
         ];
 
         return view('admin.asesors.index', compact('asesors', 'stats'));
@@ -88,15 +85,12 @@ class AdminAsesorController extends Controller
 
         DB::beginTransaction();
         try {
-            // Upload foto
             $fotoPath = null;
             if ($request->hasFile('foto')) {
                 $fotoPath = $request->file('foto')->store('asesors/foto', 'public');
             }
 
             $userId = null;
-
-            // Buat akun user jika diminta
             if ($request->boolean('buat_akun')) {
                 $user = User::create([
                     'name'              => $request->nama,
@@ -195,7 +189,6 @@ class AdminAsesorController extends Controller
 
         DB::beginTransaction();
         try {
-            // Upload foto baru
             if ($request->hasFile('foto')) {
                 if ($asesor->foto_path) {
                     Storage::disk('public')->delete($asesor->foto_path);
@@ -224,7 +217,6 @@ class AdminAsesorController extends Controller
                 'is_active'     => $request->has('is_active'),
             ]);
 
-            // Sinkronisasi nama ke user terkait
             if ($asesor->user) {
                 $asesor->user->update(['name' => $request->nama]);
             }
@@ -249,12 +241,10 @@ class AdminAsesorController extends Controller
     {
         DB::beginTransaction();
         try {
-            // Hapus foto
             if ($asesor->foto_path) {
                 Storage::disk('public')->delete($asesor->foto_path);
             }
 
-            // Hapus user terkait jika ada
             if ($asesor->user) {
                 $asesor->user->delete();
             }
@@ -286,12 +276,12 @@ class AdminAsesorController extends Controller
         ]);
 
         try {
-            $buatAkun = $request->boolean('buat_akun');
+            // Pastikan nilai boolean diterima dengan benar dari checkbox
+            $buatAkun = $request->has('buat_akun') && $request->input('buat_akun') == '1';
 
             $import = new \App\Imports\AsesorImport($buatAkun);
             \Maatwebsite\Excel\Facades\Excel::import($import, $request->file('file'));
 
-            // Susun pesan sukses
             $msg = "Berhasil mengimport <strong>{$import->importedCount}</strong> asesor";
             if ($buatAkun && $import->importedCount > 0) {
                 $msg .= " (akun login dibuat, password default: <code>asesor123</code>)";
@@ -300,20 +290,87 @@ class AdminAsesorController extends Controller
                 $msg .= ". <strong>{$import->skippedCount}</strong> baris dilewati.";
             }
 
-            // Simpan error detail ke session agar bisa ditampilkan
             $sessionData = ['import_success' => $msg];
             if (!empty($import->errors)) {
                 $sessionData['import_errors'] = $import->errors;
             }
 
-            return redirect()->route('admin.asesors.index')
-                ->with($sessionData);
+            return redirect()->route('admin.asesors.index')->with($sessionData);
 
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Asesor Import Error: ' . $e->getMessage());
+            Log::error('Asesor Import Error: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'Gagal import: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Buat akun login untuk asesor yang belum punya akun (AJAX)
+     */
+    public function buatAkun(Asesor $asesor)
+    {
+        try {
+            // Pastikan belum punya akun
+            if ($asesor->user_id && $asesor->user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Asesor ini sudah memiliki akun login.',
+                ], 422);
+            }
+
+            // Cek apakah email sudah dipakai di tabel users
+            $existingUser = User::where('email', $asesor->email)->first();
+
+            DB::beginTransaction();
+
+            if ($existingUser) {
+                // Email sudah ada — hubungkan saja jika role-nya asesor
+                if ($existingUser->role !== 'asesor') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Email {$asesor->email} sudah digunakan oleh akun dengan role '{$existingUser->role}'. Tidak bisa membuat akun baru.",
+                    ], 422);
+                }
+
+                // Hubungkan akun yang sudah ada
+                $asesor->update(['user_id' => $existingUser->id]);
+                DB::commit();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => "Akun yang sudah ada ({$existingUser->email}) berhasil dihubungkan ke asesor ini.",
+                    'info'    => 'linked',
+                ]);
+            }
+
+            // Buat akun baru
+            $user = User::create([
+                'name'              => $asesor->nama,
+                'email'             => $asesor->email,
+                'password'          => Hash::make('asesor123'),
+                'role'              => 'asesor',
+                'is_active'         => true,
+                'email_verified_at' => now(),
+            ]);
+
+            $asesor->update(['user_id' => $user->id]);
+
+            DB::commit();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => "Akun login berhasil dibuat untuk {$asesor->nama}. Password default: asesor123",
+                'info'     => 'created',
+                'email'    => $user->email,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error buatAkun Asesor #' . $asesor->id . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }

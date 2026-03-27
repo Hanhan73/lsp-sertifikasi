@@ -409,16 +409,11 @@
         </div>
 
         <div class="mb-4">
-            <label class="form-label fw-semibold">Tanda Tangan Pemohon <span class="text-danger">*</span></label>
-            <div id="sig-wrapper-apldua">
-                <canvas id="sig-canvas-apldua"></canvas>
-            </div>
-            <div class="d-flex justify-content-between mt-2">
-                <small class="text-muted">Tanda tangan menggunakan mouse atau layar sentuh.</small>
-                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearSig()">
-                    <i class="bi bi-eraser me-1"></i>Hapus
-                </button>
-            </div>
+            @include('partials._signature_pad', [
+                'padId'    => 'asesi-apl02',
+                'padLabel' => 'Tanda Tangan Pemohon',
+                'padHeight' => 200,
+            ])
         </div>
 
         <div class="form-check mb-4">
@@ -474,32 +469,10 @@ unitElemenMap[{{ $unit->id }}] = [
 ];
 @endforeach
 
-// ── Signature pad ──────────────────────────────────────────
-let sigPad = null;
-
 window.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('sig-canvas-apldua');
-    if (!canvas) return;
-
-    const ratio = Math.max(window.devicePixelRatio ?? 1, 1);
-    canvas.width  = canvas.offsetWidth * ratio;
-    canvas.height = 200 * ratio;
-    canvas.style.height = '200px';
-    canvas.getContext('2d').scale(ratio, ratio);
-
-    sigPad = new SignaturePad(canvas, {
-        backgroundColor: 'rgb(255,255,255)',
-        penColor: 'rgb(0,0,180)',
-        minWidth: 1.5, maxWidth: 3.5,
-    });
-    ['touchstart','touchmove'].forEach(ev =>
-        canvas.addEventListener(ev, e => e.preventDefault(), { passive: false })
-    );
-
+    SigPadManager.init('asesi-apl02');
     updateAllProgress();
 });
-
-function clearSig() { sigPad?.clear(); }
 
 // ── Toggle unit accordion ──────────────────────────────────
 function toggleUnit(unitId) {
@@ -661,7 +634,7 @@ async function submitApldua() {
     }
 
     // Cek TTD
-    if (!sigPad || sigPad.isEmpty()) {
+    if (SigPadManager.isEmpty('asesi-apl02')) {
         Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Tanda tangan di kotak yang tersedia.' });
         return;
     }
@@ -716,7 +689,7 @@ async function submitApldua() {
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             body: (() => {
                 const fd = new FormData();
-                fd.append('signature', sigPad.toDataURL('image/png'));
+                fd.append('signature', SigPadManager.getDataURL('asesi-apl02'));
                 return fd;
             })(),
         });

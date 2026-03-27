@@ -14,9 +14,9 @@ use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
 class AsesorImport implements ToCollection, WithHeadingRow
 {
-    public int  $importedCount = 0;
-    public int  $skippedCount  = 0;
-    public array $errors       = [];
+    public int   $importedCount = 0;
+    public int   $skippedCount  = 0;
+    public array $errors        = [];
 
     private bool $buatAkun;
 
@@ -37,19 +37,16 @@ class AsesorImport implements ToCollection, WithHeadingRow
                     continue;
                 }
 
-                // ── 2. Ambil email — header "E-mail" jadi key "e-mail" ────
-                //    Laravel Excel memakai HeadingRowFormatter yang mengganti
-                //    spasi dengan underscore, tapi TIDAK mengganti tanda "-".
-                //    Jadi kita coba kedua kemungkinan kunci.
+                // ── 2. Ambil email ────────────────────────────────────────
                 $email = trim((string)(
-                    $row['email']   ??   // kalau header sudah "Email"
-                    $row['e-mail']  ??   // header asli "E-mail"
-                    $row['e_mail']  ??   // antisipasi variasi lain
+                    $row['email']  ??
+                    $row['e-mail'] ??
+                    $row['e_mail'] ??
                     ''
                 ));
 
                 if ($email === '') {
-                    $this->errors[]  = "Baris {$rowNumber} ({$nama}): Email kosong, dilewati.";
+                    $this->errors[]   = "Baris {$rowNumber} ({$nama}): Email kosong, dilewati.";
                     $this->skippedCount++;
                     continue;
                 }
@@ -57,14 +54,14 @@ class AsesorImport implements ToCollection, WithHeadingRow
                 // ── 3. Cek duplikat NIK ───────────────────────────────────
                 $nik = trim((string)($row['nik'] ?? ''));
                 if ($nik && Asesor::where('nik', $nik)->exists()) {
-                    $this->errors[]  = "Baris {$rowNumber} ({$nama}): NIK {$nik} sudah ada, dilewati.";
+                    $this->errors[]   = "Baris {$rowNumber} ({$nama}): NIK {$nik} sudah ada, dilewati.";
                     $this->skippedCount++;
                     continue;
                 }
 
-                // ── 4. Cek duplikat email ─────────────────────────────────
+                // ── 4. Cek duplikat email di tabel asesors ────────────────
                 if (Asesor::where('email', $email)->exists()) {
-                    $this->errors[]  = "Baris {$rowNumber} ({$nama}): Email {$email} sudah ada, dilewati.";
+                    $this->errors[]   = "Baris {$rowNumber} ({$nama}): Email {$email} sudah ada, dilewati.";
                     $this->skippedCount++;
                     continue;
                 }
@@ -75,7 +72,6 @@ class AsesorImport implements ToCollection, WithHeadingRow
                 if ($rawTgl) {
                     try {
                         if (is_numeric($rawTgl)) {
-                            // Excel serial date number
                             $tanggalLahir = Carbon::createFromTimestamp(
                                 ((int)$rawTgl - 25569) * 86400
                             )->format('Y-m-d');
@@ -89,7 +85,7 @@ class AsesorImport implements ToCollection, WithHeadingRow
                     }
                 }
 
-                // ── 6. Jenis kelamin — kolom "P/L" → key "pl" ────────────
+                // ── 6. Jenis kelamin ──────────────────────────────────────
                 $jkRaw   = strtoupper(trim((string)($row['pl'] ?? $row['jenis_kelamin'] ?? '')));
                 $jkValue = in_array($jkRaw, ['L', 'P']) ? $jkRaw : 'L';
 
@@ -102,16 +98,28 @@ class AsesorImport implements ToCollection, WithHeadingRow
                 $keterangan = trim((string)($row['keterangan'] ?? ''));
                 $statusReg  = stripos($keterangan, 'expire') !== false ? 'expire' : 'aktif';
 
+                // ── 9. Proses dalam satu transaksi ────────────────────────
                 DB::beginTransaction();
 
-                // ── 9. Buat akun user (opsional) ──────────────────────────
-                $userId = null;
+                $userId       = null;
+                $akunDibuat   = false;
+                $akunKeterangan = '';
+
                 if ($this->buatAkun) {
-                    // Cek juga duplikat di tabel users
                     if (User::where('email', $email)->exists()) {
-                        $this->errors[] = "Baris {$rowNumber} ({$nama}): Email {$email} sudah ada di tabel users, akun tidak dibuat.";
-                        // Lanjut import tanpa akun
+                        // Email sudah ada di users — hubungkan saja
+                        $existingUser = User::where('email', $email)->first();
+
+                        // Pastikan role-nya asesor
+                        if ($existingUser->role !== 'asesor') {
+                            $this->errors[] = "Baris {$rowNumber} ({$nama}): Email {$email} sudah dipakai akun role '{$existingUser->role}', akun tidak dibuat.";
+                            // Tetap lanjut import data asesor tanpa user_id
+                        } else {
+                            $userId       = $existingUser->id;
+                            $akunKeterangan = ' (akun sudah ada, dihubungkan)';
+                        }
                     } else {
+                        // Buat akun baru
                         $user = User::create([
                             'name'              => $nama,
                             'email'             => $email,
@@ -120,7 +128,8 @@ class AsesorImport implements ToCollection, WithHeadingRow
                             'is_active'         => true,
                             'email_verified_at' => now(),
                         ]);
-                        $userId = $user->id;
+                        $userId     = $user->id;
+                        $akunDibuat = true;
                     }
                 }
 
@@ -148,10 +157,15 @@ class AsesorImport implements ToCollection, WithHeadingRow
                 DB::commit();
                 $this->importedCount++;
 
+                // Catat info akun ke errors sebagai informasi (bukan error sebenarnya)
+                if ($this->buatAkun && !$akunDibuat && $userId === null) {
+                    $this->errors[] = "Baris {$rowNumber} ({$nama}): Data disimpan tanpa akun login.";
+                }
+
             } catch (\Exception $e) {
                 DB::rollBack();
                 Log::error("AsesorImport baris {$rowNumber}: " . $e->getMessage());
-                $this->errors[]  = "Baris {$rowNumber}: " . $e->getMessage();
+                $this->errors[]  = "Baris {$rowNumber} ({$nama}): " . $e->getMessage();
                 $this->skippedCount++;
             }
         }

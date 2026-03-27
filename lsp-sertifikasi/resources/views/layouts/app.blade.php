@@ -247,7 +247,7 @@
                             <i class="bi bi-person-circle"></i> {{ auth()->user()->name }}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ route('profile.show') }}"><i class="bi bi-person"></i> Profile</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>

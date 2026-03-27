@@ -25,7 +25,6 @@
         font-weight: bold;
         margin-bottom: 8pt;
     }
-    /* Skema table */
     .skema-tbl {
         width: 100%;
         border-collapse: collapse;
@@ -37,7 +36,6 @@
         padding: 4pt 6pt;
         vertical-align: middle;
     }
-    /* Panduan box */
     .panduan-tbl {
         width: 100%;
         border-collapse: collapse;
@@ -53,7 +51,6 @@
         font-weight: bold;
         background: #f2f2f2;
     }
-    /* Unit header */
     .unit-header-tbl {
         width: 100%;
         border-collapse: collapse;
@@ -66,7 +63,6 @@
         vertical-align: middle;
         line-height: 1.3;
     }
-    /* Elemen table */
     .elemen-tbl {
         width: 100%;
         border-collapse: collapse;
@@ -86,30 +82,13 @@
         vertical-align: top;
         font-size: 9pt;
     }
-    .elemen-tbl td.col-dapatkah {
-        width: 52%;
-    }
-    .elemen-tbl td.col-k {
-        width: 8%;
-        text-align: center;
-        vertical-align: middle;
-    }
-    .elemen-tbl td.col-bk {
-        width: 8%;
-        text-align: center;
-        vertical-align: middle;
-    }
-    .elemen-tbl td.col-bukti {
-        width: 32%;
-    }
-    /* Jangan potong baris elemen di tengah-tengah */
-    .elemen-tbl tr {
-        page-break-inside: avoid;
-    }
-    /* Header unit jangan terpisah dari tabel elemennya */
-    .unit-block {
-        page-break-inside: avoid;
-    }
+    .elemen-tbl td.col-dapatkah { width: 52%; }
+    .elemen-tbl td.col-k  { width: 8%; text-align: center; vertical-align: middle; }
+    .elemen-tbl td.col-bk { width: 8%; text-align: center; vertical-align: middle; }
+    .elemen-tbl td.col-bukti { width: 32%; }
+    .elemen-tbl tr { page-break-inside: avoid; }
+    .unit-block    { page-break-inside: avoid; }
+
     .cb-wrap {
         display: inline-block;
         width: 12pt;
@@ -121,24 +100,14 @@
         font-weight: bold;
         vertical-align: middle;
     }
-    .elemen-judul {
-        font-weight: bold;
-        margin-bottom: 3pt;
-    }
-    .kuk-label {
-        font-style: italic;
-        font-size: 8.5pt;
-        color: #333;
-    }
-    .kuk-item {
-        font-size: 8.5pt;
-        padding-left: 8pt;
-        color: #222;
-    }
-    .page-break {
-        page-break-after: always;
-    }
-    /* Signature table */
+    .elemen-judul { font-weight: bold; margin-bottom: 3pt; }
+    .kuk-label    { font-style: italic; font-size: 8.5pt; color: #333; }
+    .kuk-item     { font-size: 8.5pt; padding-left: 8pt; color: #222; }
+    .page-break   { page-break-after: always; }
+
+    /* ═══════════════════════════════════════
+       SIGNATURE TABLE — APL-02 diperbaiki
+    ═══════════════════════════════════════ */
     .sig-tbl {
         width: 100%;
         border-collapse: collapse;
@@ -146,28 +115,45 @@
         margin-top: 10pt;
         page-break-inside: avoid;
     }
+
     .sig-tbl td {
         border: 1pt solid #000;
-        padding: 5pt 7pt;
+        padding: 6pt 8pt;
         vertical-align: top;
     }
-    .sig-cell-img {
-        height: 65pt;
+
+    /* Cell yang hanya berisi area gambar TTD */
+    .sig-cell {
+        padding: 0 !important;
+        border: 1pt solid #000;
+    }
+
+    /* Area gambar — tinggi diperbesar, gambar di tengah */
+    .sig-img-area {
+        height: 80pt;
         text-align: center;
         vertical-align: middle;
-        padding: 4pt 6pt;
+        padding-top: 10pt;
+        padding-bottom: 0;
+        padding-left: 6pt;
+        padding-right: 6pt;
     }
+
     .sig-img {
-        max-width: 160pt;
-        max-height: 55pt;
+        max-width: 180pt;
+        max-height: 62pt;
         display: block;
         margin: 0 auto;
     }
+
+    /* Baris tanggal */
     .sig-date {
         font-size: 8.5pt;
         text-align: center;
-        padding: 3pt 6pt 4pt;
+        padding: 4pt 6pt 6pt 6pt;
+        border-top: 0.5pt solid #ccc;
     }
+
     .rekomendasi-box {
         background: #f9f9f9;
         border: 1pt solid #000;
@@ -179,10 +165,8 @@
 </head>
 <body>
 
-{{-- ─── HALAMAN 1: Header + Panduan + Unit 1-dst ─── --}}
 <div class="doc-title">FR.APL.02. ASESMEN MANDIRI</div>
 
-{{-- Skema table --}}
 <table class="skema-tbl">
     <tr>
         <td style="width:40%;" rowspan="2">Skema Sertifikasi
@@ -205,7 +189,6 @@
     </tr>
 </table>
 
-{{-- Panduan --}}
 <table class="panduan-tbl">
     <tr>
         <td class="header">PANDUAN ASESMEN MANDIRI</td>
@@ -220,15 +203,12 @@
     </tr>
 </table>
 
-{{-- Units --}}
 @php
     $jawMap = $apldua->jawabans->keyBy('elemen_id');
     $units  = $asesmen->skema?->unitKompetensis ?? collect();
 @endphp
 
 @foreach($units as $uIdx => $unit)
-
-{{-- Wrapper: header + kolom header tidak orphan ── --}}
 <div style="page-break-inside: avoid;">
 <table style="width:100%; border-collapse:collapse; margin-bottom:0; border-bottom:none;">
     <tr>
@@ -249,7 +229,6 @@
 </table>
 </div>
 
-{{-- Elemen rows ── --}}
 <table class="elemen-tbl" style="margin-bottom:8pt; margin-top:0;">
     @foreach($unit->elemens as $eIdx => $elemen)
     @php $jaw = $jawMap[$elemen->id] ?? null; @endphp
@@ -264,7 +243,7 @@
             @endif
         </td>
         <td class="col-k">
-            <span class="cb-wrap">{{ $jaw?->jawaban === 'K' ? 'V' : '' }}</span>
+            <span class="cb-wrap">{{ $jaw?->jawaban === 'K'  ? 'V' : '' }}</span>
         </td>
         <td class="col-bk">
             <span class="cb-wrap">{{ $jaw?->jawaban === 'BK' ? 'V' : '' }}</span>
@@ -275,14 +254,16 @@
     </tr>
     @endforeach
 </table>
-
 @endforeach
 
-{{-- TTD Table --}}
+{{-- ═══════════════════════════════════════
+     TABEL TANDA TANGAN — APL-02
+═══════════════════════════════════════ --}}
 <table class="sig-tbl">
-    {{-- Row 1: Asesi header --}}
+
+    {{-- ── Baris header Asesi ── --}}
     <tr>
-        <td style="width:40%; vertical-align:top; border-right:1pt solid #000;" rowspan="4">
+        <td style="width:40%; vertical-align:top;" rowspan="4">
             <strong>Rekomendasi Untuk Asesi:</strong><br><br>
             @if($apldua->rekomendasi_asesor === 'lanjut')
             Asesmen <strong>dapat</strong> / <span style="text-decoration:line-through;">tidak dapat</span> dilanjutkan
@@ -295,29 +276,33 @@
             <br><br><em style="font-size:8.5pt;">Catatan: {{ $apldua->catatan_asesor }}</em>
             @endif
         </td>
-        <td colspan="2" style="text-align:center; font-weight:bold;">Asesi :</td>
+        <td colspan="2" style="text-align:center; font-weight:bold; vertical-align:middle;">Asesi :</td>
     </tr>
     <tr>
-        <td style="width:22%;">Nama</td>
-        <td style="width:38%;"><strong>{{ $apldua->nama_ttd_asesi ?? $asesmen->full_name }}</strong></td>
+        <td style="width:22%; vertical-align:middle;">Nama</td>
+        <td style="width:38%; vertical-align:middle;"><strong>{{ $apldua->nama_ttd_asesi ?? $asesmen->full_name }}</strong></td>
     </tr>
     <tr>
-        <td style="vertical-align:top; padding-top:4pt;">Tanda tangan/<br>Tanggal</td>
-        <td class="sig-cell-img">
-            @if($apldua->ttd_asesi)
-            <img src="{{ $apldua->ttd_asesi_image }}" class="sig-img" alt="TTD Asesi">
-            @endif
+        <td style="vertical-align:middle;">Tanda tangan/<br>Tanggal</td>
+        {{-- Cell TTD Asesi --}}
+        <td class="sig-cell">
+            <div class="sig-img-area">
+                @if($apldua->ttd_asesi)
+                <img src="{{ $apldua->ttd_asesi_image }}" class="sig-img" alt="TTD Asesi">
+                @endif
+            </div>
             <div class="sig-date">
                 {{ $apldua->tanggal_ttd_asesi?->format('d-m-Y') ?? '' }}
             </div>
         </td>
     </tr>
-    <tr style="border-top-style: none;">
-        <td style="border-top-style: none;"></td>
-        <td style="border-top-style: none;"></td>
+    {{-- baris kosong pemisah agar rowspan pas --}}
+    <tr>
+        <td style="border-top:none; border-bottom:none; padding:0; height:0;"></td>
+        <td style="border-top:none; border-bottom:none; padding:0; height:0;"></td>
     </tr>
 
-    {{-- Asesor section --}}
+    {{-- ── Baris Asesor ── --}}
     <tr>
         <td style="vertical-align:top;" rowspan="4">
             <strong>Catatan :</strong>
@@ -325,22 +310,25 @@
                 {{ $apldua->catatan_asesor ?? '' }}
             </div>
         </td>
-        <td colspan="2" style="text-align:center; font-weight:bold;">Ditinjau Oleh Asesor :</td>
+        <td colspan="2" style="text-align:center; font-weight:bold; vertical-align:middle;">Ditinjau Oleh Asesor :</td>
     </tr>
     <tr>
-        <td>Nama :</td>
-        <td><strong>{{ $apldua->nama_ttd_asesor ?? '' }}</strong></td>
+        <td style="vertical-align:middle;">Nama :</td>
+        <td style="vertical-align:middle;"><strong>{{ $apldua->nama_ttd_asesor ?? '' }}</strong></td>
     </tr>
     <tr>
-        <td>No. Reg:</td>
-        <td>{{ $asesor_no_reg ?? $apldua->asesmen?->schedule?->asesor?->no_reg_met ?? '' }}</td>
+        <td style="vertical-align:middle;">No. Reg:</td>
+        <td style="vertical-align:middle;">{{ $asesor_no_reg ?? $apldua->asesmen?->schedule?->asesor?->no_reg_met ?? '' }}</td>
     </tr>
     <tr>
-        <td style="vertical-align:top; padding-top:4pt;">Tanda tangan/<br>Tanggal</td>
-        <td class="sig-cell-img">
-            @if($apldua->ttd_asesor)
-            <img src="{{ $apldua->ttd_asesor_image }}" class="sig-img" alt="TTD Asesor">
-            @endif
+        <td style="vertical-align:middle;">Tanda tangan/<br>Tanggal</td>
+        {{-- Cell TTD Asesor --}}
+        <td class="sig-cell">
+            <div class="sig-img-area">
+                @if($apldua->ttd_asesor)
+                <img src="{{ $apldua->ttd_asesor_image }}" class="sig-img" alt="TTD Asesor">
+                @endif
+            </div>
             <div class="sig-date">
                 {{ $apldua->tanggal_ttd_asesor?->format('d-m-Y') ?? '' }}
             </div>

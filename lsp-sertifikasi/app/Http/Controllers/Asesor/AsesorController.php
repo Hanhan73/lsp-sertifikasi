@@ -97,6 +97,7 @@ class AsesorController extends Controller
             'skema.unitKompetensis.elemens.kuks',
             'aplsatu.buktiKelengkapan',
             'apldua.jawabans.elemen',
+            'frak01',
             'certificate',
         ]);
 

@@ -50,11 +50,12 @@
     <i class="bi bi-people"></i> Daftar Asesi
 </a>
 
-<a href="{{ route('tuk.schedules') }}" class="nav-link {{ request()->routeIs('tuk.schedules*') ? 'active' : '' }}">
+<a href="{{ route('tuk.schedules.index') }}"
+    class="nav-link {{ request()->routeIs('tuk.schedules*') ? 'active' : '' }}">
     <i class="bi bi-calendar-event"></i> Penjadwalan
 </a>
 
-<a href="{{ route('tuk.verifications') }}"
+<a href="{{ route('tuk.verifications.index') }}"
     class="nav-link {{ request()->routeIs('tuk.verifications*') ? 'active' : '' }}">
     <i class="bi bi-check-circle"></i> Verifikasi Asesi
     @if(($stats['pending_verification'] ?? 0) > 0)

@@ -294,7 +294,7 @@
                         <button type="submit" class="btn btn-success btn-lg">
                             <i class="bi bi-check-circle"></i> Verifikasi Data
                         </button>
-                        <a href="{{ route('tuk.verifications') }}" class="btn btn-secondary">
+                        <a href="{{ route('tuk.verifications.index') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Kembali
                         </a>
                     </div>

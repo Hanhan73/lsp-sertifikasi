@@ -128,7 +128,7 @@
                 <i class="bi bi-calendar-event-fill text-success" style="font-size: 3rem;"></i>
                 <h5 class="mt-3">Penjadwalan</h5>
                 <p class="text-muted">Atur jadwal asesmen untuk asesi</p>
-                <a href="{{ route('tuk.schedules') }}" class="btn btn-success">
+                <a href="{{ route('tuk.schedules.index') }}" class="btn btn-success">
                     <i class="bi bi-arrow-right"></i> Kelola Jadwal
                 </a>
             </div>
@@ -217,13 +217,13 @@
 
 @push('styles')
 <style>
-.hover-shadow {
-    transition: all 0.3s ease;
-}
+    .hover-shadow {
+        transition: all 0.3s ease;
+    }
 
-.hover-shadow:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
+    .hover-shadow:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    }
 </style>
 @endpush

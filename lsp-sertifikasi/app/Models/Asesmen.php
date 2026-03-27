@@ -60,30 +60,33 @@ class Asesmen extends Model
         'phase_2_amount',
         'collective_paid_by_tuk',
         'skip_payment',
-        'training_flag'
+        'training_flag',
     ];
 
     protected $casts = [
-        'birth_date' => 'date',
-        'preferred_date' => 'date',
-        'registration_date' => 'date',
-        'verified_at' => 'datetime',
-        'assessed_at' => 'datetime',
-        'assigned_at' => 'datetime',
-        'fee_amount' => 'decimal:2',
-        'phase_1_amount' => 'decimal:2',
-        'phase_2_amount' => 'decimal:2',
-        'phase_1_percentage' => 'decimal:2',
-        'phase_2_percentage' => 'decimal:2',
-        'is_collective' => 'boolean',
+        'birth_date'           => 'date',
+        'preferred_date'       => 'date',
+        'registration_date'    => 'date',
+        'verified_at'          => 'datetime',
+        'assessed_at'          => 'datetime',
+        'assigned_at'          => 'datetime',
+        'fee_amount'           => 'decimal:2',
+        'phase_1_amount'       => 'decimal:2',
+        'phase_2_amount'       => 'decimal:2',
+        'phase_1_percentage'   => 'decimal:2',
+        'phase_2_percentage'   => 'decimal:2',
+        'is_collective'        => 'boolean',
         'collective_paid_by_tuk' => 'boolean',
-        'skip_payment' => 'boolean',
-        'tuk_verified_at' => 'date:d-m-Y',
-        'training_flag' => 'boolean',
-        'admin_verified_at' => 'date:d-m-Y'
+        'skip_payment'         => 'boolean',
+        'tuk_verified_at'      => 'date:d-m-Y',
+        'training_flag'        => 'boolean',
+        'admin_verified_at'    => 'date:d-m-Y',
     ];
 
+    // =========================================================================
     // Relationships
+    // =========================================================================
+
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -94,13 +97,11 @@ class Asesmen extends Model
         return $this->belongsTo(Tuk::class);
     }
 
-    // NEW: Assigned TUK relationship
     public function assignedTuk()
     {
         return $this->belongsTo(Tuk::class, 'assigned_tuk_id');
     }
 
-    // NEW: Assigner relationship
     public function assigner()
     {
         return $this->belongsTo(User::class, 'assigned_by');
@@ -135,17 +136,19 @@ class Asesmen extends Model
     {
         return $this->belongsTo(User::class, 'admin_verified_by');
     }
-    
+
     public function assessorRegistrar()
     {
         return $this->belongsTo(User::class, 'admin_verified_by');
     }
 
+    /** Single active payment (untuk backward-compat) */
     public function payment()
     {
         return $this->hasOne(Payment::class);
     }
 
+    /** All payment records */
     public function payments()
     {
         return $this->hasMany(Payment::class);
@@ -161,7 +164,6 @@ class Asesmen extends Model
         return $this->hasOne(Certificate::class);
     }
 
-    
     public function aplsatu()
     {
         return $this->hasOne(AplSatu::class);
@@ -187,11 +189,40 @@ class Asesmen extends Model
         return $this->hasOne(\App\Models\FrAk04::class, 'asesmen_id');
     }
 
-    
+    // =========================================================================
     // Helper Methods
-    
+    // =========================================================================
+
     /**
-     * NEW: Calculate phase amounts based on percentage
+     * Apakah asesmen kolektif ini skip pembayaran via gateway?
+     * Kolektif selalu skip Midtrans — pembayaran dilakukan manual (TF/QRIS) oleh TUK secara terpisah.
+     */
+    public function shouldSkipPayment(): bool
+    {
+        return $this->is_collective && $this->collective_paid_by_tuk;
+    }
+
+    /**
+     * Apakah asesmen ini perlu melewati langkah pembayaran sama sekali?
+     * Saat ini: kolektif = skip. Mandiri = tetap wajib bayar via gateway.
+     */
+    public function isPaymentRequired(): bool
+    {
+        return !$this->shouldSkipPayment();
+    }
+
+    /**
+     * Status berikutnya setelah verified (berbeda antara kolektif & mandiri).
+     * Kolektif: verified → scheduled (skip "paid").
+     * Mandiri : verified → paid → scheduled.
+     */
+    public function getStatusAfterVerified(): string
+    {
+        return $this->shouldSkipPayment() ? 'scheduled' : 'paid';
+    }
+
+    /**
+     * Calculate phase amounts based on percentage
      */
     public function calculatePhaseAmounts()
     {
@@ -204,7 +235,7 @@ class Asesmen extends Model
     }
 
     /**
-     * NEW: Get effective TUK (assigned or original)
+     * Get effective TUK (assigned or original)
      */
     public function getEffectiveTuk()
     {
@@ -212,103 +243,16 @@ class Asesmen extends Model
     }
 
     /**
-     * NEW: Check if asesi is assigned to TUK
+     * Check if asesi is assigned to TUK
      */
-    public function isAssignedToTuk()
+    public function isAssignedToTuk(): bool
     {
         return !is_null($this->assigned_tuk_id);
     }
 
-    /**
-     * Check if batch is ready for payment (Phase 1)
-     */
-    public function isBatchReadyForPayment()
-    {
-        if (!$this->is_collective) {
-            return false;
-        }
-
-        $batch = $this->fullBatch();
-
-        return $batch->every(function ($asesmen) {
-            return $asesmen->status === 'verified' && $asesmen->fee_amount > 0;
-        });
-    }
-
-    /**
-     * Check if batch is ready for Phase 2 payment
-     */
-    public function isBatchReadyForPhase2Payment()
-    {
-        if (!$this->is_collective || $this->payment_phases !== 'two_phase') {
-            return false;
-        }
-
-        $batch = $this->fullBatch();
-
-        $allAssessed = $batch->every(function ($asesmen) {
-            return in_array($asesmen->status, ['assessed', 'certified']);
-        });
-
-        $phase1Paid = $batch->every(function ($asesmen) {
-            return $asesmen->payments()
-                ->where('payment_phase', 'phase_1')
-                ->where('status', 'verified')
-                ->exists();
-        });
-
-        return $allAssessed && $phase1Paid;
-    }
-
-    /**
-     * Get batch payment status
-     */
-    public function getBatchPaymentStatus()
-    {
-        if (!$this->is_collective) {
-            return null;
-        }
-
-        $batch = $this->fullBatch();
-
-        if ($this->payment_phases === 'single') {
-            $allPaid = $batch->every(function ($asesmen) {
-                return $asesmen->payments()
-                    ->where('payment_phase', 'full')
-                    ->where('status', 'verified')
-                    ->exists();
-            });
-
-            $anyPending = $batch->some(function ($asesmen) {
-                return $asesmen->payments()
-                    ->where('payment_phase', 'full')
-                    ->where('status', 'pending')
-                    ->exists();
-            });
-
-            if ($allPaid) return 'paid';
-            if ($anyPending) return 'pending';
-            return 'not_paid';
-        } else {
-            $phase1Paid = $batch->every(function ($asesmen) {
-                return $asesmen->payments()
-                    ->where('payment_phase', 'phase_1')
-                    ->where('status', 'verified')
-                    ->exists();
-            });
-
-            $phase2Paid = $batch->every(function ($asesmen) {
-                return $asesmen->payments()
-                    ->where('payment_phase', 'phase_2')
-                    ->where('status', 'verified')
-                    ->exists();
-            });
-
-            if ($phase1Paid && $phase2Paid) return 'fully_paid';
-            if ($phase1Paid) return 'phase_1_paid';
-            return 'not_paid';
-        }
-    }
+    // =========================================================================
+    // Batch / Collective helpers
+    // =========================================================================
 
     public function batchMembers()
     {
@@ -330,109 +274,142 @@ class Asesmen extends Model
         return self::where('collective_batch_id', $this->collective_batch_id)->get();
     }
 
-    public function shouldSkipPayment()
+    /**
+     * Check if batch is ready for payment (Phase 1)
+     * Hanya relevan untuk asesmen mandiri atau jika TUK membayar via gateway.
+     */
+    public function isBatchReadyForPayment(): bool
     {
-        return $this->is_collective && $this->collective_paid_by_tuk;
+        if (!$this->is_collective) {
+            return false;
+        }
+
+        $batch = $this->fullBatch();
+
+        return $batch->every(function ($asesmen) {
+            return $asesmen->status === 'verified' && $asesmen->fee_amount > 0;
+        });
     }
 
-    // Status labels and badges
-    public function getStatusLabelAttribute()
+    /**
+     * Check if batch is ready for Phase 2 payment
+     */
+    public function isBatchReadyForPhase2Payment(): bool
+    {
+        if (!$this->is_collective || $this->payment_phases !== 'two_phase') {
+            return false;
+        }
+
+        $batch = $this->fullBatch();
+
+        $allAssessed = $batch->every(fn($a) => in_array($a->status, ['assessed', 'certified']));
+        $phase1Paid  = $batch->every(
+            fn($a) => $a->payments()
+                ->where('payment_phase', 'phase_1')
+                ->where('status', 'verified')
+                ->exists()
+        );
+
+        return $allAssessed && $phase1Paid;
+    }
+
+    /**
+     * Get batch payment status
+     */
+    public function getBatchPaymentStatus(): ?string
+    {
+        if (!$this->is_collective) {
+            return null;
+        }
+
+        $batch = $this->fullBatch();
+
+        if ($this->payment_phases === 'single') {
+            $allPaid    = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'verified')->exists());
+            $anyPending = $batch->some(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'pending')->exists());
+
+            if ($allPaid)    return 'paid';
+            if ($anyPending) return 'pending';
+            return 'not_paid';
+        } else {
+            $phase1Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists());
+            $phase2Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists());
+
+            if ($phase1Paid && $phase2Paid) return 'fully_paid';
+            if ($phase1Paid)               return 'phase_1_paid';
+            return 'not_paid';
+        }
+    }
+
+    // =========================================================================
+    // Status helpers
+    // =========================================================================
+
+    public function getStatusLabelAttribute(): string
     {
         $labels = [
-            'registered' => 'Terdaftar',
-            'data_completed' => 'Data Lengkap',
-            'verified' => 'Terverifikasi',
-            'paid' => 'Sudah Bayar',
-            'scheduled' => 'Terjadwal',
+            'registered'               => 'Terdaftar',
+            'data_completed'           => 'Data Lengkap',
+            'verified'                 => 'Terverifikasi',
+            'paid'                     => 'Sudah Bayar',
+            'scheduled'                => 'Terjadwal',
             'pre_assessment_completed' => 'Pra-Asesmen Selesai',
-            'assessed' => 'Sudah Diases',
-            'certified' => 'Tersertifikasi',
+            'assessed'                 => 'Sudah Diases',
+            'certified'                => 'Tersertifikasi',
         ];
 
         return $labels[$this->status] ?? $this->status;
     }
 
-    public function getStatusBadgeAttribute()
+    public function getStatusBadgeAttribute(): string
     {
         $badges = [
-            'registered' => 'secondary',
-            'data_completed' => 'info',
-            'verified' => 'primary',
-            'paid' => 'success',
-            'scheduled' => 'warning',
+            'registered'               => 'secondary',
+            'data_completed'           => 'info',
+            'verified'                 => 'primary',
+            'paid'                     => 'success',
+            'scheduled'                => 'warning',
             'pre_assessment_completed' => 'info',
-            'assessed' => 'primary',
-            'certified' => 'success',
+            'assessed'                 => 'primary',
+            'certified'                => 'success',
         ];
 
         return $badges[$this->status] ?? 'secondary';
     }
 
     /**
-     * Get next action for asesi - UPDATED
+     * Next action text shown to asesi.
+     * Kolektif: tidak ada langkah pembayaran di alur utama.
      */
-    public function getNextActionAttribute()
+    public function getNextActionAttribute(): string
     {
-        // Collective asesi workflow
-        if ($this->is_collective && $this->shouldSkipPayment()) {
-            switch ($this->status) {
-                case 'registered':
-                    return 'Lengkapi data pribadi';
-                case 'data_completed':
-                    return 'Menunggu verifikasi TUK';
-                case 'verified':
-                    if ($this->payment_phases === 'single') {
-                        return 'Menunggu TUK melakukan pembayaran';
-                    } else {
-                        return 'Menunggu TUK melakukan pembayaran fase 1';
-                    }
-                case 'paid':
-                    return 'Menunggu jadwal asesmen dari TUK';
-                case 'scheduled':
-                    return 'Lengkapi pra-asesmen';
-                case 'pre_assessment_completed':
-                    return 'Menunggu proses asesmen';
-                case 'assessed':
-                    if ($this->payment_phases === 'two_phase') {
-                        $phase2Paid = $this->payments()
-                            ->where('payment_phase', 'phase_2')
-                            ->where('status', 'verified')
-                            ->exists();
-                        
-                        if (!$phase2Paid) {
-                            return 'Menunggu TUK melakukan pembayaran fase 2';
-                        }
-                    }
-                    return 'Menunggu penerbitan sertifikat';
-                case 'certified':
-                    return 'Unduh sertifikat';
-            }
+        // ── Kolektif (skip payment) ─────────────────────────────────────────
+        if ($this->shouldSkipPayment()) {
+            return match ($this->status) {
+                'registered'               => 'Lengkapi data pribadi',
+                'data_completed'           => 'Menunggu verifikasi TUK',
+                'verified'                 => 'Menunggu penjadwalan dari TUK',
+                'scheduled'                => 'Lengkapi pra-asesmen',
+                'pre_assessment_completed' => 'Menunggu proses asesmen',
+                'assessed'                 => 'Menunggu penerbitan sertifikat',
+                'certified'                => 'Unduh sertifikat',
+                default                    => '-',
+            };
         }
 
-        // NEW: Mandiri asesi workflow (verifikasi langsung oleh Admin)
-        switch ($this->status) {
-            case 'registered':
-                return 'Lengkapi data pribadi';
-            case 'data_completed':
-                return 'Menunggu verifikasi Admin LSP';
-            case 'verified':
-                if ($this->isAssignedToTuk()) {
-                    return 'Lakukan pembayaran';
-                } else {
-                    return 'Menunggu assignment ke TUK oleh Admin';
-                }
-            case 'paid':
-                return 'Menunggu jadwal asesmen dari TUK';
-            case 'scheduled':
-                return 'Lengkapi pra-asesmen';
-            case 'pre_assessment_completed':
-                return 'Menunggu proses asesmen';
-            case 'assessed':
-                return 'Menunggu penerbitan sertifikat';
-            case 'certified':
-                return 'Unduh sertifikat';
-            default:
-                return '-';
-        }
+        // ── Mandiri ─────────────────────────────────────────────────────────
+        return match ($this->status) {
+            'registered'               => 'Lengkapi data pribadi',
+            'data_completed'           => 'Menunggu verifikasi Admin LSP',
+            'verified'                 => $this->isAssignedToTuk()
+                ? 'Lakukan pembayaran'
+                : 'Menunggu assignment ke TUK oleh Admin',
+            'paid'                     => 'Menunggu jadwal asesmen dari TUK',
+            'scheduled'                => 'Lengkapi pra-asesmen',
+            'pre_assessment_completed' => 'Menunggu proses asesmen',
+            'assessed'                 => 'Menunggu penerbitan sertifikat',
+            'certified'                => 'Unduh sertifikat',
+            default                    => '-',
+        };
     }
 }

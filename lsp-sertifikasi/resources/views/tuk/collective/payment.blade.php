@@ -10,7 +10,8 @@
 @section('content')
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <!-- Batch Info -->
+
+        {{-- ── Info Batch ────────────────────────────────────────────────── --}}
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Batch Pendaftaran</h5>
@@ -18,10 +19,10 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <table class="table table-borderless">
+                        <table class="table table-borderless mb-0">
                             <tr>
                                 <td width="180"><strong>Batch ID:</strong></td>
-                                <td>{{ $batchId }}</td>
+                                <td><code>{{ $batchId }}</code></td>
                             </tr>
                             <tr>
                                 <td><strong>TUK:</strong></td>
@@ -31,20 +32,16 @@
                                 <td><strong>Metode Pembayaran:</strong></td>
                                 <td>
                                     @if($paymentPhases === 'single')
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-cash-stack"></i> 1 Fase (Full Payment)
-                                    </span>
+                                        <span class="badge bg-success"><i class="bi bi-cash-stack"></i> 1 Fase</span>
                                     @else
-                                    <span class="badge bg-primary">
-                                        <i class="bi bi-cash-coin"></i> 2 Fase (Split Payment)
-                                    </span>
+                                        <span class="badge bg-primary"><i class="bi bi-cash-coin"></i> 2 Fase</span>
                                     @endif
                                 </td>
                             </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <table class="table table-borderless">
+                        <table class="table table-borderless mb-0">
                             <tr>
                                 <td width="150"><strong>Total Peserta:</strong></td>
                                 <td>{{ $asesmens->count() }} orang</td>
@@ -53,105 +50,123 @@
                                 <td><strong>Skema:</strong></td>
                                 <td>{{ $asesmens->first()->skema->name ?? '-' }}</td>
                             </tr>
-                            @if($paymentPhases === 'two_phase')
                             <tr>
-                                <td><strong>Fase Saat Ini:</strong></td>
+                                <td><strong>Total Biaya:</strong></td>
                                 <td>
-                                    <span class="badge bg-info">
-                                        {{ $currentPhase === 'phase_1' ? 'Fase 1' : 'Fase 2' }}
-                                    </span>
+                                    @if($totalAmount > 0)
+                                        <strong class="text-success">Rp {{ number_format($totalAmount, 0, ',', '.') }}</strong>
+                                    @else
+                                        <span class="text-muted"><em>Menunggu penetapan Admin LSP</em></span>
+                                    @endif
                                 </td>
                             </tr>
-                            @endif
                         </table>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Phase Info for Two Phase Payment - UPDATED: Tanpa Persentase -->
-        @if($paymentPhases === 'two_phase')
-        <div class="card mb-4 border-primary">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Pembayaran 2 Fase</h5>
+        {{-- ── Info Pembayaran Manual ────────────────────────────────────── --}}
+        @if(!$allPaid)
+        <div class="card mb-4 border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-bank"></i> Cara Pembayaran
+                </h5>
             </div>
             <div class="card-body">
+                <div class="alert alert-warning mb-3">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <strong>Pembayaran Kolektif via Transfer Bank / QRIS</strong><br>
+                    Pembayaran untuk batch ini dilakukan secara manual oleh TUK. Setelah transfer, Admin LSP akan memverifikasi pembayaran.
+                </div>
+
+                {{-- Informasi rekening / QRIS akan dikonfigurasi oleh Admin --}}
                 <div class="row">
                     <div class="col-md-6">
-                        <div class="card {{ $currentPhase === 'phase_1' ? 'border-success' : 'border-secondary' }}">
-                            <div class="card-body text-center">
-                                <h6>
-                                    <i class="bi bi-1-circle{{ $currentPhase === 'phase_1' ? '-fill text-success' : '' }}"></i>
-                                    Fase 1
-                                </h6>
-                                <p class="text-muted small mb-2">Setelah Admin Verifikasi</p>
-                                @if($phase1Status === 'paid')
-                                <span class="badge bg-success">
-                                    <i class="bi bi-check-circle"></i> Sudah Dibayar
-                                </span>
-                                @elseif($currentPhase === 'phase_1')
-                                <span class="badge bg-warning">
-                                    <i class="bi bi-hourglass-half"></i> Perlu Dibayar
-                                </span>
-                                @else
-                                <span class="badge bg-secondary">Belum Dibayar</span>
-                                @endif
-                                <p class="mt-2 mb-0">
-                                    <strong>Rp {{ number_format($asesmens->first()->phase_1_amount ?? 0, 0, ',', '.') }}</strong>
-                                    <small class="text-muted">/ peserta</small>
+                        <div class="card border-0 bg-light h-100">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-bank2" style="font-size: 2.5rem; color: #0d6efd;"></i>
+                                <h6 class="mt-3">Transfer Bank</h6>
+                                <p class="text-muted small mb-0">
+                                    Hubungi Admin LSP untuk mendapatkan nomor rekening tujuan.
                                 </p>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card {{ $currentPhase === 'phase_2' ? 'border-success' : 'border-secondary' }}">
-                            <div class="card-body text-center">
-                                <h6>
-                                    <i class="bi bi-2-circle{{ $currentPhase === 'phase_2' ? '-fill text-success' : '' }}"></i>
-                                    Fase 2
-                                </h6>
-                                <p class="text-muted small mb-2">Setelah Asesmen Selesai</p>
-                                @if($phase2Status === 'paid')
-                                <span class="badge bg-success">
-                                    <i class="bi bi-check-circle"></i> Sudah Dibayar
-                                </span>
-                                @elseif($currentPhase === 'phase_2')
-                                <span class="badge bg-warning">
-                                    <i class="bi bi-hourglass-half"></i> Perlu Dibayar
-                                </span>
-                                @else
-                                <span class="badge bg-secondary">
-                                    {{ $phase1Status === 'paid' ? 'Menunggu Asesmen' : 'Belum Waktunya' }}
-                                </span>
-                                @endif
-                                <p class="mt-2 mb-0">
-                                    <strong>Rp {{ number_format($asesmens->first()->phase_2_amount ?? 0, 0, ',', '.') }}</strong>
-                                    <small class="text-muted">/ peserta</small>
+                        <div class="card border-0 bg-light h-100">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-qr-code" style="font-size: 2.5rem; color: #198754;"></i>
+                                <h6 class="mt-3">QRIS</h6>
+                                <p class="text-muted small mb-0">
+                                    Hubungi Admin LSP untuk mendapatkan kode QRIS pembayaran.
                                 </p>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Total Breakdown -->
-                @php
-                    $phase1Total = $asesmens->sum('phase_1_amount');
-                    $phase2Total = $asesmens->sum('phase_2_amount');
-                    $grandTotal = $phase1Total + $phase2Total;
-                @endphp
-                <div class="alert alert-info mt-3 mb-0">
-                    <div class="row text-center">
-                        <div class="col-md-4">
-                            <small class="text-muted d-block">Fase 1 Total</small>
-                            <strong>Rp {{ number_format($phase1Total, 0, ',', '.') }}</strong>
+
+                <div class="alert alert-secondary mt-3 mb-0">
+                    <i class="bi bi-telephone"></i>
+                    <strong>Langkah pembayaran:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Hubungi Admin LSP untuk konfirmasi total tagihan batch ini</li>
+                        <li>Lakukan transfer atau scan QRIS sesuai nominal yang diberikan Admin</li>
+                        <li>Kirimkan bukti transfer ke Admin LSP</li>
+                        <li>Admin LSP akan memverifikasi dan mengupdate status pembayaran</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ── Status Phase (two_phase) ─────────────────────────────────── --}}
+        @if($paymentPhases === 'two_phase')
+        <div class="card mb-4">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-layers"></i> Status Pembayaran Dua Fase</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card {{ $phase1Status === 'paid' ? 'border-success' : 'border-secondary' }}">
+                            <div class="card-body text-center">
+                                <h6><i class="bi bi-1-circle{{ $phase1Status === 'paid' ? '-fill text-success' : '' }}"></i> Fase 1</h6>
+                                <p class="text-muted small mb-2">Sebelum Asesmen</p>
+                                @if($phase1Status === 'paid')
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sudah Dibayar</span>
+                                @else
+                                    <span class="badge bg-secondary">Menunggu Pembayaran</span>
+                                @endif
+                                @if($asesmens->first()->phase_1_amount)
+                                    <p class="mt-2 mb-0">
+                                        <strong>Rp {{ number_format($asesmens->first()->phase_1_amount, 0, ',', '.') }}</strong>
+                                        <small class="text-muted">/ peserta</small>
+                                    </p>
+                                @endif
+                            </div>
                         </div>
-                        <div class="col-md-4">
-                            <small class="text-muted d-block">Fase 2 Total</small>
-                            <strong>Rp {{ number_format($phase2Total, 0, ',', '.') }}</strong>
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-muted d-block">Total Keseluruhan</small>
-                            <strong class="text-primary">Rp {{ number_format($grandTotal, 0, ',', '.') }}</strong>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card {{ $phase2Status === 'paid' ? 'border-success' : 'border-secondary' }}">
+                            <div class="card-body text-center">
+                                <h6><i class="bi bi-2-circle{{ $phase2Status === 'paid' ? '-fill text-success' : '' }}"></i> Fase 2</h6>
+                                <p class="text-muted small mb-2">Setelah Asesmen Selesai</p>
+                                @if($phase2Status === 'paid')
+                                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> Sudah Dibayar</span>
+                                @elseif($phase1Status === 'paid')
+                                    <span class="badge bg-warning">Menunggu Pembayaran</span>
+                                @else
+                                    <span class="badge bg-secondary">Menunggu Fase 1</span>
+                                @endif
+                                @if($asesmens->first()->phase_2_amount)
+                                    <p class="mt-2 mb-0">
+                                        <strong>Rp {{ number_format($asesmens->first()->phase_2_amount, 0, ',', '.') }}</strong>
+                                        <small class="text-muted">/ peserta</small>
+                                    </p>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -159,83 +174,83 @@
         </div>
         @endif
 
-        <!-- Participants List -->
+        {{-- ── Daftar Peserta ───────────────────────────────────────────── --}}
         <div class="card mb-4">
             <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-people"></i> Daftar Peserta</h5>
+                <h5 class="mb-0"><i class="bi bi-people"></i> Daftar Peserta ({{ $asesmens->count() }} orang)</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>No</th>
+                                <th class="ps-3">No</th>
                                 <th>Nama</th>
                                 <th>Email</th>
-                                <th>Status</th>
+                                <th>Status Asesmen</th>
                                 @if($paymentPhases === 'single')
-                                <th>Biaya</th>
+                                    <th>Biaya</th>
                                 @else
-                                <th>Fase 1</th>
-                                <th>Fase 2</th>
-                                <th>Total</th>
+                                    <th>Fase 1</th>
+                                    <th>Fase 2</th>
+                                    <th>Total</th>
                                 @endif
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($asesmens as $index => $asesmen)
                             <tr>
-                                <td>{{ $index + 1 }}</td>
+                                <td class="ps-3">{{ $index + 1 }}</td>
                                 <td>{{ $asesmen->full_name ?? $asesmen->user->name }}</td>
-                                <td>{{ $asesmen->email }}</td>
+                                <td>{{ $asesmen->email ?? $asesmen->user->email }}</td>
                                 <td>
-                                    <span class="badge bg-{{ $asesmen->status_badge }} badge-status">
+                                    <span class="badge bg-{{ $asesmen->status_badge }}">
                                         {{ $asesmen->status_label }}
                                     </span>
                                 </td>
                                 @if($paymentPhases === 'single')
-                                <td>
-                                    @if($asesmen->fee_amount)
-                                    <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
-                                    @else
-                                    <span class="text-muted">Belum ditentukan</span>
-                                    @endif
-                                </td>
+                                    <td>
+                                        @if($asesmen->fee_amount)
+                                            <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
+                                        @else
+                                            <span class="text-muted small">Belum ditentukan</span>
+                                        @endif
+                                    </td>
                                 @else
-                                <td>
-                                    @if($asesmen->phase_1_amount)
-                                    <span class="badge bg-{{ $asesmen->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists() ? 'success' : 'secondary' }}">
-                                        Rp {{ number_format($asesmen->phase_1_amount, 0, ',', '.') }}
-                                    </span>
-                                    @else
-                                    <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($asesmen->phase_2_amount)
-                                    <span class="badge bg-{{ $asesmen->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists() ? 'success' : 'secondary' }}">
-                                        Rp {{ number_format($asesmen->phase_2_amount, 0, ',', '.') }}
-                                    </span>
-                                    @else
-                                    <span class="text-muted">-</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($asesmen->fee_amount)
-                                    <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
-                                    @else
-                                    <span class="text-muted">-</span>
-                                    @endif
-                                </td>
+                                    <td>
+                                        @if($asesmen->phase_1_amount)
+                                            <span class="badge bg-{{ $asesmen->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists() ? 'success' : 'secondary' }}">
+                                                Rp {{ number_format($asesmen->phase_1_amount, 0, ',', '.') }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($asesmen->phase_2_amount)
+                                            <span class="badge bg-{{ $asesmen->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists() ? 'success' : 'secondary' }}">
+                                                Rp {{ number_format($asesmen->phase_2_amount, 0, ',', '.') }}
+                                            </span>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($asesmen->fee_amount)
+                                            <strong>Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</strong>
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
                                 @endif
                             </tr>
                             @endforeach
                         </tbody>
-                        @if($canPay && $totalAmount > 0)
-                        <tfoot>
-                            <tr class="table-success">
-                                <td colspan="{{ $paymentPhases === 'single' ? 4 : 6 }}" class="text-end">
-                                    <strong>TOTAL PEMBAYARAN {{ $paymentPhases === 'two_phase' ? '('.strtoupper(str_replace('_', ' ', $currentPhase)).')' : '' }}:</strong>
+                        @if($totalAmount > 0)
+                        <tfoot class="table-success">
+                            <tr>
+                                <td colspan="{{ $paymentPhases === 'single' ? 4 : 6 }}" class="text-end pe-3">
+                                    <strong>TOTAL:</strong>
                                 </td>
                                 <td><strong>Rp {{ number_format($totalAmount, 0, ',', '.') }}</strong></td>
                             </tr>
@@ -246,222 +261,88 @@
             </div>
         </div>
 
-        <!-- Payment Section -->
-        @if(!$canPay)
-        <div class="card">
+        {{-- ── Status Pembayaran / Sudah Lunas ──────────────────────────── --}}
+        @if($allPaid)
+        <div class="card mb-4">
             <div class="card-body">
-                <div class="alert alert-warning">
-                    <i class="bi bi-clock"></i>
-                    <strong>Belum Dapat Melakukan Pembayaran</strong>
-                    <p class="mb-0 mt-2">
-                        @if($paymentPhases === 'single')
-                        Semua peserta harus terverifikasi oleh Admin LSP dan biaya harus sudah ditentukan sebelum dapat melakukan pembayaran.
-                        @else
-                            @if($currentPhase === 'phase_1')
-                            Pembayaran Fase 1 akan tersedia setelah Admin LSP memverifikasi semua peserta dan menentukan nominal biaya.
-                            @else
-                            Pembayaran Fase 2 akan tersedia setelah semua peserta menyelesaikan asesmen.
-                            @endif
-                        @endif
-                    </p>
+                <div class="alert alert-success mb-3">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <strong>Semua Pembayaran Sudah Terverifikasi!</strong><br>
+                    Proses asesmen dapat dilanjutkan.
                 </div>
-
-                <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary w-100">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Daftar Asesi
-                </a>
-            </div>
-        </div>
-        @elseif(isset($allPaid) && $allPaid)
-        <div class="card">
-            <div class="card-body">
-                <div class="alert alert-success">
-                    <i class="bi bi-check-circle"></i>
-                    <strong>Pembayaran Berhasil!</strong>
-                    <p class="mb-0 mt-2">
-                        @if($paymentPhases === 'single')
-                        Pembayaran kolektif untuk batch ini telah berhasil diverifikasi.
-                        @else
-                            @if($currentPhase === 'phase_1' && $phase1Status === 'paid')
-                            Pembayaran Fase 1 telah berhasil. Fase 2 akan tersedia setelah asesmen selesai.
-                            @elseif($phase2Status === 'paid')
-                            Pembayaran Fase 2 telah berhasil. Semua pembayaran untuk batch ini sudah selesai.
-                            @endif
-                        @endif
-                    </p>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('tuk.batch.detail', $batchId) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-eye"></i> Lihat Detail Batch
+                    </a>
+                    <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Daftar Asesi
+                    </a>
                 </div>
-                <a href="{{ route('tuk.asesi') }}" class="btn btn-primary w-100">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Daftar Asesi
-                </a>
             </div>
         </div>
         @else
         <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-credit-card-2-front"></i> Pembayaran Kolektif</h5>
-            </div>
             <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
-                    Pembayaran untuk <strong>{{ $asesmens->count() }} peserta</strong>
-                    <br>
-                    @if($paymentPhases === 'single')
-                    <strong>Metode:</strong> 1 Fase (Full Payment)
-                    @else
-                    <strong>Metode:</strong> 2 Fase - 
-                    @if($currentPhase === 'phase_1')
-                    <span class="badge bg-primary">Fase 1</span>
-                    @else
-                    <span class="badge bg-success">Fase 2 (Sisa Pembayaran)</span>
-                    @endif
-                    @endif
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-clock-history"></i>
+                    <strong>Menunggu Verifikasi Pembayaran</strong><br>
+                    Setelah Anda melakukan transfer, Admin LSP akan memverifikasi dan memperbarui status pembayaran secara manual.
+                    Proses asesmen tetap dapat berjalan normal selama menunggu konfirmasi pembayaran.
                 </div>
-
-                <div class="alert alert-success text-center mb-4">
-                    <h4 class="mb-0">
-                        <i class="bi bi-cash-coin"></i>
-                        Total Pembayaran {{ $paymentPhases === 'two_phase' ? '('.ucfirst(str_replace('_', ' ', $currentPhase)).')' : '' }}
-                    </h4>
-                    <h2 class="mt-2 mb-0">
-                        Rp {{ number_format($totalAmount, 0, ',', '.') }}
-                    </h2>
-                    @if($paymentPhases === 'two_phase')
-                    <small class="text-muted">
-                        @if($currentPhase === 'phase_1')
-                        Fase 1 dari total biaya Rp {{ number_format($asesmens->sum('fee_amount'), 0, ',', '.') }}
-                        <br>(Fase 2: Rp {{ number_format($asesmens->sum('phase_2_amount'), 0, ',', '.') }} akan dibayar setelah asesmen)
-                        @else
-                        Sisa pembayaran dari total biaya Rp {{ number_format($asesmens->sum('fee_amount'), 0, ',', '.') }}
-                        <br>(Fase 1 sebesar Rp {{ number_format($asesmens->sum('phase_1_amount'), 0, ',', '.') }} sudah dibayar)
-                        @endif
-                    </small>
-                    @endif
-                </div>
-
-                <button id="pay-button" class="btn btn-success btn-lg w-100 mb-3">
-                    <i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($totalAmount, 0, ',', '.') }}
-                </button>
-
-                <div class="text-center">
-                    <small class="text-muted">
-                        <i class="bi bi-shield-check"></i>
-                        Transaksi dijamin aman dengan Midtrans Payment Gateway
-                    </small>
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('tuk.batch.detail', $batchId) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-eye"></i> Lihat Detail Batch
+                    </a>
+                    <a href="{{ route('tuk.schedules.index') }}" class="btn btn-outline-warning">
+                        <i class="bi bi-calendar-check"></i> Atur Jadwal Asesmen
+                    </a>
+                    <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Kembali ke Daftar Asesi
+                    </a>
                 </div>
             </div>
         </div>
         @endif
+
+        {{--
+            ╔══════════════════════════════════════════════════════════════╗
+            ║  MIDTRANS — DISEMBUNYIKAN SEMENTARA                        ║
+            ║  Kode di bawah ini tetap ada, hanya dinonaktifkan.         ║
+            ║  Aktifkan kembali dengan menghapus komentar jika diperlukan ║
+            ╚══════════════════════════════════════════════════════════════╝
+
+        @if($canPay && !$allPaid)
+        <script type="text/javascript"
+            src="https://app{{ config('midtrans.is_production') ? '' : '.sandbox' }}.midtrans.com/snap/snap.js"
+            data-client-key="{{ config('midtrans.client_key') }}">
+        </script>
+        <script>
+        $('#pay-button').click(function() {
+            $.ajax({
+                url: '/tuk/collective/payment/{{ $batchId }}/create-token',
+                method: 'POST',
+                data: { phase: '{{ $currentPhase }}' },
+                headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+                success: function(response) {
+                    if (response.success) {
+                        snap.pay(response.snap_token, {
+                            onSuccess: function(result) {
+                                window.location.href = '{{ route("tuk.collective.payment.finish", $batchId) }}';
+                            },
+                            onPending: function(result) {
+                                window.location.href = '{{ route("tuk.collective.payment.finish", $batchId) }}';
+                            },
+                            onError: function(result) { alert('Pembayaran gagal'); }
+                        });
+                    }
+                }
+            });
+        });
+        </script>
+        @endif
+
+        --}}
+
     </div>
 </div>
 @endsection
-
-@push('scripts')
-@if($canPay && !$allPaid)
-<!-- Midtrans Snap JS -->
-<script type="text/javascript"
-    src="https://app{{ config('midtrans.is_production') ? '' : '.sandbox' }}.midtrans.com/snap/snap.js"
-    data-client-key="{{ config('midtrans.client_key') }}">
-</script>
-
-<script>
-$(document).ready(function() {
-    const batchId = '{{ $batchId }}';
-    const phase = '{{ $currentPhase }}';
-
-    $('#pay-button').click(function() {
-        $(this).prop('disabled', true);
-        $(this).html('<i class="bi bi-hourglass-split"></i> Memproses...');
-
-        $.ajax({
-            url: '/tuk/collective/payment/' + batchId + '/create-token',
-            method: 'POST',
-            data: {
-                phase: phase
-            },
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    if (typeof snap === 'undefined') {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: 'Midtrans Snap belum dimuat. Refresh halaman dan coba lagi.',
-                            confirmButtonText: 'OK'
-                        });
-                        resetPayButton();
-                        return;
-                    }
-                    
-                    snap.pay(response.snap_token, {
-                        onSuccess: function(result) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Pembayaran Berhasil!',
-                                text: 'Pembayaran kolektif sedang diproses.',
-                                timer: 3000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.href = '{{ route("tuk.collective.payment.finish", $batchId) }}';
-                            });
-                        },
-                        onPending: function(result) {
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Pembayaran Menunggu',
-                                text: 'Silakan selesaikan pembayaran Anda.',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                window.location.href = '{{ route("tuk.collective.payment.finish", $batchId) }}';
-                            });
-                        },
-                        onError: function(result) {
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Pembayaran Gagal',
-                                text: 'Terjadi kesalahan. Silakan coba lagi.',
-                                confirmButtonText: 'OK'
-                            });
-                            resetPayButton();
-                        },
-                        onClose: function() {
-                            resetPayButton();
-                        }
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: response.message || 'Gagal membuat token pembayaran',
-                        confirmButtonText: 'OK'
-                    });
-                    resetPayButton();
-                }
-            },
-            error: function(xhr) {
-                let errorMsg = 'Terjadi kesalahan pada server.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
-                }
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: errorMsg,
-                    confirmButtonText: 'OK'
-                });
-                resetPayButton();
-            }
-        });
-    });
-
-    function resetPayButton() {
-        $('#pay-button').prop('disabled', false);
-        $('#pay-button').html(
-            '<i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($totalAmount, 0, ",", ".") }}'
-        );
-    }
-});
-</script>
-@endif
-@endpush

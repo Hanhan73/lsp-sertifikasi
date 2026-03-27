@@ -9,9 +9,11 @@
 
 @section('content')
 <div class="row">
-    <!-- Left Column - Batch Info & Members -->
+
+    {{-- ── Kolom Kiri ──────────────────────────────────────────────────────── --}}
     <div class="col-lg-8">
-        <!-- Batch Information -->
+
+        {{-- Info Batch --}}
         <div class="card mb-3">
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0"><i class="bi bi-collection"></i> Informasi Batch</h5>
@@ -19,10 +21,10 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <table class="table table-borderless table-sm">
+                        <table class="table table-borderless table-sm mb-0">
                             <tr>
-                                <td width="150"><strong>Batch ID</strong></td>
-                                <td>: {{ $batchId }}</td>
+                                <td width="160"><strong>Batch ID</strong></td>
+                                <td>: <code class="small">{{ $batchId }}</code></td>
                             </tr>
                             <tr>
                                 <td><strong>Jumlah Peserta</strong></td>
@@ -33,72 +35,52 @@
                                 <td>: {{ $firstAsesmen->skema->name ?? '-' }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Metode Bayar</strong></td>
-                                <td>:
-                                    @if($paymentPhases === 'single')
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-1-circle"></i> 1 Fase
-                                    </span>
-                                    @else
-                                    <span class="badge bg-primary">
-                                        <i class="bi bi-2-circle"></i> 2 Fase
-                                    </span>
-                                    @endif
-                                </td>
+                                <td><strong>Tanggal Daftar</strong></td>
+                                <td>: {{ $firstAsesmen->created_at->format('d F Y H:i') }}</td>
                             </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <table class="table table-borderless table-sm">
+                        <table class="table table-borderless table-sm mb-0">
                             <tr>
-                                <td width="150"><strong>Tanggal Dibuat</strong></td>
-                                <td>: {{ $firstAsesmen->created_at->format('d F Y H:i') }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Status Pembayaran</strong></td>
+                                <td width="160"><strong>Status Pembayaran</strong></td>
                                 <td>:
-                                    @if($paymentStatus === 'paid' || $paymentStatus === 'fully_paid')
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle"></i> Lunas
-                                    </span>
-                                    @elseif($paymentStatus === 'phase_1_paid')
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-hourglass-split"></i> Fase 1 Lunas
-                                    </span>
+                                    @if(in_array($paymentStatus, ['paid', 'fully_paid']))
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Lunas
+                                        </span>
                                     @elseif($paymentStatus === 'pending')
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-hourglass-split"></i> Pending
-                                    </span>
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-hourglass-split"></i> Pending
+                                        </span>
                                     @else
-                                    <span class="badge bg-secondary">Belum Bayar</span>
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-bank"></i> Belum Bayar
+                                        </span>
                                     @endif
                                 </td>
                             </tr>
-                            @if($paymentPhases === 'two_phase')
-                            <tr>
-                                <td><strong>Fase 1</strong></td>
-                                <td>:
-                                    @if($phase1Status === 'paid')
-                                    <span class="badge bg-success">Lunas</span>
-                                    @else
-                                    <span class="badge bg-secondary">Belum Bayar</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr>
-                                <td><strong>Fase 2</strong></td>
-                                <td>:
-                                    @if($phase2Status === 'paid')
-                                    <span class="badge bg-success">Lunas</span>
-                                    @else
-                                    <span class="badge bg-secondary">Belum Bayar</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endif
                             <tr>
                                 <td><strong>Total Biaya</strong></td>
-                                <td>: Rp {{ number_format($totalAmount, 0, ',', '.') }}</td>
+                                <td>:
+                                    @if($totalAmount > 0)
+                                        <strong class="text-success">Rp {{ number_format($totalAmount, 0, ',', '.') }}</strong>
+                                    @else
+                                        <span class="text-muted"><em>Menunggu Admin LSP</em></span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pelatihan</strong></td>
+                                <td>:
+                                    @if($firstAsesmen->training_flag)
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-mortarboard-fill"></i> Ya
+                                        </span>
+                                    @else
+                                        <span class="badge bg-secondary">Tidak</span>
+                                    @endif
+                                </td>
                             </tr>
                         </table>
                     </div>
@@ -106,19 +88,18 @@
             </div>
         </div>
 
-        <!-- Payment Information -->
+        {{-- Riwayat Pembayaran (hanya tampil jika ada) --}}
         @if($payments->isNotEmpty())
         <div class="card mb-3">
             <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-credit-card"></i> Riwayat Pembayaran</h5>
+                <h5 class="mb-0"><i class="bi bi-receipt"></i> Riwayat Pembayaran</h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-sm table-hover">
-                        <thead>
+                    <table class="table table-sm table-hover mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>Fase</th>
-                                <th>Tanggal</th>
+                                <th class="ps-3">Tanggal</th>
                                 <th>Jumlah</th>
                                 <th>Metode</th>
                                 <th>Status</th>
@@ -128,18 +109,13 @@
                         <tbody>
                             @foreach($payments as $payment)
                             <tr>
-                                <td>
-                                    @if($payment->payment_phase === 'full')
-                                    <span class="badge bg-success">Full</span>
-                                    @elseif($payment->payment_phase === 'phase_1')
-                                    <span class="badge bg-primary">Fase 1</span>
-                                    @else
-                                    <span class="badge bg-info">Fase 2</span>
-                                    @endif
+                                <td class="ps-3">
+                                    {{ $payment->verified_at ? $payment->verified_at->format('d M Y H:i') : '-' }}
                                 </td>
-                                <td>{{ $payment->verified_at ? $payment->verified_at->format('d M Y H:i') : '-' }}</td>
-                                <td>Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
-                                <td>{{ ucfirst($payment->method) }}</td>
+                                <td>
+                                    <strong>Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong>
+                                </td>
+                                <td>{{ ucfirst($payment->method ?? '-') }}</td>
                                 <td>
                                     <span class="badge bg-{{ $payment->status_badge }}">
                                         {{ $payment->status_label }}
@@ -157,17 +133,20 @@
         </div>
         @endif
 
-        <!-- Members List -->
+        {{-- Daftar Peserta --}}
         <div class="card mb-3">
             <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-people"></i> Daftar Peserta ({{ $asesmens->count() }})</h5>
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Daftar Peserta
+                    <span class="badge bg-secondary ms-1">{{ $asesmens->count() }}</span>
+                </h5>
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm">
-                        <thead>
+                    <table class="table table-hover table-sm mb-0">
+                        <thead class="table-light">
                             <tr>
-                                <th>No</th>
+                                <th class="ps-3">No</th>
                                 <th>Nama</th>
                                 <th>Email</th>
                                 <th>Status</th>
@@ -177,18 +156,12 @@
                         <tbody>
                             @foreach($asesmens as $index => $asesmen)
                             <tr>
-                                <td>{{ $index + 1 }}</td>
+                                <td class="ps-3">{{ $index + 1 }}</td>
                                 <td>
                                     <strong>{{ $asesmen->full_name ?? $asesmen->user->name }}</strong>
-                                    @if($asesmen->training_flag)
-                                    <br>
-                                    <small class="badge bg-warning text-dark mt-1">
-                                        <i class="bi bi-mortarboard-fill"></i> Pelatihan
-                                    </small>
-                                    @endif
                                 </td>
                                 <td>
-                                    <small>{{ $asesmen->email ?? $asesmen->user->email }}</small>
+                                    <small class="text-muted">{{ $asesmen->email ?? $asesmen->user->email }}</small>
                                 </td>
                                 <td>
                                     <span class="badge bg-{{ $asesmen->status_badge }}">
@@ -208,72 +181,92 @@
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Right Column - Actions -->
+    {{-- ── Kolom Kanan ─────────────────────────────────────────────────────── --}}
     <div class="col-lg-4">
-        <div class="card sticky-top" style="top: 20px;">
+
+        {{-- Actions --}}
+        <div class="card sticky-top mb-3" style="top: 20px;">
             <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-lightning"></i> Actions</h5>
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Aksi</h5>
             </div>
-            <div class="card-body">
-                @if($pendingPhase)
-                <div class="alert alert-warning mb-3">
+            <div class="card-body d-grid gap-2">
+
+                {{-- Info pembayaran manual --}}
+                @if(!in_array($paymentStatus, ['paid', 'fully_paid']))
+                <div class="alert alert-info py-2 mb-1">
                     <small>
-                        <i class="bi bi-exclamation-triangle"></i>
-                        @if($pendingPhase === 'full')
-                        Menunggu pembayaran penuh (100%)
-                        @elseif($pendingPhase === 'phase_1')
-                        Menunggu pembayaran Fase 1 (50%)
-                        @else
-                        Menunggu pembayaran Fase 2 (50%)
-                        @endif
+                        <i class="bi bi-info-circle"></i>
+                        Pembayaran dilakukan secara manual (TF/QRIS).
+                        Hubungi Admin LSP untuk informasi rekening / kode QRIS.
                     </small>
                 </div>
-
-                <a href="{{ route('tuk.collective.payment', $batchId) }}" class="btn btn-warning w-100 mb-2">
-                    <i class="bi bi-cash-coin"></i>
-                    Bayar
-                    {{ $pendingPhase === 'phase_2' ? 'Fase 2' : ($pendingPhase === 'phase_1' ? 'Fase 1' : 'Sekarang') }}
+                <a href="{{ route('tuk.collective.payment.index', $batchId) }}"
+                   class="btn btn-outline-info">
+                    <i class="bi bi-bank"></i> Info Pembayaran
                 </a>
+                @else
+                <div class="alert alert-success py-2 mb-1">
+                    <small>
+                        <i class="bi bi-check-circle"></i>
+                        Semua pembayaran sudah terverifikasi.
+                    </small>
+                </div>
                 @endif
 
+                {{-- Download invoice jika sudah ada pembayaran terverifikasi --}}
                 @if($hasVerifiedPayment)
-                <a href="{{ route('tuk.collective.payment.invoice', $batchId) }}" class="btn btn-success w-100 mb-2">
+                <a href="{{ route('tuk.collective.payment.invoice', $batchId) }}"
+                   class="btn btn-success">
                     <i class="bi bi-file-earmark-pdf"></i> Download Invoice
                 </a>
                 @endif
 
-                <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary w-100">
+                <a href="{{ route('tuk.schedules.index') }}" class="btn btn-outline-warning">
+                    <i class="bi bi-calendar-check"></i> Atur Jadwal Asesmen
+                </a>
+
+                <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Kembali ke Daftar
                 </a>
             </div>
         </div>
 
-        <!-- Statistics Card -->
-        <div class="card mt-3">
+        {{-- Statistik Status --}}
+        <div class="card">
             <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Statistik</h6>
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Statistik Peserta</h6>
             </div>
             <div class="card-body">
                 @php
-                $statusCounts = $asesmens->groupBy('status')->map->count();
+                    $statusLabels = [
+                        'registered'               => ['label' => 'Terdaftar',            'badge' => 'secondary'],
+                        'data_completed'            => ['label' => 'Data Lengkap',         'badge' => 'info'],
+                        'verified'                  => ['label' => 'Terverifikasi',         'badge' => 'primary'],
+                        'paid'                      => ['label' => 'Sudah Bayar',          'badge' => 'success'],
+                        'scheduled'                 => ['label' => 'Terjadwal',            'badge' => 'warning'],
+                        'pre_assessment_completed'  => ['label' => 'Pra-Asesmen Selesai', 'badge' => 'info'],
+                        'assessed'                  => ['label' => 'Sudah Diases',         'badge' => 'primary'],
+                        'certified'                 => ['label' => 'Tersertifikasi',        'badge' => 'success'],
+                    ];
+                    $statusCounts = $asesmens->groupBy('status')->map->count();
                 @endphp
 
-                <div class="mb-2">
-                    <small class="text-muted">Status Peserta:</small>
-                </div>
-
-                @foreach($statusCounts as $status => $count)
+                @forelse($statusCounts as $status => $count)
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="badge bg-{{ $asesmens->first()->getStatusBadgeAttribute($status) }}">
-                        {{ $asesmens->first()->getStatusLabelAttribute($status) }}
+                    <span class="badge bg-{{ $statusLabels[$status]['badge'] ?? 'secondary' }}">
+                        {{ $statusLabels[$status]['label'] ?? $status }}
                     </span>
-                    <span class="text-muted">{{ $count }} orang</span>
+                    <span class="fw-semibold">{{ $count }} orang</span>
                 </div>
-                @endforeach
+                @empty
+                <p class="text-muted small mb-0">Belum ada data.</p>
+                @endforelse
             </div>
         </div>
+
     </div>
 </div>
 @endsection

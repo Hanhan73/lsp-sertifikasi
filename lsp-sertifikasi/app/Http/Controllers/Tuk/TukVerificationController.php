@@ -20,11 +20,10 @@ class TukVerificationController extends Controller
             abort(403, 'Akun TUK tidak ditemukan.');
         }
 
-        // Asesi dengan status data_completed yang belum diverifikasi TUK
         $asesmens = Asesmen::with(['user', 'skema'])
             ->where('tuk_id', $tuk->id)
             ->where('status', 'data_completed')
-            ->whereNull('tuk_verified_at') // Belum diverifikasi TUK
+            ->whereNull('tuk_verified_at')
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -40,18 +39,15 @@ class TukVerificationController extends Controller
     {
         $tuk = auth()->user()->tuk;
 
-        // Verify ownership
         if ($asesmen->tuk_id != $tuk->id) {
             abort(403, 'Anda tidak memiliki akses ke data ini.');
         }
 
-        // Pastikan statusnya data_completed
         if ($asesmen->status !== 'data_completed') {
             return redirect()->route('tuk.verifications')
                 ->with('error', 'Asesi ini tidak dalam status yang dapat diverifikasi.');
         }
 
-        // Pastikan belum diverifikasi TUK
         if ($asesmen->tuk_verified_at) {
             return redirect()->route('tuk.verifications')
                 ->with('error', 'Asesi ini sudah diverifikasi.');
@@ -63,13 +59,16 @@ class TukVerificationController extends Controller
     }
 
     /**
-     * Process verifikasi TUK
+     * Process verifikasi TUK untuk satu asesi
+     *
+     * Alur baru:
+     * - Mandiri  → verified  (Admin LSP yang set biaya, lalu asesi bayar)
+     * - Kolektif → verified  (biaya di-set Admin LSP, pembayaran manual oleh TUK — terpisah dari flow asesi)
      */
     public function process(Request $request, Asesmen $asesmen)
     {
         $tuk = auth()->user()->tuk;
 
-        // Verify ownership
         if ($asesmen->tuk_id != $tuk->id) {
             abort(403, 'Anda tidak memiliki akses ke data ini.');
         }
@@ -79,20 +78,19 @@ class TukVerificationController extends Controller
         ]);
 
         $updateData = [
-            'tuk_verified_by' => auth()->id(),
-            'tuk_verified_at' => now(),
-            'tuk_verification_notes' => $request->notes,
+            'tuk_verified_by'         => auth()->id(),
+            'tuk_verified_at'         => now(),
+            'tuk_verification_notes'  => $request->notes,
+            'status'                  => 'verified',
         ];
 
-        // 🔥 Kalau MANDIRI → langsung verified
+        // Untuk mandiri: set fee dari skema
         if (!$asesmen->is_collective) {
-            $updateData['status'] = 'verified';
             $updateData['fee_amount'] = $asesmen->skema->fee;
-        } 
+        }
 
         $asesmen->update($updateData);
 
-        // Log
         Log::info("TUK Verification for Asesmen #{$asesmen->id} by TUK {$tuk->name}. Notes: {$request->notes}");
 
         return redirect()->route('tuk.verifications')
@@ -100,7 +98,11 @@ class TukVerificationController extends Controller
     }
 
     /**
-     * Batch verification
+     * Batch verification untuk pendaftaran kolektif
+     *
+     * Semua asesi dalam batch langsung ke status 'verified'.
+     * Untuk kolektif, tidak ada langkah pembayaran di flow utama asesi —
+     * TUK membayar secara manual (TF/QRIS) di luar sistem.
      */
     public function processBatch(Request $request)
     {
@@ -108,10 +110,9 @@ class TukVerificationController extends Controller
 
         $request->validate([
             'batch_id' => 'required|string',
-            'notes' => 'nullable|string|max:1000',
+            'notes'    => 'nullable|string|max:1000',
         ]);
 
-        // Get all asesmens in this batch
         $asesmens = Asesmen::where('collective_batch_id', $request->batch_id)
             ->where('tuk_id', $tuk->id)
             ->where('status', 'data_completed')
@@ -123,21 +124,21 @@ class TukVerificationController extends Controller
                 ->with('error', 'Tidak ada asesi yang perlu diverifikasi dalam batch ini.');
         }
 
-        // Update all
         $count = 0;
         foreach ($asesmens as $asesmen) {
             $asesmen->update([
-                'tuk_verified_by' => auth()->id(),
-                'tuk_verified_at' => now(),
+                'tuk_verified_by'        => auth()->id(),
+                'tuk_verified_at'        => now(),
                 'tuk_verification_notes' => $request->notes,
+                'status'                 => 'verified',
+                // fee_amount akan di-set Admin LSP
             ]);
             $count++;
         }
 
-        // Log
-        Log::info("TUK Batch Verification for {$request->batch_id}: {$count} asesmens by TUK {$tuk->name}. Notes: {$request->notes}");
+        Log::info("TUK Batch Verification for {$request->batch_id}: {$count} asesmens by TUK {$tuk->name}.");
 
         return redirect()->route('tuk.verifications')
-            ->with('success', "Batch berhasil diverifikasi! {$count} asesi menunggu Admin LSP untuk menetapkan biaya.");
+            ->with('success', "{$count} asesi berhasil diverifikasi! Selanjutnya Admin LSP akan menetapkan biaya dan jadwal asesmen.");
     }
 }

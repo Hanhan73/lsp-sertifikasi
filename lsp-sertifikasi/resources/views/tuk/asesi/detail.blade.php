@@ -430,7 +430,7 @@
                 @endif
 
                 @if($asesmen->is_collective && $asesmen->collective_batch_id)
-                <a href="{{ route('tuk.collective.payment', $asesmen->collective_batch_id) }}"
+                <a href="{{ route('tuk.collective.payment.index', $asesmen->collective_batch_id) }}"
                     class="btn btn-primary w-100 mb-2">
                     <i class="bi bi-cash-coin"></i> Lihat Pembayaran Batch
                 </a>

@@ -638,7 +638,7 @@
                         <div class="step-number">2</div>
                         <h4>Verifikasi Asesi</h4>
                         <p>Verifikasi kelengkapan data asesi yang terdaftar</p>
-                        <a href="{{ route('tuk.verifications') }}" class="btn btn-primary w-100">
+                        <a href="{{ route('tuk.verifications.index') }}" class="btn btn-primary w-100">
                             <i class="bi bi-check-circle"></i> Verifikasi
                         </a>
                     </div>
@@ -648,7 +648,7 @@
                         <div class="step-number">3</div>
                         <h4>Buat Jadwal</h4>
                         <p>Atur jadwal asesmen untuk asesi</p>
-                        <a href="{{ route('tuk.schedules') }}" class="btn btn-primary w-100">
+                        <a href="{{ route('tuk.schedules.index') }}" class="btn btn-primary w-100">
                             <i class="bi bi-calendar-event"></i> Jadwal
                         </a>
                     </div>

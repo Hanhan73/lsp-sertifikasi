@@ -9,15 +9,7 @@
 
 @section('content')
 <!-- Pending Payment Alert -->
-@if($stats['pending_payment'] > 0)
-<div class="alert alert-warning alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-triangle-fill"></i>
-    <strong>Perhatian!</strong> Anda memiliki <strong>{{ $stats['pending_payment'] }}</strong> batch kolektif yang
-    menunggu pembayaran.
-    <a href="{{ route('tuk.asesi') }}#collective-batches" class="alert-link">Lihat detail</a>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-@endif
+
 
 <!-- Success Messages -->
 @if(session('success'))
@@ -86,26 +78,7 @@
 </div>
 
 <!-- Pending Payments Card -->
-@if($stats['pending_payment'] > 0)
-<div class="card mb-4 border-warning">
-    <div class="card-header bg-warning text-dark">
-        <h5 class="mb-0">
-            <i class="bi bi-credit-card"></i> Pembayaran Kolektif Menunggu
-            <span class="badge bg-dark ms-2">{{ $stats['pending_payment'] }}</span>
-        </h5>
-    </div>
-    <div class="card-body">
-        <p class="mb-3">
-            <i class="bi bi-info-circle"></i>
-            Anda memiliki batch pendaftaran kolektif yang sudah siap untuk dibayar. Silakan lakukan pembayaran agar
-            proses sertifikasi dapat dilanjutkan.
-        </p>
-        <a href="{{ route('tuk.asesi') }}#collective-batches" class="btn btn-warning">
-            <i class="bi bi-cash-coin"></i> Lihat & Bayar Sekarang
-        </a>
-    </div>
-</div>
-@endif
+
 
 <!-- Quick Actions -->
 <div class="row mb-4">
@@ -217,13 +190,13 @@
 
 @push('styles')
 <style>
-    .hover-shadow {
-        transition: all 0.3s ease;
-    }
+.hover-shadow {
+    transition: all 0.3s ease;
+}
 
-    .hover-shadow:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    }
+.hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
 </style>
 @endpush

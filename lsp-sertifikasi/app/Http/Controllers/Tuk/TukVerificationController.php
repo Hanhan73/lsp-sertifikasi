@@ -44,12 +44,12 @@ class TukVerificationController extends Controller
         }
 
         if ($asesmen->status !== 'data_completed') {
-            return redirect()->route('tuk.verifications')
+            return redirect()->route('tuk.verifications.index')
                 ->with('error', 'Asesi ini tidak dalam status yang dapat diverifikasi.');
         }
 
         if ($asesmen->tuk_verified_at) {
-            return redirect()->route('tuk.verifications')
+            return redirect()->route('tuk.verifications.index')
                 ->with('error', 'Asesi ini sudah diverifikasi.');
         }
 
@@ -93,7 +93,7 @@ class TukVerificationController extends Controller
 
         Log::info("TUK Verification for Asesmen #{$asesmen->id} by TUK {$tuk->name}. Notes: {$request->notes}");
 
-        return redirect()->route('tuk.verifications')
+        return redirect()->route('tuk.verifications.index')
             ->with('success', 'Data asesi berhasil diverifikasi!');
     }
 
@@ -120,7 +120,7 @@ class TukVerificationController extends Controller
             ->get();
 
         if ($asesmens->isEmpty()) {
-            return redirect()->route('tuk.verifications')
+            return redirect()->route('tuk.verifications.index')
                 ->with('error', 'Tidak ada asesi yang perlu diverifikasi dalam batch ini.');
         }
 
@@ -138,7 +138,7 @@ class TukVerificationController extends Controller
 
         Log::info("TUK Batch Verification for {$request->batch_id}: {$count} asesmens by TUK {$tuk->name}.");
 
-        return redirect()->route('tuk.verifications')
+        return redirect()->route('tuk.verifications.index')
             ->with('success', "{$count} asesi berhasil diverifikasi! Selanjutnya Admin LSP akan menetapkan biaya dan jadwal asesmen.");
     }
 }

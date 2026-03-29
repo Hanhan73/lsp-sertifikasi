@@ -40,6 +40,9 @@ use App\Http\Controllers\Asesor\AsesorController;
 use App\Http\Controllers\Asesor\FrAk01Controller;
 use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController; 
 
+// Direktur
+use App\Http\Controllers\Direktur\DirekturScheduleController;
+
 /*
 |--------------------------------------------------------------------------
 | Public
@@ -501,7 +504,25 @@ Route::post('/profile/foto-asesor', [ProfileController::class, 'uploadFotoAsesor
      ->name('profile.upload-foto-asesor')
      ->middleware('role:asesor');
      
-
+// ── Routes Direktur ─────────────────────────────────────────
+Route::prefix('direktur')
+    ->name('direktur.')
+    ->middleware(['auth', 'direktur'])
+    ->group(function () {
+ 
+        // Dashboard
+        Route::get('/', fn() => redirect()->route('direktur.schedules.index'))->name('dashboard');
+ 
+        // Jadwal — approval workflow
+        Route::prefix('schedules')->name('schedules.')->group(function () {
+            Route::get('/',                    [DirekturScheduleController::class, 'index'])->name('index');
+            Route::get('/{schedule}',          [DirekturScheduleController::class, 'show'])->name('show');
+            Route::post('/{schedule}/approve', [DirekturScheduleController::class, 'approve'])->name('approve');
+            Route::post('/{schedule}/reject',  [DirekturScheduleController::class, 'reject'])->name('reject');
+            Route::get('/{schedule}/sk',       [DirekturScheduleController::class, 'downloadSk'])->name('sk.download');
+            Route::post('/{schedule}/sk/regenerate', [DirekturScheduleController::class, 'regenerateSk'])->name('sk.regenerate');
+        });
+    });
 /*
 |--------------------------------------------------------------------------
 | Debug — hapus di production

@@ -19,14 +19,14 @@ class AdminPraAsesmenController extends Controller
         // Mandiri — semua status relevan (bukan hanya data_completed)
         $mandiri = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04'])
             ->where('is_collective', false)
-            ->whereNotIn('status', ['certified', 'registered']) // sembunyikan yang sudah selesai atau belum mulai
+            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered']) // sembunyikan yang sudah selesai atau belum mulai
             ->orderBy('created_at')
             ->get();
 
         // Kolektif — grouped by batch, semua status
         $batches = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04'])
             ->where('is_collective', true)
-            ->whereNotIn('status', ['certified', 'registered'])
+            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered'])
             ->orderBy('created_at')
             ->get()
             ->groupBy('collective_batch_id');

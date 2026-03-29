@@ -314,8 +314,7 @@
                         <div class="info-row"><span class="info-label">Didaftarkan Oleh</span><span class="info-value">{{ $asesmen->registrar->name ?? '-' }}</span></div>
                         @endif
                         <div class="info-row"><span class="info-label">Skema</span><span class="info-value">{{ $asesmen->skema->name ?? '-' }}</span></div>
-                        <div class="info-row"><span class="info-label">Kode Skema</span><span class="info-value font-monospace small">{{ $asesmen->skema->code ?? '-' }}</span></div>
-                        <div class="info-row"><span class="info-label">Biaya Skema</span><span class="info-value">Rp {{ number_format($asesmen->skema->fee ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Skema</span><span class="info-value font-monospace small">{{ $asesmen->skema->nomor_skema ?? '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Tanggal Pilihan</span><span class="info-value">{{ $asesmen->preferred_date ? $asesmen->preferred_date->format('d F Y') : '-' }}</span></div>
 
                         {{-- Data Pribadi --}}

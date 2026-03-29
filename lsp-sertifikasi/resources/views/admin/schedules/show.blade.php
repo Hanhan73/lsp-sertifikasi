@@ -74,6 +74,48 @@
 </div>
 @endif
 
+{{-- ── Status Approval Banner ─────────────────────────── --}}
+@if($schedule->isPendingApproval())
+<div class="alert alert-warning d-flex align-items-center gap-3 shadow-sm mb-4">
+    <i class="bi bi-hourglass-split fs-4 flex-shrink-0"></i>
+    <div>
+        <div class="fw-semibold">Jadwal Menunggu Persetujuan Direktur</div>
+        <div class="small">Jadwal ini sudah dibuat dan sedang dalam antrian review Direktur. Status asesi belum berubah ke "Terjadwal" sampai Direktur menyetujui.</div>
+    </div>
+</div>
+@elseif($schedule->isRejected())
+<div class="alert alert-danger d-flex align-items-start gap-3 shadow-sm mb-4">
+    <i class="bi bi-x-circle-fill fs-4 flex-shrink-0 mt-1"></i>
+    <div class="flex-grow-1">
+        <div class="fw-semibold">Jadwal Ditolak oleh Direktur</div>
+        <div class="mt-1"><strong>Alasan:</strong> {{ $schedule->approval_notes }}</div>
+        <div class="small text-muted mt-1">Ditolak pada {{ $schedule->rejected_at?->format('d M Y H:i') }}</div>
+        <div class="mt-2">
+            <a href="{{ route('admin.schedules.edit', $schedule) }}" class="btn btn-sm btn-warning">
+                <i class="bi bi-pencil me-1"></i>Perbaiki &amp; Ajukan Ulang
+            </a>
+        </div>
+    </div>
+</div>
+@elseif($schedule->isApproved())
+<div class="alert alert-success d-flex align-items-center gap-3 shadow-sm mb-4">
+    <i class="bi bi-check-circle-fill fs-4 flex-shrink-0"></i>
+    <div class="flex-grow-1">
+        <div class="fw-semibold">Jadwal Telah Disetujui Direktur</div>
+        <div class="small">
+            Nomor SK: <span class="font-monospace fw-bold">{{ $schedule->sk_number }}</span>
+            &nbsp;&bull;&nbsp;
+            Disetujui pada {{ $schedule->approved_at?->format('d M Y H:i') }}
+        </div>
+    </div>
+    @if($schedule->hasSk())
+    <a href="{{ route('direktur.schedules.sk.download', $schedule) }}" class="btn btn-sm btn-success ms-auto">
+        <i class="bi bi-download me-1"></i>Unduh SK
+    </a>
+    @endif
+</div>
+@endif
+
 {{-- ── Breadcrumb ──────────────────────────────────────────── --}}
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small">

@@ -11,8 +11,8 @@ class Schedule extends Model
     use HasFactory;
 
     protected $fillable = [
-        'tuk_id', // ✅ TAMBAH: jadwal milik TUK, bukan milik 1 asesi
-        'skema_id', // ✅ TAMBAH: jadwal untuk skema tertentu
+        'tuk_id',
+        'skema_id',
         'assessment_date',
         'asesor_id',
         'assigned_by',
@@ -23,40 +23,43 @@ class Schedule extends Model
         'location',
         'notes',
         'created_by',
+        // Approval workflow
+        'approval_status',
+        'approval_notes',
+        'approved_by',
+        'approved_at',
+        'rejected_at',
+        // SK
+        'sk_number',
+        'sk_path',
     ];
 
     protected $casts = [
         'assessment_date' => 'date',
+        'approved_at'     => 'datetime',
+        'rejected_at'     => 'datetime',
+        'assigned_at'     => 'datetime',
     ];
 
-    /**
-     * ✅ FIXED: hasMany, bukan belongsTo
-     * 1 jadwal bisa punya banyak asesi
-     */
+    // =========================================================================
+    // Relationships
+    // =========================================================================
+
     public function asesmens()
     {
         return $this->hasMany(Asesmen::class);
     }
 
-    /**
-     * Get the TUK
-     */
     public function tuk()
     {
         return $this->belongsTo(Tuk::class);
     }
 
-    /**
-     * Get the skema
-     */
     public function skema()
     {
         return $this->belongsTo(Skema::class);
     }
 
-    /**
-     * Get the creator (TUK user)
-     */
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -72,59 +75,96 @@ class Schedule extends Model
         return $this->belongsTo(User::class, 'assigned_by');
     }
 
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
     public function assignmentHistories()
     {
         return $this->hasMany(ScheduleAsesorHistory::class)->orderBy('action_at', 'desc');
     }
+
+    // =========================================================================
+    // Approval helpers
+    // =========================================================================
+
+    public function isPendingApproval(): bool
+    {
+        return $this->approval_status === 'pending_approval';
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === 'approved';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->approval_status === 'rejected';
+    }
+
+    public function getApprovalStatusLabelAttribute(): string
+    {
+        return [
+            'pending_approval' => 'Menunggu Persetujuan',
+            'approved'         => 'Disetujui',
+            'rejected'         => 'Ditolak',
+        ][$this->approval_status] ?? $this->approval_status;
+    }
+
+    public function getApprovalStatusBadgeAttribute(): string
+    {
+        return [
+            'pending_approval' => 'warning',
+            'approved'         => 'success',
+            'rejected'         => 'danger',
+        ][$this->approval_status] ?? 'secondary';
+    }
+
+    public function hasSk(): bool
+    {
+        return !empty($this->sk_path);
+    }
+
+    // =========================================================================
+    // Date helpers
+    // =========================================================================
 
     public function getIsAssignedAttribute(): bool
     {
         return $this->asesor_id !== null;
     }
 
-    /**
-     * Get formatted date
-     */
-    public function getFormattedDateAttribute()
+    public function getFormattedDateAttribute(): string
     {
         return $this->assessment_date->format('d F Y');
     }
 
-    /**
-     * Get formatted time range
-     */
-    public function getTimeRangeAttribute()
+    public function getTimeRangeAttribute(): string
     {
         return $this->start_time . ' - ' . $this->end_time;
     }
 
-    /**
-     * Check if schedule is upcoming
-     */
-    public function isUpcoming()
+    public function isUpcoming(): bool
     {
         return $this->assessment_date->isFuture();
     }
 
-    /**
-     * Check if schedule is today
-     */
-    public function isToday()
+    public function isToday(): bool
     {
         return $this->assessment_date->isToday();
     }
 
-    /**
-     * Check if schedule is past
-     */
-    public function isPast()
+    public function isPast(): bool
     {
         return $this->assessment_date->isPast();
     }
 
-    /**
-     * Scope: Upcoming schedules
-     */
+    // =========================================================================
+    // Scopes
+    // =========================================================================
+
     public function scopeUpcoming($query)
     {
         return $query->where('assessment_date', '>=', now()->toDateString())
@@ -132,31 +172,25 @@ class Schedule extends Model
             ->orderBy('start_time', 'asc');
     }
 
-    /**
-     * Scope: Past schedules
-     */
     public function scopePast($query)
     {
         return $query->where('assessment_date', '<', now()->toDateString())
             ->orderBy('assessment_date', 'desc');
     }
 
-    /**
-     * Scope: Today's schedules
-     */
     public function scopeToday($query)
     {
         return $query->whereDate('assessment_date', now()->toDateString())
             ->orderBy('start_time', 'asc');
     }
 
-    /**
-     * Scope: By TUK
-     */
-    public function scopeByTuk($query, $tukId)
+    public function scopePendingApproval($query)
     {
-        return $query->whereHas('asesmen', function($q) use ($tukId) {
-            $q->where('tuk_id', $tukId);
-        });
+        return $query->where('approval_status', 'pending_approval');
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('approval_status', 'approved');
     }
 }

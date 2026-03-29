@@ -57,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasOne(Asesor::class);
     }
+    
 
     public function registeredAsesmens()
     {
@@ -159,6 +160,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isAsesor(): bool
     {
         return $this->role === 'asesor';
+    }
+
+    public function isDirektur(): bool
+    {
+        return $this->role === 'direktur';
     }
 
     public function getPhotoUrlAttribute()

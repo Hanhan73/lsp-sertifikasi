@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\Log;
  * AdminScheduleController
  *
  * Admin membuat jadwal asesmen dan menugaskan asesor.
- * TUK hanya bisa melihat jadwal yang terkait dengan TUK mereka.
+ * Setelah jadwal dibuat, harus menunggu persetujuan Direktur.
+ * Status asesi baru berubah ke 'scheduled' setelah Direktur menyetujui.
  */
 class AdminScheduleController extends Controller
 {
@@ -25,19 +26,46 @@ class AdminScheduleController extends Controller
     ) {}
 
     /**
-     * Daftar semua asesi yang siap dijadwalkan (status: asesmen_started).
+     * Kriteria asesi siap dijadwalkan:
+     * - Status: pra_asesmen_started (atau status yang setara)
+     * - APL-01: sudah diverifikasi (status verified/approved)
+     * - APL-02: sudah disubmit (tidak null, status bukan draft)
+     * - FR.AK.01: sudah disubmit (tidak null, status bukan draft)
+     * - Belum punya schedule_id
+     */
+    private function readyToScheduleQuery()
+    {
+        return Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01'])
+            ->whereNull('schedule_id')
+            // APL-01 harus sudah diverifikasi
+            ->whereHas('aplsatu', function ($q) {
+                $q->where('status', 'verified');
+                // Sesuaikan nama kolom/nilai status APL-01 di project Anda
+                // Contoh alternatif: $q->whereIn('status', ['verified', 'approved']);
+            })
+            // APL-02 harus sudah disubmit (bukan draft)
+            ->whereHas('apldua', function ($q) {
+                $q->whereNotIn('status', ['draft'])
+                  ->whereNotNull('submitted_at');
+                // Sesuaikan: mungkin kolom submitted_at atau status != 'draft'
+            })
+            // FR.AK.01 harus sudah disubmit
+            ->whereHas('frak01', function ($q) {
+                $q->whereNotIn('status', ['draft'])
+                  ->whereNotNull('submitted_at');
+            });
+    }
+
+    /**
+     * Daftar semua jadwal + asesi siap dijadwalkan.
      */
     public function index()
     {
-        // Asesi yang siap dijadwalkan
-        $readyToSchedule = Asesmen::with(['user', 'tuk', 'skema'])
-            ->where('status', 'asesmen_started')
-            ->whereNull('schedule_id')
-            ->orderBy('admin_started_at')
+        $readyToSchedule = $this->readyToScheduleQuery()
+            ->orderBy('full_name')
             ->get()
-            ->groupBy('tuk_id'); // group by TUK untuk memudahkan pemilihan
+            ->groupBy('tuk_id');
 
-        // Semua jadwal yang sudah dibuat
         $schedules = Schedule::with(['tuk', 'skema', 'asesor', 'asesmens.user'])
             ->orderBy('assessment_date', 'desc')
             ->paginate(20);
@@ -45,7 +73,16 @@ class AdminScheduleController extends Controller
         $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
         $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.schedules.index', compact('readyToSchedule', 'schedules', 'tuks', 'skemas'));
+        // Jumlah jadwal menunggu approval (untuk notif)
+        $pendingApprovalCount = Schedule::pendingApproval()->count();
+
+        return view('admin.schedules.index', compact(
+            'readyToSchedule',
+            'schedules',
+            'tuks',
+            'skemas',
+            'pendingApprovalCount'
+        ));
     }
 
     /**
@@ -53,7 +90,6 @@ class AdminScheduleController extends Controller
      */
     public function create(Request $request)
     {
-        // Bisa pre-select asesi dari query string ?asesmen_ids[]=1&asesmen_ids[]=2
         $selectedIds = $request->input('asesmen_ids', []);
         $selectedAsesmens = $selectedIds
             ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
@@ -62,10 +98,7 @@ class AdminScheduleController extends Controller
         $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
         $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-        // Asesi yang belum terjadwal dan sudah asesmen_started
-        $availableAsesmens = Asesmen::with(['user', 'tuk', 'skema'])
-            ->where('status', 'asesmen_started')
-            ->whereNull('schedule_id')
+        $availableAsesmens = $this->readyToScheduleQuery()
             ->orderBy('full_name')
             ->get();
 
@@ -78,7 +111,9 @@ class AdminScheduleController extends Controller
     }
 
     /**
-     * Simpan jadwal baru + assign asesor sekaligus.
+     * Simpan jadwal baru.
+     * Status asesi TIDAK berubah ke 'scheduled' dulu — menunggu approval Direktur.
+     * Status asesi tetap, hanya schedule_id yang diisi.
      */
     public function store(Request $request)
     {
@@ -94,18 +129,18 @@ class AdminScheduleController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
-        // Validasi semua asesi punya skema sama
-        $asesmens = Asesmen::whereIn('id', $request->asesmen_ids)
-            ->where('status', 'asesmen_started')
-            ->whereNull('schedule_id')
+        // Validasi asesi: harus sudah memenuhi kriteria dan belum terjadwal
+        $asesmens = $this->readyToScheduleQuery()
+            ->whereIn('id', $request->asesmen_ids)
             ->get();
 
         if ($asesmens->count() !== count($request->asesmen_ids)) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Beberapa asesi tidak valid atau sudah terjadwal.');
+                ->with('error', 'Beberapa asesi tidak memenuhi syarat penjadwalan (APL-01 harus terverifikasi, APL-02 dan FR.AK.01 harus sudah disubmit).');
         }
 
+        // Validasi semua asesi punya skema sama
         $skemaIds = $asesmens->pluck('skema_id')->unique();
         if ($skemaIds->count() > 1) {
             return redirect()->back()
@@ -115,7 +150,7 @@ class AdminScheduleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Buat jadwal
+            // Buat jadwal dengan status pending_approval
             $schedule = Schedule::create([
                 'tuk_id'          => $request->tuk_id,
                 'skema_id'        => $skemaIds->first(),
@@ -125,14 +160,15 @@ class AdminScheduleController extends Controller
                 'location'        => $request->location,
                 'notes'           => $request->notes,
                 'created_by'      => auth()->id(),
+                'approval_status' => 'pending_approval',
+                // Asesor bisa sudah ditugaskan dari awal
+                'asesor_id'       => $request->asesor_id ?: null,
             ]);
 
-            // Update setiap asesi
+            // Hubungkan asesi ke jadwal — status asesi BELUM berubah ke 'scheduled'
+            // Status asesi berubah nanti setelah Direktur approve
             foreach ($asesmens as $asesmen) {
-                $asesmen->update([
-                    'schedule_id' => $schedule->id,
-                    'status'      => 'scheduled',
-                ]);
+                $asesmen->update(['schedule_id' => $schedule->id]);
             }
 
             // Assign asesor jika dipilih
@@ -143,11 +179,10 @@ class AdminScheduleController extends Controller
 
             DB::commit();
 
-            Log::info("Admin #{auth()->id()} membuat jadwal #{$schedule->id} untuk {$asesmens->count()} asesi.");
+            Log::info("Admin #{auth()->id()} membuat jadwal #{$schedule->id} untuk {$asesmens->count()} asesi. Menunggu approval Direktur.");
 
             return redirect()->route('admin.schedules.index')
-                ->with('success', "Jadwal berhasil dibuat untuk {$asesmens->count()} asesi!" .
-                    ($request->asesor_id ? ' Asesor sudah ditugaskan.' : ' Asesor belum ditugaskan.'));
+                ->with('success', "Jadwal berhasil dibuat untuk {$asesmens->count()} asesi dan sedang menunggu persetujuan Direktur.");
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -163,16 +198,24 @@ class AdminScheduleController extends Controller
      */
     public function show(Schedule $schedule)
     {
-        $schedule->load(['tuk', 'skema', 'asesor', 'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01']);
+        $schedule->load([
+            'tuk', 'skema', 'asesor', 'approvedBy',
+            'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+        ]);
 
         return view('admin.schedules.show', compact('schedule'));
     }
 
     /**
-     * Edit jadwal.
+     * Edit jadwal — hanya bisa diedit jika masih pending atau ditolak.
      */
     public function edit(Schedule $schedule)
     {
+        if ($schedule->isApproved()) {
+            return redirect()->route('admin.schedules.show', $schedule)
+                ->with('error', 'Jadwal yang sudah disetujui tidak dapat diedit.');
+        }
+
         $schedule->load(['tuk', 'skema', 'asesor', 'asesmens']);
         $tuks = Tuk::where('is_active', true)->orderBy('name')->get();
 
@@ -180,10 +223,18 @@ class AdminScheduleController extends Controller
     }
 
     /**
-     * Update jadwal (AJAX).
+     * Update jadwal.
+     * Jika jadwal sebelumnya ditolak, kembalikan ke pending_approval setelah diedit.
      */
     public function update(Request $request, Schedule $schedule)
     {
+        if ($schedule->isApproved()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Jadwal sudah disetujui, tidak dapat diedit.'], 403);
+            }
+            return redirect()->back()->with('error', 'Jadwal sudah disetujui, tidak dapat diedit.');
+        }
+
         $request->validate([
             'assessment_date' => 'required|date',
             'start_time'      => 'required',
@@ -192,38 +243,47 @@ class AdminScheduleController extends Controller
             'notes'           => 'nullable|string',
         ]);
 
-        $schedule->update($request->only(['assessment_date', 'start_time', 'end_time', 'location', 'notes']));
+        $data = $request->only(['assessment_date', 'start_time', 'end_time', 'location', 'notes']);
+
+        // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
+        if ($schedule->isRejected()) {
+            $data['approval_status'] = 'pending_approval';
+            $data['approval_notes']  = null;
+            $data['rejected_at']     = null;
+        }
+
+        $schedule->update($data);
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success'  => true,
-                'message'  => 'Jadwal berhasil diupdate!',
-                'schedule' => [
-                    'id'              => $schedule->id,
-                    'assessment_date' => $schedule->assessment_date->format('d F Y'),
-                    'start_time'      => $schedule->start_time,
-                    'end_time'        => $schedule->end_time,
-                    'location'        => $schedule->location,
-                ],
+                'message'  => 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.',
+                'schedule' => $schedule->fresh()->toArray(),
             ]);
         }
 
         return redirect()->route('admin.schedules.show', $schedule)
-            ->with('success', 'Jadwal berhasil diupdate!');
+            ->with('success', 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.');
     }
 
     /**
-     * Hapus jadwal — kembalikan asesi ke asesmen_started.
+     * Hapus jadwal — kembalikan asesi ke status sebelumnya.
+     * Hanya bisa dihapus jika belum disetujui.
      */
     public function destroy(Schedule $schedule)
     {
+        if ($schedule->isApproved()) {
+            if (request()->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Jadwal yang sudah disetujui tidak dapat dihapus.'], 403);
+            }
+            return redirect()->back()->with('error', 'Jadwal yang sudah disetujui tidak dapat dihapus.');
+        }
+
         DB::beginTransaction();
         try {
             foreach ($schedule->asesmens as $asesmen) {
-                $asesmen->update([
-                    'schedule_id' => null,
-                    'status'      => 'asesmen_started',
-                ]);
+                // Kembalikan asesi — hapus schedule_id, status tetap karena belum berubah
+                $asesmen->update(['schedule_id' => null]);
             }
             $schedule->delete();
             DB::commit();
@@ -233,7 +293,7 @@ class AdminScheduleController extends Controller
         }
 
         if (request()->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'Jadwal dihapus. Asesi dikembalikan ke status Asesmen Dimulai.']);
+            return response()->json(['success' => true, 'message' => 'Jadwal dihapus.']);
         }
 
         return redirect()->route('admin.schedules.index')
@@ -241,8 +301,7 @@ class AdminScheduleController extends Controller
     }
 
     /**
-     * AJAX: Available asesors untuk jadwal tertentu (untuk assign/reassign).
-     * Reuse dari AsesorAssignmentService.
+     * AJAX: Available asesors untuk jadwal tertentu.
      */
     public function availableAsesors(Schedule $schedule)
     {
@@ -257,6 +316,35 @@ class AdminScheduleController extends Controller
                 'email'      => $a->email,
                 'foto_url'   => $a->foto_url,
             ]),
+        ]);
+    }
+
+    /**
+     * AJAX: Assign asesor ke jadwal.
+     */
+    public function assignAsesor(Request $request, Schedule $schedule)
+    {
+        $request->validate(['asesor_id' => 'required|exists:asesors,id']);
+
+        $asesor = \App\Models\Asesor::findOrFail($request->asesor_id);
+        $this->assignmentService->assignAsesor($schedule, $asesor);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Asesor {$asesor->nama} berhasil ditugaskan.",
+        ]);
+    }
+
+    /**
+     * AJAX: Unassign asesor dari jadwal.
+     */
+    public function unassignAsesor(Schedule $schedule)
+    {
+        $schedule->update(['asesor_id' => null, 'assigned_by' => null, 'assigned_at' => null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Asesor berhasil dilepas.',
         ]);
     }
 }

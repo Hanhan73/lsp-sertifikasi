@@ -8,13 +8,36 @@
 @push('styles')
 <style>
 .section-heading {
-    font-size: .72rem; font-weight: 700; letter-spacing: .07em;
-    text-transform: uppercase; color: #64748b; margin-bottom: 10px;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 10px;
 }
-.info-row { display: flex; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; }
-.info-row:last-child { border-bottom: none; }
-.info-label { color: #94a3b8; font-size: .8rem; min-width: 110px; flex-shrink: 0; }
-.info-value  { font-weight: 600; font-size: .85rem; }
+
+.info-row {
+    display: flex;
+    gap: 8px;
+    padding: 5px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: #94a3b8;
+    font-size: .8rem;
+    min-width: 110px;
+    flex-shrink: 0;
+}
+
+.info-value {
+    font-weight: 600;
+    font-size: .85rem;
+}
 
 /* ── Stat cards ── */
 .stat-card {
@@ -24,9 +47,22 @@
     background: #fff;
     transition: box-shadow .2s, border-color .2s;
 }
-.stat-card:hover { box-shadow: 0 3px 14px rgba(0,0,0,.07); }
-.stat-num  { font-size: 1.8rem; font-weight: 800; line-height: 1; }
-.stat-lbl  { font-size: .78rem; color: #64748b; margin-top: 2px; }
+
+.stat-card:hover {
+    box-shadow: 0 3px 14px rgba(0, 0, 0, .07);
+}
+
+.stat-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.stat-lbl {
+    font-size: .78rem;
+    color: #64748b;
+    margin-top: 2px;
+}
 
 /* ── Ready-to-schedule asesi cards ── */
 .ready-group {
@@ -35,45 +71,80 @@
     overflow: hidden;
     margin-bottom: 10px;
 }
+
 .ready-group-header {
     background: #f8fafc;
     padding: 8px 14px;
     border-bottom: 1px solid #e2e8f0;
-    display: flex; align-items: center; gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
+
 .ready-asesi-row {
-    display: flex; align-items: center; gap: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 8px 14px;
     border-bottom: 1px solid #f8fafc;
     font-size: .83rem;
 }
-.ready-asesi-row:last-child { border-bottom: none; }
-.ready-asesi-row:hover { background: #f8faff; }
+
+.ready-asesi-row:last-child {
+    border-bottom: none;
+}
+
+.ready-asesi-row:hover {
+    background: #f8faff;
+}
 
 /* ── Schedule table rows ── */
-.sched-row { transition: background .1s; cursor: pointer; }
-.sched-row:hover { background: #f8faff; }
+.sched-row {
+    transition: background .1s;
+    cursor: pointer;
+}
+
+.sched-row:hover {
+    background: #f8faff;
+}
 
 /* ── Status dot ── */
 .status-dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
     display: inline-block;
 }
 
 /* ── Avatar stack ── */
-.avatar-stack { display: flex; }
+.avatar-stack {
+    display: flex;
+}
+
 .avatar-stack .av {
-    width: 26px; height: 26px; border-radius: 50%;
-    background: #e0e7ff; color: #4f46e5;
-    font-size: .65rem; font-weight: 700;
-    display: flex; align-items: center; justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #e0e7ff;
+    color: #4f46e5;
+    font-size: .65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 2px solid #fff;
     margin-left: -6px;
     flex-shrink: 0;
 }
-.avatar-stack .av:first-child { margin-left: 0; }
+
+.avatar-stack .av:first-child {
+    margin-left: 0;
+}
+
 .avatar-stack .av-more {
-    background: #f1f5f9; color: #64748b;
+    background: #f1f5f9;
+    color: #64748b;
 }
 </style>
 @endpush
@@ -96,10 +167,10 @@
 
 {{-- ── Stat cards ─────────────────────────────────────────── --}}
 @php
-    $totalSchedules  = $schedules->total();
-    $totalReady      = $readyToSchedule->flatten()->count();
-    $upcomingCount   = $schedules->getCollection()->filter(fn($s) => $s->assessment_date >= today())->count();
-    $noAsesorCount   = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)->count();
+$totalSchedules = $schedules->total();
+$totalReady = $readyToSchedule->flatten()->count();
+$upcomingCount = $schedules->getCollection()->filter(fn($s) => $s->assessment_date >= today())->count();
+$noAsesorCount = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)->count();
 @endphp
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3">
@@ -128,6 +199,10 @@
     </div>
 </div>
 
+@if($pendingApprovalCount > 0) <div class="alert alert-warning d-flex align-items-center gap-2 mb-4 py-2"> <i
+        class="bi bi-hourglass-split"></i> <span> <strong>{{ $pendingApprovalCount }} jadwal</strong> sedang menunggu
+        persetujuan Direktur. </span> </div> @endif
+
 <div class="row g-4">
 
     {{-- ══════════════════════════════════════════════
@@ -137,7 +212,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-header bg-white border-bottom d-flex align-items-center gap-2">
                 <div class="rounded-circle d-flex align-items-center justify-content-center"
-                     style="width:26px;height:26px;background:#fef9c3;">
+                    style="width:26px;height:26px;background:#fef9c3;">
                     <i class="bi bi-hourglass-split text-warning" style="font-size:.75rem;"></i>
                 </div>
                 <span class="fw-semibold">Siap Dijadwalkan</span>
@@ -164,7 +239,7 @@
                     @foreach($group as $asesmen)
                     <div class="ready-asesi-row">
                         <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                             style="width:28px;height:28px;background:#e0e7ff;color:#4f46e5;font-size:.65rem;font-weight:700;">
+                            style="width:28px;height:28px;background:#e0e7ff;color:#4f46e5;font-size:.65rem;font-weight:700;">
                             {{ strtoupper(substr($asesmen->full_name, 0, 1)) }}
                         </div>
                         <div class="flex-grow-1 min-width-0">
@@ -199,7 +274,7 @@
             <div class="card-header bg-white border-bottom d-flex align-items-center flex-wrap gap-2">
                 <div class="d-flex align-items-center gap-2">
                     <div class="rounded-circle d-flex align-items-center justify-content-center"
-                         style="width:26px;height:26px;background:#eff6ff;">
+                        style="width:26px;height:26px;background:#eff6ff;">
                         <i class="bi bi-calendar3 text-primary" style="font-size:.75rem;"></i>
                     </div>
                     <span class="fw-semibold">Semua Jadwal</span>
@@ -211,8 +286,8 @@
                         <span class="input-group-text bg-white border-end-0">
                             <i class="bi bi-search text-muted" style="font-size:.75rem;"></i>
                         </span>
-                        <input type="text" class="form-control form-control-sm border-start-0 ps-0"
-                               id="search-sched" placeholder="Cari jadwal...">
+                        <input type="text" class="form-control form-control-sm border-start-0 ps-0" id="search-sched"
+                            placeholder="Cari jadwal...">
                     </div>
                     <a href="{{ route('admin.schedules.create') }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus-lg me-1"></i>Buat Jadwal
@@ -239,118 +314,129 @@
                                 <th class="text-center">Peserta</th>
                                 <th>Asesor</th>
                                 <th class="text-center">Status</th>
+                                <th class="text-center">Approval</th>
                                 <th class="text-end pe-3">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($schedules as $schedule)
                             @php
-                                $isPast     = $schedule->assessment_date < today();
-                                $isToday    = $schedule->assessment_date->isToday();
-                                $hasAsesor  = !!$schedule->asesor_id;
-                                $peserta    = $schedule->asesmens->count();
-                            @endphp
-                            <tr class="sched-row"
-                                data-search="{{ strtolower(($schedule->skema?->name ?? '') . ' ' . ($schedule->tuk?->name ?? '') . ' ' . ($schedule->location ?? '') . ' ' . ($schedule->asesor?->nama ?? '')) }}"
-                                onclick="window.location='{{ route('admin.schedules.show', $schedule) }}'">
+                            $isPast = $schedule->assessment_date < today(); $isToday=$schedule->
+                                assessment_date->isToday();
+                                $hasAsesor = !!$schedule->asesor_id;
+                                $peserta = $schedule->asesmens->count();
+                                @endphp
+                                <tr class="sched-row"
+                                    data-search="{{ strtolower(($schedule->skema?->name ?? '') . ' ' . ($schedule->tuk?->name ?? '') . ' ' . ($schedule->location ?? '') . ' ' . ($schedule->asesor?->nama ?? '')) }}"
+                                    onclick="window.location='{{ route('admin.schedules.show', $schedule) }}'">
 
-                                {{-- Tanggal & Lokasi --}}
-                                <td class="ps-3">
-                                    <div class="d-flex align-items-start gap-2">
-                                        <div class="rounded text-center flex-shrink-0 px-2 py-1"
-                                             style="background:{{ $isToday ? '#eff6ff' : ($isPast ? '#f8fafc' : '#f0fdf4') }};
+                                    {{-- Tanggal & Lokasi --}}
+                                    <td class="ps-3">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <div class="rounded text-center flex-shrink-0 px-2 py-1" style="background:{{ $isToday ? '#eff6ff' : ($isPast ? '#f8fafc' : '#f0fdf4') }};
                                                     border:1px solid {{ $isToday ? '#bfdbfe' : ($isPast ? '#e2e8f0' : '#bbf7d0') }};
                                                     min-width:46px;">
-                                            <div style="font-size:.65rem;color:#64748b;line-height:1;">
-                                                {{ $schedule->assessment_date->format('M Y') }}
+                                                <div style="font-size:.65rem;color:#64748b;line-height:1;">
+                                                    {{ $schedule->assessment_date->format('M Y') }}
+                                                </div>
+                                                <div
+                                                    style="font-size:1.2rem;font-weight:800;line-height:1;color:{{ $isToday ? '#2563eb' : ($isPast ? '#94a3b8' : '#16a34a') }};">
+                                                    {{ $schedule->assessment_date->format('d') }}
+                                                </div>
                                             </div>
-                                            <div style="font-size:1.2rem;font-weight:800;line-height:1;color:{{ $isToday ? '#2563eb' : ($isPast ? '#94a3b8' : '#16a34a') }};">
-                                                {{ $schedule->assessment_date->format('d') }}
+                                            <div>
+                                                <div class="fw-semibold small">
+                                                    {{ $schedule->assessment_date->translatedFormat('l') }}
+                                                    @if($isToday) <span class="badge bg-info ms-1"
+                                                        style="font-size:.6rem;">Hari Ini</span>@endif
+                                                </div>
+                                                <div class="text-muted" style="font-size:.75rem;">
+                                                    <i class="bi bi-clock me-1"></i>
+                                                    {{ $schedule->start_time }} – {{ $schedule->end_time }}
+                                                </div>
+                                                <div class="text-muted" style="font-size:.75rem;">
+                                                    <i class="bi bi-geo-alt me-1"></i>
+                                                    {{ Str::limit($schedule->location, 35) }}
+                                                </div>
                                             </div>
                                         </div>
-                                        <div>
-                                            <div class="fw-semibold small">
-                                                {{ $schedule->assessment_date->translatedFormat('l') }}
-                                                @if($isToday) <span class="badge bg-info ms-1" style="font-size:.6rem;">Hari Ini</span>@endif
-                                            </div>
-                                            <div class="text-muted" style="font-size:.75rem;">
-                                                <i class="bi bi-clock me-1"></i>
-                                                {{ $schedule->start_time }} – {{ $schedule->end_time }}
-                                            </div>
-                                            <div class="text-muted" style="font-size:.75rem;">
-                                                <i class="bi bi-geo-alt me-1"></i>
-                                                {{ Str::limit($schedule->location, 35) }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
+                                    </td>
 
-                                {{-- Skema / TUK --}}
-                                <td>
-                                    <div class="fw-semibold small">{{ Str::limit($schedule->skema?->name ?? '-', 30) }}</div>
-                                    <div class="text-muted" style="font-size:.75rem;">
-                                        <i class="bi bi-building me-1"></i>{{ $schedule->tuk?->name ?? '-' }}
-                                    </div>
-                                </td>
-
-                                {{-- Peserta --}}
-                                <td class="text-center">
-                                    <div class="avatar-stack justify-content-center">
-                                        @foreach($schedule->asesmens->take(3) as $a)
-                                        <div class="av" title="{{ $a->full_name }}">
-                                            {{ strtoupper(substr($a->full_name, 0, 1)) }}
+                                    {{-- Skema / TUK --}}
+                                    <td>
+                                        <div class="fw-semibold small">
+                                            {{ Str::limit($schedule->skema?->name ?? '-', 30) }}</div>
+                                        <div class="text-muted" style="font-size:.75rem;">
+                                            <i class="bi bi-building me-1"></i>{{ $schedule->tuk?->name ?? '-' }}
                                         </div>
-                                        @endforeach
-                                        @if($peserta > 3)
-                                        <div class="av av-more">+{{ $peserta - 3 }}</div>
+                                    </td>
+
+                                    {{-- Peserta --}}
+                                    <td class="text-center">
+                                        <div class="avatar-stack justify-content-center">
+                                            @foreach($schedule->asesmens->take(3) as $a)
+                                            <div class="av" title="{{ $a->full_name }}">
+                                                {{ strtoupper(substr($a->full_name, 0, 1)) }}
+                                            </div>
+                                            @endforeach
+                                            @if($peserta > 3)
+                                            <div class="av av-more">+{{ $peserta - 3 }}</div>
+                                            @endif
+                                        </div>
+                                        <div class="small text-muted mt-1">{{ $peserta }} orang</div>
+                                    </td>
+
+                                    {{-- Asesor --}}
+                                    <td>
+                                        @if($schedule->asesor)
+                                        <div class="fw-semibold small">{{ $schedule->asesor->nama }}</div>
+                                        <div class="text-muted" style="font-size:.72rem;">
+                                            {{ $schedule->asesor->no_reg_met ?? '-' }}</div>
+                                        @else
+                                        <span
+                                            class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
+                                            <i class="bi bi-exclamation-circle me-1"></i>Belum ada
+                                        </span>
                                         @endif
-                                    </div>
-                                    <div class="small text-muted mt-1">{{ $peserta }} orang</div>
-                                </td>
+                                    </td>
 
-                                {{-- Asesor --}}
-                                <td>
-                                    @if($schedule->asesor)
-                                    <div class="fw-semibold small">{{ $schedule->asesor->nama }}</div>
-                                    <div class="text-muted" style="font-size:.72rem;">{{ $schedule->asesor->no_reg_met ?? '-' }}</div>
-                                    @else
-                                    <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">
-                                        <i class="bi bi-exclamation-circle me-1"></i>Belum ada
-                                    </span>
-                                    @endif
-                                </td>
+                                    {{-- Status --}}
+                                    <td class="text-center">
+                                        @if($isToday)
+                                        <span class="badge bg-info">Berlangsung</span>
+                                        @elseif($isPast)
+                                        <span class="badge bg-secondary">Selesai</span>
+                                        @else
+                                        <span class="badge bg-success">Akan Datang</span>
+                                        @endif
+                                    </td>
 
-                                {{-- Status --}}
-                                <td class="text-center">
-                                    @if($isToday)
-                                    <span class="badge bg-info">Berlangsung</span>
-                                    @elseif($isPast)
-                                    <span class="badge bg-secondary">Selesai</span>
-                                    @else
-                                    <span class="badge bg-success">Akan Datang</span>
-                                    @endif
-                                </td>
+                                    {{-- Approval --}}
+                                    <td class="text-center">
+                                        <span class="badge bg-{{ $schedule->approval_status_badge }}">
+                                            {{ $schedule->approval_status_label }}
+                                        </span>
+                                    </td>
 
-                                {{-- Aksi --}}
-                                <td class="text-end pe-3" onclick="event.stopPropagation()">
-                                    <div class="d-flex justify-content-end gap-1">
-                                        <a href="{{ route('admin.schedules.show', $schedule) }}"
-                                           class="btn btn-sm btn-outline-primary" title="Lihat Detail">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
-                                        <a href="{{ route('admin.schedules.edit', $schedule) }}"
-                                           class="btn btn-sm btn-outline-secondary" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </a>
-                                        <button type="button"
-                                                class="btn btn-sm btn-outline-danger" title="Hapus"
+                                    {{-- Aksi --}}
+                                    <td class="text-end pe-3" onclick="event.stopPropagation()">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <a href="{{ route('admin.schedules.show', $schedule) }}"
+                                                class="btn btn-sm btn-outline-primary" title="Lihat Detail">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <a href="{{ route('admin.schedules.edit', $schedule) }}"
+                                                class="btn btn-sm btn-outline-secondary" title="Edit">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger" title="Hapus"
                                                 onclick="deleteSchedule({{ $schedule->id }}, {{ $peserta }})">
-                                            <i class="bi bi-trash3"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            @endforeach
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
                         </tbody>
                     </table>
                 </div>
@@ -404,13 +490,22 @@ async function deleteSchedule(id, peserta) {
 
     try {
         const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
-        const res  = await fetch(`/admin/schedules/${id}`, {
+        const res = await fetch(`/admin/schedules/${id}`, {
             method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': csrf, Accept: 'application/json' },
+            headers: {
+                'X-CSRF-TOKEN': csrf,
+                Accept: 'application/json'
+            },
         });
         const data = await res.json();
         if (data.success) {
-            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 1800, showConfirmButton: false });
+            await Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: data.message,
+                timer: 1800,
+                showConfirmButton: false
+            });
             location.reload();
         } else {
             Swal.fire('Gagal', data.message, 'error');

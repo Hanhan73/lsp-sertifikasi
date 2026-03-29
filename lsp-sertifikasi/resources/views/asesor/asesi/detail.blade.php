@@ -759,7 +759,6 @@
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 const CSRF       = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-const BUKTI_URL  = '{{ route("asesor.frak01.bukti", [$schedule, $asesmen]) }}';
 const SIGN_URL   = '{{ route("asesor.frak01.sign", [$schedule, $asesmen]) }}';
 const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
 
@@ -777,27 +776,6 @@ document.querySelector('[data-bs-target="#tab-apl02"]')?.addEventListener('shown
     @endif
 });
 
-// ── Simpan bukti FR.AK.01 ──────────────────────────────────
-async function saveBukti() {
-    const form = document.getElementById('bukti-form');
-    const data = new FormData(form);
-
-    try {
-        const res  = await fetch(BUKTI_URL, {
-            method: 'POST', body: data,
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-        });
-        const json = await res.json();
-        if (json.success) {
-            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'FR.AK.01 berhasil dibuat. Informasikan kepada asesi untuk menandatangani.', timer: 2500, showConfirmButton: false })
-                .then(() => location.reload());
-        } else {
-            Swal.fire('Gagal', json.message, 'error');
-        }
-    } catch (e) {
-        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
-    }
-}
 
 // ── Tanda tangan asesor FR.AK.01 ──────────────────────────
 async function signAsesor() {

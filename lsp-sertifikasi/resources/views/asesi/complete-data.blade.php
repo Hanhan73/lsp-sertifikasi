@@ -41,7 +41,6 @@
 @section('content')
 
 @php
-    {{-- Batas tanggal lahir: minimal usia 17 tahun, maksimal usia 80 tahun --}}
     $maxBirthDate = now()->subYears(17)->format('Y-m-d');
     $minBirthDate = now()->subYears(80)->format('Y-m-d');
 @endphp

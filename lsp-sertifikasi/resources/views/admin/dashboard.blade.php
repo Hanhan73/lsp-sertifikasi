@@ -37,7 +37,7 @@
             </div>
             @if($stats['pending_mulai'] > 0)
             <div class="card-footer bg-transparent border-0 pt-0">
-                <a href="{{ route('admin.verifications.index') }}" class="btn btn-warning btn-sm w-100">
+                <a href="{{ route('admin.praasesmen.index') }}" class="btn btn-warning btn-sm w-100">
                     <i class="bi bi-play-circle me-1"></i>Mulai Sekarang
                 </a>
             </div>
@@ -86,7 +86,7 @@
                 <span>
                     <i class="bi bi-play-circle me-2 text-warning"></i>Perlu Dimulai
                 </span>
-                <a href="{{ route('admin.verifications.index') }}" class="btn btn-warning btn-sm">
+                <a href="{{ route('admin.praasesmen.index') }}" class="btn btn-warning btn-sm">
                     Lihat Semua <span class="badge bg-white text-warning ms-1">{{ $stats['pending_mulai'] }}</span>
                 </a>
             </div>
@@ -102,7 +102,7 @@
                             @endif
                         </div>
                     </div>
-                    <a href="{{ route('admin.verifications.show', $a) }}"
+                    <a href="{{ route('admin.praasesmen.show', $a) }}"
                         class="btn btn-warning btn-sm py-1">
                         <i class="bi bi-play-circle"></i>
                     </a>
@@ -207,7 +207,7 @@
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
         <span><i class="bi bi-clock-history me-2 text-primary"></i>Asesi Terbaru</span>
-        <a href="{{ route('admin.asesi.index') }}" class="btn btn-outline-primary btn-sm">
+        <a href="{{ route('admin.asesi') }}" class="btn btn-outline-primary btn-sm">
             Lihat Semua
         </a>
     </div>

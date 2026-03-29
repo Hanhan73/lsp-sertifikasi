@@ -67,7 +67,6 @@ $asesmen = auth()->user()->asesmen;
     $aplStatus    = $asesmen->aplsatu?->status;
     $apldStatus   = $asesmen->apldua?->status;
     $frak01Status = $asesmen->frak01?->status;
-    $frak04Status = $asesmen->frak04?->status;
 
     // Auto-expand jika sedang di halaman dokumen manapun
     $isOnDokumen = in_array($currentRoute, [
@@ -75,7 +74,6 @@ $asesmen = auth()->user()->asesmen;
         'asesi.apl01',
         'asesi.apldua',
         'asesi.frak01',
-        'asesi.frak04',
     ]);
 
     // Hitung berapa dokumen sudah selesai untuk badge
@@ -152,15 +150,6 @@ $asesmen = auth()->user()->asesmen;
             @endif
         </a>
 
-        {{-- FR.AK.04 (opsional) --}}
-        <a href="{{ route('asesi.frak04') }}"
-            class="nav-link py-1 {{ $currentRoute === 'asesi.frak04' ? 'active' : '' }}">
-            <i class="bi bi-megaphone me-1"></i> FR.AK.04
-            <span class="text-white-50 ms-1" style="font-size:.65rem;">(opsional)</span>
-            @if($frak04Status === 'submitted')
-                <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Diajukan</span>
-            @endif
-        </a>
 
     </div>
 </div>

@@ -589,7 +589,7 @@
                         <div class="step-number">2</div>
                         <h4>Verifikasi Data</h4>
                         <p>Verifikasi data asesi dan setujui pendaftaran</p>
-                        <a href="{{ route('admin.verifications') }}" class="btn btn-primary w-100">
+                        <a href="{{ route('admin.praasesmen.index') }}" class="btn btn-primary w-100">
                             <i class="bi bi-check-circle"></i> Verifikasi
                         </a>
                     </div>

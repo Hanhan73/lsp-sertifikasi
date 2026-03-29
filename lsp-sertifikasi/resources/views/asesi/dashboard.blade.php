@@ -1,95 +1,63 @@
 @extends('layouts.app')
-
 @section('title', 'Dashboard Asesi')
 @section('page-title', 'Dashboard')
-
 @section('sidebar')
 @include('asesi.partials.sidebar')
 @endsection
 
 @section('content')
 
-{{-- ✅ Alert Verifikasi Email Berhasil --}}
-@if (session('verified'))
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-    <div class="d-flex align-items-center">
-        <i class="bi bi-check-circle-fill me-3" style="font-size: 2rem;"></i>
-        <div>
-            <h5 class="alert-heading mb-1">
-                <i class="bi bi-shield-check"></i> Email Berhasil Diverifikasi!
-            </h5>
-            <p class="mb-0">
-                Selamat! Akun Anda sudah terverifikasi. Anda sekarang dapat mengakses semua fitur sistem sertifikasi.
-            </p>
-        </div>
-    </div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+@if(session('verified'))
+<div class="alert alert-success alert-dismissible fade show">
+    <i class="bi bi-shield-check me-2"></i>
+    <strong>Email berhasil diverifikasi!</strong> Anda sekarang bisa mengakses semua fitur.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
 
-{{-- ✅ Alert Success/Warning/Info dari Session --}}
-@if (session('success'))
-<div class="alert alert-success alert-dismissible fade show" role="alert">
-    <i class="bi bi-check-circle me-2"></i>
-    {{ session('success') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-
-@if (session('warning'))
-<div class="alert alert-warning alert-dismissible fade show" role="alert">
-    <i class="bi bi-exclamation-triangle me-2"></i>
-    {{ session('warning') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-
-@if (session('info'))
-<div class="alert alert-info alert-dismissible fade show" role="alert">
-    <i class="bi bi-info-circle me-2"></i>
-    {{ session('info') }}
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-</div>
-@endif
-
-<!-- Welcome -->
-<div class="row mb-4">
-    <div class="col">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <h4>Selamat Datang, {{ auth()->user()->name }}!</h4>
-                <p class="mb-0">
-                    @if(!$asesmen)
-                    Silakan daftar sebagai asesi untuk mengikuti program sertifikasi
-                    @elseif($asesmen->is_collective)
-                    Anda terdaftar dalam program sertifikasi kolektif
-                    @else
-                    Anda terdaftar dalam program sertifikasi mandiri
+{{-- Welcome banner --}}
+<div class="card border-0 bg-primary text-white mb-4">
+    <div class="card-body py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1">Selamat datang, {{ auth()->user()->name }}!</h5>
+                <p class="mb-0 opacity-75 small">
+                    @if(!$asesmen) Silakan lengkapi data untuk memulai sertifikasi.
+                    @elseif($asesmen->is_collective) Pendaftaran Kolektif
+                    @else Pendaftaran Mandiri
                     @endif
                 </p>
             </div>
+            @if($asesmen)
+            <span class="badge bg-white text-primary fs-6 px-3 py-2">
+                {{ $asesmen->status_label }}
+            </span>
+            @endif
         </div>
     </div>
 </div>
 
 @if($asesmen)
-<div class="row mb-4">
-    <!-- Status Card -->
+<div class="row g-4">
+
+    {{-- Kiri: Info + Timeline --}}
     <div class="col-lg-8">
-        <div class="card mb-4">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Status Pendaftaran</h5>
+
+        {{-- Info Pendaftaran --}}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold border-bottom">
+                <i class="bi bi-info-circle me-2 text-primary"></i>Status Pendaftaran
             </div>
             <div class="card-body">
-                <div class="row">
+                <div class="row g-3">
                     <div class="col-md-6">
-                        <table class="table table-borderless table-sm">
+                        <table class="table table-borderless table-sm mb-0">
                             <tr>
-                                <td width="150"><strong>No. Registrasi</strong></td>
-                                <td>: #{{ $asesmen->id }}</td>
+                                <td class="text-muted" width="130">No. Registrasi</td>
+                                <td>: <strong>#{{ $asesmen->id }}</strong></td>
                             </tr>
                             <tr>
-                                <td><strong>Jenis Pendaftaran</strong></td>
+                                <td class="text-muted">Jenis</td>
                                 <td>:
                                     @if($asesmen->is_collective)
                                     <span class="badge bg-primary">Kolektif</span>
@@ -98,396 +66,303 @@
                                     @endif
                                 </td>
                             </tr>
-                            @if($asesmen->is_collective && $asesmen->collective_batch_id)
                             <tr>
-                                <td><strong>Batch ID</strong></td>
-                                <td>: {{ $asesmen->collective_batch_id }}</td>
-                            </tr>
-                            @endif
-                            <tr>
-                                <td><strong>TUK</strong></td>
+                                <td class="text-muted">TUK</td>
                                 <td>: {{ $asesmen->tuk->name ?? '-' }}</td>
                             </tr>
                             <tr>
-                                <td><strong>Skema</strong></td>
+                                <td class="text-muted">Skema</td>
                                 <td>: {{ $asesmen->skema->name ?? '-' }}</td>
                             </tr>
                         </table>
                     </div>
                     <div class="col-md-6">
-                        <table class="table table-borderless table-sm">
+                        <table class="table table-borderless table-sm mb-0">
                             <tr>
-                                <td width="150"><strong>Status Saat Ini</strong></td>
+                                <td class="text-muted" width="130">Status</td>
                                 <td>:
-                                    <span class="badge bg-{{ $asesmen->status_badge }} badge-status">
+                                    <span class="badge bg-{{ $asesmen->status_badge }}">
                                         {{ $asesmen->status_label }}
                                     </span>
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>Langkah Berikutnya</strong></td>
-                                <td>: {{ $asesmen->next_action }}</td>
+                                <td class="text-muted">Langkah Berikutnya</td>
+                                <td>: <span class="text-primary small">{{ $asesmen->next_action }}</span></td>
                             </tr>
-                            @if($asesmen->is_collective)
-                            <tr>
-                                <td><strong>Skema Pembayaran</strong></td>
-                                <td>:
-                                    @if($asesmen->payment_phases === 'single')
-                                    <span class="badge bg-success">1 Fase</span>
-                                    @else
-                                    <span class="badge bg-primary">2 Fase</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            @endif
                             @if($asesmen->training_flag)
                             <tr>
-                                <td><strong>Pelatihan</strong></td>
-                                <td>:
-                                    <span class="badge bg-warning text-dark">
-                                        <i class="bi bi-mortarboard-fill"></i> Terdaftar
-                                    </span>
-                                </td>
+                                <td class="text-muted">Pelatihan</td>
+                                <td>: <span class="badge bg-warning text-dark">Terdaftar</span></td>
                             </tr>
                             @endif
                         </table>
                     </div>
                 </div>
-
-                {{-- Payment Phase Info for Collective 2 Fase --}}
-                @if($asesmen->is_collective && $asesmen->payment_phases === 'two_phase')
-                <hr>
-                <div class="alert alert-info mb-0">
-                    <h6 class="mb-2"><i class="bi bi-cash-coin"></i> Informasi Pembayaran 2 Fase</h6>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="card mb-2">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Fase 1 (50%)</small>
-                                    <br>
-                                    @php
-                                    $phase1Paid = $asesmen->payments()->where('payment_phase',
-                                    'phase_1')->where('status', 'verified')->exists();
-                                    @endphp
-                                    @if($phase1Paid)
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle"></i> Sudah Dibayar
-                                    </span>
-                                    @else
-                                    <span class="badge bg-secondary">Belum Dibayar</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card mb-2">
-                                <div class="card-body py-2">
-                                    <small class="text-muted">Fase 2 (50%)</small>
-                                    <br>
-                                    @php
-                                    $phase2Paid = $asesmen->payments()->where('payment_phase',
-                                    'phase_2')->where('status', 'verified')->exists();
-                                    @endphp
-                                    @if($phase2Paid)
-                                    <span class="badge bg-success">
-                                        <i class="bi bi-check-circle"></i> Sudah Dibayar
-                                    </span>
-                                    @elseif($phase1Paid && in_array($asesmen->status, ['assessed', 'certified']))
-                                    <span class="badge bg-warning">
-                                        <i class="bi bi-hourglass-half"></i> Menunggu TUK
-                                    </span>
-                                    @else
-                                    <span class="badge bg-secondary">Belum Waktunya</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                @endif
             </div>
         </div>
 
-        {{-- Timeline Ringkas --}}
-        <div class="card">
-            <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Timeline Proses</h5>
+        {{-- Timeline --}}
+        <div class="card border-0 shadow-sm">
+            <div
+                class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2 text-primary"></i>Timeline Proses</span>
                 <a href="{{ route('asesi.tracking') }}" class="btn btn-sm btn-outline-primary">
-                    <i class="bi bi-eye"></i> Lihat Detail
+                    <i class="bi bi-eye me-1"></i>Detail
                 </a>
             </div>
             <div class="card-body">
                 <div class="timeline">
-                    <!-- 1. Registration -->
-                    <div class="timeline-item {{ $asesmen->status === 'registered' ? 'active' : 'completed' }}">
-                        <div class="timeline-marker">
-                            <i class="bi bi-check-circle"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Pendaftaran</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->registration_date ? $asesmen->registration_date->format('d M Y') : '-' }}
-                            </p>
-                        </div>
-                    </div>
 
-                    <!-- 2. Data Completion -->
-                    <div class="timeline-item {{ $asesmen->status === 'data_completed' ? 'active' : (in_array($asesmen->status, ['verified', 'paid', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'completed' : '') }}">
-                        <div class="timeline-marker">
-                            <i
-                                class="bi {{ in_array($asesmen->status, ['verified', 'paid', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Kelengkapan Data</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->status !== 'registered' ? 'Data Lengkap' : 'Belum Lengkap' }}
-                            </p>
-                        </div>
-                    </div>
+                    @php
+                    $statusOrder = ['registered', 'data_completed', 'asesmen_started', 'scheduled',
+                    'pre_assessment_completed', 'assessed', 'certified'];
+                    $currentIndex = array_search($asesmen->status, $statusOrder) ?: 0;
 
-                    {{-- Skip verification untuk mandiri --}}
-                    @if($asesmen->is_collective)
-                    <!-- TUK Verification -->
-                    <div class="timeline-item {{ $asesmen->tuk_verified_at ? 'completed' : ($asesmen->status === 'data_completed' ? 'active' : '') }}">
-                        <div class="timeline-marker">
-                            <i class="bi {{ $asesmen->tuk_verified_at ? 'bi-check-circle' : 'bi-circle' }}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Verifikasi TUK</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->tuk_verified_at ? $asesmen->tuk_verified_at->format('d M Y') : 'Menunggu' }}
-                            </p>
-                        </div>
-                    </div>
+                    $steps = [
+                    [
+                    'label' => 'Pendaftaran',
+                    'status' => 'registered',
+                    'detail' => $asesmen->registration_date->format('d M Y'),
+                    'icon' => 'bi-person-plus',
+                    ],
+                    [
+                    'label' => 'Kelengkapan Data',
+                    'status' => 'data_completed',
+                    'detail' => $asesmen->status !== 'registered' ? 'Data telah dilengkapi' : 'Belum dilengkapi',
+                    'icon' => 'bi-clipboard-check',
+                    ],
+                    [
+                    'label' => 'Admin Mulai Asesmen',
+                    'status' => 'asesmen_started',
+                    'detail' => $asesmen->admin_started_at
+                    ? $asesmen->admin_started_at->format('d M Y')
+                    : 'Menunggu Admin LSP',
+                    'icon' => 'bi-play-circle',
+                    ],
+                    [
+                    'label' => 'Pengisian Dokumen',
+                    'status' => 'asesmen_started', // aktif saat asesmen_started
+                    'detail' => $asesmen->status === 'asesmen_started'
+                    ? 'Sedang diisi'
+                    : ($currentIndex > 2 ? 'Selesai' : 'Menunggu'),
+                    'icon' => 'bi-file-earmark-text',
+                    'sub' => true, // sub-step, tidak ada di statusOrder
+                    ],
+                    [
+                    'label' => 'Penjadwalan',
+                    'status' => 'scheduled',
+                    'detail' => $asesmen->schedule
+                    ? $asesmen->schedule->assessment_date->format('d M Y')
+                    : 'Belum dijadwalkan',
+                    'icon' => 'bi-calendar-event',
+                    ],
+                    [
+                    'label' => 'Asesmen',
+                    'status' => 'assessed',
+                    'detail' => $asesmen->assessed_at
+                    ? $asesmen->assessed_at->format('d M Y')
+                    : 'Belum dilakukan',
+                    'icon' => 'bi-person-check',
+                    ],
+                    [
+                    'label' => 'Sertifikat',
+                    'status' => 'certified',
+                    'detail' => $asesmen->certificate
+                    ? $asesmen->certificate->issue_date->format('d M Y')
+                    : 'Belum terbit',
+                    'icon' => 'bi-award',
+                    ],
+                    ];
+                    @endphp
 
-                    <!-- Admin Fee Setup -->
+                    @foreach($steps as $step)
+                    @php
+                    $stepIndex = array_search($step['status'], $statusOrder);
+                    $isCurrent = $asesmen->status === $step['status'];
+                    $isCompleted = $stepIndex !== false && $currentIndex > $stepIndex;
+                    $isSub = $step['sub'] ?? false;
+                    @endphp
                     <div
-                        class="timeline-item {{ $asesmen->admin_verified_at ? 'completed' : ($asesmen->tuk_verified_at && !$asesmen->admin_verified_at ? 'active' : '') }}">
+                        class="timeline-item {{ $isCompleted ? 'completed' : ($isCurrent ? 'active' : '') }} {{ $isSub ? 'timeline-sub' : '' }}">
                         <div class="timeline-marker">
-                            <i class="bi {{ $asesmen->admin_verified_at ? 'bi-check-circle' : 'bi-circle' }}"></i>
+                            @if($isCompleted)
+                            <i class="bi bi-check-circle-fill"></i>
+                            @elseif($isCurrent)
+                            <i class="{{ $step['icon'] }}"></i>
+                            @else
+                            <i class="bi bi-circle"></i>
+                            @endif
                         </div>
                         <div class="timeline-content">
-                            <h6>Penetapan Biaya</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->admin_verified_at ? $asesmen->admin_verified_at->format('d M Y') : 'Menunggu' }}
-                            </p>
+                            <div class="fw-semibold small">{{ $step['label'] }}</div>
+                            <div class="text-muted" style="font-size:.8rem;">{{ $step['detail'] }}</div>
                         </div>
                     </div>
-                    @endif
+                    @endforeach
 
-                    <!-- 3. Payment -->
-                    <div class="timeline-item {{ $asesmen->status === 'verified' ? 'active' : ($asesmen->status === 'paid' || in_array($asesmen->status, ['scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'completed' : '') }}">
-                        <div class="timeline-marker">
-                            <i
-                                class="bi {{ in_array($asesmen->status, ['paid', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Pembayaran</h6>
-                            <p class="text-muted mb-0">
-                                @if($asesmen->payment)
-                                {{ $asesmen->payment->verified_at ? $asesmen->payment->verified_at->format('d M Y') :
-                                'Menunggu Verifikasi' }}
-                                @else
-                                Belum Bayar
-                                @endif
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- 4. Scheduled -->
-                    <div
-                        class="timeline-item {{ $asesmen->status === 'scheduled' ? 'active' : ($asesmen->status === 'pre_assessment_completed' || in_array($asesmen->status, ['assessed', 'certified']) ? 'completed' : '') }}">
-                        <div class="timeline-marker">
-                            <i
-                                class="bi {{ in_array($asesmen->status, ['pre_assessment_completed', 'assessed', 'certified']) ? 'bi-check-circle' : 'bi-circle' }}"></i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Penjadwalan</h6>
-                            <p class="text-muted mb-0">
-                                @if($asesmen->schedule)
-                                {{ $asesmen->schedule->assessment_date->format('d M Y') }}
-                                @else
-                                Belum Dijadwalkan
-                                @endif
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- 5. Assessment -->
-                    <div
-                        class="timeline-item {{ $asesmen->status === 'assessed' ? 'active' : ($asesmen->status === 'certified' ? 'completed' : '') }}">
-                        <div class="timeline-marker">
-                            <i class="bi {{ $asesmen->status === 'certified' ? 'bi-check-circle' : 'bi-circle' }}">
-                            </i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Asesmen</h6>
-                            <p class="text-muted mb-0">
-                                {{ $asesmen->assessed_at ? $asesmen->assessed_at->format('d M Y') : 'Belum Dilakukan' }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- 6. Certificate -->
-                    <div class="timeline-item {{ $asesmen->status === 'certified' ? 'completed' : '' }}">
-                        <div class="timeline-marker">
-                            <i class="bi {{ $asesmen->status === 'certified' ? 'bi-check-circle' : 'bi-circle' }}">
-                            </i>
-                        </div>
-                        <div class="timeline-content">
-                            <h6>Sertifikat</h6>
-                            <p class="text-muted mb-0">
-                                @if($asesmen->certificate)
-                                {{ $asesmen->certificate->issue_date->format('d M Y') }}
-                                @else
-                                Belum Terbit
-                                @endif
-                            </p>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Right Sidebar -->
+    {{-- Kanan: Quick Actions + Jadwal + Batch --}}
     <div class="col-lg-4">
+
         {{-- Quick Actions --}}
-        <div class="card mb-3">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-lightning-fill"></i> Quick Actions</h6>
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold border-bottom">
+                <i class="bi bi-lightning-fill me-2 text-warning"></i>Aksi Cepat
             </div>
-            <div class="card-body">
+            <div class="card-body d-grid gap-2">
+
                 @if($asesmen->status === 'registered')
-                <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-sm w-100 mb-2">
-                    <i class="bi bi-pencil"></i> Lengkapi Data Pribadi
+                <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-pencil me-1"></i>Lengkapi Data Pribadi
                 </a>
                 @endif
 
-                @if($asesmen->status === 'verified' && !$asesmen->is_collective)
-                <a href="{{ route('asesi.payment') }}" class="btn btn-success btn-sm w-100 mb-2">
-                    <i class="bi bi-credit-card"></i> Lakukan Pembayaran
+                @if($asesmen->status === 'asesmen_started')
+                <a href="{{ route('asesi.apl01') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-file-earmark-text me-1"></i>Isi APL-01
                 </a>
-                @endif
-
-                @if($asesmen->payment)
-                <a href="{{ route('asesi.payment.status') }}" class="btn btn-info btn-sm w-100 mb-2">
-                    <i class="bi bi-receipt"></i> Lihat Invoice
+                <a href="{{ route('asesi.apldua') }}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-file-earmark-check me-1"></i>Isi APL-02
                 </a>
                 @endif
 
                 @if($asesmen->status === 'scheduled')
-                <a href="{{ route('asesi.pre-assessment') }}" class="btn btn-warning btn-sm w-100 mb-2">
-                    <i class="bi bi-file-earmark-text"></i> Isi Pra-Asesmen
+                <a href="{{ route('asesi.schedule') }}" class="btn btn-warning btn-sm text-dark">
+                    <i class="bi bi-calendar-event me-1"></i>Lihat Jadwal & Dokumen
                 </a>
                 @endif
 
                 @if($asesmen->status === 'certified')
-                <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm w-100 mb-2">
-                    <i class="bi bi-download"></i> Download Sertifikat
+                <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm">
+                    <i class="bi bi-award me-1"></i>Download Sertifikat
                 </a>
                 @endif
 
-                <a href="{{ route('asesi.tracking') }}" class="btn btn-outline-primary btn-sm w-100">
-                    <i class="bi bi-eye"></i> Lihat Detail Timeline
+                <a href="{{ route('asesi.tracking') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-clock-history me-1"></i>Lihat Timeline Lengkap
                 </a>
             </div>
         </div>
 
-        {{-- Jadwal Asesmen (jika ada) --}}
+        {{-- Jadwal (jika sudah ada) --}}
         @if($asesmen->schedule)
-        <div class="card mb-3 border-warning">
-            <div class="card-header bg-warning text-dark">
-                <h6 class="mb-0"><i class="bi bi-calendar-event"></i> Jadwal Asesmen</h6>
+        <div class="card border-0 shadow-sm border-start border-4 border-warning mb-3">
+            <div class="card-header bg-warning bg-opacity-10 fw-semibold border-bottom">
+                <i class="bi bi-calendar-event me-2 text-warning"></i>Jadwal Asesmen
             </div>
             <div class="card-body">
                 <div class="text-center mb-2">
-                    <h4 class="mb-0">{{ $asesmen->schedule->assessment_date->format('d') }}</h4>
-                    <p class="mb-0">{{ $asesmen->schedule->assessment_date->format('F Y') }}</p>
+                    <div class="display-6 fw-bold text-primary">
+                        {{ $asesmen->schedule->assessment_date->format('d') }}
+                    </div>
+                    <div class="text-muted">{{ $asesmen->schedule->assessment_date->format('F Y') }}</div>
                 </div>
-                <hr>
-                <p class="mb-1"><strong>Waktu:</strong></p>
-                <p class="text-muted">{{ $asesmen->schedule->start_time }} - {{ $asesmen->schedule->end_time }}</p>
-                
-                @if($asesmen->schedule->location)
-                <p class="mb-1"><strong>Lokasi:</strong></p>
-                <p class="text-muted mb-0">{{ $asesmen->schedule->location }}</p>
-                @endif
+                <hr class="my-2">
+                <div class="small">
+                    <div class="d-flex gap-2 mb-1">
+                        <i class="bi bi-clock text-muted"></i>
+                        {{ $asesmen->schedule->start_time }} – {{ $asesmen->schedule->end_time }}
+                    </div>
+                    @if($asesmen->schedule->location)
+                    <div class="d-flex gap-2">
+                        <i class="bi bi-geo-alt text-muted"></i>
+                        {{ $asesmen->schedule->location }}
+                    </div>
+                    @endif
+                </div>
             </div>
         </div>
         @endif
 
-        {{-- Info Batch (untuk kolektif) --}}
+        {{-- Info Batch (kolektif) --}}
         @if($batchInfo)
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h6 class="mb-0"><i class="bi bi-people"></i> Info Batch</h6>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-semibold border-bottom">
+                <i class="bi bi-people me-2 text-info"></i>Info Batch
             </div>
             <div class="card-body">
-                <p class="mb-1"><strong>Batch ID:</strong></p>
-                <p class="text-muted">{{ $batchInfo['batch_id'] }}</p>
-                
-                <p class="mb-1"><strong>Total Peserta:</strong></p>
-                <p class="text-muted">{{ $batchInfo['total_members'] }} orang</p>
-                
-                <p class="mb-1"><strong>TUK:</strong></p>
-                <p class="text-muted mb-0">{{ $batchInfo['tuk']->name ?? '-' }}</p>
-                
-                <hr>
-                <a href="{{ route('asesi.batch-info') }}" class="btn btn-sm btn-outline-primary w-100">
-                    <i class="bi bi-eye"></i> Lihat Detail
+                <table class="table table-borderless table-sm mb-3">
+                    <tr>
+                        <td class="text-muted small">Batch ID</td>
+                        <td class="small"><code>{{ $batchInfo['batch_id'] }}</code></td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted small">Total Peserta</td>
+                        <td class="small">{{ $batchInfo['total_members'] }} orang</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted small">TUK</td>
+                        <td class="small">{{ $batchInfo['tuk']->name ?? '-' }}</td>
+                    </tr>
+                </table>
+                <a href="{{ route('asesi.batch-info') }}" class="btn btn-sm btn-outline-info w-100">
+                    <i class="bi bi-eye me-1"></i>Lihat Detail Batch
                 </a>
             </div>
         </div>
         @endif
+
     </div>
 </div>
+
 @else
-<!-- No Asesmen Yet -->
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body text-center py-5">
-                <i class="bi bi-person-plus" style="font-size: 4rem; color: #0d6efd;"></i>
-                <h4 class="mt-3">Mulai Pendaftaran Sertifikasi</h4>
-                <p class="text-muted">Anda belum terdaftar sebagai asesi. Silakan lengkapi data pribadi untuk memulai
-                    proses sertifikasi.</p>
-                <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-lg mt-3">
-                    <i class="bi bi-pencil"></i> Daftar Sekarang
-                </a>
-            </div>
-        </div>
+{{-- Belum ada asesmen --}}
+<div class="card border-0 shadow-sm">
+    <div class="card-body text-center py-5">
+        <i class="bi bi-person-plus text-primary" style="font-size:4rem;opacity:.4;"></i>
+        <h5 class="mt-3">Mulai Pendaftaran Sertifikasi</h5>
+        <p class="text-muted">Anda belum terdaftar. Lengkapi data pribadi untuk memulai proses sertifikasi.</p>
+        <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary mt-2">
+            <i class="bi bi-pencil me-1"></i>Daftar Sekarang
+        </a>
     </div>
 </div>
 @endif
+
 @endsection
 
 @push('styles')
 <style>
 .timeline {
     position: relative;
-    padding: 20px 0;
+    padding: 10px 0;
 }
 
 .timeline::before {
     content: '';
     position: absolute;
-    left: 20px;
+    left: 18px;
     top: 0;
     bottom: 0;
     width: 2px;
-    background: #dee2e6;
+    background: #e9ecef;
 }
 
 .timeline-item {
     position: relative;
-    padding-left: 60px;
-    padding-bottom: 30px;
+    padding-left: 52px;
+    padding-bottom: 24px;
+}
+
+.timeline-sub {
+    padding-left: 70px;
+}
+
+.timeline-sub .timeline-marker {
+    left: 28px;
+    width: 18px;
+    height: 18px;
+    font-size: .7rem;
 }
 
 .timeline-marker {
     position: absolute;
-    left: 10px;
+    left: 8px;
     top: 0;
     width: 22px;
     height: 22px;
@@ -497,51 +372,24 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-    color: #6c757d;
+    font-size: .75rem;
+    color: #adb5bd;
 }
 
 .timeline-item.active .timeline-marker {
-    background: #ffc107;
-    border-color: #ffc107;
+    background: #0d6efd;
+    border-color: #0d6efd;
     color: #fff;
 }
 
 .timeline-item.completed .timeline-marker {
-    background: #28a745;
-    border-color: #28a745;
+    background: #198754;
+    border-color: #198754;
     color: #fff;
 }
 
-.timeline-content h6 {
-    margin-bottom: 5px;
-    font-weight: 600;
-}
-
-.badge-status {
-    font-size: 0.875rem;
-    padding: 0.375rem 0.75rem;
-}
-
-/* ✅ Alert Animation */
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.alert {
-    animation: slideDown 0.5s ease-out;
-}
-
-/* ✅ Success Alert Custom Style */
-.alert-success {
-    border-left: 5px solid #28a745;
+.timeline-content .fw-semibold {
+    margin-bottom: 2px;
 }
 </style>
 @endpush

@@ -35,7 +35,6 @@ class SkemaController extends Controller
             'nomor_skema'        => 'nullable|string|max:100',
             'description'        => 'nullable|string',
             'fee'                => 'required|numeric|min:0',
-            'duration_days'      => 'required|integer|min:1',
             'tanggal_pengesahan' => 'nullable|date',
             'dokumen_pengesahan' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
             'is_active'          => 'sometimes|boolean',
@@ -74,7 +73,6 @@ class SkemaController extends Controller
             'nomor_skema'        => 'nullable|string|max:100',
             'description'        => 'nullable|string',
             'fee'                => 'required|numeric|min:0',
-            'duration_days'      => 'required|integer|min:1',
             'tanggal_pengesahan' => 'nullable|date',
             'dokumen_pengesahan' => 'nullable|file|mimes:pdf,doc,docx|max:10240',
         ]);

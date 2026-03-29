@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SignatureController;
 
 // Admin
 use App\Http\Controllers\Admin\AdminController;
@@ -19,10 +20,11 @@ use App\Http\Controllers\Admin\AsesmenController;
 use App\Http\Controllers\Admin\PaymentController as AdminPaymentController;
 use App\Http\Controllers\Admin\AsesorAssignmentController;
 use App\Http\Controllers\Admin\AdminAsesorController;
-use App\Http\Controllers\Admin\AdminVerificationController;
+use App\Http\Controllers\Admin\AdminPraAsesmenController;
 use App\Http\Controllers\Admin\AdminMandiriVerificationController;
 use App\Http\Controllers\Admin\FrAk01Controller as FrAk01AdminController;
 use App\Http\Controllers\Admin\FrAk04Controller as FrAk04AdminController;
+use App\Http\Controllers\Admin\AdminScheduleController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -46,6 +48,9 @@ use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController;
 
 Route::get('/', fn() => view('welcome'))->name('home');
 
+
+
+
 /*
 |--------------------------------------------------------------------------
 | Auth
@@ -63,7 +68,9 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 
 Route::get('/forgot-password',        [AuthController::class, 'showForgotPassword'])->name('password.request');
 Route::post('/forgot-password',       [AuthController::class, 'sendResetLink'])     ->name('password.email');
-Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword']) ->name('password.reset');
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetPassword'])
+    ->name('password.reset')
+    ->where('token', '.*');
 Route::post('/reset-password',        [AuthController::class, 'resetPassword'])     ->name('password.update');
 
 /*
@@ -135,6 +142,12 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('home')->with('success', 'Email berhasil diverifikasi!');
 
     })->middleware('signed')->name('verification.verify');
+
+    Route::post('/user/signature', [SignatureController::class, 'store'])
+    ->name('user.signature.store');
+
+    Route::delete('/user/signature', [SignatureController::class, 'destroy'])
+        ->name('user.signature.destroy');
 });
 
 /*
@@ -221,15 +234,15 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     });
 
     // ── Verifikasi kolektif & mandiri ──────────────────────────────────────
-    Route::prefix('verifications')->name('verifications.')->group(function () {
-        Route::get('/',                   [AdminVerificationController::class, 'index'])         ->name('index');
-        Route::get('/{asesmen}',          [AdminVerificationController::class, 'show'])          ->name('show');
-        Route::post('/{asesmen}',         [AdminVerificationController::class, 'process'])       ->name('process');
-        Route::get('/batch/{batchId}',    [AdminVerificationController::class, 'showBatch'])     ->name('batch.show');
-        Route::post('/batch/process',     [AdminVerificationController::class, 'processBatchFee'])->name('batch.process');
-        Route::post('/batch',             [AdminVerificationController::class, 'processBatch'])  ->name('batch');
+    Route::prefix('praasesmen')->name('praasesmen.')->group(function () {
+        Route::get('/',                   [AdminPraAsesmenController::class, 'index'])         ->name('index');
+        Route::get('/{asesmen}',          [AdminPraAsesmenController::class, 'show'])          ->name('show');
+        Route::post('/{asesmen}',         [AdminPraAsesmenController::class, 'process'])       ->name('process');
+        Route::get('/batch/{batchId}',    [AdminPraAsesmenController::class, 'showBatch'])     ->name('batch.show');
+        Route::post('/batch/process',     [AdminPraAsesmenController::class, 'processBatch'])->name('batch.process');
+        Route::post('/batch',             [AdminPraAsesmenController::class, 'processBatchFee'])  ->name('batch');
     });
-    Route::get('/verifications', [AdminVerificationController::class, 'index'])->name('verifications'); // alias lama
+    Route::get('/praasesmen', [AdminPraAsesmenController::class, 'index'])->name('praasesmen.index'); // alias lama
 
     Route::prefix('mandiri')->name('mandiri.')->group(function () {
         Route::get('/verifications',       [AdminMandiriVerificationController::class, 'index'])         ->name('verifications');
@@ -244,10 +257,18 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/asesor-assignments', [AsesorAssignmentController::class, 'index'])->name('asesor-assignments.index');
 
     Route::prefix('schedules')->name('schedules.')->group(function () {
-        Route::get('/{schedule}/available-asesors', [AsesorAssignmentController::class, 'availableAsesors'])->name('available-asesors');
-        Route::post('/{schedule}/assign-asesor',    [AsesorAssignmentController::class, 'assign'])           ->name('assign-asesor');
-        Route::post('/{schedule}/unassign-asesor',  [AsesorAssignmentController::class, 'unassign'])         ->name('unassign-asesor');
-        Route::get('/{schedule}/assignment-history',[AsesorAssignmentController::class, 'history'])          ->name('assignment-history');
+        Route::get('/',                               [AdminScheduleController::class, 'index'])           ->name('index');
+        Route::get('/create',                         [AdminScheduleController::class, 'create'])          ->name('create');
+        Route::post('/',                              [AdminScheduleController::class, 'store'])           ->name('store');
+        Route::get('/{schedule}',                     [AdminScheduleController::class, 'show'])            ->name('show');
+        Route::get('/{schedule}/edit',                [AdminScheduleController::class, 'edit'])            ->name('edit');
+        Route::put('/{schedule}',                     [AdminScheduleController::class, 'update'])          ->name('update');
+        Route::delete('/{schedule}',                  [AdminScheduleController::class, 'destroy'])         ->name('destroy');
+        Route::get('/{schedule}/available-asesors',   [AdminScheduleController::class, 'availableAsesors'])->name('available-asesors');
+        // Assign asesor tetap pakai AsesorAssignmentController
+        Route::post('/{schedule}/assign-asesor',      [AsesorAssignmentController::class, 'assign'])       ->name('assign-asesor');
+        Route::post('/{schedule}/unassign-asesor',    [AsesorAssignmentController::class, 'unassign'])     ->name('unassign-asesor');
+        Route::get('/{schedule}/assignment-history',  [AsesorAssignmentController::class, 'history'])      ->name('assignment-history');
     });
 
     // ── Proses Asesmen — Dokumen APL ──────────────────────────────────────
@@ -285,15 +306,21 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ── Semua Asesi ────────────────────────────────────────────────────────
     Route::prefix('asesi')->name('asesi.')->group(function () {
-        Route::get('/',              [AsesmenController::class, 'index']) ->name('index');
-        Route::get('/{asesmen}',     [AsesmenController::class, 'show'])  ->name('show');
-        Route::get('/{asesmen}/detail', [AsesmenController::class, 'detail'])->name('detail');
+        Route::get('/',                            [AsesmenController::class, 'index'])              ->name('index');
+        Route::get('/batch/{batchId}',             [AsesmenController::class, 'batchShow'])          ->name('batch.show');
+        Route::get('/batch/{batchId}/export',      [AsesmenController::class, 'exportBatchBiodata']) ->name('batch.export');
+        Route::patch('/batch/{batchId}/rename',    [AsesmenController::class, 'renameBatch'])        ->name('batch.rename');
+        Route::get('/export', [AsesmenController::class, 'exportAllBiodata'])->name('export');
+        Route::get('/{asesmen}',                   [AsesmenController::class, 'show'])               ->name('show');
+        Route::get('/{asesmen}/detail',            [AsesmenController::class, 'detail'])             ->name('detail');
+
     });
     Route::get('/asesi', [AsesmenController::class, 'index'])->name('asesi'); // alias lama
-
+    
     // Alias lama — AJAX detail dari dashboard
     Route::get('/asesmens/{asesmen}/detail', [AsesmenController::class, 'detail'])->name('asesmens.detail');
-
+    Route::get('/admin/asesi/{asesmen}', [AsesmenController::class, 'show'])
+        ->name('admin.asesi.show');
     // ── Input Hasil Asesmen ────────────────────────────────────────────────
     Route::get('/assessments',            [AsesmenController::class, 'assessments'])->name('assessments');
     Route::post('/assessments/{asesmen}', [AsesmenController::class, 'inputHasil']) ->name('assessments.input');
@@ -305,6 +332,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
     });
     Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // alias lama
+
+
+
 });
 
 /*
@@ -359,11 +389,14 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/frak01',       [FrAk01AsesiController::class, 'showAsesi']) ->name('frak01');
         Route::post('/frak01/sign', [FrAk01AsesiController::class, 'signAsesi']) ->name('frak01.sign');
         Route::get('/frak01/pdf',   [FrAk01AsesiController::class, 'asesiPdf'])  ->name('frak01.pdf');
+        Route::post('/frak01/bukti/save', [FrAk01AsesiController::class, 'saveBukti'])->name('frak01.bukti.save');
 
         // FR.AK.04 — Banding Asesmen (opsional)
         Route::get('/frak04',        [FrAk04AsesiController::class, 'showAsesi']) ->name('frak04');
         Route::post('/frak04/submit',[FrAk04AsesiController::class, 'submitAsesi'])->name('frak04.submit');
         Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])  ->name('frak04.pdf');
+
+        Route::get('/documents', [AsesiController::class, 'documents'])->name('documents');
     });
 });
 
@@ -444,10 +477,10 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 
     // FR.AK.01 untuk asesor — hanya bisa akses asesmen yang dijadwalkan ke dia
     Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak01')->name('frak01.')->group(function () {
-        Route::get('/',        [FrAk01Controller::class, 'show'])       ->name('show');
-        Route::post('/bukti',  [FrAk01Controller::class, 'saveBukti'])  ->name('bukti');   // simpan checkbox bukti
-        Route::post('/sign',   [FrAk01Controller::class, 'signAsesor']) ->name('sign');
-        Route::get('/pdf',     [FrAk01Controller::class, 'previewPdf']) ->name('pdf');
+        Route::get('/',      [FrAk01Controller::class, 'show'])       ->name('show');
+        // DIHAPUS: Route::post('/bukti', ...) — asesor tidak isi checklist lagi di sini
+        Route::post('/sign', [FrAk01Controller::class, 'signAsesor']) ->name('sign');
+        Route::get('/pdf',   [FrAk01Controller::class, 'previewPdf']) ->name('pdf');
     });
 
     // Perhatian: route lama pakai name asesor.apl02.verify — tambahkan alias agar tidak break

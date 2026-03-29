@@ -363,6 +363,7 @@
                                     'padId'    => 'asesor',
                                     'padLabel' => 'Tanda Tangan Asesor',
                                     'padHeight' => 180,
+                                    'savedSig' => auth()->user()->signature_image,
                                 ])
                                 <button class="btn btn-success btn-sm mt-3 w-100" onclick="signAsesor()">
                                     <i class="bi bi-pen me-1"></i> Tanda Tangan Asesor
@@ -669,7 +670,7 @@
                     <input type="text" id="nama-asesor" class="form-control" value="{{ $asesor->nama }}" readonly>
                 </div>
                 <div class="mb-4">
-                    @include('partials._signature_pad', ['padId' => 'asesor-apl02', 'padLabel' => 'Tanda Tangan Asesor', 'padHeight' => 180])
+                    @include('partials._signature_pad', ['padId' => 'asesor-apl02', 'padLabel' => 'Tanda Tangan Asesor', 'padHeight' => 180, 'savedSig' => auth()->user()->signature_image])
                 </div>
                 <div class="form-check mb-4">
                     <input class="form-check-input" type="checkbox" id="asesor-agree">
@@ -765,14 +766,14 @@ const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
 // Init sig pad for asesor-frak01 when tab shown
 document.querySelector('[data-bs-target="#tab-frak01"]')?.addEventListener('shown.bs.tab', () => {
     @if($frak01 && $frak01->status === 'submitted')
-    SigPadManager.init('asesor');
+    SigPadManager.init('asesor', @json(auth()->user()->signature_image));
     @endif
 });
 
 // Init sig pad for apl02 when tab shown
 document.querySelector('[data-bs-target="#tab-apl02"]')?.addEventListener('shown.bs.tab', () => {
     @if(isset($apldua) && $apldua->status === 'submitted')
-    SigPadManager.init('asesor-apl02');
+    SigPadManager.init('asesor-apl02', @json(auth()->user()->signature_image));
     @endif
 });
 
@@ -816,7 +817,8 @@ async function signAsesor() {
     if (!result.isConfirmed) return;
 
     const formData = new FormData();
-    formData.append('signature',   SigPadManager.getDataURL('asesor'));
+    const signature = await SigPadManager.prepareAndGet('asesor');
+    formData.append('signature',   signature);
     formData.append('nama_asesor', '{{ $asesor->nama }}');
 
     try {
@@ -861,7 +863,8 @@ async function submitVerifikasiApl02() {
     fd.append('rekomendasi', rekomendasi);
     fd.append('catatan', catatan);
     fd.append('nama_asesor', namaAsesor);
-    fd.append('signature', SigPadManager.getDataURL('asesor-apl02'));
+    const signature2 = await SigPadManager.prepareAndGet('asesor');
+    fd.append('signature', signature2);
 
     try {
         const res  = await fetch(VERIFY_URL, { method: 'POST', headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' }, body: fd });

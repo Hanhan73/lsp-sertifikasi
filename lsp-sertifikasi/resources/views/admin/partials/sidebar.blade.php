@@ -53,7 +53,7 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
 
 {{-- Divider: VERIFIKASI & BIAYA --}}
 <div class="sidebar-divider">
-    <span>Pendaftaran Asesi</span>
+    <span>Pendaftaran Asesi Mandiri</span>
 </div>
 
 <a href="{{ route('admin.mandiri.verifications') }}"
@@ -72,46 +72,21 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     @endif
 </a>
 
-<a href="{{ route('admin.verifications') }}"
-    class="nav-link {{ Str::startsWith($route, 'admin.verifications') && !Str::startsWith($route, 'admin.mandiri') ? 'active' : '' }}">
-    <i class="bi bi-layers"></i> Biaya Kolektif
+<div class="sidebar-divider">
+    <span>MANAJEMEN ASESMEN</span>
+</div>
+
+<a href="{{ route('admin.praasesmen.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.praasesmen.index') || Str::startsWith($route, 'admin.asesi.show') || Str::startsWith($route, 'admin.apl') ? 'active' : '' }}">
+    <i class="bi bi-layers"></i> Manajemen Pra-Asesmen
     @if($pendingCollectiveVerifications > 0)
     <span class="badge bg-warning ms-auto">{{ $pendingCollectiveVerifications }}</span>
     @endif
 </a>
 
-<div class="sidebar-divider">
-    <span>PENUGASAN</span>
-</div>
-
-<a href="{{ route('admin.asesor-assignments.index') }}"
-    class="nav-link {{ Str::startsWith($route, 'admin.asesor-assignments') ? 'active' : '' }}">
-    <i class="bi bi-person-badge"></i> Penugasan Asesor
-    @php
-    $unassignedCount = \App\Models\Schedule::where('assessment_date', '>=', now())
-    ->whereNull('asesor_id')
-    ->count();
-    @endphp
-    @if($unassignedCount > 0)
-    <span class="badge bg-warning ms-auto">{{ $unassignedCount }}</span>
-    @endif
-</a>
-
-<div class="sidebar-divider">
-    <span>VERIFIKASI & DOKUMEN</span>
-</div>
-
-<a href="{{ route('admin.apl01.index') }}"
-    class="nav-link {{ Str::startsWith($route, 'admin.apl01') || Str::startsWith($route, 'admin.asesi.show') ? 'active' : '' }}">
-    <i class="bi bi-journal-check"></i> Proses Asesmen
-    @php
-    $pendingApl01 = \App\Models\AplSatu::where('status', 'submitted')->count();
-    $pendingApl02 = \App\Models\AplDua::where('status', 'submitted')->count();
-    $totalPending = $pendingApl01 + $pendingApl02;
-    @endphp
-    @if($totalPending > 0)
-    <span class="badge bg-warning ms-auto">{{ $totalPending }}</span>
-    @endif
+<a href="{{ route('admin.schedules.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.schedules.index') ? 'active' : '' }}">
+    <i class="bi bi-calendar-event"></i> Jadwal Asesmen
 </a>
 
 {{-- Divider: MONITORING --}}

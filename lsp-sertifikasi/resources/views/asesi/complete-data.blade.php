@@ -389,9 +389,9 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Kode Kota <span class="text-danger">*</span></label>
                             <input type="text" class="form-control locked-field @error('city_code') is-invalid @enderror"
-                                name="city_code" maxlength="2" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
+                                name="city_code" maxlength="4" value="{{ old('city_code', $asesmen->city_code ?? '') }}"
                                 required readonly>
-                            <small class="text-muted">2 digit setelah kode provinsi NIK</small>
+                            <small class="text-muted">4 digit setelah kode provinsi NIK</small>
                             @error('city_code')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -423,12 +423,22 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Pekerjaan <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @error('occupation') is-invalid @enderror"
-                                name="occupation" value="{{ old('occupation') }}" required>
+                            <select class="form-select @error('occupation') is-invalid @enderror" name="occupation"
+                                required>
+                                <option value="">Pilih</option>
+                                <option value="Siswa" {{ old('occupation') == 'Siswa' ? 'selected' : '' }}>Siswa</option>
+                                <option value="Mahasiswa" {{ old('occupation') == 'Mahasiswa' ? 'selected' : '' }}>Mahasiswa</option>
+                                <option value="Guru" {{ old('occupation') == 'Guru' ? 'selected' : '' }}>Guru</option>
+                                <option value="Dosen" {{ old('occupation') == 'Dosen' ? 'selected' : '' }}>Dosen</option>
+                                <option value="Karyawan Swasta" {{ old('occupation') == 'Karyawan Swasta' ? 'selected' : '' }}>Karyawan Swasta</option>
+                                <option value="PNS" {{ old('occupation') == 'PNS' ? 'selected' : '' }}>PNS</option>
+                                <option value="Lainnya" {{ old('occupation') == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
+                            </select>
                             @error('occupation')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Sumber Anggaran <span class="text-danger">*</span></label>
@@ -782,7 +792,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             if (nik.length >= 4) {
-                cityInput.value = nik.substring(2, 4);
+                cityInput.value = nik.substring(0, 4);
             } else {
                 cityInput.value = '';
             }

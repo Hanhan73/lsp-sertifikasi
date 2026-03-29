@@ -19,7 +19,8 @@
                     <i class="bi bi-info-circle"></i>
                     <strong>Pendaftaran Kolektif</strong><br>
                     Daftarkan beberapa asesi sekaligus. Sistem akan otomatis membuat akun untuk setiap peserta.
-                    Peserta dapat login dengan password default <strong>password123</strong> dan wajib menggantinya saat pertama login.
+                    Peserta dapat login dengan password default <strong>password123</strong> dan wajib menggantinya saat
+                    pertama login.
                 </div>
 
                 <form method="POST" action="{{ route('tuk.collective.store') }}" id="collective-form">
@@ -27,6 +28,28 @@
 
                     {{-- Hidden: payment_phases selalu single --}}
                     <input type="hidden" name="payment_phases" value="single">
+                    <!-- Nama Batch -->
+                    <div class="mb-4">
+                        <label class="form-label">Nama Batch <span class="text-muted">(opsional)</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control @error('batch_name') is-invalid @enderror"
+                                name="batch_name"
+                                id="batch_name_input"
+                                value="{{ old('batch_name') }}"
+                                placeholder="cth: Angkatan Jan 2025, Kelas A SMK 1"
+                                maxlength="50">
+                            <span class="input-group-text text-muted" id="batch-id-preview" style="font-size:0.8rem; min-width: 180px;">
+                                —
+                            </span>
+                        </div>
+                        <small class="text-muted">
+                            Nama ini akan menjadi prefix Batch ID. Jika kosong, akan menggunakan "BATCH".
+                            Kode TUK dan suffix unik akan ditambahkan otomatis di ujung.
+                        </small>
+                        @error('batch_name')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
 
                     <!-- Pilih Skema -->
                     <div class="mb-4">
@@ -34,7 +57,7 @@
                         <select class="form-select @error('skema_id') is-invalid @enderror" name="skema_id" required>
                             <option value="">Pilih Skema</option>
                             @php
-                                $skemas = \App\Models\Skema::where('is_active', true)->get();
+                            $skemas = \App\Models\Skema::where('is_active', true)->get();
                             @endphp
                             @foreach($skemas as $skema)
                             <option value="{{ $skema->id }}" {{ old('skema_id') == $skema->id ? 'selected' : '' }}>
@@ -51,8 +74,7 @@
                     <div class="mb-4">
                         <label class="form-label">Tanggal Asesmen <span class="text-danger">*</span></label>
                         <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
-                            name="preferred_date"
-                            value="{{ old('preferred_date') }}"
+                            name="preferred_date" value="{{ old('preferred_date') }}"
                             min="{{ date('Y-m-d', strtotime('+1 day')) }}" required>
                         <small class="text-muted">Tanggal perkiraan untuk semua peserta dalam batch ini</small>
                         @error('preferred_date')
@@ -67,9 +89,11 @@
                             <div class="col-md-6">
                                 <div class="training-option" onclick="selectTraining(false)" id="option-no">
                                     <div class="d-flex align-items-start">
-                                        <input type="radio" name="training_flag" value="0" id="training-no" checked required>
+                                        <input type="radio" name="training_flag" value="0" id="training-no" checked
+                                            required>
                                         <div class="ms-3 flex-grow-1">
-                                            <label for="training-no" class="form-label fw-bold mb-1" style="cursor: pointer;">
+                                            <label for="training-no" class="form-label fw-bold mb-1"
+                                                style="cursor: pointer;">
                                                 <i class="bi bi-x-circle text-danger"></i> Tanpa Pelatihan
                                             </label>
                                             <p class="text-muted small mb-0">
@@ -84,19 +108,13 @@
                                     <div class="d-flex align-items-start">
                                         <input type="radio" name="training_flag" value="1" id="training-yes" required>
                                         <div class="ms-3 flex-grow-1">
-                                            <label for="training-yes" class="form-label fw-bold mb-1" style="cursor: pointer;">
+                                            <label for="training-yes" class="form-label fw-bold mb-1"
+                                                style="cursor: pointer;">
                                                 <i class="bi bi-check-circle text-success"></i> Dengan Pelatihan
                                             </label>
                                             <p class="text-muted small mb-2">
                                                 Semua peserta ikut pelatihan sebelum asesmen
                                             </p>
-                                            <div class="alert alert-warning mb-0 py-2">
-                                                <small>
-                                                    <i class="bi bi-info-circle-fill"></i>
-                                                    <strong>Biaya Tambahan:</strong>
-                                                    <span class="price-badge ms-2">Rp 1.500.000 / peserta</span>
-                                                </small>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -128,7 +146,8 @@
                             <i class="bi bi-check-circle"></i>
                             <strong>Data berhasil diimport!</strong>
                             <span id="import-count"></span> peserta telah ditambahkan dari file.
-                            <button type="button" class="btn-close float-end" onclick="$('#import-summary').hide()"></button>
+                            <button type="button" class="btn-close float-end"
+                                onclick="$('#import-summary').hide()"></button>
                         </div>
 
                         <div id="participants-list"></div>
@@ -142,7 +161,8 @@
                                     <h5 class="modal-title">
                                         <i class="bi bi-file-earmark-excel"></i> Upload Data Peserta
                                     </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                    <button type="button" class="btn-close btn-close-white"
+                                        data-bs-dismiss="modal"></button>
                                 </div>
                                 <div class="modal-body">
                                     <div class="alert alert-info">
@@ -159,7 +179,8 @@
                                     <div class="card mb-3">
                                         <div class="card-body text-center">
                                             <h6>Step 1: Download Template</h6>
-                                            <p class="text-muted small">Template Excel dengan format yang sudah sesuai</p>
+                                            <p class="text-muted small">Template Excel dengan format yang sudah sesuai
+                                            </p>
                                             <div class="btn-group">
                                                 <a href="{{ route('tuk.collective.download-template', 'excel') }}"
                                                     class="btn btn-outline-success">
@@ -185,7 +206,8 @@
 
                                             <div id="preview-area" style="display: none;">
                                                 <h6 class="mt-3">Preview Data:</h6>
-                                                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                                <div class="table-responsive"
+                                                    style="max-height: 300px; overflow-y: auto;">
                                                     <table class="table table-sm table-bordered">
                                                         <thead class="table-light">
                                                             <tr>
@@ -198,13 +220,15 @@
                                                         <tbody id="preview-tbody"></tbody>
                                                     </table>
                                                 </div>
-                                                <div class="alert alert-warning" id="validation-errors" style="display: none;"></div>
+                                                <div class="alert alert-warning" id="validation-errors"
+                                                    style="display: none;"></div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                    <button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Batal</button>
                                     <button type="button" class="btn btn-success" id="import-btn" disabled>
                                         <i class="bi bi-check-circle"></i> Import Data
                                     </button>
@@ -226,7 +250,8 @@
                             <div class="alert alert-warning mt-3 mb-0">
                                 <small>
                                     <i class="bi bi-info-circle"></i>
-                                    Biaya asesmen akan ditentukan oleh Admin LSP setelah semua peserta mengisi data dan diverifikasi TUK.
+                                    Biaya asesmen akan ditentukan oleh Admin LSP setelah semua peserta mengisi data dan
+                                    diverifikasi TUK.
                                     Pembayaran dilakukan secara manual (Transfer Bank / QRIS) di akhir proses.
                                 </small>
                             </div>
@@ -251,122 +276,176 @@
 
 @push('styles')
 <style>
-    .training-option {
-        cursor: pointer;
-        transition: all 0.3s;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-        padding: 15px;
-        background: white;
-    }
-    .training-option:hover {
-        border-color: #28a745;
-        background-color: #f8f9fa;
-    }
-    .training-option.selected {
-        border-color: #28a745;
-        background-color: #d4edda;
-    }
-    .training-option input[type="radio"] {
-        width: 18px;
-        height: 18px;
-        margin-top: 5px;
-    }
-    .price-badge {
-        background-color: #fff3cd;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-weight: bold;
-    }
-    .participant-item {
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-    }
+.training-option {
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    background: white;
+}
+
+.training-option:hover {
+    border-color: #28a745;
+    background-color: #f8f9fa;
+}
+
+.training-option.selected {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+.training-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 5px;
+}
+
+.price-badge {
+    background-color: #fff3cd;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+.participant-item {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
 </style>
 @endpush
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-    let participantCount = 0;
-    let importedData = [];
+let participantCount = 0;
+let importedData = [];
 
-    $(document).ready(function () {
-        addParticipant();
-        selectTraining(false);
+$(document).ready(function() {
+    addParticipant();
+    selectTraining(false);
 
-        $('#participant-file').change(function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
+    $('#participant-file').change(function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-            Swal.fire({
-                title: 'Memproses...',
-                html: 'Membaca file Excel/CSV',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
-
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                    validateAndPreview(jsonData);
-                    Swal.close();
-                } catch (error) {
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membaca file: ' + error.message });
-                }
-            };
-            reader.readAsArrayBuffer(file);
+        Swal.fire({
+            title: 'Memproses...',
+            html: 'Membaca file Excel/CSV',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
         });
 
-        $('#import-btn').click(function () {
-            importData();
-            $('#uploadModal').modal('hide');
-        });
-
-        $('#add-participant').click(function () {
-            addParticipant();
-        });
-
-        $(document).on('click', '.remove-participant', function () {
-            $(this).closest('.participant-item').remove();
-            updateParticipantNumbers();
-            updateSummary();
-        });
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {
+                    type: 'array'
+                });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                validateAndPreview(jsonData);
+                Swal.close();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal membaca file: ' + error.message
+                });
+            }
+        };
+        reader.readAsArrayBuffer(file);
     });
 
-    function validateAndPreview(data) {
-        if (data.length === 0) {
-            Swal.fire({ icon: 'warning', title: 'File Kosong', text: 'File tidak mengandung data peserta' });
-            return;
+    $('#import-btn').click(function() {
+        importData();
+        $('#uploadModal').modal('hide');
+    });
+
+    $('#add-participant').click(function() {
+        addParticipant();
+    });
+
+    $(document).on('click', '.remove-participant', function() {
+        $(this).closest('.participant-item').remove();
+        updateParticipantNumbers();
+        updateSummary();
+    });
+
+        const tukCode = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
+    const randomSuffix = generateRandomSuffix(6);
+ 
+    function generateRandomSuffix(length) {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < length; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+ 
+    function slugify(text) {
+        return text
+            .toString()
+            .toUpperCase()
+            .trim()
+            .replace(/\s+/g, '-')
+            .replace(/[^A-Z0-9\-]/g, '')
+            .replace(/\-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+ 
+    function updateBatchPreview() {
+        const nameVal = $('#batch_name_input').val().trim();
+        const prefix  = nameVal ? slugify(nameVal) : 'BATCH';
+        const preview = prefix + '-' + tukCode + '-' + randomSuffix;
+        $('#batch-id-preview').text(preview);
+    }
+ 
+    $('#batch_name_input').on('input', updateBatchPreview);
+    updateBatchPreview()
+});
+
+function validateAndPreview(data) {
+    if (data.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'File Kosong',
+            text: 'File tidak mengandung data peserta'
+        });
+        return;
+    }
+
+    let validCount = 0;
+    let errors = [];
+    let previewHtml = '';
+    importedData = [];
+
+    data.forEach((row, index) => {
+        const rowNumber = index + 2;
+        const name = row['Nama Lengkap'] || row['nama_lengkap'] || '';
+        const email = row['Email'] || row['email'] || '';
+        let rowErrors = [];
+
+        if (!name) rowErrors.push('Nama wajib diisi');
+        if (!email) rowErrors.push('Email wajib diisi');
+        else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
+
+        const isValid = rowErrors.length === 0;
+        if (isValid) {
+            validCount++;
+            importedData.push({
+                name,
+                email
+            });
         }
 
-        let validCount = 0;
-        let errors = [];
-        let previewHtml = '';
-        importedData = [];
+        const statusClass = isValid ? 'success' : 'danger';
+        const statusIcon = isValid ? 'check-circle' : 'x-circle';
+        const statusText = isValid ? 'Valid' : rowErrors.join(', ');
 
-        data.forEach((row, index) => {
-            const rowNumber = index + 2;
-            const name  = row['Nama Lengkap'] || row['nama_lengkap'] || '';
-            const email = row['Email'] || row['email'] || '';
-            let rowErrors = [];
-
-            if (!name)  rowErrors.push('Nama wajib diisi');
-            if (!email) rowErrors.push('Email wajib diisi');
-            else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
-
-            const isValid = rowErrors.length === 0;
-            if (isValid) { validCount++; importedData.push({ name, email }); }
-
-            const statusClass = isValid ? 'success' : 'danger';
-            const statusIcon  = isValid ? 'check-circle' : 'x-circle';
-            const statusText  = isValid ? 'Valid' : rowErrors.join(', ');
-
-            previewHtml += `
+        previewHtml += `
                 <tr class="table-${statusClass}">
                     <td>${index + 1}</td>
                     <td>${name  || '<em class="text-muted">Kosong</em>'}</td>
@@ -374,50 +453,55 @@
                     <td><i class="bi bi-${statusIcon}"></i> ${statusText}</td>
                 </tr>`;
 
-            if (!isValid) errors.push({ row: rowNumber, errors: rowErrors });
+        if (!isValid) errors.push({
+            row: rowNumber,
+            errors: rowErrors
         });
+    });
 
-        $('#preview-tbody').html(previewHtml);
-        $('#preview-area').show();
+    $('#preview-tbody').html(previewHtml);
+    $('#preview-area').show();
 
-        if (errors.length > 0) {
-            let errorHtml = '<strong>Data tidak valid pada baris:</strong><ul>';
-            errors.forEach(err => { errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`; });
-            errorHtml += '</ul>';
-            $('#validation-errors').html(errorHtml).show();
-            $('#import-btn').prop('disabled', true);
-        } else {
-            $('#validation-errors').hide();
-            $('#import-btn').prop('disabled', false);
-        }
-
-        $('#import-btn').html(`<i class="bi bi-check-circle"></i> Import ${validCount} Peserta Valid`);
-    }
-
-    function importData() {
-        $('#participants-list').empty();
-        participantCount = 0;
-
-        importedData.forEach(p => addParticipant(p.name, p.email));
-
-        $('#import-summary').show();
-        $('#import-count').text(importedData.length);
-        $('#participant-file').val('');
-        $('#preview-area').hide();
+    if (errors.length > 0) {
+        let errorHtml = '<strong>Data tidak valid pada baris:</strong><ul>';
+        errors.forEach(err => {
+            errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`;
+        });
+        errorHtml += '</ul>';
+        $('#validation-errors').html(errorHtml).show();
         $('#import-btn').prop('disabled', true);
-
-        Swal.fire({
-            icon: 'success',
-            title: 'Berhasil!',
-            text: `${importedData.length} peserta berhasil diimport`,
-            timer: 2000,
-            showConfirmButton: false
-        });
+    } else {
+        $('#validation-errors').hide();
+        $('#import-btn').prop('disabled', false);
     }
 
-    function addParticipant(name = '', email = '') {
-        const idx = participantCount;
-        const html = `
+    $('#import-btn').html(`<i class="bi bi-check-circle"></i> Import ${validCount} Peserta Valid`);
+}
+
+function importData() {
+    $('#participants-list').empty();
+    participantCount = 0;
+
+    importedData.forEach(p => addParticipant(p.name, p.email));
+
+    $('#import-summary').show();
+    $('#import-count').text(importedData.length);
+    $('#participant-file').val('');
+    $('#preview-area').hide();
+    $('#import-btn').prop('disabled', true);
+
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: `${importedData.length} peserta berhasil diimport`,
+        timer: 2000,
+        showConfirmButton: false
+    });
+}
+
+function addParticipant(name = '', email = '') {
+    const idx = participantCount;
+    const html = `
             <div class="participant-item card mb-3">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -441,38 +525,38 @@
                 </div>
             </div>`;
 
-        $('#participants-list').append(html);
-        participantCount++;
-        updateParticipantNumbers();
-        updateSummary();
-    }
+    $('#participants-list').append(html);
+    participantCount++;
+    updateParticipantNumbers();
+    updateSummary();
+}
 
-    function updateParticipantNumbers() {
-        const items = $('.participant-item');
-        items.each(function (index) {
-            $(this).find('.participant-number').text(index + 1);
-        });
-        // Sembunyikan tombol hapus jika hanya 1 peserta
-        $('.remove-participant').toggle(items.length > 1);
-    }
+function updateParticipantNumbers() {
+    const items = $('.participant-item');
+    items.each(function(index) {
+        $(this).find('.participant-number').text(index + 1);
+    });
+    // Sembunyikan tombol hapus jika hanya 1 peserta
+    $('.remove-participant').toggle(items.length > 1);
+}
 
-    function updateSummary() {
-        $('#total-participants').text($('.participant-item').length);
-    }
+function updateSummary() {
+    $('#total-participants').text($('.participant-item').length);
+}
 
-    function selectTraining(withTraining) {
-        $('.training-option').removeClass('selected');
-        if (withTraining) {
-            $('#option-yes').addClass('selected');
-            $('#training-yes').prop('checked', true);
-        } else {
-            $('#option-no').addClass('selected');
-            $('#training-no').prop('checked', true);
-        }
+function selectTraining(withTraining) {
+    $('.training-option').removeClass('selected');
+    if (withTraining) {
+        $('#option-yes').addClass('selected');
+        $('#training-yes').prop('checked', true);
+    } else {
+        $('#option-no').addClass('selected');
+        $('#training-no').prop('checked', true);
     }
+}
 
-    function isValidEmail(email) {
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-    }
+function isValidEmail(email) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 </script>
 @endpush

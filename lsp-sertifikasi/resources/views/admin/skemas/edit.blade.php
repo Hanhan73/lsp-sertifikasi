@@ -81,16 +81,6 @@
                             @enderror
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Durasi (hari) *</label>
-                            <input type="number" name="duration_days"
-                                class="form-control @error('duration_days') is-invalid @enderror"
-                                value="{{ old('duration_days', $skema->duration_days) }}" min="1" required>
-                            @error('duration_days')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
                         <div class="col-md-12">
                             <label class="form-label">Deskripsi</label>
                             <textarea name="description" class="form-control"

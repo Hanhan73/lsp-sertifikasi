@@ -13,7 +13,7 @@ class Skema extends Model
         'code', 'name', 'jenis_skema', 'description',
         'dokumen_pengesahan_path', 'dokumen_pengesahan_name',
         'tanggal_pengesahan', 'nomor_skema',
-        'fee', 'duration_days', 'is_active',
+        'fee', 'is_active',
     ];
 
     protected $casts = [

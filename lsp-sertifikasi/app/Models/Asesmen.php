@@ -39,6 +39,8 @@ class Asesmen extends Model
         'registration_date',
         'status',
         'fee_amount',
+        'admin_started_by',
+        'admin_started_at',
         'admin_verified_by',
         'admin_verified_at',
         'tuk_verified_by',
@@ -67,6 +69,9 @@ class Asesmen extends Model
         'birth_date'           => 'date',
         'preferred_date'       => 'date',
         'registration_date'    => 'date',
+        'tuk_verified_at'      => 'date',
+        'admin_verified_at'    => 'date',
+        'admin_started_at'     => 'date',
         'verified_at'          => 'datetime',
         'assessed_at'          => 'datetime',
         'assigned_at'          => 'datetime',
@@ -259,7 +264,6 @@ class Asesmen extends Model
         if (!$this->is_collective || !$this->collective_batch_id) {
             return collect([]);
         }
-
         return self::where('collective_batch_id', $this->collective_batch_id)
             ->where('id', '!=', $this->id)
             ->get();
@@ -270,7 +274,6 @@ class Asesmen extends Model
         if (!$this->is_collective || !$this->collective_batch_id) {
             return collect([$this]);
         }
-
         return self::where('collective_batch_id', $this->collective_batch_id)->get();
     }
 
@@ -318,27 +321,23 @@ class Asesmen extends Model
      */
     public function getBatchPaymentStatus(): ?string
     {
-        if (!$this->is_collective) {
-            return null;
-        }
+        if (!$this->is_collective) return null;
 
         $batch = $this->fullBatch();
 
         if ($this->payment_phases === 'single') {
             $allPaid    = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'verified')->exists());
             $anyPending = $batch->some(fn($a) => $a->payments()->where('payment_phase', 'full')->where('status', 'pending')->exists());
-
             if ($allPaid)    return 'paid';
             if ($anyPending) return 'pending';
             return 'not_paid';
-        } else {
-            $phase1Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists());
-            $phase2Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists());
-
-            if ($phase1Paid && $phase2Paid) return 'fully_paid';
-            if ($phase1Paid)               return 'phase_1_paid';
-            return 'not_paid';
         }
+
+        $phase1Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_1')->where('status', 'verified')->exists());
+        $phase2Paid = $batch->every(fn($a) => $a->payments()->where('payment_phase', 'phase_2')->where('status', 'verified')->exists());
+        if ($phase1Paid && $phase2Paid) return 'fully_paid';
+        if ($phase1Paid)               return 'phase_1_paid';
+        return 'not_paid';
     }
 
     // =========================================================================
@@ -347,66 +346,43 @@ class Asesmen extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        $labels = [
+        return [
             'registered'               => 'Terdaftar',
             'data_completed'           => 'Data Lengkap',
-            'verified'                 => 'Terverifikasi',
-            'paid'                     => 'Sudah Bayar',
+            'pra_asesmen_started'      => 'Pra-Asesmen Dimulai', // ← baru, gantikan 'verified'
             'scheduled'                => 'Terjadwal',
-            'pre_assessment_completed' => 'Pra-Asesmen Selesai',
+            'pra_asesmen_completed' => 'Pra-Asesmen Selesai',
             'assessed'                 => 'Sudah Diases',
             'certified'                => 'Tersertifikasi',
-        ];
-
-        return $labels[$this->status] ?? $this->status;
+            // legacy — masih mungkin ada data lama
+            'verified'                 => 'Terverifikasi',
+            'paid'                     => 'Sudah Bayar',
+        ][$this->status] ?? $this->status;
     }
 
     public function getStatusBadgeAttribute(): string
     {
-        $badges = [
+        return [
             'registered'               => 'secondary',
             'data_completed'           => 'info',
-            'verified'                 => 'primary',
-            'paid'                     => 'success',
+            'pra_asesmen_started'      => 'primary',
             'scheduled'                => 'warning',
-            'pre_assessment_completed' => 'info',
+            'pra_asesmen_completed' => 'info',
             'assessed'                 => 'primary',
             'certified'                => 'success',
-        ];
-
-        return $badges[$this->status] ?? 'secondary';
+            'verified'                 => 'primary',
+            'paid'                     => 'success',
+        ][$this->status] ?? 'secondary';
     }
 
-    /**
-     * Next action text shown to asesi.
-     * Kolektif: tidak ada langkah pembayaran di alur utama.
-     */
     public function getNextActionAttribute(): string
     {
-        // ── Kolektif (skip payment) ─────────────────────────────────────────
-        if ($this->shouldSkipPayment()) {
-            return match ($this->status) {
-                'registered'               => 'Lengkapi data pribadi',
-                'data_completed'           => 'Menunggu verifikasi TUK',
-                'verified'                 => 'Menunggu penjadwalan dari TUK',
-                'scheduled'                => 'Lengkapi pra-asesmen',
-                'pre_assessment_completed' => 'Menunggu proses asesmen',
-                'assessed'                 => 'Menunggu penerbitan sertifikat',
-                'certified'                => 'Unduh sertifikat',
-                default                    => '-',
-            };
-        }
-
-        // ── Mandiri ─────────────────────────────────────────────────────────
         return match ($this->status) {
             'registered'               => 'Lengkapi data pribadi',
-            'data_completed'           => 'Menunggu verifikasi Admin LSP',
-            'verified'                 => $this->isAssignedToTuk()
-                ? 'Lakukan pembayaran'
-                : 'Menunggu assignment ke TUK oleh Admin',
-            'paid'                     => 'Menunggu jadwal asesmen dari TUK',
-            'scheduled'                => 'Lengkapi pra-asesmen',
-            'pre_assessment_completed' => 'Menunggu proses asesmen',
+            'data_completed'           => 'Menunggu Admin memulai proses asesmen',
+            'pra_asesmen_started'      => 'Isi APL-01, APL-02, dan FR.AK.01',
+            'scheduled'                => 'Siapkan dokumen untuk hari asesmen',
+            'pra_asesmen_completed' => 'Menunggu proses asesmen',
             'assessed'                 => 'Menunggu penerbitan sertifikat',
             'certified'                => 'Unduh sertifikat',
             default                    => '-',

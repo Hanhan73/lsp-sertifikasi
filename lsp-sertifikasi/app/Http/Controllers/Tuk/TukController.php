@@ -89,6 +89,7 @@ class TukController extends Controller
     public function storeCollectiveRegistration(Request $request)
     {
         $request->validate([
+            'batch_name'                => 'nullable|string|max:255',
             'participants'              => 'required|array|min:1',
             'participants.*.name'       => 'required|string|max:255',
             'participants.*.email'      => 'required|email|unique:users,email',
@@ -99,7 +100,12 @@ class TukController extends Controller
         ]);
 
         $tuk     = auth()->user()->tuk;
-        $batchId = 'BATCH-' . $tuk->code . '-' . time();
+        $batchName = $request->batch_name
+            ? \Illuminate\Support\Str::slug($request->batch_name, '-')
+            : 'BATCH';
+    
+        $suffix   = strtoupper(\Illuminate\Support\Str::random(6));
+        $batchId  = strtoupper($batchName) . '-' . $tuk->code . '-' . $suffix;
 
         $registeredCount = 0;
         $errors          = [];

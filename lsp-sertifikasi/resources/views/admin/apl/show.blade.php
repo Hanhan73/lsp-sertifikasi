@@ -29,13 +29,8 @@
 @endpush
 
 @section('content')
+{{-- ── Breadcrumb ─────────────────────────────────────────── --}}
 
-<nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb small">
-        <li class="breadcrumb-item"><a href="{{ route('admin.apl01.index') }}">Daftar APL-01</a></li>
-        <li class="breadcrumb-item active">{{ $aplsatu->nama_lengkap }}</li>
-    </ol>
-</nav>
 
 <div class="row g-4">
 
@@ -271,7 +266,7 @@
         </div>
         @endif
 
-        <a href="{{ route('admin.apl01.index') }}" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-left me-1"></i>Kembali ke Daftar</a>
+        <a href="{{ route('admin.asesi.show', $aplsatu->asesmen->id) }}" class="btn btn-outline-secondary w-100"><i class="bi bi-arrow-left me-1"></i>Kembali</a>
     </div>
 </div>
 
@@ -305,7 +300,8 @@
                 @include('partials._signature_pad', [
                     'padId'    => 'admin',
                     'padLabel' => 'Tanda Tangan Admin LSP',
-                    'padHeight' => 220,
+                    'padHeight' => 180,
+                    'savedSig' => auth()->user()->signature_image,
                 ])
                 {{-- ▲▲▲ --}}
 
@@ -387,7 +383,7 @@ function bukaModalVerifikasi() {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
     // Init signature pad setelah modal tampil agar ukuran canvas benar
     modalEl.addEventListener('shown.bs.modal', () => {
-        SigPadManager.init('admin');
+        SigPadManager.init('admin', @json(auth()->user()->signature_image));
     }, { once: true });
 }
 
@@ -408,11 +404,12 @@ async function submitVerifikasi() {
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...'; }
 
     try {
+        const signature = await SigPadManager.prepareAndGet('admin');
         const res  = await fetch(`/admin/apl01/${APL_ID}/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
             body: JSON.stringify({
-                signature:  SigPadManager.getDataURL('admin'),
+                signature:  signature,
                 nama_admin: namaAdmin,
             }),
         });

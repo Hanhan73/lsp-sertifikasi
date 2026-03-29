@@ -280,7 +280,7 @@
                 </div>
                 @endif
 
-                <form action="{{ route('admin.verifications.process', $asesmen) }}" method="POST">
+                <form action="{{ route('admin.praasesmen.process', $asesmen) }}" method="POST">
                     @csrf
 
                     @php
@@ -405,7 +405,7 @@
                         <button type="submit" class="btn btn-warning btn-lg text-dark">
                             <i class="bi bi-cash-coin"></i> Tetapkan Biaya
                         </button>
-                        <a href="{{ route('admin.verifications') }}" class="btn btn-secondary">
+                        <a href="{{ route('admin.praasesmen.index') }}" class="btn btn-secondary">
                             <i class="bi bi-arrow-left"></i> Kembali
                         </a>
                     </div>

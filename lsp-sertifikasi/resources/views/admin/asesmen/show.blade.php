@@ -1,577 +1,915 @@
 @extends('layouts.app')
-@section('title', 'Detail Asesi — ' . ($asesmen->full_name ?? $asesmen->user?->name))
-@section('page-title', 'Proses Asesmen')
+@section('title', 'Detail Asesi — ' . $asesmen->full_name)
+@section('page-title', 'Detail Asesi')
 @section('sidebar')
 @include('admin.partials.sidebar')
 @endsection
 
 @push('styles')
 <style>
-/* ── Breadcrumb ── */
-.bc-link { color: #64748b; text-decoration: none; font-size: .82rem; }
-.bc-link:hover { color: #1e40af; }
+/* ── Design system ──────────────────────────────────────── */
+.section-heading {
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 12px;
+}
+.info-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+.info-row:last-child { border-bottom: none; }
+.info-label { color: #94a3b8; font-size: .82rem; min-width: 160px; flex-shrink: 0; }
+.info-value { font-weight: 600; font-size: .9rem; }
 
-/* ── Hero strip ── */
-.asesi-hero {
-    background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
-    border-radius: 14px;
-    padding: 22px 28px;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 24px;
+/* ── TTD ────────────────────────────────────────────────── */
+.ttd-thumb {
+    max-height: 70px; max-width: 180px; object-fit: contain;
+    border: 1px solid #e2e8f0; border-radius: 4px; background: #fff; padding: 4px;
 }
-.asesi-hero .avatar {
-    width: 60px; height: 60px; border-radius: 50%;
-    background: rgba(255,255,255,.2);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.6rem; flex-shrink: 0;
-}
-.asesi-hero .name { font-size: 1.25rem; font-weight: 700; line-height: 1.2; }
-.asesi-hero .meta { font-size: .8rem; opacity: .8; margin-top: 4px; }
 
-/* ── Section tabs ── */
-.doc-tabs { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
-.doc-tab {
-    padding: 7px 18px; border-radius: 8px; font-size: .82rem; font-weight: 600;
-    border: none; cursor: pointer; transition: all .2s;
-    background: #f1f5f9; color: #475569;
-}
-.doc-tab.active { background: #1d4ed8; color: #fff; }
-.doc-tab:hover:not(.active) { background: #e2e8f0; }
-.doc-section { display: none; }
-.doc-section.active { display: block; }
+/* ── Bukti cards ────────────────────────────────────────── */
+.bukti-card { border-left: 4px solid #e2e8f0; border-radius: 0 6px 6px 0; }
+.bukti-card.ok   { border-left-color: #22c55e; }
+.bukti-card.warn { border-left-color: #f59e0b; }
 
-/* ── Doc cards ── */
-.doc-card {
-    border: 1.5px solid #e2e8f0; border-radius: 12px;
-    background: #fff; overflow: hidden;
-    transition: box-shadow .2s;
-}
-.doc-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.08); }
-.doc-card-header {
-    padding: 14px 18px;
-    display: flex; align-items: center; gap: 12px;
-    border-bottom: 1px solid #f1f5f9;
-}
-.doc-card-header .doc-icon {
-    width: 38px; height: 38px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; flex-shrink: 0;
-}
-.doc-card-body { padding: 16px 18px; }
+/* ── Batch table ────────────────────────────────────────── */
+.batch-member-row { cursor: pointer; }
+.batch-member-row:hover { background: #f8faff; }
 
-/* ── Status chips ── */
-.chip {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 11px; border-radius: 20px;
-    font-size: .72rem; font-weight: 600; white-space: nowrap;
-}
-.chip-draft     { background: #f1f5f9; color: #64748b; }
-.chip-submitted { background: #fef9c3; color: #a16207; }
-.chip-verified  { background: #d1fae5; color: #065f46; }
-.chip-returned  { background: #fee2e2; color: #991b1b; }
+/* ── APL-02 elemen rows ─────────────────────────────────── */
+.elemen-row { border-bottom: 1px solid #f1f5f9; padding: 10px 16px; }
+.elemen-row:last-child { border-bottom: none; }
+.elemen-row.answered-K  { border-left: 3px solid #10b981; }
+.elemen-row.answered-BK { border-left: 3px solid #ef4444; }
+.elemen-row.unanswered  { border-left: 3px solid #e2e8f0; }
+.ro-badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: .78rem; font-weight: 700; }
+.ro-badge-K  { background: #d1fae5; color: #065f46; }
+.ro-badge-BK { background: #fee2e2; color: #991b1b; }
 
-/* ── Info grid ── */
-.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
-@media(max-width:576px){ .info-grid { grid-template-columns: 1fr; } }
-.info-row .lbl { font-size: .76rem; color: #94a3b8; margin-bottom: 1px; }
-.info-row .val { font-size: .88rem; font-weight: 600; color: #1e293b; }
-
-/* ── Progress bar ── */
-.prog-bar-wrap { background: #f1f5f9; border-radius: 99px; height: 7px; overflow: hidden; }
-.prog-bar-fill { height: 100%; border-radius: 99px; transition: width .5s; }
-
-/* ── Timeline (sidebar) ── */
-.tl { padding: 0; list-style: none; position: relative; }
-.tl::before {
-    content: ''; position: absolute;
-    left: 9px; top: 6px; bottom: 6px; width: 2px; background: #e2e8f0;
+/* ── Unit accordion (APL-02 & AK.01) ───────────────────── */
+.unit-card { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+.unit-header {
+    background: #f8fafc; padding: 10px 14px; cursor: pointer;
+    user-select: none; border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; gap: 10px;
 }
-.tl-item { position: relative; padding-left: 28px; padding-bottom: 18px; }
-.tl-dot {
-    position: absolute; left: 0; top: 4px;
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 3px solid #fff; background: #cbd5e1;
-    box-shadow: 0 0 0 2px #e2e8f0;
-}
-.tl-dot.done { background: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
-.tl-dot.current { background: #f59e0b; box-shadow: 0 0 0 2px #fef9c3; }
-.tl-dot.pending { background: #e2e8f0; box-shadow: 0 0 0 2px #f1f5f9; }
-.tl-title { font-size: .82rem; font-weight: 600; color: #1e293b; }
-.tl-sub { font-size: .75rem; color: #94a3b8; margin-top: 1px; }
+.unit-header:hover { background: #f1f5f9; }
 
-/* ── Signature box ── */
-.ttd-box {
-    border: 1.5px solid #e2e8f0; border-radius: 8px;
-    background: #f8fafc; min-height: 80px;
-    display: flex; align-items: center; justify-content: center; padding: 8px;
+/* ── FR.AK.04 banding ───────────────────────────────────── */
+.pertanyaan-card {
+    border: 1px solid #e2e8f0; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 8px; background: #fff;
 }
-.ttd-box img { max-height: 80px; max-width: 200px; display: block; }
+.pertanyaan-card.answered { border-color: #3b82f6; background: #f0f7ff; }
 
-/* ── Bukti item ── */
-.bukti-row {
-    border-left: 3px solid #e2e8f0; padding: 8px 12px;
-    border-radius: 0 6px 6px 0; margin-bottom: 6px;
-    background: #fafafa;
-}
-.bukti-row.ok  { border-left-color: #10b981; background: #f0fdf4; }
-.bukti-row.warn{ border-left-color: #f59e0b; background: #fffbeb; }
+/* ── Status bar helper ──────────────────────────────────── */
+.status-bar-submitted { background: #eff6ff; border: 1px solid #bfdbfe; }
+.status-bar-verified  { background: #f0fdf4; border: 1px solid #bbf7d0; }
+.status-bar-default   { background: #f8fafc; border: 1px solid #e2e8f0; }
 </style>
 @endpush
 
 @section('content')
 
-{{-- Breadcrumb --}}
-<nav class="mb-3">
-    <a href="{{ route('admin.apl01.index') }}" class="bc-link">
-        <i class="bi bi-journal-check me-1"></i>Proses Asesmen
-    </a>
-    <span class="text-muted small mx-2">/</span>
-    <span class="text-muted small">{{ $asesmen->full_name ?? $asesmen->user?->name }}</span>
+{{-- ── Breadcrumb ─────────────────────────────────────────── --}}
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a href="{{ route('admin.asesi') }}">Semua Asesi</a></li>
+        @if($asesmen->is_collective && $asesmen->collective_batch_id)
+        <li class="breadcrumb-item text-muted">Batch {{ $asesmen->collective_batch_id }}</li>
+        @endif
+        <li class="breadcrumb-item active">{{ $asesmen->full_name }}</li>
+    </ol>
 </nav>
 
-{{-- Hero --}}
-<div class="asesi-hero">
-    <div class="avatar"><i class="bi bi-person-fill"></i></div>
-    <div class="flex-grow-1">
-        <div class="name">{{ $asesmen->full_name ?? $asesmen->user?->name ?? '-' }}</div>
-        <div class="meta">
-            <span class="me-3"><i class="bi bi-building me-1"></i>{{ $asesmen->schedule?->tuk?->name ?? $asesmen->tuk?->name ?? '-' }}</span>
-            <span class="me-3"><i class="bi bi-award me-1"></i>{{ $asesmen->skema?->name ?? '-' }}</span>
-            @if($asesmen->schedule)
-            <span><i class="bi bi-calendar me-1"></i>{{ $asesmen->schedule->assessment_date->translatedFormat('d F Y') }}</span>
-            @endif
+{{-- ══════════════════════════════════════════════════════════
+     ROW 1 — Header Cards
+══════════════════════════════════════════════════════════ --}}
+<div class="row g-3 mb-4">
+
+    {{-- Identitas Asesi --}}
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex gap-3 align-items-start">
+                @if($asesmen->photo_path)
+                <img src="{{ asset('storage/' . $asesmen->photo_path) }}"
+                     class="rounded" style="width:72px;height:90px;object-fit:cover;flex-shrink:0;">
+                @else
+                <div class="rounded bg-light d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:72px;height:90px;">
+                    <i class="bi bi-person-fill text-muted fs-2"></i>
+                </div>
+                @endif
+                <div class="flex-grow-1">
+                    <h5 class="mb-1 fw-bold">{{ $asesmen->full_name }}</h5>
+                    <div class="d-flex flex-wrap gap-2 mb-2">
+                        <span class="badge bg-{{ $asesmen->status_badge }} fs-6">{{ $asesmen->status_label }}</span>
+                        @if($asesmen->is_collective)
+                        <span class="badge bg-primary"><i class="bi bi-people me-1"></i>Kolektif</span>
+                        @else
+                        <span class="badge bg-success"><i class="bi bi-person me-1"></i>Mandiri</span>
+                        @endif
+                    </div>
+                    <div class="small text-muted">
+                        <div><i class="bi bi-credit-card me-1"></i><span class="font-monospace">{{ $asesmen->nik ?? '-' }}</span></div>
+                        <div><i class="bi bi-telephone me-1"></i>{{ $asesmen->phone ?? '-' }}</div>
+                        <div><i class="bi bi-envelope me-1"></i>{{ $asesmen->user->email ?? '-' }}</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    <span class="badge bg-white bg-opacity-20 text-white px-3 py-2 fs-6">
-        {{ $asesmen->status_label }}
-    </span>
+
+    {{-- Info Asesmen --}}
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="section-heading"><i class="bi bi-award me-1"></i>Info Asesmen</div>
+                <div class="info-row"><span class="info-label">Skema</span><span class="info-value">{{ $asesmen->skema->name ?? '-' }}</span></div>
+                <div class="info-row"><span class="info-label">TUK</span><span class="info-value">{{ $asesmen->tuk->name ?? '-' }}</span></div>
+                <div class="info-row">
+                    <span class="info-label">Jadwal</span>
+                    <span class="info-value">
+                        {{ $asesmen->schedule?->assessment_date?->translatedFormat('d F Y') ?? '-' }}
+                        @if($asesmen->schedule?->start_time)
+                        <span class="text-muted small ms-1">{{ $asesmen->schedule->start_time }}</span>
+                        @endif
+                    </span>
+                </div>
+                <div class="info-row"><span class="info-label">Asesor</span><span class="info-value">{{ $asesmen->schedule?->asesor?->nama ?? '-' }}</span></div>
+                <div class="info-row"><span class="info-label">Tgl Daftar</span><span class="info-value">{{ $asesmen->registration_date->format('d M Y') }}</span></div>
+                @if($asesmen->is_collective)
+                <div class="info-row"><span class="info-label">Didaftarkan oleh</span><span class="info-value">{{ $asesmen->registrar->name ?? '-' }}</span></div>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- Status Dokumen --}}
+    <div class="col-lg-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="section-heading"><i class="bi bi-files me-1"></i>Status Dokumen</div>
+                @foreach([
+                    ['label' => 'APL-01',   'model' => $asesmen->aplsatu],
+                    ['label' => 'APL-02',   'model' => $asesmen->apldua],
+                    ['label' => 'FR.AK.01', 'model' => $asesmen->frak01],
+                    ['label' => 'FR.AK.04', 'model' => $asesmen->frak04],
+                ] as $doc)
+                <div class="d-flex justify-content-between align-items-center py-1">
+                    <span class="small fw-semibold">{{ $doc['label'] }}</span>
+                    <span class="badge bg-{{ $doc['model']?->status_badge ?? 'light border' }}">
+                        {{ $doc['model']?->status_label ?? '-' }}
+                    </span>
+                </div>
+                @endforeach
+                @if($asesmen->result)
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small fw-semibold">Hasil Asesmen</span>
+                    <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }}">
+                        {{ ucfirst($asesmen->result) }}
+                    </span>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="row g-4">
-
-    {{-- ── KIRI: Dokumen --}}
-    <div class="col-lg-8">
-
-        {{-- Tabs --}}
-        <div class="doc-tabs">
-            <button class="doc-tab active" onclick="switchTab(this,'tab-apl01')">
-                <i class="bi bi-file-earmark-person me-1"></i>APL-01
-                @if($aplsatu?->status === 'submitted')
-                <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">Perlu Verif</span>
-                @endif
-            </button>
-            <button class="doc-tab" onclick="switchTab(this,'tab-apl02')">
-                <i class="bi bi-clipboard-check me-1"></i>APL-02
-                @if($apldua?->status === 'submitted')
-                <span class="badge bg-info ms-1" style="font-size:.6rem;">Perlu Verif</span>
-                @endif
-            </button>
-            <button class="doc-tab" onclick="switchTab(this,'tab-profil')">
-                <i class="bi bi-person-lines-fill me-1"></i>Profil
-            </button>
+{{-- ══════════════════════════════════════════════════════════
+     BATCH INFO
+══════════════════════════════════════════════════════════ --}}
+@if($asesmen->is_collective && $batchMembers?->count() > 1)
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <div class="fw-semibold">
+            <i class="bi bi-people-fill me-2 text-primary"></i>
+            Batch Kolektif — <code>{{ $asesmen->collective_batch_id }}</code>
+            <span class="badge bg-primary ms-2">{{ $batchMembers->count() }} peserta</span>
         </div>
-
-        {{-- ══ TAB APL-01 ══ --}}
-        <div id="tab-apl01" class="doc-section active">
-            @if($aplsatu)
-            <div class="doc-card mb-3">
-                <div class="doc-card-header">
-                    <div class="doc-icon" style="background:#eff6ff; color:#1d4ed8;">
-                        <i class="bi bi-file-earmark-person"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">FR.APL.01 — Permohonan Sertifikasi</div>
-                        <div class="small text-muted mt-1">
-                            @php
-                                $chip = match($aplsatu->status) {
-                                    'draft'     => ['chip-draft',     'Draft'],
-                                    'submitted' => ['chip-submitted', 'Menunggu Verifikasi'],
-                                    'verified'  => ['chip-verified',  'Terverifikasi'],
-                                    'returned'  => ['chip-returned',  'Dikembalikan'],
-                                    default     => ['chip-draft',     ucfirst($aplsatu->status)],
-                                };
-                            @endphp
-                            <span class="chip {{ $chip[0] }}">{{ $chip[1] }}</span>
-                            @if($aplsatu->submitted_at)
-                            <span class="ms-2 text-muted" style="font-size:.75rem;">
-                                Submit: {{ $aplsatu->submitted_at->format('d M Y H:i') }}
-                            </span>
+        <button class="btn btn-sm btn-outline-secondary" type="button"
+                data-bs-toggle="collapse" data-bs-target="#batchTable">
+            <i class="bi bi-chevron-down"></i> Tampilkan
+        </button>
+    </div>
+    <div class="collapse" id="batchTable">
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead class="table-light" style="font-size:.78rem;">
+                    <tr>
+                        <th class="ps-3">#</th><th>Nama</th><th>Status</th>
+                        <th class="text-center">APL-01</th><th class="text-center">APL-02</th>
+                        <th class="text-center">AK.01</th><th class="text-center">AK.04</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($batchMembers as $i => $member)
+                    <tr class="batch-member-row {{ $member->id === $asesmen->id ? 'table-primary' : '' }}"
+                        onclick="window.location='{{ route('admin.asesi.show', $member) }}'">
+                        <td class="ps-3 text-muted">{{ $i + 1 }}</td>
+                        <td>
+                            <span class="fw-semibold">{{ $member->full_name }}</span>
+                            @if($member->id === $asesmen->id)
+                            <span class="badge bg-primary ms-1" style="font-size:.65rem;">Sedang dilihat</span>
                             @endif
-                        </div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <a href="{{ route('admin.apl01.show', $aplsatu) }}"
-                           class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-eye me-1"></i>Detail & Verifikasi
-                        </a>
-                        @if(in_array($aplsatu->status, ['verified','approved']))
-                        <a href="{{ route('admin.apl01.pdf', [$aplsatu, 'preview' => 1]) }}"
-                           target="_blank" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
-                        </a>
-                        @endif
-                    </div>
-                </div>
-                <div class="doc-card-body">
-                    <div class="info-grid">
-                        <div class="info-row">
-                            <div class="lbl">Nama Lengkap</div>
-                            <div class="val">{{ $aplsatu->nama_lengkap }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">NIK</div>
-                            <div class="val font-monospace">{{ $aplsatu->nik ?? '-' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">Tujuan Asesmen</div>
-                            <div class="val">{{ $aplsatu->tujuan_asesmen ?? '-' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">Institusi</div>
-                            <div class="val">{{ $aplsatu->nama_institusi ?? '-' }}</div>
-                        </div>
-                    </div>
-
-                    {{-- Progress bukti --}}
-                    @php
-                        $totalBukti = $aplsatu->buktiKelengkapan?->count() ?? 0;
-                        $okBukti    = $aplsatu->buktiKelengkapan?->where('status', 'Ada Memenuhi Syarat')->count() ?? 0;
-                        $pct        = $totalBukti > 0 ? round($okBukti / $totalBukti * 100) : 0;
-                    @endphp
-                    @if($totalBukti > 0)
-                    <div class="mt-3 pt-3 border-top">
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span class="text-muted">Bukti Kelengkapan</span>
-                            <span class="fw-semibold">{{ $okBukti }}/{{ $totalBukti }} Memenuhi</span>
-                        </div>
-                        <div class="prog-bar-wrap">
-                            <div class="prog-bar-fill bg-{{ $pct === 100 ? 'success' : 'warning' }}"
-                                 style="width:{{ $pct }}%;"></div>
-                        </div>
-                    </div>
-                    @endif
-
-                    {{-- TTD asesi --}}
-                    @if($aplsatu->ttd_pemohon)
-                    <div class="mt-3 pt-3 border-top d-flex gap-4 align-items-center flex-wrap">
-                        <div>
-                            <div class="lbl mb-1">Tanda Tangan Pemohon</div>
-                            <div class="ttd-box" style="width:160px;">
-                                <img src="{{ $aplsatu->ttd_pemohon_image }}" alt="TTD">
-                            </div>
-                        </div>
-                        @if($aplsatu->ttd_admin)
-                        <div>
-                            <div class="lbl mb-1">Tanda Tangan Admin LSP</div>
-                            <div class="ttd-box" style="width:160px;">
-                                <img src="{{ $aplsatu->ttd_admin_image }}" alt="TTD Admin">
-                            </div>
-                            <div class="small text-muted mt-1">{{ $aplsatu->nama_ttd_admin }}</div>
-                        </div>
-                        @endif
-                    </div>
-                    @endif
-                </div>
-            </div>
-            @else
-            <div class="doc-card">
-                <div class="doc-card-body text-center py-5 text-muted">
-                    <i class="bi bi-file-earmark-x d-block mb-2" style="font-size:2.5rem; opacity:.3;"></i>
-                    <div class="fw-semibold">APL-01 belum diisi</div>
-                    <div class="small mt-1">Asesi belum mengisi formulir permohonan sertifikasi.</div>
-                </div>
-            </div>
-            @endif
+                        </td>
+                        <td><span class="badge bg-{{ $member->status_badge }}">{{ $member->status_label }}</span></td>
+                        <td class="text-center"><span class="badge bg-{{ $member->aplsatu?->status_badge ?? 'light border' }}">{{ $member->aplsatu?->status_label ?? '-' }}</span></td>
+                        <td class="text-center"><span class="badge bg-{{ $member->apldua?->status_badge ?? 'light border' }}">{{ $member->apldua?->status_label ?? '-' }}</span></td>
+                        <td class="text-center"><span class="badge bg-{{ $member->frak01?->status_badge ?? 'light border' }}">{{ $member->frak01?->status_label ?? '-' }}</span></td>
+                        <td class="text-center"><span class="badge bg-{{ $member->frak04?->status_badge ?? 'light border' }}">{{ $member->frak04?->status_label ?? '-' }}</span></td>
+                        <td class="pe-2">@if($member->id !== $asesmen->id)<i class="bi bi-arrow-right text-muted small"></i>@endif</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
         </div>
+    </div>
+</div>
+@endif
 
-        {{-- ══ TAB APL-02 ══ --}}
-        <div id="tab-apl02" class="doc-section">
-            @if($apldua)
-            <div class="doc-card mb-3">
-                <div class="doc-card-header">
-                    <div class="doc-icon" style="background:#f0fdf4; color:#16a34a;">
-                        <i class="bi bi-clipboard-check"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">FR.APL.02 — Asesmen Mandiri</div>
-                        <div class="small mt-1">
-                            @php
-                                $chip2 = match($apldua->status) {
-                                    'draft'     => ['chip-draft',     'Draft'],
-                                    'submitted' => ['chip-submitted', 'Menunggu Verifikasi'],
-                                    'verified'  => ['chip-verified',  'Terverifikasi'],
-                                    default     => ['chip-draft',     ucfirst($apldua->status)],
-                                };
-                            @endphp
-                            <span class="chip {{ $chip2[0] }}">{{ $chip2[1] }}</span>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        @if(in_array($apldua->status, ['verified','approved']))
-                        <a href="{{ route('admin.apl02.pdf', [$apldua, 'preview' => 1]) }}"
-                           target="_blank" class="btn btn-sm btn-outline-success">
-                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF APL-02
-                        </a>
-                        @endif
-                    </div>
-                </div>
-                <div class="doc-card-body">
-                    {{-- Progress K/BK --}}
-                    @php
-                        $prog = $apldua->progress;
-                    @endphp
-                    @if($prog['total'] > 0)
-                    <div class="row g-3 mb-3">
-                        <div class="col-4">
-                            <div class="text-center p-2 rounded" style="background:#f8fafc;">
-                                <div style="font-size:1.4rem; font-weight:700; color:#1d4ed8;">{{ $prog['answered'] }}</div>
-                                <div class="small text-muted">Dijawab</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="text-center p-2 rounded" style="background:#f0fdf4;">
-                                <div style="font-size:1.4rem; font-weight:700; color:#16a34a;">{{ $prog['k'] }}</div>
-                                <div class="small text-muted">Kompeten</div>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="text-center p-2 rounded" style="background:#fff7ed;">
-                                <div style="font-size:1.4rem; font-weight:700; color:#d97706;">{{ $prog['bk'] }}</div>
-                                <div class="small text-muted">Belum Kompeten</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="prog-bar-wrap mb-3">
-                        <div class="prog-bar-fill bg-primary"
-                             style="width:{{ round($prog['answered']/$prog['total']*100) }}%;"></div>
-                    </div>
+{{-- ══════════════════════════════════════════════════════════
+     TABS UTAMA
+══════════════════════════════════════════════════════════ --}}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom pt-0 pb-0">
+        <ul class="nav nav-tabs card-header-tabs" id="docTabs">
+            <li class="nav-item">
+                <button class="nav-link active py-3" data-bs-toggle="tab" data-bs-target="#tab-biodata">
+                    <i class="bi bi-person me-1"></i>Biodata
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-3" data-bs-toggle="tab" data-bs-target="#tab-apl01">
+                    <i class="bi bi-file-earmark-person me-1"></i>APL-01
+                    @if($asesmen->aplsatu?->status === 'submitted')
+                    <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">Perlu Verif</span>
+                    @elseif($asesmen->aplsatu?->status === 'verified')
+                    <span class="badge bg-success ms-1" style="font-size:.6rem;">✓</span>
                     @endif
-
-                    {{-- Rekomendasi asesor --}}
-                    @if($apldua->rekomendasi_asesor)
-                    <div class="p-3 rounded mb-3" style="background:#f8fafc; border:1px solid #e2e8f0;">
-                        <div class="small text-muted mb-1">Rekomendasi Asesor</div>
-                        <strong class="{{ $apldua->rekomendasi_asesor === 'lanjut' ? 'text-success' : 'text-danger' }}">
-                            {{ $apldua->rekomendasi_asesor === 'lanjut' ? '✓ Dapat dilanjutkan' : '✗ Tidak dapat dilanjutkan' }}
-                        </strong>
-                        @if($apldua->catatan_asesor)
-                        <div class="small text-muted mt-1">{{ $apldua->catatan_asesor }}</div>
-                        @endif
-                    </div>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-3" data-bs-toggle="tab" data-bs-target="#tab-apl02">
+                    <i class="bi bi-clipboard-check me-1"></i>APL-02
+                    @if($asesmen->apldua?->status === 'submitted')
+                    <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">Perlu Verif</span>
                     @endif
-
-                    {{-- TTD APL-02 --}}
-                    @if($apldua->ttd_asesi || $apldua->ttd_asesor)
-                    <div class="d-flex gap-4 flex-wrap pt-2 border-top">
-                        @if($apldua->ttd_asesi)
-                        <div>
-                            <div class="lbl mb-1">TTD Asesi</div>
-                            <div class="ttd-box" style="width:150px;">
-                                <img src="{{ $apldua->ttd_asesi_image }}" alt="TTD Asesi">
-                            </div>
-                            <div class="small text-muted mt-1">{{ $apldua->tanggal_ttd_asesi?->format('d M Y') }}</div>
-                        </div>
-                        @endif
-                        @if($apldua->ttd_asesor)
-                        <div>
-                            <div class="lbl mb-1">TTD Asesor</div>
-                            <div class="ttd-box" style="width:150px;">
-                                <img src="{{ $apldua->ttd_asesor_image }}" alt="TTD Asesor">
-                            </div>
-                            <div class="small text-muted mt-1">{{ $apldua->nama_ttd_asesor }}</div>
-                        </div>
-                        @endif
-                    </div>
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-3" data-bs-toggle="tab" data-bs-target="#tab-frak01">
+                    <i class="bi bi-file-earmark-check me-1"></i>FR.AK.01
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-3" data-bs-toggle="tab" data-bs-target="#tab-frak04">
+                    <i class="bi bi-megaphone me-1"></i>FR.AK.04
+                    @if($asesmen->frak04?->status === 'submitted')
+                    <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">Banding!</span>
                     @endif
-                </div>
-            </div>
-            @else
-            <div class="doc-card">
-                <div class="doc-card-body text-center py-5 text-muted">
-                    <i class="bi bi-clipboard-x d-block mb-2" style="font-size:2.5rem; opacity:.3;"></i>
-                    <div class="fw-semibold">APL-02 belum diisi</div>
-                    <div class="small mt-1">Asesi belum mengisi asesmen mandiri.</div>
-                </div>
-            </div>
-            @endif
-        </div>
+                </button>
+            </li>
+        </ul>
+    </div>
 
-        {{-- ══ TAB PROFIL ══ --}}
-        <div id="tab-profil" class="doc-section">
-            <div class="doc-card">
-                <div class="doc-card-body">
-                    <div class="info-grid">
+    <div class="card-body">
+        <div class="tab-content">
+
+            {{-- ════════════════════════════════════════════
+                 TAB 1 — BIODATA (lengkap, dari pasted-2/doc-4)
+            ════════════════════════════════════════════ --}}
+            <div class="tab-pane fade show active" id="tab-biodata">
+                <div class="row g-4 pt-2">
+
+                    {{-- Kolom kiri: Data pribadi lengkap --}}
+                    <div class="col-md-7">
+
+                        {{-- Informasi Pendaftaran --}}
+                        <div class="section-heading">Informasi Pendaftaran</div>
+                        <div class="info-row"><span class="info-label">No. Registrasi</span><span class="info-value font-monospace">#{{ $asesmen->id }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Daftar</span><span class="info-value">{{ $asesmen->registration_date->format('d F Y') }}</span></div>
                         <div class="info-row">
-                            <div class="lbl">Nama Lengkap</div>
-                            <div class="val">{{ $asesmen->full_name ?? $asesmen->user?->name ?? '-' }}</div>
+                            <span class="info-label">Tipe Pendaftaran</span>
+                            <span class="info-value">
+                                @if($asesmen->is_collective)
+                                <span class="badge bg-primary">Kolektif</span>
+                                @else
+                                <span class="badge bg-secondary">Mandiri</span>
+                                @endif
+                            </span>
                         </div>
+                        @if($asesmen->is_collective)
+                        <div class="info-row"><span class="info-label">Batch ID</span><span class="info-value font-monospace">{{ $asesmen->collective_batch_id }}</span></div>
                         <div class="info-row">
-                            <div class="lbl">NIK</div>
-                            <div class="val font-monospace">{{ $aplsatu?->nik ?? '-' }}</div>
+                            <span class="info-label">Waktu Bayar</span>
+                            <span class="info-value">
+                                <span class="badge bg-{{ $asesmen->collective_payment_timing === 'before' ? 'warning text-dark' : 'success' }}">
+                                    {{ $asesmen->collective_payment_timing === 'before' ? 'Sebelum Asesmen' : 'Setelah Asesmen' }}
+                                </span>
+                            </span>
                         </div>
-                        <div class="info-row">
-                            <div class="lbl">Email</div>
-                            <div class="val">{{ $asesmen->user?->email ?? '-' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">No. HP</div>
-                            <div class="val">{{ $aplsatu?->hp ?? '-' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">Tempat / Tanggal Lahir</div>
-                            <div class="val">
-                                {{ $aplsatu?->tempat_lahir ?? '-' }}
-                                @if($aplsatu?->tanggal_lahir)
-                                , {{ \Carbon\Carbon::parse($aplsatu->tanggal_lahir)->format('d M Y') }}
+                        <div class="info-row"><span class="info-label">Didaftarkan Oleh</span><span class="info-value">{{ $asesmen->registrar->name ?? '-' }}</span></div>
+                        @endif
+                        <div class="info-row"><span class="info-label">Skema</span><span class="info-value">{{ $asesmen->skema->name ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Skema</span><span class="info-value font-monospace small">{{ $asesmen->skema->code ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Biaya Skema</span><span class="info-value">Rp {{ number_format($asesmen->skema->fee ?? 0, 0, ',', '.') }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Pilihan</span><span class="info-value">{{ $asesmen->preferred_date ? $asesmen->preferred_date->format('d F Y') : '-' }}</span></div>
+
+                        {{-- Data Pribadi --}}
+                        <div class="section-heading mt-4">Data Pribadi</div>
+                        <div class="info-row"><span class="info-label">Nama Lengkap</span><span class="info-value">{{ $asesmen->full_name }}</span></div>
+                        <div class="info-row"><span class="info-label">NIK</span><span class="info-value font-monospace">{{ $asesmen->nik }}</span></div>
+                        <div class="info-row"><span class="info-label">Tempat Lahir</span><span class="info-value">{{ $asesmen->birth_place }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $asesmen->birth_date->format('d F Y') }}</span></div>
+                        <div class="info-row"><span class="info-label">Jenis Kelamin</span><span class="info-value">{{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</span></div>
+                        <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ $asesmen->email ?? $asesmen->user->email ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Telepon</span><span class="info-value">{{ $asesmen->phone }}</span></div>
+                        <div class="info-row"><span class="info-label">Alamat</span><span class="info-value">{{ $asesmen->address }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Provinsi</span><span class="info-value">{{ $asesmen->province_code ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Kota</span><span class="info-value">{{ $asesmen->city_code ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Pendidikan</span><span class="info-value">{{ $asesmen->education ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Pekerjaan</span><span class="info-value">{{ $asesmen->occupation ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Asal Lembaga</span><span class="info-value">{{ $asesmen->institution ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Sumber Anggaran</span><span class="info-value">{{ $asesmen->budget_source ?? '-' }}</span></div>
+                    </div>
+
+                    {{-- Kolom kanan: Dokumen pendaftaran --}}
+                    <div class="col-md-5">
+                        <div class="section-heading">Dokumen Pendaftaran</div>
+
+                        {{-- Pas Foto --}}
+                        <div class="card border mb-3">
+                            <div class="card-header bg-light py-2 small fw-semibold">Pas Foto</div>
+                            <div class="card-body text-center p-2">
+                                @if($asesmen->photo_path)
+                                <img src="{{ asset('storage/' . $asesmen->photo_path) }}"
+                                     alt="Foto" class="img-thumbnail mb-2"
+                                     style="max-height:200px; object-fit:cover;">
+                                <div>
+                                    <a href="{{ asset('storage/' . $asesmen->photo_path) }}"
+                                       target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye me-1"></i>Lihat
+                                    </a>
+                                </div>
+                                @else
+                                <div class="py-3 text-muted small">
+                                    <i class="bi bi-x-circle text-danger d-block fs-3 mb-1"></i>Belum upload
+                                </div>
                                 @endif
                             </div>
                         </div>
-                        <div class="info-row">
-                            <div class="lbl">Jenis Kelamin</div>
-                            <div class="val">{{ $aplsatu?->jenis_kelamin ?? '-' }}</div>
+
+                        {{-- KTP --}}
+                        <div class="card border mb-3">
+                            <div class="card-header bg-light py-2 small fw-semibold">KTP</div>
+                            <div class="card-body text-center p-2">
+                                @if($asesmen->ktp_path)
+                                <iframe src="{{ asset('storage/' . $asesmen->ktp_path) }}"
+                                        style="width:100%; height:180px; border:1px solid #ddd;"
+                                        class="mb-2"></iframe>
+                                <div>
+                                    <a href="{{ asset('storage/' . $asesmen->ktp_path) }}"
+                                       target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download me-1"></i>Download
+                                    </a>
+                                </div>
+                                @else
+                                <div class="py-3 text-muted small">
+                                    <i class="bi bi-x-circle text-danger d-block fs-3 mb-1"></i>Belum upload
+                                </div>
+                                @endif
+                            </div>
                         </div>
-                        <div class="info-row">
-                            <div class="lbl">Pendidikan</div>
-                            <div class="val">{{ $aplsatu?->kualifikasi_pendidikan ?? '-' }}</div>
-                        </div>
-                        <div class="info-row">
-                            <div class="lbl">Institusi / Jabatan</div>
-                            <div class="val">{{ $aplsatu?->nama_institusi ?? '-' }}{{ $aplsatu?->jabatan ? ' — ' . $aplsatu->jabatan : '' }}</div>
-                        </div>
-                        <div class="info-row" style="grid-column:1/-1;">
-                            <div class="lbl">Alamat</div>
-                            <div class="val">{{ $aplsatu?->alamat_rumah ?? '-' }}</div>
+
+                        {{-- Ijazah --}}
+                        <div class="card border mb-3">
+                            <div class="card-header bg-light py-2 small fw-semibold">Ijazah / Transkrip</div>
+                            <div class="card-body text-center p-2">
+                                @if($asesmen->document_path)
+                                <iframe src="{{ asset('storage/' . $asesmen->document_path) }}"
+                                        style="width:100%; height:180px; border:1px solid #ddd;"
+                                        class="mb-2"></iframe>
+                                <div>
+                                    <a href="{{ asset('storage/' . $asesmen->document_path) }}"
+                                       target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-download me-1"></i>Download
+                                    </a>
+                                </div>
+                                @else
+                                <div class="py-3 text-muted small">
+                                    <i class="bi bi-x-circle text-danger d-block fs-3 mb-1"></i>Belum upload
+                                </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-    </div>
-
-    {{-- ── KANAN: Status & Timeline --}}
-    <div class="col-lg-4">
-
-        {{-- Status Card --}}
-        <div class="doc-card mb-3">
-            <div class="doc-card-body">
-                <div class="fw-semibold mb-3 small text-muted text-uppercase" style="letter-spacing:.5px;">
-                    <i class="bi bi-activity me-1"></i>Status Proses
+            {{-- ════════════════════════════════════════════
+                 TAB 2 — APL-01 (read-only dari doc-5)
+            ════════════════════════════════════════════ --}}
+            <div class="tab-pane fade" id="tab-apl01">
+                @if(!$asesmen->aplsatu)
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split fs-1 opacity-25"></i>
+                    <p class="mt-2">APL-01 belum diisi oleh asesi.</p>
                 </div>
-                <ul class="tl">
-                    @php
-                        $steps = [
-                            ['label' => 'Pendaftaran',      'sub' => $asesmen->registration_date?->format('d M Y'), 'done' => true],
-                            ['label' => 'APL-01 Submit',    'sub' => $aplsatu?->submitted_at?->format('d M Y'),    'done' => (bool)$aplsatu?->submitted_at],
-                            ['label' => 'APL-01 Verified',  'sub' => $aplsatu?->verified_at?->format('d M Y'),     'done' => in_array($aplsatu?->status, ['verified','approved'])],
-                            ['label' => 'APL-02 Submit',    'sub' => $apldua?->submitted_at?->format('d M Y'),     'done' => (bool)$apldua?->submitted_at],
-                            ['label' => 'APL-02 Verified',  'sub' => $apldua?->verified_at?->format('d M Y'),      'done' => in_array($apldua?->status, ['verified','approved'])],
-                        ];
-                        $firstPending = null;
-                        foreach ($steps as $i => $s) {
-                            if (!$s['done']) { $firstPending = $i; break; }
-                        }
-                    @endphp
-                    @foreach($steps as $i => $step)
-                    <li class="tl-item">
-                        <div class="tl-dot {{ $step['done'] ? 'done' : ($i === $firstPending ? 'current' : 'pending') }}"></div>
-                        <div class="tl-title">{{ $step['label'] }}</div>
-                        @if($step['sub'])
-                        <div class="tl-sub">{{ $step['sub'] }}</div>
-                        @elseif(!$step['done'])
-                        <div class="tl-sub">Belum selesai</div>
+                @else
+                @php $apl = $asesmen->aplsatu; @endphp
+
+                {{-- Status bar --}}
+                <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded
+                    {{ $apl->status === 'verified' ? 'status-bar-verified' : ($apl->status === 'submitted' ? 'status-bar-submitted' : 'status-bar-default') }}">
+                    <span class="badge bg-{{ $apl->status_badge }} fs-6">{{ $apl->status_label }}</span>
+                    @if($apl->submitted_at)
+                    <span class="small text-muted">Submit: {{ $apl->submitted_at->format('d M Y H:i') }}</span>
+                    @endif
+                    <div class="ms-auto d-flex gap-2">
+                        <a href="{{ route('admin.apl01.pdf', [$apl, 'preview' => 1]) }}" target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-1"></i>Preview PDF
+                        </a>
+                        <a href="{{ route('admin.apl01.pdf', $apl) }}"
+                           class="btn btn-sm btn-success">
+                            <i class="bi bi-download me-1"></i>Download PDF
+                        </a>
+                        @if($apl->status === 'submitted')
+                        <a href="{{ route('admin.apl01.show', $apl) }}"
+                           class="btn btn-sm btn-warning text-dark">
+                            <i class="bi bi-pen me-1"></i>Verifikasi
+                        </a>
                         @endif
-                    </li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-
-        {{-- Info Jadwal --}}
-        @if($asesmen->schedule)
-        <div class="doc-card mb-3">
-            <div class="doc-card-header">
-                <div class="doc-icon" style="background:#f5f3ff; color:#7c3aed;">
-                    <i class="bi bi-calendar-event"></i>
+                    </div>
                 </div>
-                <div class="fw-semibold small">Jadwal Asesmen</div>
+
+                <div class="row g-4">
+                    {{-- Data Pribadi --}}
+                    <div class="col-md-6">
+                        <div class="section-heading">a. Data Pribadi</div>
+                        <div class="info-row"><span class="info-label">Nama Lengkap</span><span class="info-value">{{ $apl->nama_lengkap }}</span></div>
+                        <div class="info-row"><span class="info-label">NIK</span><span class="info-value font-monospace">{{ $apl->nik }}</span></div>
+                        <div class="info-row"><span class="info-label">Tempat Lahir</span><span class="info-value">{{ $apl->tempat_lahir }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $apl->tanggal_lahir?->format('d M Y') ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Jenis Kelamin</span><span class="info-value">{{ $apl->jenis_kelamin }}</span></div>
+                        <div class="info-row"><span class="info-label">Kebangsaan</span><span class="info-value">{{ $apl->kebangsaan ?? 'Indonesia' }}</span></div>
+                        <div class="info-row"><span class="info-label">Kualifikasi Pendidikan</span><span class="info-value">{{ $apl->kualifikasi_pendidikan ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Alamat Rumah</span><span class="info-value">{{ $apl->alamat_rumah }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Pos</span><span class="info-value">{{ $apl->kode_pos ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Telepon Rumah</span><span class="info-value">{{ $apl->telp_rumah ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">No. HP</span><span class="info-value">{{ $apl->hp }}</span></div>
+                        <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ $apl->email }}</span></div>
+
+                        <div class="section-heading mt-4">b. Data Pekerjaan</div>
+                        <div class="info-row"><span class="info-label">Institusi / Perusahaan</span><span class="info-value">{{ $apl->nama_institusi ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Jabatan</span><span class="info-value">{{ $apl->jabatan ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Alamat Kantor</span><span class="info-value">{{ $apl->alamat_kantor ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Kode Pos Kantor</span><span class="info-value">{{ $apl->kode_pos_kantor ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Telepon Kantor</span><span class="info-value">{{ $apl->telp_kantor_detail ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Fax</span><span class="info-value">{{ $apl->fax_kantor ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Email Kantor</span><span class="info-value">{{ $apl->email_kantor ?? '-' }}</span></div>
+
+                        <div class="section-heading mt-4">c. Data Sertifikasi</div>
+                        <div class="info-row"><span class="info-label">Skema</span><span class="info-value fw-bold">{{ $apl->asesmen?->skema?->name ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Nomor Skema</span><span class="info-value font-monospace small">{{ $apl->asesmen?->skema?->nomor_skema ?? ($apl->asesmen?->skema?->code ?? '-') }}</span></div>
+                        <div class="info-row">
+                            <span class="info-label">Tujuan Asesmen</span>
+                            <span class="info-value">
+                                {{ $apl->tujuan_asesmen ?? '-' }}
+                                @if($apl->tujuan_asesmen === 'Lainnya' && $apl->tujuan_asesmen_lainnya)
+                                — {{ $apl->tujuan_asesmen_lainnya }}
+                                @endif
+                            </span>
+                        </div>
+                    </div>
+
+                    {{-- Unit Kompetensi + TTD + Bukti --}}
+                    <div class="col-md-6">
+
+                        {{-- Unit Kompetensi --}}
+                        @if($apl->asesmen?->skema?->unitKompetensis?->isNotEmpty())
+                        <div class="section-heading">Unit Kompetensi</div>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-bordered" style="font-size:.82rem;">
+                                <thead class="table-light">
+                                    <tr><th width="30" class="text-center">No</th><th width="140">Kode Unit</th><th>Judul Unit</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($apl->asesmen->skema->unitKompetensis as $i => $unit)
+                                    <tr>
+                                        <td class="text-center text-muted">{{ $i + 1 }}</td>
+                                        <td><small class="font-monospace">{{ $unit->kode_unit }}</small></td>
+                                        <td>{{ $unit->judul_unit }}</td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        @endif
+
+                        {{-- Bukti Kelengkapan --}}
+                        <div class="section-heading">Bukti Kelengkapan</div>
+                        @php $gdriveLink = $apl->buktiKelengkapan->whereNotNull('gdrive_file_url')->first()?->gdrive_file_url; @endphp
+                        @if($gdriveLink)
+                        <div class="alert alert-info d-flex align-items-center gap-3 mb-3 py-2">
+                            <i class="bi bi-google fs-4 flex-shrink-0"></i>
+                            <div class="flex-grow-1 small overflow-hidden">
+                                <strong>Google Drive:</strong><br>
+                                <a href="{{ $gdriveLink }}" target="_blank" class="text-break small">{{ $gdriveLink }}</a>
+                            </div>
+                            <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-sm btn-primary flex-shrink-0">Buka</a>
+                        </div>
+                        @endif
+
+                        @foreach(['persyaratan_dasar' => 'Persyaratan Dasar', 'administratif' => 'Administratif'] as $kat => $katLabel)
+                        @php $items = $apl->buktiKelengkapan->where('kategori', $kat); @endphp
+                        @if($items->isNotEmpty())
+                        <div class="fw-semibold small text-muted mb-2 mt-3">{{ $katLabel }}</div>
+                        @foreach($items as $bukti)
+                        @php
+                            $bc = match($bukti->status) {
+                                'Ada Memenuhi Syarat'       => 'ok',
+                                'Ada Tidak Memenuhi Syarat' => 'warn',
+                                default                     => '',
+                            };
+                            $badgeColor = match($bukti->status) {
+                                'Ada Memenuhi Syarat'       => 'success',
+                                'Ada Tidak Memenuhi Syarat' => 'warning',
+                                default                     => 'secondary',
+                            };
+                        @endphp
+                        <div class="card bukti-card {{ $bc }} mb-2 shadow-sm">
+                            <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center gap-2">
+                                <div class="small flex-grow-1">
+                                    <span class="fw-semibold">{{ $bukti->nama_dokumen }}</span>
+                                    @if($bukti->catatan)
+                                    <div class="text-muted" style="font-size:.78rem;"><i class="bi bi-chat-left-dots me-1"></i>{{ $bukti->catatan }}</div>
+                                    @endif
+                                </div>
+                                <span class="badge bg-{{ $badgeColor }} text-nowrap flex-shrink-0">{{ $bukti->status }}</span>
+                            </div>
+                        </div>
+                        @endforeach
+                        @endif
+                        @endforeach
+
+                        {{-- TTD Pemohon --}}
+                        @if($apl->ttd_pemohon)
+                        <div class="section-heading mt-4">Tanda Tangan Pemohon</div>
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <img src="{{ $apl->ttd_pemohon_image }}" class="ttd-thumb" alt="TTD Pemohon">
+                            <div class="small text-muted">
+                                <div class="fw-semibold text-dark">{{ $apl->nama_ttd_pemohon }}</div>
+                                {{ $apl->tanggal_ttd_pemohon ? \Carbon\Carbon::parse($apl->tanggal_ttd_pemohon)->format('d M Y') : '-' }}
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- TTD Admin --}}
+                        @if($apl->ttd_admin)
+                        <div class="section-heading">Tanda Tangan Admin LSP</div>
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ $apl->ttd_admin_image }}" class="ttd-thumb" style="border-color:#bbf7d0;" alt="TTD Admin">
+                            <div class="small text-muted">
+                                <div class="fw-semibold text-dark">{{ $apl->nama_ttd_admin }}</div>
+                                {{ $apl->tanggal_ttd_admin ? \Carbon\Carbon::parse($apl->tanggal_ttd_admin)->format('d M Y') : '-' }}
+                                @if($apl->verified_at)
+                                <div class="mt-1"><i class="bi bi-clock me-1"></i>{{ $apl->verified_at->format('d M Y H:i') }}
+                                    @if($apl->verifier) — <strong>{{ $apl->verifier->name }}</strong>@endif
+                                </div>
+                                @endif
+                            </div>
+                        </div>
+                        @endif
+
+                    </div>
+                </div>
+                @endif
             </div>
-            <div class="doc-card-body">
-                <div class="info-grid">
-                    <div class="info-row">
-                        <div class="lbl">Tanggal</div>
-                        <div class="val">{{ $asesmen->schedule->assessment_date->translatedFormat('d F Y') }}</div>
+
+            {{-- ════════════════════════════════════════════
+                 TAB 3 — APL-02 (read-only dari doc-6)
+            ════════════════════════════════════════════ --}}
+            <div class="tab-pane fade" id="tab-apl02">
+                @if(!$asesmen->apldua)
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split fs-1 opacity-25"></i>
+                    <p class="mt-2">APL-02 belum diisi oleh asesi.</p>
+                </div>
+                @else
+                @php $apl02 = $asesmen->apldua; $prog = $apl02->progress; @endphp
+
+                {{-- Status bar --}}
+                <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded status-bar-default">
+                    <span class="badge bg-{{ $apl02->status_badge }} fs-6">{{ $apl02->status_label }}</span>
+                    <div class="small text-muted">
+                        Progress: <strong>{{ $prog['answered'] }}/{{ $prog['total'] }}</strong> elemen dijawab
+                        (<span class="text-success">K: {{ $prog['k'] }}</span> /
+                        <span class="text-danger">BK: {{ $prog['bk'] }}</span>)
                     </div>
-                    @if($asesmen->schedule->start_time)
-                    <div class="info-row">
-                        <div class="lbl">Waktu</div>
-                        <div class="val">{{ $asesmen->schedule->start_time }}{{ $asesmen->schedule->end_time ? ' – ' . $asesmen->schedule->end_time : '' }}</div>
+                    <div class="ms-auto d-flex gap-2">
+                        @if(in_array($apl02->status, ['verified', 'approved']))
+                        <a href="{{ route('admin.apl02.pdf', [$apl02, 'preview' => 1]) }}" target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-1"></i>Preview PDF
+                        </a>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Progress summary --}}
+                <div class="row g-3 mb-4 text-center">
+                    <div class="col-4">
+                        <div class="bg-light rounded p-3">
+                            <div class="fw-bold fs-4">{{ $prog['total'] }}</div>
+                            <div class="small text-muted">Total Elemen</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-success bg-opacity-10 rounded p-3">
+                            <div class="fw-bold fs-4 text-success">{{ $prog['k'] }}</div>
+                            <div class="small text-muted">Kompeten (K)</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-danger bg-opacity-10 rounded p-3">
+                            <div class="fw-bold fs-4 text-danger">{{ $prog['bk'] }}</div>
+                            <div class="small text-muted">Blm Kompeten (BK)</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Jawaban per unit (accordion) --}}
+                @foreach($asesmen->skema->unitKompetensis as $unitIdx => $unit)
+                <div class="unit-card" id="apl02-unit-{{ $unit->id }}">
+                    <div class="unit-header" onclick="toggleUnit('apl02-{{ $unit->id }}')">
+                        <i class="bi bi-chevron-right" id="arrow-apl02-{{ $unit->id }}"
+                           style="transition:transform .2s; font-size:1rem; color:#94a3b8;"></i>
+                        <span class="badge bg-secondary me-1">{{ $unitIdx + 1 }}</span>
+                        <div class="flex-grow-1">
+                            <div class="small text-muted">{{ $unit->kode_unit }}</div>
+                            <div class="fw-semibold" style="font-size:.9rem;">{{ $unit->judul_unit }}</div>
+                        </div>
+                    </div>
+                    <div id="body-apl02-{{ $unit->id }}" style="{{ $unitIdx === 0 ? '' : 'display:none;' }}">
+                        @foreach($unit->elemens as $elemen)
+                        @php $jaw = $jawabanMap[$elemen->id] ?? null; @endphp
+                        <div class="elemen-row {{ $jaw?->jawaban ? 'answered-'.$jaw->jawaban : 'unanswered' }} d-flex align-items-start gap-3">
+                            <div class="flex-grow-1">
+                                <div class="fw-semibold small mb-1">{{ $elemen->judul }}</div>
+                                @if($elemen->kuks->isNotEmpty())
+                                <ul class="mb-1" style="padding-left:14px;">
+                                    @foreach($elemen->kuks as $kuk)
+                                    <li style="font-size:.75rem; color:#6b7280;">{{ $kuk->kode }} — {{ $kuk->deskripsi }}</li>
+                                    @endforeach
+                                </ul>
+                                @endif
+                                @if($jaw?->bukti)
+                                <div class="text-muted mt-1" style="font-size:.78rem;">
+                                    <i class="bi bi-chat-left-dots me-1"></i>{{ $jaw->bukti }}
+                                </div>
+                                @endif
+                            </div>
+                            <div class="flex-shrink-0 text-end" style="min-width:100px;">
+                                @if($jaw?->jawaban)
+                                <span class="ro-badge ro-badge-{{ $jaw->jawaban }}">
+                                    {{ $jaw->jawaban === 'K' ? 'Kompeten' : 'Blm Kompeten' }}
+                                </span>
+                                @else
+                                <span class="badge bg-secondary">Belum diisi</span>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endforeach
+
+                {{-- TTD --}}
+                @if($apl02->ttd_asesi || $apl02->ttd_asesor)
+                <div class="row g-3 mt-3">
+                    @if($apl02->ttd_asesi)
+                    <div class="col-md-4">
+                        <div class="section-heading">TTD Asesi</div>
+                        <img src="{{ $apl02->ttd_asesi_image }}" class="ttd-thumb" alt="TTD Asesi">
+                        <div class="text-muted small mt-1">{{ $apl02->nama_ttd_asesi }}</div>
                     </div>
                     @endif
-                    @if($asesmen->schedule->asesor)
-                    <div class="info-row" style="grid-column:1/-1;">
-                        <div class="lbl">Asesor</div>
-                        <div class="val">{{ $asesmen->schedule->asesor->nama }}</div>
-                    </div>
-                    @endif
-                    @if($asesmen->schedule->location)
-                    <div class="info-row" style="grid-column:1/-1;">
-                        <div class="lbl">Lokasi</div>
-                        <div class="val">{{ $asesmen->schedule->location }}</div>
+                    @if($apl02->ttd_asesor)
+                    <div class="col-md-4">
+                        <div class="section-heading">TTD Asesor</div>
+                        <img src="{{ $apl02->ttd_asesor_image }}" class="ttd-thumb" alt="TTD Asesor">
+                        <div class="text-muted small mt-1">{{ $apl02->nama_ttd_asesor }}</div>
+                        @if($apl02->rekomendasi_asesor)
+                        <span class="badge bg-{{ $apl02->rekomendasi_asesor === 'lanjut' ? 'success' : 'danger' }} mt-1 d-block" style="width:fit-content;">
+                            {{ $apl02->rekomendasi_asesor === 'lanjut' ? 'Lanjut Asesmen' : 'Tidak Lanjut' }}
+                        </span>
+                        @endif
                     </div>
                     @endif
                 </div>
+                @endif
+                @endif
             </div>
-        </div>
-        @endif
 
-        {{-- Quick actions --}}
-        <div class="doc-card">
-            <div class="doc-card-body d-grid gap-2">
-                @if($aplsatu && $aplsatu->status === 'submitted')
-                <a href="{{ route('admin.apl01.show', $aplsatu) }}" class="btn btn-warning btn-sm">
-                    <i class="bi bi-check-circle me-1"></i>Verifikasi APL-01
-                </a>
-                @elseif($aplsatu)
-                <a href="{{ route('admin.apl01.show', $aplsatu) }}" class="btn btn-outline-primary btn-sm">
-                    <i class="bi bi-eye me-1"></i>Lihat APL-01
-                </a>
-                @if(in_array($aplsatu->status, ['verified','approved']))
-                <a href="{{ route('admin.apl01.pdf', [$aplsatu, 'preview' => 1]) }}" target="_blank"
-                   class="btn btn-outline-success btn-sm">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF APL-01
-                </a>
-                @endif
-                @endif
+            {{-- ════════════════════════════════════════════
+                 TAB 4 — FR.AK.01 (read-only dari doc-7)
+            ════════════════════════════════════════════ --}}
+            <div class="tab-pane fade" id="tab-frak01">
+                @if(!$asesmen->frak01)
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-hourglass-split fs-1 opacity-25"></i>
+                    <p class="mt-2">FR.AK.01 belum dibuat.</p>
+                </div>
+                @else
+                @php $ak01 = $asesmen->frak01; @endphp
 
-                @if($apldua && in_array($apldua->status, ['verified','approved']))
-                <a href="{{ route('admin.apl02.pdf', [$apldua, 'preview' => 1]) }}" target="_blank"
-                   class="btn btn-outline-success btn-sm">
-                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF APL-02
-                </a>
-                @endif
+                {{-- Status bar --}}
+                <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded status-bar-default">
+                    <span class="badge bg-{{ $ak01->status_badge }} fs-6">{{ $ak01->status_label }}</span>
+                    @if($ak01->submitted_at)
+                    <span class="small text-muted">Submit: {{ $ak01->submitted_at->format('d M Y H:i') }}</span>
+                    @endif
+                    <div class="ms-auto d-flex gap-2">
+                        <a href="{{ route('admin.frak01.pdf', [$ak01, 'preview' => 1]) }}" target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-1"></i>Preview PDF
+                        </a>
+                        <a href="{{ route('admin.frak01.pdf', $ak01) }}"
+                           class="btn btn-sm btn-success">
+                            <i class="bi bi-download me-1"></i>Download PDF
+                        </a>
+                    </div>
+                </div>
 
-                <a href="{{ route('admin.apl01.index') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-arrow-left me-1"></i>Kembali
-                </a>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="section-heading">Info Dokumen</div>
+                        <div class="info-row"><span class="info-label">Skema</span><span class="info-value">{{ $ak01->skema_judul }}</span></div>
+                        <div class="info-row"><span class="info-label">TUK</span><span class="info-value">{{ $ak01->tuk_nama }}</span></div>
+                        <div class="info-row"><span class="info-label">Asesor</span><span class="info-value">{{ $ak01->nama_asesor }}</span></div>
+                        <div class="info-row"><span class="info-label">Hari / Tanggal</span><span class="info-value">{{ $ak01->hari_tanggal }}</span></div>
+                        <div class="info-row"><span class="info-label">Waktu</span><span class="info-value">{{ $ak01->waktu_asesmen ?? '-' }}</span></div>
+
+                        <div class="section-heading mt-4">Bukti yang Dikumpulkan</div>
+                        @foreach([
+                            'bukti_verifikasi_portofolio'     => 'Verifikasi Portofolio',
+                            'bukti_hasil_review_produk'        => 'Review Produk',
+                            'bukti_observasi_langsung'         => 'Observasi Langsung',
+                            'bukti_pertanyaan_lisan'           => 'Pertanyaan Lisan',
+                            'bukti_pertanyaan_tertulis'        => 'Pertanyaan Tertulis',
+                            'bukti_pertanyaan_wawancara'       => 'Wawancara',
+                            'bukti_hasil_kegiatan_terstruktur' => 'Kegiatan Terstruktur',
+                        ] as $field => $lbl)
+                        <div class="d-flex align-items-center gap-2 py-1 border-bottom">
+                            <i class="bi bi-{{ $ak01->$field ? 'check-circle-fill text-success' : 'circle text-muted' }}"></i>
+                            <span class="small {{ $ak01->$field ? '' : 'text-muted' }}">{{ $lbl }}</span>
+                        </div>
+                        @endforeach
+                        @if($ak01->bukti_lainnya)
+                        <div class="d-flex align-items-center gap-2 py-1">
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                            <span class="small">Lainnya: {{ $ak01->bukti_lainnya_keterangan }}</span>
+                        </div>
+                        @endif
+                    </div>
+
+                    <div class="col-md-6">
+                        {{-- TTD Asesi --}}
+                        @if($ak01->ttd_asesi)
+                        <div class="section-heading">TTD Asesi</div>
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <img src="{{ $ak01->ttd_asesi_image }}" class="ttd-thumb">
+                            <div class="small text-muted">
+                                <div class="fw-semibold text-dark">{{ $ak01->nama_ttd_asesi }}</div>
+                                {{ $ak01->tanggal_ttd_asesi?->format('d M Y') }}
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- TTD Asesor --}}
+                        @if($ak01->ttd_asesor)
+                        <div class="section-heading">TTD Asesor</div>
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ $ak01->ttd_asesor_image }}" class="ttd-thumb">
+                            <div class="small text-muted">
+                                <div class="fw-semibold text-dark">{{ $ak01->nama_ttd_asesor }}</div>
+                                {{ $ak01->tanggal_ttd_asesor?->format('d M Y') }}
+                            </div>
+                        </div>
+                        @else
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-lock fs-2 opacity-25"></i>
+                            <p class="small mt-1">Menunggu tanda tangan asesor.</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
             </div>
-        </div>
 
-    </div>
-</div>
+            {{-- ════════════════════════════════════════════
+                 TAB 5 — FR.AK.04 / BANDING (read-only dari doc-8)
+            ════════════════════════════════════════════ --}}
+            <div class="tab-pane fade" id="tab-frak04">
+                @if(!$asesmen->frak04 || $asesmen->frak04->status === 'draft')
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-megaphone fs-1 opacity-25"></i>
+                    <p class="mt-2">Tidak ada banding yang diajukan.</p>
+                </div>
+                @else
+                @php $ak04 = $asesmen->frak04; @endphp
+
+                {{-- Status bar --}}
+                <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded"
+                     style="background:#fffbeb; border:1px solid #fde68a;">
+                    <span class="badge bg-{{ $ak04->status_badge }} fs-6">{{ $ak04->status_label }}</span>
+                    @if($ak04->submitted_at)
+                    <span class="small text-muted">Diajukan: {{ $ak04->submitted_at->format('d M Y H:i') }}</span>
+                    @endif
+                    <div class="ms-auto d-flex gap-2">
+                        <a href="{{ route('admin.frak04.pdf', [$ak04, 'preview' => 1]) }}" target="_blank"
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-file-pdf me-1"></i>Preview PDF
+                        </a>
+                        <a href="{{ route('admin.frak04.pdf', $ak04) }}"
+                           class="btn btn-sm btn-success">
+                            <i class="bi bi-download me-1"></i>Download PDF
+                        </a>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-7">
+                        <div class="section-heading">Detail Banding</div>
+                        <div class="info-row"><span class="info-label">Asesi</span><span class="info-value">{{ $ak04->nama_asesi }}</span></div>
+                        <div class="info-row"><span class="info-label">Asesor</span><span class="info-value">{{ $ak04->nama_asesor }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Asesmen</span><span class="info-value">{{ $ak04->tanggal_asesmen }}</span></div>
+                        <div class="info-row"><span class="info-label">Skema Sertifikasi</span><span class="info-value">{{ $ak04->skema_sertifikasi ?? $asesmen->skema?->name ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">No. Skema</span><span class="info-value font-monospace small">{{ $ak04->no_skema_sertifikasi ?? $asesmen->skema?->nomor_skema ?? '-' }}</span></div>
+
+                        <div class="section-heading mt-4">Pernyataan</div>
+                        @foreach([
+                            ['label' => 'Proses banding sudah dijelaskan', 'val' => $ak04->proses_banding_dijelaskan],
+                            ['label' => 'Sudah diskusi dengan asesor',      'val' => $ak04->sudah_diskusi_dengan_asesor],
+                            ['label' => 'Melibatkan pihak lain',            'val' => $ak04->melibatkan_orang_lain],
+                        ] as $item)
+                        <div class="pertanyaan-card {{ $item['val'] !== null ? 'answered' : '' }}">
+                            <div class="small fw-semibold mb-1">{{ $item['label'] }}</div>
+                            <span class="badge bg-{{ $item['val'] ? 'success' : 'secondary' }} px-3">
+                                {{ $item['val'] ? 'YA' : 'TIDAK' }}
+                            </span>
+                        </div>
+                        @endforeach
+
+                        <div class="section-heading mt-3">Alasan Banding</div>
+                        <div class="p-3 bg-light rounded small" style="white-space:pre-wrap;">{{ $ak04->alasan_banding }}</div>
+                    </div>
+
+                    <div class="col-md-5">
+                        @if($ak04->ttd_asesi)
+                        <div class="section-heading">TTD Pengaju Banding</div>
+                        <div class="d-flex align-items-center gap-3">
+                            <img src="{{ $ak04->ttd_asesi_image }}" class="ttd-thumb">
+                            <div class="small text-muted">
+                                <div class="fw-semibold text-dark">{{ $ak04->nama_ttd_asesi }}</div>
+                                {{ $ak04->tanggal_ttd_asesi?->format('d M Y H:i') }}
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
+            </div>
+
+        </div>{{-- end tab-content --}}
+    </div>{{-- end card-body --}}
+</div>{{-- end card --}}
 
 @endsection
 
 @push('scripts')
 <script>
-function switchTab(btn, sectionId) {
-    document.querySelectorAll('.doc-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.doc-section').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById(sectionId).classList.add('active');
+// ── Toggle accordion unit (APL-02 & AK.01) ─────────────────
+function toggleUnit(key) {
+    const body  = document.getElementById(`body-${key}`);
+    const arrow = document.getElementById(`arrow-${key}`);
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
 }
+
+// ── Auto-buka tab via ?tab=... ──────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const tabParam = new URLSearchParams(window.location.search).get('tab');
+    if (tabParam) {
+        const tabEl = document.querySelector(`[data-bs-target="#tab-${tabParam}"]`);
+        if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+    }
+});
 </script>
 @endpush

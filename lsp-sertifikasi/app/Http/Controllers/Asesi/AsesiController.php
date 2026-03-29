@@ -102,7 +102,7 @@ class AsesiController extends Controller
             'birth_date' => 'required|date',
             'gender' => 'required|in:L,P',
             'address' => 'required|string',
-            'city_code' => 'required|string|size:2',
+            'city_code' => 'required|string|size:4',
             'province_code' => 'required|string|size:2',
             'phone' => 'required|string|max:15',
             'education' => 'required|string',
@@ -320,6 +320,37 @@ class AsesiController extends Controller
         $aplsatu = $asesmen->aplsatu;
         $apldua  = $asesmen->apldua;
         return view('asesi.schedule.index', compact('asesmen', 'schedule', 'aplsatu', 'apldua'));
+    }
+
+
+    /**
+     * Halaman utama Dokumen Pra-Asesmen
+     */
+    public function documents()
+    {
+        $user    = auth()->user();
+        $asesmen = Asesmen::with([
+            'tuk', 'skema', 'schedule.asesor',
+            'aplsatu.buktiKelengkapan',
+            'apldua.jawabans',
+            'frak01',
+            'frak04',
+        ])->where('user_id', $user->id)->first();
+
+        abort_if(!$asesmen, 404, 'Data asesmen tidak ditemukan.');
+        abort_if(!in_array($asesmen->status, [
+            'asesmen_started', 'scheduled',
+            'pre_assessment_completed', 'assessed', 'certified'
+        ]), 403, 'Halaman ini belum tersedia.');
+
+        $aplsatu = $asesmen->aplsatu;
+        $apldua  = $asesmen->apldua;
+        $frak01  = $asesmen->frak01;
+        $frak04  = $asesmen->frak04;
+
+        return view('asesi.documents.index', compact(
+            'asesmen', 'aplsatu', 'apldua', 'frak01', 'frak04'
+        ));
     }
 
     /**
@@ -829,9 +860,7 @@ public function aplsatuBuktiSave(Request $request)
         $asesmen = $user->asesmens()
             ->with([
                 'skema.unitKompetensis.elemens.kuks',
-                'schedule',
             ])
-            ->whereNotNull('schedule_id')
             ->latest()
             ->firstOrFail();
 

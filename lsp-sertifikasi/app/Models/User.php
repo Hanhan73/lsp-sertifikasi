@@ -20,6 +20,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'is_active',
         'password_changed_at',
         'email_verified_at',
+        'signature',
     ];
 
     protected $hidden = [
@@ -166,5 +167,24 @@ class User extends Authenticatable implements MustVerifyEmail
             return asset('storage/' . $this->photo_path);
         }
         return asset('images/default-avatar.png');
+    }
+
+    /**
+     * TTD yang sudah tersimpan, siap pakai sebagai data URI.
+     */
+    public function getSignatureImageAttribute(): ?string
+    {
+        if (!$this->signature) return null;
+        return str_starts_with($this->signature, 'data:image')
+            ? $this->signature
+            : 'data:image/png;base64,' . $this->signature;
+    }
+
+    /**
+     * Apakah user sudah punya TTD tersimpan?
+     */
+    public function hasSignature(): bool
+    {
+        return !empty($this->signature);
     }
 }

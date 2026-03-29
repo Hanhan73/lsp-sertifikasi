@@ -521,7 +521,8 @@
                         @include('partials._signature_pad', [
                             'padId'    => 'asesi',
                             'padLabel' => 'Tanda Tangan Pemohon',
-                            'padHeight' => 220,
+                            'padHeight' => 180,
+                            'savedSig' => auth()->user()->signature_image,
                         ])
                     </div>
                 </div>
@@ -816,7 +817,7 @@ function showSection(num) {
         if (n === num) step.classList.add('active');
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (num === 5) { fillSummary(); setTimeout(() => SigPadManager.init('asesi'), 150); }
+    if (num === 5) { fillSummary(); setTimeout(() => SigPadManager.init('asesi', @json(auth()->user()->signature_image)), 150); }
 
 }
 
@@ -1020,7 +1021,9 @@ async function submitForm() {
     await saveProgress();
 
     const submitData = new FormData();
-    submitData.append('signature', SigPadManager.getDataURL('asesi'));
+    const signature = await SigPadManager.prepareAndGet('asesi');
+
+    submitData.append('signature', signature);
 
     try {
         const res = await fetch('{{ route("asesi.apl01.submit") }}', {

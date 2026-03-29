@@ -1,190 +1,128 @@
 @extends('layouts.app')
-@section('title', 'FR.AK.01 - Persetujuan Asesmen')
+@section('title', 'FR.AK.01 - Verifikasi Asesor')
 @section('page-title', 'FR.AK.01 - Persetujuan Asesmen dan Kerahasiaan')
-
 @section('sidebar')
 @include('asesor.partials.sidebar')
 @endsection
 
 @push('styles')
 <style>
-.info-row td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-.info-row td:first-child { color: #64748b; width: 35%; font-size: .9rem; }
-.status-badge-wrap { display: inline-flex; align-items: center; gap: 6px; }
-.cb-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
-.cb-item input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; }
+.info-row td { padding: 7px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.info-row td:first-child { color: #64748b; width: 38%; font-size: .88rem; }
+#sig-asesor { border: 2px dashed #cbd5e1; border-radius: 8px; cursor: crosshair; touch-action: none; background: #fafafa; }
+#sig-asesor.has-sig { border-color: #198754; border-style: solid; }
 </style>
 @endpush
 
 @section('content')
 
-{{-- ── Status Banner ── --}}
-@if(in_array($frak01->status, ['verified','approved']))
-<div class="alert alert-success d-flex align-items-center gap-3 mb-4">
+{{-- Status banner --}}
+@if(in_array($frak01->status, ['verified', 'approved']))
+<div class="alert alert-success d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">
     <i class="bi bi-check-circle-fill fs-4"></i>
-    <div><strong>FR.AK.01 sudah selesai</strong> — kedua pihak telah menandatangani.</div>
-    <div class="ms-auto d-flex gap-2">
-        <a href="{{ route('asesor.frak01.pdf', [$schedule, $asesmen]) }}" target="_blank" class="btn btn-sm btn-success">
-            <i class="bi bi-file-pdf me-1"></i> Lihat PDF
-        </a>
-    </div>
+    <div class="flex-grow-1"><strong>FR.AK.01 sudah selesai.</strong> Kedua pihak telah menandatangani.</div>
+    <a href="{{ route('asesor.frak01.pdf', [$schedule, $asesmen]) }}" target="_blank" class="btn btn-sm btn-success">
+        <i class="bi bi-file-pdf me-1"></i>Lihat PDF
+    </a>
 </div>
 @elseif($frak01->status === 'submitted')
-<div class="alert alert-info d-flex align-items-center gap-3 mb-4">
-    <i class="bi bi-hourglass-split fs-4"></i>
-    <div><strong>Asesi sudah menandatangani</strong> — menunggu tanda tangan Asesor.</div>
+<div class="alert alert-info d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">
+    <i class="bi bi-pen fs-4"></i>
+    <div><strong>Asesi sudah menandatangani.</strong> Silakan review checklist bukti dan berikan tanda tangan Anda.</div>
 </div>
 @elseif($frak01->status === 'draft')
-<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
-    <i class="bi bi-exclamation-triangle fs-4"></i>
-    <div><strong>Menunggu tanda tangan Asesi</strong></div>
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">
+    <i class="bi bi-hourglass-split fs-4"></i>
+    <div><strong>Menunggu tanda tangan asesi.</strong> Asesi belum menandatangani FR.AK.01 ini.</div>
 </div>
 @endif
 
-<div class="card shadow-sm">
+<div class="card border-0 shadow-sm">
     <div class="card-header bg-primary text-white d-flex align-items-center gap-2">
         <i class="bi bi-file-earmark-check fs-5"></i>
-        <h5 class="mb-0">FR.AK.01 - PERSETUJUAN ASESMEN DAN KERAHASIAAN</h5>
+        <h5 class="mb-0">FR.AK.01 — Persetujuan Asesmen dan Kerahasiaan</h5>
     </div>
     <div class="card-body">
 
         <p class="text-muted mb-4">
-            Persetujuan Asesmen ini untuk menjamin bahwa Asesi telah diberi arahan secara rinci tentang
-            perencanaan dan proses asesmen.
+            Review data persetujuan asesmen di bawah ini. Setelah memverifikasi bahwa semua informasi
+            sudah benar, berikan tanda tangan Anda.
         </p>
 
-        {{-- ── Info Skema & Jadwal (read-only untuk asesor) ── --}}
-        <div class="card border-0 bg-light mb-4">
+        {{-- ── Info Jadwal ── --}}
+        <div class="card bg-light border-0 mb-4">
             <div class="card-body p-0">
                 <table class="table table-sm mb-0">
                     <tbody>
-                        <tr class="info-row">
-                            <td>Skema Sertifikasi</td>
-                            <td><strong>{{ $frak01->skema_judul ?? $asesmen->skema?->name ?? '-' }}</strong></td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>Nomor Skema</td>
-                            <td>{{ $frak01->skema_nomor ?? $asesmen->skema?->nomor_skema ?? '-' }}</td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>TUK</td>
-                            <td>{{ $frak01->tuk_nama ?? $asesmen->tuk?->name ?? '-' }}</td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>Nama Asesor</td>
-                            <td>{{ $frak01->nama_asesor ?? $asesor->nama ?? '-' }}</td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>Nama Asesi</td>
-                            <td>{{ $frak01->nama_asesi ?? $asesmen->full_name ?? '-' }}</td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>Hari / Tanggal</td>
-                            <td>{{ $frak01->hari_tanggal ?? $schedule->assessment_date->translatedFormat('l, d F Y') }}</td>
-                        </tr>
-                        <tr class="info-row">
-                            <td>Waktu</td>
-                            <td>{{ $frak01->waktu_asesmen ?? ($schedule->start_time . ($schedule->end_time ? ' – ' . $schedule->end_time : '')) }}</td>
-                        </tr>
+                        <tr class="info-row"><td>Skema</td><td><strong>{{ $frak01->skema_judul ?? $asesmen->skema?->name ?? '-' }}</strong></td></tr>
+                        <tr class="info-row"><td>Nomor Skema</td><td>{{ $frak01->skema_nomor ?? $asesmen->skema?->code ?? '-' }}</td></tr>
+                        <tr class="info-row"><td>TUK</td><td>{{ $frak01->tuk_nama ?? $asesmen->tuk?->name ?? '-' }}</td></tr>
+                        <tr class="info-row"><td>Nama Asesor</td><td>{{ $asesor->nama }}</td></tr>
+                        <tr class="info-row"><td>Nama Asesi</td><td><strong>{{ $asesmen->full_name }}</strong></td></tr>
+                        <tr class="info-row"><td>Hari / Tanggal</td><td>{{ $frak01->hari_tanggal ?? $schedule->assessment_date->translatedFormat('l, d F Y') }}</td></tr>
+                        <tr class="info-row"><td>Waktu</td><td>{{ $frak01->waktu_asesmen ?? ($schedule->start_time . ' – ' . $schedule->end_time) }}</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {{-- ── Bukti (asesor bisa update jika masih draft) ── --}}
+        {{-- ── Checklist Bukti (read-only, diisi asesi) ── --}}
         <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Bukti yang Akan Dikumpulkan</h6>
+            <div class="card-header bg-light fw-semibold">
+                <i class="bi bi-clipboard-check me-2"></i>Bukti yang Dikumpulkan
+                <span class="text-muted fw-normal small ms-1">— Diisi oleh asesi</span>
             </div>
             <div class="card-body">
-                @if($frak01->status === 'draft')
-                <p class="small text-muted mb-3">Centang bukti yang akan dikumpulkan dalam proses asesmen ini, lalu simpan.</p>
-                <form id="bukti-form">
-                    @csrf
-                    <div class="row g-2">
-                        @php
-                        $buktis = [
-                            ['field' => 'bukti_verifikasi_portofolio',     'label' => 'Hasil Verifikasi Portofolio'],
-                            ['field' => 'bukti_hasil_review_produk',        'label' => 'Hasil Review Produk'],
-                            ['field' => 'bukti_observasi_langsung',         'label' => 'Hasil Observasi Langsung'],
-                            ['field' => 'bukti_hasil_kegiatan_terstruktur', 'label' => 'Hasil Kegiatan Terstruktur'],
-                            ['field' => 'bukti_pertanyaan_lisan',           'label' => 'Hasil Pertanyaan Lisan'],
-                            ['field' => 'bukti_pertanyaan_tertulis',        'label' => 'Hasil Pertanyaan Tertulis'],
-                            ['field' => 'bukti_pertanyaan_wawancara',       'label' => 'Hasil Pertanyaan Wawancara'],
-                        ];
-                        @endphp
-                        @foreach($buktis as $b)
-                        <div class="col-md-6">
-                            <div class="cb-item">
-                                <input type="checkbox" name="{{ $b['field'] }}" id="{{ $b['field'] }}"
-                                    {{ $frak01->{$b['field']} ? 'checked' : '' }}>
-                                <label for="{{ $b['field'] }}">{{ $b['label'] }}</label>
-                            </div>
-                        </div>
-                        @endforeach
-                        <div class="col-md-6">
-                            <div class="cb-item">
-                                <input type="checkbox" name="bukti_lainnya" id="bukti_lainnya"
-                                    {{ $frak01->bukti_lainnya ? 'checked' : '' }}
-                                    onchange="document.getElementById('lainnya-text').style.display = this.checked ? 'block' : 'none'">
-                                <label for="bukti_lainnya">Lainnya</label>
-                            </div>
-                            <input type="text" name="bukti_lainnya_keterangan" id="lainnya-text"
-                                class="form-control form-control-sm mt-1"
-                                style="{{ $frak01->bukti_lainnya ? '' : 'display:none;' }}"
-                                placeholder="Sebutkan bukti lainnya..."
-                                value="{{ $frak01->bukti_lainnya_keterangan }}">
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm mt-3" onclick="saveBukti()">
-                        <i class="bi bi-save me-1"></i> Simpan Bukti
-                    </button>
-                </form>
-                @else
                 <div class="row g-2">
                     @php
-                    $allBuktis = [
+                    $buktis = [
                         ['field' => 'bukti_verifikasi_portofolio',     'label' => 'Hasil Verifikasi Portofolio'],
                         ['field' => 'bukti_hasil_review_produk',        'label' => 'Hasil Review Produk'],
                         ['field' => 'bukti_observasi_langsung',         'label' => 'Hasil Observasi Langsung'],
                         ['field' => 'bukti_hasil_kegiatan_terstruktur', 'label' => 'Hasil Kegiatan Terstruktur'],
                         ['field' => 'bukti_pertanyaan_lisan',           'label' => 'Hasil Pertanyaan Lisan'],
                         ['field' => 'bukti_pertanyaan_tertulis',        'label' => 'Hasil Pertanyaan Tertulis'],
-                        ['field' => 'bukti_lainnya',                    'label' => 'Lainnya' . ($frak01->bukti_lainnya_keterangan ? ': ' . $frak01->bukti_lainnya_keterangan : '')],
                         ['field' => 'bukti_pertanyaan_wawancara',       'label' => 'Hasil Pertanyaan Wawancara'],
+                        ['field' => 'bukti_lainnya',                    'label' => 'Lainnya' . ($frak01->bukti_lainnya_keterangan ? ': ' . $frak01->bukti_lainnya_keterangan : '')],
                     ];
                     @endphp
-                    @foreach($allBuktis as $b)
-                    <div class="col-md-6 d-flex align-items-center gap-2">
-                        <i class="bi {{ $frak01->{$b['field']} ? 'bi-check-square-fill text-primary' : 'bi-square text-muted' }}"></i>
-                        <span class="{{ $frak01->{$b['field']} ? '' : 'text-muted' }}">{{ $b['label'] }}</span>
+                    @foreach($buktis as $b)
+                    <div class="col-md-6 d-flex align-items-center gap-2 py-1">
+                        <i class="bi {{ $frak01->{$b['field']} ? 'bi-check-square-fill text-primary' : 'bi-square text-muted' }} fs-5"></i>
+                        <span class="{{ $frak01->{$b['field']} ? 'fw-semibold' : 'text-muted' }} small">
+                            {{ $b['label'] }}
+                        </span>
                     </div>
                     @endforeach
                 </div>
-                @endif
             </div>
         </div>
 
         {{-- ── Tanda Tangan ── --}}
         <div class="row g-3 mb-4">
+
             {{-- TTD Asesi (read-only) --}}
             <div class="col-md-6">
                 <div class="card h-100">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <span class="small fw-bold">Tanda Tangan Asesi</span>
                         @if($frak01->ttd_asesi)
-                        <span class="badge bg-success">Sudah TTD</span>
+                            <span class="badge bg-success">Sudah TTD</span>
                         @else
-                        <span class="badge bg-secondary">Belum TTD</span>
+                            <span class="badge bg-secondary">Belum TTD</span>
                         @endif
                     </div>
                     <div class="card-body text-center">
                         @if($frak01->ttd_asesi)
-                        <img src="{{ $frak01->ttd_asesi_image }}" style="max-height:80px; max-width:100%;" alt="TTD Asesi">
+                        <img src="{{ $frak01->ttd_asesi_image }}"
+                            style="max-height:80px; max-width:100%;" alt="TTD Asesi">
                         <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesi }}</div>
-                        <div class="small text-muted">{{ $frak01->tanggal_ttd_asesi?->format('d M Y H:i') }}</div>
+                        <div class="text-muted small">{{ $frak01->tanggal_ttd_asesi?->format('d M Y, H:i') }}</div>
                         @else
-                        <div class="text-muted small py-4">Menunggu tanda tangan asesi</div>
+                        <div class="py-4 text-muted">
+                            <i class="bi bi-hourglass-split fs-2 d-block mb-2 opacity-50"></i>
+                            <span class="small">Menunggu tanda tangan asesi</span>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -192,35 +130,38 @@
 
             {{-- TTD Asesor --}}
             <div class="col-md-6">
-                <div class="card h-100">
+                <div class="card h-100 {{ $frak01->status === 'submitted' ? 'border-success' : '' }}">
                     <div class="card-header bg-light d-flex justify-content-between align-items-center">
                         <span class="small fw-bold">Tanda Tangan Asesor</span>
                         @if($frak01->ttd_asesor)
-                        <span class="badge bg-success">Sudah TTD</span>
+                            <span class="badge bg-success">Sudah TTD</span>
                         @else
-                        <span class="badge bg-secondary">Belum TTD</span>
+                            <span class="badge bg-secondary">Belum TTD</span>
                         @endif
                     </div>
                     <div class="card-body">
                         @if($frak01->ttd_asesor)
                         <div class="text-center">
-                            <img src="{{ $frak01->ttd_asesor_image }}" style="max-height:80px; max-width:100%;" alt="TTD Asesor">
+                            <img src="{{ $frak01->ttd_asesor_image }}"
+                                style="max-height:80px; max-width:100%;" alt="TTD Asesor">
                             <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesor }}</div>
-                            <div class="small text-muted">{{ $frak01->tanggal_ttd_asesor?->format('d M Y H:i') }}</div>
+                            <div class="text-muted small">{{ $frak01->tanggal_ttd_asesor?->format('d M Y, H:i') }}</div>
                         </div>
                         @elseif($frak01->status === 'submitted')
-                        {{-- Asesor belum TTD tapi asesi sudah -- tampilkan form TTD asesor --}}
-                        @include('partials._signature_pad', [
-                            'padId'    => 'asesor',
-                            'padLabel' => 'Tanda Tangan Asesor',
-                            'padHeight' => 180,
-                        ])
-                        <button class="btn btn-success btn-sm mt-3 w-100" onclick="signAsesor()">
-                            <i class="bi bi-pen me-1"></i> Tanda Tangan Asesor
-                        </button>
+                        {{-- Form TTD asesor --}}
+                        <canvas id="sig-asesor" width="100%" height="160" style="width:100%;"></canvas>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAsesorSig()">
+                                <i class="bi bi-eraser me-1"></i>Hapus
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm ms-auto" onclick="signAsesor()">
+                                <i class="bi bi-pen me-1"></i>Tanda Tangan
+                            </button>
+                        </div>
                         @else
-                        <div class="text-muted small text-center py-4">
-                            Tersedia setelah asesi menandatangani
+                        <div class="text-center py-4 text-muted">
+                            <i class="bi bi-lock fs-2 d-block mb-2 opacity-50"></i>
+                            <span class="small">Tersedia setelah asesi menandatangani</span>
                         </div>
                         @endif
                     </div>
@@ -230,11 +171,11 @@
 
         <div class="d-flex justify-content-between">
             <a href="{{ route('asesor.schedule.detail', $schedule) }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Kembali
+                <i class="bi bi-arrow-left me-1"></i>Kembali
             </a>
-            @if(in_array($frak01->status, ['verified','approved']))
+            @if(in_array($frak01->status, ['verified', 'approved']))
             <a href="{{ route('asesor.frak01.pdf', [$schedule, $asesmen]) }}" target="_blank" class="btn btn-primary">
-                <i class="bi bi-file-pdf me-1"></i> Lihat / Download PDF
+                <i class="bi bi-file-pdf me-1"></i>Download PDF
             </a>
             @endif
         </div>
@@ -247,69 +188,69 @@
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
+let sigPadAsesor = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    @if($frak01->status === 'submitted')
-    SigPadManager.init('asesor');
-    SigPadManager.init('asesor-apl02');
-    @endif
+    const canvas = document.getElementById('sig-asesor');
+    if (!canvas) return;
+
+    sigPadAsesor = new SignaturePad(canvas, { penColor: '#0f172a' });
+
+    function resize() {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width  = canvas.offsetWidth * ratio;
+        canvas.height = 160 * ratio;
+        canvas.getContext('2d').scale(ratio, ratio);
+        sigPadAsesor.clear();
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    sigPadAsesor.addEventListener('endStroke', () => canvas.classList.add('has-sig'));
 });
 
-async function saveBukti() {
-    const form = document.getElementById('bukti-form');
-    const data = new FormData(form);
-
-    try {
-        const res  = await fetch('{{ route("asesor.frak01.bukti", [$schedule, $asesmen]) }}', {
-            method: 'POST', body: data,
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
-        });
-        const json = await res.json();
-        if (json.success) {
-            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Data bukti berhasil disimpan.', timer: 1500, showConfirmButton: false });
-        } else {
-            Swal.fire('Gagal', json.message, 'error');
-        }
-    } catch (e) {
-        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+function clearAsesorSig() {
+    if (sigPadAsesor) {
+        sigPadAsesor.clear();
+        document.getElementById('sig-asesor')?.classList.remove('has-sig');
     }
 }
 
 async function signAsesor() {
-    if (SigPadManager.isEmpty('asesor')) {
-        Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Mohon tanda tangan di kotak yang tersedia.' });
+    if (!sigPadAsesor || sigPadAsesor.isEmpty()) {
+        Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Silakan tanda tangan terlebih dahulu.' });
         return;
     }
 
     const result = await Swal.fire({
-        title: 'Konfirmasi Tanda Tangan',
-        text: 'Anda akan menandatangani FR.AK.01 sebagai Asesor.',
+        title: 'Verifikasi FR.AK.01?',
+        text: 'Anda akan menandatangani dan memverifikasi FR.AK.01 ini.',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Ya, Tanda Tangan',
+        confirmButtonText: '<i class="bi bi-pen me-1"></i>Ya, Verifikasi',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#198754',
     });
     if (!result.isConfirmed) return;
 
-    const formData = new FormData();
-    formData.append('signature',   SigPadManager.getDataURL('asesor'));
-    formData.append('nama_asesor', '{{ $asesor->nama }}');
-
     try {
         const res  = await fetch('{{ route("asesor.frak01.sign", [$schedule, $asesmen]) }}', {
-            method: 'POST', body: formData,
-            headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({
+                signature:   sigPadAsesor.toDataURL('image/png'),
+                nama_asesor: '{{ $asesor->nama }}',
+            }),
         });
         const data = await res.json();
         if (data.success) {
-            Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message })
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, showConfirmButton: false, timer: 1800 })
                 .then(() => location.reload());
         } else {
             Swal.fire('Gagal', data.message, 'error');
         }
     } catch (e) {
-        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+        Swal.fire('Error', 'Terjadi kesalahan.', 'error');
     }
 }
 </script>

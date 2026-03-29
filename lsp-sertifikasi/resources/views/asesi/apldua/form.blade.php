@@ -412,7 +412,8 @@
             @include('partials._signature_pad', [
                 'padId'    => 'asesi-apl02',
                 'padLabel' => 'Tanda Tangan Pemohon',
-                'padHeight' => 200,
+                'padHeight' => 180,
+                'savedSig' => auth()->user()->signature_image,
             ])
         </div>
 
@@ -470,7 +471,7 @@ unitElemenMap[{{ $unit->id }}] = [
 @endforeach
 
 window.addEventListener('DOMContentLoaded', () => {
-    SigPadManager.init('asesi-apl02');
+    SigPadManager.init('asesi-apl02', @json(auth()->user()->signature_image));
     updateAllProgress();
 });
 
@@ -619,10 +620,75 @@ async function submitApldua() {
     // Cek semua terisi
     const answered = Object.values(jawaban).filter(j => j.jawaban).length;
     if (answered < TOTAL_EL) {
+        Object.entries(unitElemenMap).forEach(([unitId, elemenIds]) => {
+            const adaUnanswered = elemenIds.some(id => !jawaban[id]?.jawaban);
+            if (adaUnanswered) {
+                const body  = document.getElementById(`unit-body-${unitId}`);
+                const arrow = document.getElementById(`arrow-${unitId}`);
+                if (body && body.style.display === 'none') {
+                    body.style.display = 'block';
+                    if (arrow) arrow.style.transform = 'rotate(90deg)';
+                }
+            }
+        });
+
+        const firstUnanswered = document.querySelector('.elemen-row.unanswered');
+        if (firstUnanswered) firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
         Swal.fire({
             icon: 'warning',
             title: 'Belum Semua Elemen Diisi',
             text: `Masih ada ${TOTAL_EL - answered} elemen yang belum dijawab. Isi semua elemen terlebih dahulu.`,
+        });
+        return;
+    }
+
+    // Cek apakah ada jawaban BK
+    const countBKCheck = Object.values(jawaban).filter(j => j.jawaban === 'BK').length;
+    if (countBKCheck > 0) {
+        // Cari nama elemen yang BK untuk ditampilkan
+        const bkElemen = [];
+        document.querySelectorAll('.jawaban-btn.BK.active').forEach(btn => {
+            const elemenId = btn.dataset.elemen;
+            const row = document.getElementById(`row-${elemenId}`);
+            const judulEl = row?.querySelector('.fw-semibold.small');
+            if (judulEl) bkElemen.push(judulEl.textContent.trim());
+        });
+
+        const bkList = bkElemen.slice(0, 5).map(j => `<li>${j}</li>`).join('');
+        const sisanya = bkElemen.length > 5 ? `<li><em>...dan ${bkElemen.length - 5} elemen lainnya</em></li>` : '';
+
+    // Auto-expand unit yang mengandung BK
+    Object.entries(unitElemenMap).forEach(([unitId, elemenIds]) => {
+        const adaBK = elemenIds.some(id => jawaban[id]?.jawaban === 'BK');
+        if (adaBK) {
+            const body  = document.getElementById(`unit-body-${unitId}`);
+            const arrow = document.getElementById(`arrow-${unitId}`);
+            if (body && body.style.display === 'none') {
+                body.style.display = 'block';
+                if (arrow) arrow.style.transform = 'rotate(90deg)';
+            }
+        }
+    });
+
+    // Scroll ke elemen BK pertama
+    const firstBKRow = document.querySelector('.elemen-row.answered-BK');
+    if (firstBKRow) firstBKRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Terdapat Elemen Belum Kompeten',
+            html: `
+                <p class="mb-2">Anda memiliki <strong>${countBKCheck} elemen</strong> yang dinilai <span class="text-danger fw-bold">Belum Kompeten (BK)</span>.</p>
+                <ul class="text-start small ps-3 mb-3" style="max-height:150px;overflow-y:auto;">
+                    ${bkList}${sisanya}
+                </ul>
+                <div class="alert alert-warning py-2 mb-0 small text-start">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Silakan tinjau kembali penilaian Anda.
+                </div>`,
+            confirmButtonText: 'Tinjau Kembali',
+            confirmButtonColor: '#dc3545',
         });
         return;
     }
@@ -689,7 +755,8 @@ async function submitApldua() {
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             body: (() => {
                 const fd = new FormData();
-                fd.append('signature', SigPadManager.getDataURL('asesi-apl02'));
+                const signature = await SigPadManager.getSignatureImage('asesi-apl02');
+                fd.append('signature', signature);
                 return fd;
             })(),
         });

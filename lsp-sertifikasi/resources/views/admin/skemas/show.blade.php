@@ -87,10 +87,6 @@
                         <td class="text-muted small">Biaya</td>
                         <td class="fw-bold">Rp {{ number_format($skema->fee, 0, ',', '.') }}</td>
                     </tr>
-                    <tr>
-                        <td class="text-muted small">Durasi</td>
-                        <td>{{ $skema->duration_days }} hari</td>
-                    </tr>
                     @if($skema->tanggal_pengesahan)
                     <tr>
                         <td class="text-muted small">Tgl. Pengesahan</td>

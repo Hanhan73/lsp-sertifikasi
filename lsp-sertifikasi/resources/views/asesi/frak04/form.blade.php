@@ -242,6 +242,7 @@
                         'padId'    => 'asesi-banding',
                         'padLabel' => 'Tanda Tangan Pengaju Banding',
                         'padHeight' => 180,
+                        'savedSig' => auth()->user()->signature_image,
                     ])
 
                     <div class="form-check mt-3 mb-3">
@@ -294,7 +295,7 @@ function toggleForm(checkbox) {
     if (checkbox.checked) {
         form.style.opacity = '1';
         form.style.pointerEvents = 'auto';
-        SigPadManager.init('asesi-banding');
+        SigPadManager.init('asesi-banding, @json(auth()->user()->signature_image));
     } else {
         form.style.opacity = '.4';
         form.style.pointerEvents = 'none';
@@ -354,12 +355,14 @@ async function submitBanding() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Mengajukan...';
 
+    const signature = await SigPadManager.prepareAndGet('asesi');
+
     const formData = new FormData();
     formData.append('proses_banding_dijelaskan',   q1);
     formData.append('sudah_diskusi_dengan_asesor', q2);
     formData.append('melibatkan_orang_lain',       q3);
     formData.append('alasan_banding',              alasan);
-    formData.append('signature',                   SigPadManager.getDataURL('asesi-banding'));
+    formData.append('signature',                   signature);
     formData.append('nama_asesi',                  '{{ $asesmen->full_name }}');
 
     try {

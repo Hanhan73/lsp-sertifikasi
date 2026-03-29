@@ -485,7 +485,7 @@
                         <a href="{{ route('admin.dashboard') }}" class="btn btn-primary-custom">
                             <i class="bi bi-speedometer2"></i> Dashboard Admin
                         </a>
-                        <a href="{{ route('admin.verifications') }}" class="btn btn-secondary-custom">
+                        <a href="{{ route('admin.praasesmen.index') }}" class="btn btn-secondary-custom">
                             <i class="bi bi-check-circle"></i> Verifikasi Data
                         </a>
                     </div>

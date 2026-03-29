@@ -229,7 +229,7 @@
                 <a href="{{ route('asesi.apldua') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-file-earmark-check me-1"></i>Isi APL-02
                 </a>
-                <a href="{{route('asesi.frak01}}" class="btn btn-outline-primary btn-sm">
+                <a href="{{route('asesi.frak01')}}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-journal-text me-1"></i>Isi FRAK-01
                 </a>
                 @endif

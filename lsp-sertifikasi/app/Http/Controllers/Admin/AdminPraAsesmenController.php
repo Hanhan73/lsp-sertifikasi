@@ -109,7 +109,7 @@ class AdminPraAsesmenController extends Controller
 
         Log::info("Admin #{auth()->id()} memulai asesmen batch {$request->batch_id}: {$asesmens->count()} asesi.");
 
-        return redirect()->route('admin.pra-asesmen.index')
+        return redirect()->route('admin.praasesmen.index')
             ->with('success', "{$asesmens->count()} asesi dalam batch {$request->batch_id} berhasil dimulai!");
     }
 
@@ -207,7 +207,7 @@ public function processBatchFee(Request $request)
 
         $message = "Batch berhasil ditetapkan biaya! {$count} asesi dengan total biaya Rp " . number_format($totalAmount, 0, ',', '.');
 
-        return redirect()->route('admin.pra-asesmen.index')
+        return redirect()->route('admin.praasesmen.index')
             ->with('success', $message);
 
     } catch (\Exception $e) {

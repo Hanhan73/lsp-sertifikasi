@@ -424,8 +424,8 @@ function validateAndPreview(data) {
 
     data.forEach((row, index) => {
         const rowNumber = index + 2;
-        const name = row['Nama Lengkap'] || row['nama_lengkap'] || '';
-        const email = row['Email'] || row['email'] || '';
+        const name = (row['Nama Lengkap'] || row['nama_lengkap'] || '').toString().trim();
+        const email = (row['Email'] || row['email'] || '').toString().trim().toLowerCase();        
         let rowErrors = [];
 
         if (!name) rowErrors.push('Nama wajib diisi');

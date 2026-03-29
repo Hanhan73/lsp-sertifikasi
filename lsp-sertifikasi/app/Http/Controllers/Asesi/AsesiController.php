@@ -909,12 +909,13 @@ public function aplsatuBuktiSave(Request $request)
             'rows.*.jawaban'    => 'nullable|in:K,BK',
             'rows.*.bukti'      => 'nullable|string|max:1000',
         ]);
-
-        $asesmen = auth()->user()->asesmens()->whereNotNull('schedule_id')->latest()->first();
+    
+        // ✅ Hapus whereNotNull('schedule_id') — sama seperti method apldua() GET
+        $asesmen = auth()->user()->asesmens()->latest()->first();
         if (!$asesmen) {
             return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
         }
-
+    
         $apldua = $asesmen->apldua;
         if (!$apldua) {
             return response()->json(['success' => false, 'message' => 'APL-02 tidak ditemukan.'], 404);
@@ -922,24 +923,24 @@ public function aplsatuBuktiSave(Request $request)
         if (!$apldua->is_editable) {
             return response()->json(['success' => false, 'message' => 'APL-02 sudah tidak dapat diubah.'], 403);
         }
-
+    
         foreach ($request->rows as $row) {
             \App\Models\AplDuaJawaban::updateOrCreate(
                 ['apl_02_id' => $apldua->id, 'elemen_id' => $row['elemen_id']],
                 ['jawaban' => $row['jawaban'] ?? null, 'bukti' => $row['bukti'] ?? null]
             );
         }
-
+    
         // Hitung progress
         $total    = $apldua->jawabans()->count();
         $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
-
+    
         \Log::info('[APL02-SAVE] Saved', [
             'apldua_id' => $apldua->id,
             'rows'      => count($request->rows),
             'progress'  => "{$answered}/{$total}",
         ]);
-
+    
         return response()->json([
             'success'  => true,
             'message'  => 'Tersimpan.',
@@ -955,12 +956,13 @@ public function aplsatuBuktiSave(Request $request)
         $request->validate([
             'signature' => 'required|string',
         ]);
-
-        $asesmen = auth()->user()->asesmens()->whereNotNull('schedule_id')->latest()->first();
+    
+        // ✅ Hapus whereNotNull('schedule_id') — sama seperti method apldua() GET
+        $asesmen = auth()->user()->asesmens()->latest()->first();
         if (!$asesmen) {
             return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
         }
-
+    
         $apldua = $asesmen->apldua;
         if (!$apldua) {
             return response()->json(['success' => false, 'message' => 'APL-02 tidak ditemukan.'], 404);
@@ -968,7 +970,7 @@ public function aplsatuBuktiSave(Request $request)
         if (!$apldua->is_editable) {
             return response()->json(['success' => false, 'message' => 'APL-02 sudah disubmit.'], 400);
         }
-
+    
         // Validasi semua elemen sudah dijawab
         $total    = $apldua->jawabans()->count();
         $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
@@ -978,21 +980,22 @@ public function aplsatuBuktiSave(Request $request)
                 'message' => "Semua elemen harus dijawab terlebih dahulu. ({$answered}/{$total} sudah diisi)",
             ], 422);
         }
-
+    
         $sig = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
-
+    
         $apldua->update([
-            'status'           => 'submitted',
-            'ttd_asesi'        => $sig,
-            'nama_ttd_asesi'   => $asesmen->full_name,
+            'status'            => 'submitted',
+            'ttd_asesi'         => $sig,
+            'nama_ttd_asesi'    => $asesmen->full_name,
             'tanggal_ttd_asesi' => now(),
-            'submitted_at'     => now(),
+            'submitted_at'      => now(),
         ]);
-
+    
         \Log::info('[APL02-SUBMIT] Submitted', ['apldua_id' => $apldua->id]);
-
+    
         return response()->json(['success' => true, 'message' => 'APL-02 berhasil disubmit!']);
     }
+    
     
     /**
      * Preview / Download PDF APL-02 (hanya jika sudah verified)

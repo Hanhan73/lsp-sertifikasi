@@ -525,15 +525,6 @@
                             @enderror
                         </div>
 
-                        @if($asesmen->is_collective || $asesmen->lock_tuk)
-                        <div class="col-12">
-                            <div class="alert alert-warning mt-2">
-                                <i class="bi bi-lock-fill"></i>
-                                Data Skema & TUK sudah ditentukan dan tidak dapat diubah.
-                            </div>
-                        </div>
-                        @endif
-
                         @if(!$isCollective)
                             <!-- Hanya tampil untuk Mandiri -->
                             <div class="col-md-6 mb-3">
@@ -546,14 +537,6 @@
                                 @error('preferred_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                            </div>
-                        @else
-                            <!-- Untuk kolektif, tanggal sudah diset oleh TUK -->
-                            <div class="col-12 mb-3">
-                                <div class="alert alert-info">
-                                    <i class="bi bi-info-circle"></i>
-                                    <strong>Pendaftaran Kolektif:</strong> Tanggal asesmen dan opsi pelatihan sudah ditentukan oleh TUK Anda.
-                                </div>
                             </div>
                         @endif
                     </div>
@@ -569,10 +552,6 @@
                                     <i class="bi bi-question-circle-fill"></i>
                                     Apakah Anda ingin mengikuti pelatihan sebelum asesmen?
                                 </h6>
-                                <p class="text-muted mb-3">
-                                    Pelatihan akan membantu Anda mempersiapkan diri dengan lebih baik untuk menghadapi
-                                    proses asesmen.
-                                </p>
                             </div>
 
                             <div class="row">

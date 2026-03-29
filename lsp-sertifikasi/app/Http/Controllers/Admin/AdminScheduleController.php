@@ -27,7 +27,7 @@ class AdminScheduleController extends Controller
 
     /**
      * Kriteria asesi siap dijadwalkan:
-     * - Status: pra_asesmen_started (atau status yang setara)
+     * - Status: pra_pra_asesmen_started (atau status yang setara)
      * - APL-01: sudah diverifikasi (status verified/approved)
      * - APL-02: sudah disubmit (tidak null, status bukan draft)
      * - FR.AK.01: sudah disubmit (tidak null, status bukan draft)
@@ -125,10 +125,11 @@ class AdminScheduleController extends Controller
             'assessment_date' => 'required|date|after_or_equal:today',
             'start_time'      => 'required',
             'end_time'        => 'required|after:start_time',
+            'location_type'   => 'required|in:offline,online',
             'location'        => 'required|string|max:255',
+            'meeting_link'    => 'nullable|url|max:500|required_if:location_type,online',
             'notes'           => 'nullable|string',
         ]);
-
         // Validasi asesi: harus sudah memenuhi kriteria dan belum terjadwal
         $asesmens = $this->readyToScheduleQuery()
             ->whereIn('id', $request->asesmen_ids)
@@ -158,10 +159,13 @@ class AdminScheduleController extends Controller
                 'start_time'      => $request->start_time,
                 'end_time'        => $request->end_time,
                 'location'        => $request->location,
+                'location_type'   => $request->location_type,           // ← tambah
+                'meeting_link'    => $request->location_type === 'online'
+                                        ? $request->meeting_link
+                                        : null,                          // ← tambah
                 'notes'           => $request->notes,
                 'created_by'      => auth()->id(),
                 'approval_status' => 'pending_approval',
-                // Asesor bisa sudah ditugaskan dari awal
                 'asesor_id'       => $request->asesor_id ?: null,
             ]);
 
@@ -239,19 +243,22 @@ class AdminScheduleController extends Controller
             'assessment_date' => 'required|date',
             'start_time'      => 'required',
             'end_time'        => 'required|after:start_time',
+            'location_type'   => 'required|in:offline,online',
             'location'        => 'required|string|max:255',
+            'meeting_link'    => 'nullable|url|max:500|required_if:location_type,online',
             'notes'           => 'nullable|string',
         ]);
-
-        $data = $request->only(['assessment_date', 'start_time', 'end_time', 'location', 'notes']);
-
+        
+        $data = $request->only(['assessment_date', 'start_time', 'end_time', 'location', 'location_type', 'notes']);
+        $data['meeting_link'] = $request->location_type === 'online' ? $request->meeting_link : null;
+        
         // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
         if ($schedule->isRejected()) {
             $data['approval_status'] = 'pending_approval';
             $data['approval_notes']  = null;
             $data['rejected_at']     = null;
         }
-
+        
         $schedule->update($data);
 
         if ($request->wantsJson()) {

@@ -63,7 +63,7 @@ class AdminPraAsesmenController extends Controller
         ]);
 
         $asesmen->update([
-            'status'           => 'asesmen_started',
+            'status'           => 'pra_asesmen_started',
             'admin_started_by' => auth()->id(),
             'admin_started_at' => now(),
         ]);
@@ -95,7 +95,7 @@ class AdminPraAsesmenController extends Controller
         try {
             foreach ($asesmens as $asesmen) {
                 $asesmen->update([
-                    'status'           => 'asesmen_started',
+                    'status'           => 'pra_asesmen_started',
                     'admin_started_by' => auth()->id(),
                     'admin_started_at' => now(),
                 ]);

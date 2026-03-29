@@ -186,7 +186,7 @@
                     @foreach([
                         ['key' => 'registered',      'label' => 'Terdaftar',     'color' => 'secondary'],
                         ['key' => 'data_completed',  'label' => 'Data Lengkap',  'color' => 'info'],
-                        ['key' => 'asesmen_started', 'label' => 'Asesmen Mulai', 'color' => 'primary'],
+                        ['key' => 'pra_asesmen_started', 'label' => 'Asesmen Mulai', 'color' => 'primary'],
                         ['key' => 'scheduled',       'label' => 'Terjadwal',     'color' => 'warning'],
                         ['key' => 'certified',       'label' => 'Tersertifikasi','color' => 'success'],
                     ] as $s)

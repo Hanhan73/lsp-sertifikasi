@@ -115,7 +115,7 @@
                 <div class="timeline">
 
                     @php
-                    $statusOrder = ['registered', 'data_completed', 'asesmen_started', 'scheduled',
+                    $statusOrder = ['registered', 'data_completed', 'pra_asesmen_started', 'scheduled',
                     'pre_assessment_completed', 'assessed', 'certified'];
                     $currentIndex = array_search($asesmen->status, $statusOrder) ?: 0;
 
@@ -134,7 +134,7 @@
                     ],
                     [
                     'label' => 'Admin Mulai Asesmen',
-                    'status' => 'asesmen_started',
+                    'status' => 'pra_asesmen_started',
                     'detail' => $asesmen->admin_started_at
                     ? $asesmen->admin_started_at->format('d M Y')
                     : 'Menunggu Admin LSP',
@@ -142,8 +142,8 @@
                     ],
                     [
                     'label' => 'Pengisian Dokumen',
-                    'status' => 'asesmen_started', // aktif saat asesmen_started
-                    'detail' => $asesmen->status === 'asesmen_started'
+                    'status' => 'pra_asesmen_started', // aktif saat pra_asesmen_started
+                    'detail' => $asesmen->status === 'pra_asesmen_started'
                     ? 'Sedang diisi'
                     : ($currentIndex > 2 ? 'Selesai' : 'Menunggu'),
                     'icon' => 'bi-file-earmark-text',
@@ -222,18 +222,21 @@
                 </a>
                 @endif
 
-                @if($asesmen->status === 'asesmen_started')
+                @if($asesmen->status === 'pra_asesmen_started')
                 <a href="{{ route('asesi.apl01') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-file-earmark-text me-1"></i>Isi APL-01
                 </a>
                 <a href="{{ route('asesi.apldua') }}" class="btn btn-outline-primary btn-sm">
                     <i class="bi bi-file-earmark-check me-1"></i>Isi APL-02
                 </a>
+                <a href="{{route('asesi.frak01}}" class="btn btn-outline-primary btn-sm">
+                    <i class="bi bi-journal-text me-1"></i>Isi FRAK-01
+                </a>
                 @endif
 
                 @if($asesmen->status === 'scheduled')
                 <a href="{{ route('asesi.schedule') }}" class="btn btn-warning btn-sm text-dark">
-                    <i class="bi bi-calendar-event me-1"></i>Lihat Jadwal & Dokumen
+                    <i class="bi bi-calendar-event me-1"></i>Lihat Jadwal
                 </a>
                 @endif
 
@@ -243,9 +246,6 @@
                 </a>
                 @endif
 
-                <a href="{{ route('asesi.tracking') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-clock-history me-1"></i>Lihat Timeline Lengkap
-                </a>
             </div>
         </div>
 

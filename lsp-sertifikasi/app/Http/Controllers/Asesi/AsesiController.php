@@ -339,7 +339,7 @@ class AsesiController extends Controller
 
         abort_if(!$asesmen, 404, 'Data asesmen tidak ditemukan.');
         abort_if(!in_array($asesmen->status, [
-            'asesmen_started', 'scheduled',
+            'pra_asesmen_started', 'scheduled',
             'pre_assessment_completed', 'assessed', 'certified'
         ]), 403, 'Halaman ini belum tersedia.');
 

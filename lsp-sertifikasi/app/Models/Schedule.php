@@ -21,6 +21,8 @@ class Schedule extends Model
         'start_time',
         'end_time',
         'location',
+        'location_type',   // ← baru: 'offline' | 'online'
+        'meeting_link',    // ← baru: URL meeting jika online
         'notes',
         'created_by',
         // Approval workflow
@@ -83,6 +85,65 @@ class Schedule extends Model
     public function assignmentHistories()
     {
         return $this->hasMany(ScheduleAsesorHistory::class)->orderBy('action_at', 'desc');
+    }
+
+    // =========================================================================
+    // Location helpers
+    // =========================================================================
+
+    public function isOnline(): bool
+    {
+        return $this->location_type === 'online';
+    }
+
+    public function isOffline(): bool
+    {
+        return $this->location_type === 'offline' || is_null($this->location_type);
+    }
+
+    /**
+     * Label jenis lokasi, e.g. "Online (Zoom)" atau "Offline"
+     */
+    public function getLocationTypeLabelAttribute(): string
+    {
+        return $this->isOnline() ? 'Online' : 'Offline';
+    }
+
+    public function getLocationTypeBadgeAttribute(): string
+    {
+        return $this->isOnline() ? 'primary' : 'secondary';
+    }
+
+    /**
+     * Teks lokasi yang ditampilkan ke user:
+     * - Offline → nama gedung/ruangan
+     * - Online  → nama platform dari URL, atau URL-nya langsung
+     */
+    public function getLocationDisplayAttribute(): string
+    {
+        if ($this->isOffline()) {
+            return $this->location ?? '-';
+        }
+
+        // Online: coba ekstrak nama platform dari URL
+        if ($this->meeting_link) {
+            $platform = $this->detectPlatform($this->meeting_link);
+            return $platform ? "{$platform}: {$this->location}" : $this->location;
+        }
+
+        return $this->location ?? '-';
+    }
+
+    private function detectPlatform(string $url): ?string
+    {
+        $host = parse_url(strtolower($url), PHP_URL_HOST) ?? '';
+        return match (true) {
+            str_contains($host, 'zoom')   => 'Zoom',
+            str_contains($host, 'meet')   => 'Google Meet',
+            str_contains($host, 'teams')  => 'MS Teams',
+            str_contains($host, 'webex')  => 'Webex',
+            default                        => null,
+        };
     }
 
     // =========================================================================

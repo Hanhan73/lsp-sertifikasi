@@ -108,7 +108,7 @@
 
     {{-- Kanan: Mulai Asesmen --}}
     <div class="col-lg-4">
-        <div class="card border-0 shadow-sm sticky-top" style="top:80px;">
+        <div class="card border-0 shadow-sm" style="top:80px;">
             <div class="card-header bg-primary text-white fw-semibold">
                 <i class="bi bi-play-circle me-2"></i>Mulai Asesmen Batch
             </div>
@@ -179,7 +179,6 @@
                         </a>
                     </div>
                 </form>
-
             </div>
         </div>
     </div>

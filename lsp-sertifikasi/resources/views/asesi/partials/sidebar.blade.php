@@ -22,7 +22,7 @@ $asesmen = auth()->user()->asesmen;
 
 {{-- ── Data Pribadi ── --}}
 {{-- Tampil saat registered (wajib lengkapi) atau data_completed (bisa lihat) --}}
-@if(in_array($asesmen->status, ['registered', 'data_completed', 'asesmen_started', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']))
+@if(in_array($asesmen->status, ['registered', 'data_completed', 'pra_asesmen_started', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']))
 <a href="{{ route('asesi.complete-data') }}"
     class="nav-link {{ $currentRoute == 'asesi.complete-data' ? 'active' : '' }}">
     <i class="bi bi-person-fill"></i>
@@ -61,7 +61,7 @@ $asesmen = auth()->user()->asesmen;
 <hr class="my-2 mx-3" style="border-color: rgba(255,255,255,0.2);">
 
 {{-- ── Dokumen Pra-Asesmen ── --}}
-@if(in_array($asesmen->status, ['asesmen_started', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']))
+@if(in_array($asesmen->status, ['pra_asesmen_started', 'scheduled', 'pre_assessment_completed', 'assessed', 'certified']))
 
 @php
     $aplStatus    = $asesmen->aplsatu?->status;
@@ -214,7 +214,7 @@ $asesmen = auth()->user()->asesmen;
                 $progress = match($asesmen->status) {
                     'registered'               => 10,
                     'data_completed'           => 25,
-                    'asesmen_started'          => 40,
+                    'pra_asesmen_started'          => 40,
                     'scheduled'                => 55,
                     'pre_assessment_completed' => 70,
                     'assessed'                 => 85,

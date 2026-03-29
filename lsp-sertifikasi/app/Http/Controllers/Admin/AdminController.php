@@ -22,7 +22,7 @@ class AdminController extends Controller
             'pending_mulai'        => Asesmen::where('status', 'data_completed')->count(),
 
             // Sudah dimulai, sedang isi dokumen
-            'sedang_asesmen'       => Asesmen::where('status', 'asesmen_started')->count(),
+            'sedang_asesmen'       => Asesmen::where('status', 'pra_pra_asesmen_started')->count(),
 
             // Sudah dijadwalkan
             'scheduled'            => Asesmen::where('status', 'scheduled')->count(),
@@ -86,7 +86,7 @@ class AdminController extends Controller
             'status_counts' => [
                 'registered'      => $batch->where('status', 'registered')->count(),
                 'data_completed'  => $batch->where('status', 'data_completed')->count(),
-                'asesmen_started' => $batch->where('status', 'asesmen_started')->count(),
+                'pra_asesmen_started' => $batch->where('status', 'pra_asesmen_started')->count(),
                 'scheduled'       => $batch->where('status', 'scheduled')->count(),
                 'certified'       => $batch->where('status', 'certified')->count(),
             ],

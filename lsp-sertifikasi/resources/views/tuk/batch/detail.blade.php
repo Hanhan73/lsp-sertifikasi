@@ -224,10 +224,6 @@
                 </a>
                 @endif
 
-                <a href="{{ route('tuk.schedules.index') }}" class="btn btn-outline-warning">
-                    <i class="bi bi-calendar-check"></i> Atur Jadwal Asesmen
-                </a>
-
                 <a href="{{ route('tuk.asesi') }}" class="btn btn-secondary">
                     <i class="bi bi-arrow-left"></i> Kembali ke Daftar
                 </a>

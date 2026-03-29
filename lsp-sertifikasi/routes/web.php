@@ -42,6 +42,7 @@ use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController;
 
 // Direktur
 use App\Http\Controllers\Direktur\DirekturScheduleController;
+use App\Http\Controllers\Direktur\DirekturDashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -507,11 +508,11 @@ Route::post('/profile/foto-asesor', [ProfileController::class, 'uploadFotoAsesor
 // ── Routes Direktur ─────────────────────────────────────────
 Route::prefix('direktur')
     ->name('direktur.')
-    ->middleware(['auth', 'direktur'])
+    ->middleware(['auth', 'role:direktur'])
     ->group(function () {
  
-        // Dashboard
-        Route::get('/', fn() => redirect()->route('direktur.schedules.index'))->name('dashboard');
+        // Dashboard (BARU)
+        Route::get('/', [DirekturDashboardController::class, 'index'])->name('dashboard');
  
         // Jadwal — approval workflow
         Route::prefix('schedules')->name('schedules.')->group(function () {

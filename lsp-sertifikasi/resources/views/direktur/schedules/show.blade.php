@@ -171,17 +171,6 @@
                     </span>
                 </div>
 
-                <div class="checklist-item {{ !$pesertaWarning ? 'ok' : 'warn' }}">
-                    <i class="bi bi-{{ !$pesertaWarning ? 'check-circle-fill text-success' : 'exclamation-triangle-fill text-warning' }}"></i>
-                    <span>
-                        @if($pesertaWarning)
-                        <strong>{{ $pesertaCount }} peserta</strong> cukup banyak — pertimbangkan asesor tambahan
-                        @else
-                        Jumlah peserta dalam batas wajar
-                        @endif
-                    </span>
-                </div>
-
                 <div class="checklist-item {{ $hasAsesor ? 'ok' : 'warn' }}">
                     <i class="bi bi-{{ $hasAsesor ? 'check-circle-fill text-success' : 'exclamation-triangle-fill text-warning' }}"></i>
                     <span>Asesor: {{ $hasAsesor ? $schedule->asesor->nama : 'Belum ditugaskan (opsional)' }}</span>

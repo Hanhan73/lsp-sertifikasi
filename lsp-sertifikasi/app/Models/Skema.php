@@ -38,6 +38,11 @@ class Skema extends Model
             ->withTimestamps();
     }
 
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class);
+    }
+
     public function getJenisLabelAttribute()
     {
         return match($this->jenis_skema) {

@@ -254,10 +254,10 @@
                         </td>
                         <td class="small text-muted">{{ $asesmen->registration_date->format('d/m/Y') }}</td>
                         <td>
-                            <button class="btn btn-sm btn-outline-primary"
-                                onclick="viewDetail({{ $asesmen->id }})" title="Detail">
+                          <a href="{{ route('admin.asesi.show', $asesmen) }}"
+                                class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Lihat Detail">
                                 <i class="bi bi-eye"></i>
-                            </button>
+                            </a>
                         </td>
                     </tr>
                     @empty

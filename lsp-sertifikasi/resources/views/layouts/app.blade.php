@@ -14,6 +14,9 @@
     <!-- DataTables -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/icon-lsp.png') }}">
+
+
 
     <style>
     :root {

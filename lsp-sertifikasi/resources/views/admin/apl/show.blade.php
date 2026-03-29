@@ -292,7 +292,7 @@
                         Nama Lengkap Admin <span class="text-danger">*</span>
                     </label>
                     <input type="text" id="admin-nama-input" class="form-control form-control-lg"
-                        value="Anggriawan" readonly>
+                        value="Anggriawan Oktobisono, S.Pd." readonly>
                     <div class="form-text">Nama ini akan tercetak di dokumen PDF APL-01.</div>
                 </div>
 

@@ -103,12 +103,17 @@ class ProfileController extends Controller
 
         $user = auth()->user();
 
+        // hapus foto lama
         if ($user->photo_path) {
             Storage::disk('public')->delete($user->photo_path);
         }
 
+        // simpan foto baru
         $path = $request->file('photo')->store('profile-photos', 'public');
-        $user->update(['photo_path' => $path]);
+
+        $user->update([
+            'photo_path' => $path
+        ]);
 
         return back()->with('success', 'Foto profil berhasil diupdate!');
     }
@@ -129,29 +134,4 @@ class ProfileController extends Controller
         return back()->with('error', 'Tidak ada foto profil untuk dihapus.');
     }
 
-    /**
-     * Upload foto khusus Asesor (disimpan di tabel asesors.foto_path)
-     */
-    public function uploadFotoAsesor(Request $request)
-    {
-        $request->validate([
-            'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        $user   = auth()->user();
-        $asesor = $user->asesor;
-
-        if (!$asesor) {
-            return back()->with('error', 'Data asesor tidak ditemukan.');
-        }
-
-        if ($asesor->foto_path) {
-            Storage::disk('public')->delete($asesor->foto_path);
-        }
-
-        $path = $request->file('foto')->store('asesors/foto', 'public');
-        $asesor->update(['foto_path' => $path]);
-
-        return back()->with('success', 'Foto profil berhasil diupdate!');
-    }
 }

@@ -3,8 +3,8 @@
 @section('page-title', 'Profil Saya')
 
 @section('sidebar')
-    {{-- sidebar admin sudah ada --}}
-    @include('admin.partials.sidebar')
+{{-- sidebar admin sudah ada --}}
+@include('admin.partials.sidebar')
 @endsection
 
 @section('content')
@@ -14,12 +14,13 @@
     {{-- Kartu Identitas --}}
     <div class="col-lg-4">
         @include('profile.partials.identity-card', [
-            'avatarLabel' => strtoupper(substr($user->name, 0, 1)),
-            'name'        => $user->name,
-            'email'       => $user->email,
-            'roleLabel'   => 'Administrator',
-            'roleBadge'   => 'danger',
-            'extraRows'   => [],
+        'avatarLabel' => strtoupper(substr($user->name, 0, 1)),
+        'name' => $user->name,
+        'email' => $user->email,
+        'roleLabel' => 'Administrator',
+        'roleBadge' => 'danger',
+        'extraRows' => [],
+        'photoUrl' => $user->photo_path ? asset('storage/' . $user->photo_path) : null, // ← tambah ini
         ])
     </div>
 
@@ -27,8 +28,8 @@
     <div class="col-lg-8">
         {{-- Form Info --}}
         @include('profile.partials.form-info', [
-            'nameValue'  => $user->name,
-            'emailValue' => $user->email,
+        'nameValue' => $user->name,
+        'emailValue' => $user->email,
         ])
 
         {{-- Form Password --}}

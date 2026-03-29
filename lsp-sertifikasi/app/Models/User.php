@@ -21,6 +21,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'password_changed_at',
         'email_verified_at',
         'signature',
+        'photo_path',
     ];
 
     protected $hidden = [
@@ -167,13 +168,6 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'direktur';
     }
 
-    public function getPhotoUrlAttribute()
-    {
-        if ($this->photo_path ?? false) {
-            return asset('storage/' . $this->photo_path);
-        }
-        return asset('images/default-avatar.png');
-    }
 
     /**
      * TTD yang sudah tersimpan, siap pakai sebagai data URI.
@@ -184,6 +178,13 @@ class User extends Authenticatable implements MustVerifyEmail
         return str_starts_with($this->signature, 'data:image')
             ? $this->signature
             : 'data:image/png;base64,' . $this->signature;
+    }
+
+    public function getPhotoUrlAttribute()
+    {
+        return $this->photo_path
+            ? asset('storage/' . $this->photo_path)
+            : asset('images/default-avatar.png');
     }
 
     /**

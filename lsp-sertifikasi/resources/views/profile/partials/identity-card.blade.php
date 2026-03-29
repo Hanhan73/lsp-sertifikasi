@@ -15,13 +15,11 @@
         {{-- Avatar / Foto --}}
         <div class="mb-3">
             @if(!empty($photoUrl))
-            <img src="{{ $photoUrl }}"
-                 class="rounded-circle border shadow-sm"
-                 style="width:90px;height:90px;object-fit:cover;" alt="Foto Profil">
+            <img src="{{ $photoUrl }}" class="rounded-circle border shadow-sm"
+                style="width:90px;height:90px;object-fit:cover;" alt="Foto Profil">
             @else
             <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center
-                        text-white fw-bold mx-auto"
-                 style="width:90px;height:90px;font-size:2rem;">
+                        text-white fw-bold mx-auto" style="width:90px;height:90px;font-size:2rem;">
                 {{ $avatarLabel }}
             </div>
             @endif
@@ -34,16 +32,27 @@
         {{-- Upload foto (hanya jika ada route photo) --}}
         @if(Route::has('profile.upload-photo'))
         <form action="{{ route('profile.upload-photo') }}" method="POST" enctype="multipart/form-data"
-              id="form-foto-user" class="mb-3">
+            id="form-foto-user" class="mb-2">
             @csrf
-            <input type="file" name="photo" id="foto-user" class="d-none"
-                   accept="image/jpeg,image/png,image/jpg"
-                   onchange="document.getElementById('form-foto-user').submit()">
+            <input type="file" name="photo" id="foto-user" class="d-none" accept="image/jpeg,image/png,image/jpg"
+                onchange="document.getElementById('form-foto-user').submit()">
             <button type="button" class="btn btn-sm btn-outline-secondary w-100"
-                    onclick="document.getElementById('foto-user').click()">
+                onclick="document.getElementById('foto-user').click()">
                 <i class="bi bi-camera me-1"></i> Ganti Foto
             </button>
         </form>
+
+        {{-- Tombol hapus foto, hanya muncul kalau ada foto --}}
+        @if(!empty($photoUrl))
+        <form action="{{ route('profile.delete-photo') }}" method="POST"
+            onsubmit="return confirm('Hapus foto profil?')">
+            @csrf @method('DELETE')
+            <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                <i class="bi bi-trash me-1"></i> Hapus Foto
+            </button>
+        </form>
+        @endif
+
         @endif
 
         {{-- Extra rows --}}

@@ -3,7 +3,7 @@
 @section('page-title', 'Profil Saya')
 
 @section('sidebar')
-    @include('asesi.partials.sidebar')
+@include('asesi.partials.sidebar')
 @endsection
 
 @section('content')
@@ -13,17 +13,18 @@
 <div class="row g-4">
     <div class="col-lg-4">
         @include('profile.partials.identity-card', [
-            'avatarLabel' => strtoupper(substr($asesmen?->full_name ?? $user->name, 0, 1)),
-            'name'        => $asesmen?->full_name ?? $user->name,
-            'email'       => $user->email,
-            'roleLabel'   => 'Asesi',
-            'roleBadge'   => 'primary',
-            'extraRows'   => [
-                ['label' => 'NIK',     'value' => $asesmen?->nik      ?? '-'],
-                ['label' => 'Telepon', 'value' => $asesmen?->phone     ?? '-'],
-                ['label' => 'Skema',   'value' => $asesmen?->skema?->name ?? '-'],
-                ['label' => 'Status',  'value' => $asesmen?->status_label  ?? '-'],
-            ],
+        'avatarLabel' => strtoupper(substr($asesmen?->full_name ?? $user->name, 0, 1)),
+        'name' => $asesmen?->full_name ?? $user->name,
+        'email' => $user->email,
+        'roleLabel' => 'Asesi',
+        'roleBadge' => 'primary',
+        'extraRows' => [
+        ['label' => 'NIK', 'value' => $asesmen?->nik ?? '-'],
+        ['label' => 'Telepon', 'value' => $asesmen?->phone ?? '-'],
+        ['label' => 'Skema', 'value' => $asesmen?->skema?->name ?? '-'],
+        ['label' => 'Status', 'value' => $asesmen?->status_label ?? '-'],
+        ],
+        'photoUrl' => $user->photo_path ? asset('storage/' . $user->photo_path) : null, // ← tambah ini
         ])
 
         @if($asesmen)

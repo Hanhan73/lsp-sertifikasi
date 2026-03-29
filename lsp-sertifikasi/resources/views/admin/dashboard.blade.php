@@ -1,133 +1,229 @@
 @extends('layouts.app')
-
-@section('title', 'Admin Dashboard')
+@section('title', 'Dashboard Admin LSP')
 @section('page-title', 'Dashboard Admin LSP')
-
 @section('sidebar')
 @include('admin.partials.sidebar')
 @endsection
 
 @section('content')
-<!-- Statistics Cards -->
-<div class="row mb-4">
+
+{{-- ── Stats Cards ── --}}
+<div class="row g-3 mb-4">
     <div class="col-md-3">
-        <div class="stat-card" style="--bg-color: #667eea; --bg-color-end: #764ba2;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="mb-1">Total Asesi</p>
-                    <h3>{{ $stats['total_asesi'] }}</h3>
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10"
+                    style="width:52px;height:52px;flex-shrink:0;">
+                    <i class="bi bi-people text-primary fs-4"></i>
                 </div>
-                <i class="bi bi-people" style="font-size: 3rem; opacity: 0.3;"></i>
+                <div>
+                    <div class="text-muted small">Total Asesi</div>
+                    <div class="fs-2 fw-bold lh-1">{{ $stats['total_asesi'] }}</div>
+                </div>
             </div>
         </div>
     </div>
-
     <div class="col-md-3">
-        <div class="stat-card" style="--bg-color: #f093fb; --bg-color-end: #f5576c;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="mb-1">Total TUK</p>
-                    <h3>{{ $stats['total_tuk'] }}</h3>
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning bg-opacity-10"
+                    style="width:52px;height:52px;flex-shrink:0;">
+                    <i class="bi bi-hourglass-split text-warning fs-4"></i>
                 </div>
-                <i class="bi bi-building" style="font-size: 3rem; opacity: 0.3;"></i>
+                <div>
+                    <div class="text-muted small">Menunggu Mulai Asesmen</div>
+                    <div class="fs-2 fw-bold lh-1">{{ $stats['pending_mulai'] }}</div>
+                </div>
+            </div>
+            @if($stats['pending_mulai'] > 0)
+            <div class="card-footer bg-transparent border-0 pt-0">
+                <a href="{{ route('admin.verifications.index') }}" class="btn btn-warning btn-sm w-100">
+                    <i class="bi bi-play-circle me-1"></i>Mulai Sekarang
+                </a>
+            </div>
+            @endif
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-info bg-opacity-10"
+                    style="width:52px;height:52px;flex-shrink:0;">
+                    <i class="bi bi-pencil-square text-info fs-4"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Sedang Isi Dokumen</div>
+                    <div class="fs-2 fw-bold lh-1">{{ $stats['sedang_asesmen'] }}</div>
+                </div>
             </div>
         </div>
     </div>
-
     <div class="col-md-3">
-        <div class="stat-card" style="--bg-color: #4facfe; --bg-color-end: #00f2fe;">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <p class="mb-1">Perlu Penetapan Biaya</p>
-                    <h3>{{ $stats['pending_verification'] }}</h3>
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-success bg-opacity-10"
+                    style="width:52px;height:52px;flex-shrink:0;">
+                    <i class="bi bi-award text-success fs-4"></i>
                 </div>
-                <i class="bi bi-cash-coin" style="font-size: 3rem; opacity: 0.3;"></i>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="stat-card" style="--bg-color: #43e97b; --bg-color-end: #38f9d7;">
-            <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <p class="mb-1">Tersertifikasi</p>
-                    <h3>{{ $stats['certified'] }}</h3>
+                    <div class="text-muted small">Tersertifikasi</div>
+                    <div class="fs-2 fw-bold lh-1">{{ $stats['certified'] }}</div>
                 </div>
-                <i class="bi bi-award" style="font-size: 3rem; opacity: 0.3;"></i>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Batch Info (if exists) -->
-@if($batchInfo)
-<div class="card mb-4 border-primary">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">
-            <i class="bi bi-layers"></i> Batch Kolektif Terbaru
-        </h5>
+{{-- ── Perlu Perhatian ── --}}
+@if($stats['pending_mulai'] > 0 || $stats['pending_asesor'] > 0)
+<div class="row g-3 mb-4">
+
+    {{-- Menunggu mulai asesmen --}}
+    @if($needsAttention['mulai_asesmen']->isNotEmpty())
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-play-circle me-2 text-warning"></i>Perlu Dimulai
+                </span>
+                <a href="{{ route('admin.verifications.index') }}" class="btn btn-warning btn-sm">
+                    Lihat Semua <span class="badge bg-white text-warning ms-1">{{ $stats['pending_mulai'] }}</span>
+                </a>
+            </div>
+            <div class="list-group list-group-flush">
+                @foreach($needsAttention['mulai_asesmen'] as $a)
+                <div class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold small">{{ $a->full_name ?? $a->user->name }}</div>
+                        <div class="text-muted" style="font-size:.78rem;">
+                            {{ $a->skema->name ?? '-' }}
+                            @if($a->is_collective)
+                                &bull; <span class="badge bg-primary" style="font-size:.6rem;">Kolektif</span>
+                            @endif
+                        </div>
+                    </div>
+                    <a href="{{ route('admin.verifications.show', $a) }}"
+                        class="btn btn-warning btn-sm py-1">
+                        <i class="bi bi-play-circle"></i>
+                    </a>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Jadwal belum ada asesor --}}
+    @if($needsAttention['belum_asesor']->isNotEmpty())
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-person-x me-2 text-danger"></i>Asesor Belum Ditugaskan
+                </span>
+                <a href="{{ route('admin.asesor-assignments.index') }}" class="btn btn-danger btn-sm">
+                    Lihat Semua <span class="badge bg-white text-danger ms-1">{{ $stats['pending_asesor'] }}</span>
+                </a>
+            </div>
+            <div class="list-group list-group-flush">
+                @foreach($needsAttention['belum_asesor'] as $s)
+                <div class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold small">
+                            {{ $s->assessment_date->format('d M Y') }}
+                            &bull; {{ $s->start_time }}
+                        </div>
+                        <div class="text-muted" style="font-size:.78rem;">
+                            {{ $s->tuk->name ?? '-' }}
+                            &bull; {{ $s->asesmens->count() }} asesi
+                        </div>
+                    </div>
+                    <a href="{{ route('admin.asesor-assignments.index') }}"
+                        class="btn btn-danger btn-sm py-1">
+                        <i class="bi bi-person-plus"></i>
+                    </a>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+</div>
+@endif
+
+{{-- ── Batch Kolektif Terbaru ── --}}
+@if($latestBatch)
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold border-bottom">
+        <i class="bi bi-layers me-2 text-primary"></i>Batch Kolektif Terbaru
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-6">
-                <table class="table table-sm table-borderless">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-5">
+                <table class="table table-borderless table-sm mb-0">
                     <tr>
-                        <td width="150"><strong>Batch ID</strong></td>
-                        <td>: {{ $batchInfo['batch_id'] }}</td>
+                        <td class="text-muted" width="130">Batch ID</td>
+                        <td>: <code>{{ $latestBatch['batch_id'] }}</code></td>
                     </tr>
                     <tr>
-                        <td><strong>Total Peserta</strong></td>
-                        <td>: {{ $batchInfo['total_members'] }} orang</td>
+                        <td class="text-muted">TUK</td>
+                        <td>: {{ $latestBatch['tuk']->name ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td><strong>TUK</strong></td>
-                        <td>: {{ $batchInfo['tuk']->name ?? '-' }}</td>
+                        <td class="text-muted">Didaftarkan oleh</td>
+                        <td>: {{ $latestBatch['registered_by']->name ?? '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Total Peserta</td>
+                        <td>: <strong>{{ $latestBatch['total_members'] }} orang</strong></td>
                     </tr>
                 </table>
             </div>
-            <div class="col-md-6">
-                <table class="table table-sm table-borderless">
-                    <tr>
-                        <td width="150"><strong>Didaftarkan Oleh</strong></td>
-                        <td>: {{ $batchInfo['registered_by']->name ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td><strong>Status Pembayaran</strong></td>
-                        <td>:
-                            @if($batchInfo['payment_status'] === 'paid')
-                            <span class="badge bg-success">Sudah Bayar</span>
-                            @elseif($batchInfo['payment_status'] === 'pending')
-                            <span class="badge bg-warning">Pending</span>
-                            @else
-                            <span class="badge bg-secondary">Belum Bayar</span>
-                            @endif
-                        </td>
-                    </tr>
-                </table>
+            <div class="col-md-7">
+                <div class="small text-muted fw-semibold mb-2">Progress Peserta</div>
+                <div class="d-flex gap-2 flex-wrap">
+                    @foreach([
+                        ['key' => 'registered',      'label' => 'Terdaftar',     'color' => 'secondary'],
+                        ['key' => 'data_completed',  'label' => 'Data Lengkap',  'color' => 'info'],
+                        ['key' => 'asesmen_started', 'label' => 'Asesmen Mulai', 'color' => 'primary'],
+                        ['key' => 'scheduled',       'label' => 'Terjadwal',     'color' => 'warning'],
+                        ['key' => 'certified',       'label' => 'Tersertifikasi','color' => 'success'],
+                    ] as $s)
+                    @if($latestBatch['status_counts'][$s['key']] > 0)
+                    <span class="badge bg-{{ $s['color'] }} px-3 py-2" style="font-size:.8rem;">
+                        {{ $s['label'] }}: {{ $latestBatch['status_counts'][$s['key']] }}
+                    </span>
+                    @endif
+                    @endforeach
+                </div>
             </div>
         </div>
     </div>
 </div>
 @endif
 
-<!-- Recent Asesmens -->
-<div class="card">
-    <div class="card-header bg-white">
-        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Asesi Terbaru</h5>
+{{-- ── Asesi Terbaru ── --}}
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-2 text-primary"></i>Asesi Terbaru</span>
+        <a href="{{ route('admin.asesi.index') }}" class="btn btn-outline-primary btn-sm">
+            Lihat Semua
+        </a>
     </div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover" id="recent-asesmens-table">
-                <thead>
+            <table class="table table-hover align-middle mb-0" id="table-asesmens">
+                <thead class="table-light">
                     <tr>
-                        <th>No Registrasi</th>
+                        <th>No. Reg</th>
                         <th>Nama</th>
                         <th>TUK</th>
                         <th>Skema</th>
-                        <th>Jenis</th>
-                        <th>Status</th>
-                        <th>Tanggal</th>
-                        <th width="80">Aksi</th>
+                        <th class="text-center">Jenis</th>
+                        <th class="text-center">Status</th>
+                        <th>Tgl Daftar</th>
+                        <th width="60"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -135,39 +231,40 @@
                     <tr>
                         <td><strong>#{{ $asesmen->id }}</strong></td>
                         <td>
-                            {{ $asesmen->full_name ?? $asesmen->user->name }}
+                            <div class="fw-semibold">{{ $asesmen->full_name ?? $asesmen->user->name }}</div>
                             @if($asesmen->is_collective)
-                            <br><small class="text-muted"><i class="bi bi-layers"></i>
-                                {{ $asesmen->collective_batch_id }}</small>
+                            <div class="text-muted" style="font-size:.75rem;">
+                                <i class="bi bi-layers"></i> {{ $asesmen->collective_batch_id }}
+                            </div>
                             @endif
                         </td>
-                        <td>{{ $asesmen->tuk->name ?? '-' }}</td>
-                        <td>{{ $asesmen->skema->name ?? '-' }}</td>
-                        <td>
+                        <td class="small">{{ $asesmen->tuk->name ?? '-' }}</td>
+                        <td class="small">{{ $asesmen->skema->name ?? '-' }}</td>
+                        <td class="text-center">
                             @if($asesmen->is_collective)
-                            <span class="badge bg-primary"><i class="bi bi-people"></i> Kolektif</span>
+                                <span class="badge bg-primary">Kolektif</span>
                             @else
-                            <span class="badge bg-success"><i class="bi bi-person"></i> Mandiri</span>
+                                <span class="badge bg-success">Mandiri</span>
                             @endif
                         </td>
-                        <td>
-                            <span class="badge bg-{{ $asesmen->status_badge }} badge-status">
+                        <td class="text-center">
+                            <span class="badge bg-{{ $asesmen->status_badge }}">
                                 {{ $asesmen->status_label }}
                             </span>
                         </td>
-                        <td>{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                        <td class="small text-muted">{{ $asesmen->registration_date->format('d/m/Y') }}</td>
                         <td>
-                            <button class="btn btn-sm btn-info" onclick="viewDetail({{ $asesmen->id }})"
-                                data-bs-toggle="tooltip" title="Lihat Detail">
+                            <button class="btn btn-sm btn-outline-primary"
+                                onclick="viewDetail({{ $asesmen->id }})" title="Detail">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-3">
-                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
-                            <p class="mb-0 mt-2">Belum ada data asesi</p>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                            Belum ada data asesi
                         </td>
                     </tr>
                     @endforelse
@@ -177,121 +274,57 @@
     </div>
 </div>
 
-<!-- Detail Modal -->
+{{-- Modal Detail --}}
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="bi bi-info-circle"></i> Detail Asesi
-                </h5>
+                <h5 class="modal-title"><i class="bi bi-info-circle me-2"></i>Detail Asesi</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="detail-content">
-                <!-- Content will be loaded here -->
-            </div>
+            <div class="modal-body" id="detail-content"></div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="bi bi-x-circle"></i> Tutup
-                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
 </div>
+
 @endsection
 
 @push('scripts')
 <script>
-$(document).ready(function() {
-    // Initialize tooltips
-    $('[data-bs-toggle="tooltip"]').tooltip();
-
-    // Initialize DataTable
-    if ($.fn.DataTable.isDataTable('#recent-asesmens-table')) {
-        $('#recent-asesmens-table').DataTable().destroy();
-    }
-
-    $('#recent-asesmens-table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
-        },
-        order: [
-            [6, 'desc']
-        ], // Sort by date column
+$(document).ready(function () {
+    $('#table-asesmens').DataTable({
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
+        order: [[6, 'desc']],
         pageLength: 10,
         responsive: true,
-        columnDefs: [{
-                orderable: false,
-                targets: 7
-            } // Disable sorting on action column
-        ]
+        columnDefs: [{ orderable: false, targets: [4, 5, 7] }],
     });
 });
 
-// ✅ PERBAIKAN: Function untuk view detail
 function viewDetail(asesmenId) {
-    console.log('View detail for asesmen:', asesmenId);
+    const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    modal.show();
 
-    // Show modal immediately
-    $('#detailModal').modal('show');
-
-    // Show loading
-    $('#detail-content').html(`
+    document.getElementById('detail-content').innerHTML = `
         <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-3 text-muted">Memuat data asesi...</p>
-        </div>
-    `);
+            <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+            <p class="mt-3 text-muted">Memuat data...</p>
+        </div>`;
 
-    // Fetch detail via AJAX
-    $.ajax({
-        url: `/admin/asesmens/${asesmenId}/detail`,
-        method: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            console.log('Success response:', response);
-            if (response.success) {
-                $('#detail-content').html(response.html);
-            } else {
-                $('#detail-content').html(`
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        ${response.message || 'Gagal memuat data'}
-                    </div>
-                `);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error loading detail:', {
-                xhr,
-                status,
-                error
-            });
-
-            let errorMessage = 'Terjadi kesalahan saat memuat data';
-            if (xhr.status === 404) {
-                errorMessage = 'Data asesi tidak ditemukan';
-            } else if (xhr.status === 403) {
-                errorMessage = 'Anda tidak memiliki akses untuk melihat data ini';
-            } else if (xhr.responseJSON && xhr.responseJSON.message) {
-                errorMessage = xhr.responseJSON.message;
-            }
-
-            $('#detail-content').html(`
-                <div class="alert alert-danger">
-                    <i class="bi bi-x-circle"></i>
-                    <strong>Error!</strong> ${errorMessage}
-                </div>
-            `);
-        }
-    });
-}
-
-// Alternative function (jika ada yang masih menggunakan nama lama)
-function showAsesmenDetail(asesmenId) {
-    viewDetail(asesmenId);
+    fetch(`/admin/asesmens/${asesmenId}/detail`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('detail-content').innerHTML = data.success
+                ? data.html
+                : `<div class="alert alert-warning">${data.message ?? 'Gagal memuat data.'}</div>`;
+        })
+        .catch(() => {
+            document.getElementById('detail-content').innerHTML =
+                `<div class="alert alert-danger">Terjadi kesalahan saat memuat data.</div>`;
+        });
 }
 </script>
 @endpush

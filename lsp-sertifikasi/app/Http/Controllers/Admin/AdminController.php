@@ -4,104 +4,92 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asesmen;
-use App\Models\Payment;
+use App\Models\Schedule;
 use App\Models\Tuk;
 use App\Models\Skema;
-use App\Models\Certificate;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Barryvdh\DomPDF\Facade\Pdf;
 
-/**
- * AdminController
- *
- * Tanggung jawab: Dashboard + hal-hal yang benar-benar lintas domain.
- * Semua CRUD domain sudah dipecah ke controller terpisah:
- *
- *   TUK         → Admin\TukController
- *   Skema       → Admin\SkemaController
- *   Payment     → Admin\PaymentController
- *   Asesmen     → Admin\AsesmenController
- *   APL (01/02) → Admin\AplController
- *   Asesor Assg → Admin\AsesorAssignmentController
- *   Reports     → Admin\ReportController
- */
 class AdminController extends Controller
 {
-    // =========================================================
-    // DASHBOARD
-    // =========================================================
-
     public function dashboard()
     {
         $stats = [
-            'total_asesi' => Asesmen::count(),
-            'total_tuk' => Tuk::count(),
-            'total_skema' => Skema::count(),
-            'pending_verification' => Asesmen::where('status', 'data_completed')->count(),
-            'pending_payment' => Payment::where('status', 'pending')->count(),
-            'certified' => Asesmen::where('status', 'certified')->count(),
+            'total_asesi'          => Asesmen::count(),
+            'total_tuk'            => Tuk::count(),
+            'total_skema'          => Skema::count(),
+
+            // Menunggu admin mulai asesmen
+            'pending_mulai'        => Asesmen::where('status', 'data_completed')->count(),
+
+            // Sudah dimulai, sedang isi dokumen
+            'sedang_asesmen'       => Asesmen::where('status', 'asesmen_started')->count(),
+
+            // Sudah dijadwalkan
+            'scheduled'            => Asesmen::where('status', 'scheduled')->count(),
+
+            // Belum ada asesor
+            'pending_asesor'       => Schedule::whereNull('asesor_id')->count(),
+
+            // Tersertifikasi
+            'certified'            => Asesmen::where('status', 'certified')->count(),
         ];
 
+        // 10 asesi terbaru
         $asesmens = Asesmen::with(['user', 'tuk', 'skema'])
             ->latest()
             ->take(10)
             ->get();
 
-        $batchInfo = null;
-        $batchId = Asesmen::whereNotNull('collective_batch_id')
-            ->latest()
-            ->value('collective_batch_id');
+        // Batch kolektif terbaru
+        $latestBatch = $this->getLatestBatchInfo();
 
-        if ($batchId) {
-            $batch = Asesmen::with(['tuk', 'registrar', 'payment'])
-                ->where('collective_batch_id', $batchId)
-                ->get();
+        // Aktivitas yang perlu perhatian admin
+        $needsAttention = [
+            'mulai_asesmen' => Asesmen::where('status', 'data_completed')
+                ->with(['tuk', 'skema'])
+                ->latest()
+                ->take(5)
+                ->get(),
 
-            $batchInfo = [
-                'batch_id' => $batchId,
-                'total_members' => $batch->count(),
-                'tuk' => $batch->first()->tuk,
-                'registered_by' => $batch->first()->registrar,
-                'payment_timing' => $batch->first()->collective_payment_timing,
-                'payment_status' => $batch->every(fn ($a) => $a->payment?->status === 'verified')
-                    ? 'paid'
-                    : ($batch->contains(fn ($a) => $a->payment?->status === 'pending')
-                        ? 'pending'
-                        : 'not_paid'),
-            ];
-        }
+            'belum_asesor'  => Schedule::whereNull('asesor_id')
+                ->with(['tuk', 'skema', 'asesmens'])
+                ->latest()
+                ->take(5)
+                ->get(),
+        ];
 
-        return view('admin.dashboard', compact('stats', 'asesmens', 'batchInfo'));
+        return view('admin.dashboard', compact('stats', 'asesmens', 'latestBatch', 'needsAttention'));
     }
-    // =========================================================
-    // PRIVATE HELPERS
-    // =========================================================
 
     private function getLatestBatchInfo(): ?array
     {
-        $batchId = Asesmen::whereNotNull('collective_batch_id')
+        $batchId = Asesmen::where('is_collective', true)
+            ->whereNotNull('collective_batch_id')
             ->latest()
             ->value('collective_batch_id');
 
-        if (!$batchId) {
-            return null;
-        }
+        if (!$batchId) return null;
 
-        $batch = Asesmen::with(['tuk', 'registrar', 'payment'])
+        $batch = Asesmen::with(['tuk', 'registrar'])
             ->where('collective_batch_id', $batchId)
             ->get();
 
-        $allPaid    = $batch->every(fn($a) => $a->payment?->status === 'verified');
-        $anyPending = $batch->contains(fn($a) => $a->payment?->status === 'pending');
+        if ($batch->isEmpty()) return null;
+
+        $first = $batch->first();
 
         return [
-            'batch_id'        => $batchId,
-            'total_members'   => $batch->count(),
-            'tuk'             => $batch->first()->tuk,
-            'registered_by'   => $batch->first()->registrar,
-            'payment_timing'  => $batch->first()->collective_payment_timing,
-            'payment_status'  => $allPaid ? 'paid' : ($anyPending ? 'pending' : 'not_paid'),
+            'batch_id'      => $batchId,
+            'total_members' => $batch->count(),
+            'tuk'           => $first->tuk,
+            'registered_by' => $first->registrar,
+            'status_counts' => [
+                'registered'      => $batch->where('status', 'registered')->count(),
+                'data_completed'  => $batch->where('status', 'data_completed')->count(),
+                'asesmen_started' => $batch->where('status', 'asesmen_started')->count(),
+                'scheduled'       => $batch->where('status', 'scheduled')->count(),
+                'certified'       => $batch->where('status', 'certified')->count(),
+            ],
         ];
     }
 }

@@ -86,94 +86,136 @@ class TukController extends Controller
      * Semua akun asesi dibuat otomatis, status dimulai dari 'registered'.
      * Tidak ada proses pembayaran di flow utama — TUK membayar secara manual di luar sistem.
      */
-    public function storeCollectiveRegistration(Request $request)
-    {
-        $request->validate([
-            'batch_name'                => 'nullable|string|max:255',
-            'participants'              => 'required|array|min:1',
-            'participants.*.name'       => 'required|string|max:255',
-            'participants.*.email'      => 'required|email|unique:users,email',
-            'skema_id'                  => 'required|exists:skemas,id',
-            'payment_phases'            => 'required|in:single,two_phase',
-            'preferred_date'            => 'required|date|after:today',
-            'training_flag'             => 'required|boolean',
-        ]);
+public function storeCollectiveRegistration(Request $request)
+{
+    $participants = collect($request->participants ?? [])->map(function ($p) {
+        $email = strtolower(trim($p['email'] ?? ''));
+        // Buang semua karakter non-printable dan non-ASCII
+        $email = preg_replace('/[^\x20-\x7E]/', '', $email);
+        $email = trim($email); // trim lagi setelah strip
 
-        $tuk     = auth()->user()->tuk;
-        $batchName = $request->batch_name
-            ? \Illuminate\Support\Str::slug($request->batch_name, '-')
-            : 'BATCH';
-    
-        $suffix   = strtoupper(\Illuminate\Support\Str::random(6));
-        $batchId  = strtoupper($batchName) . '-' . $tuk->code . '-' . $suffix;
+        $name = trim($p['name'] ?? '');
+        $name = preg_replace('/[^\x20-\x7E\p{L}\p{N}]/u', ' ', $name);
+        $name = trim($name);
 
-        $registeredCount = 0;
-        $errors          = [];
+        return ['name' => $name, 'email' => $email];
+    })->filter(fn($p) => $p['name'] && $p['email'] && str_contains($p['email'], '@') && str_contains($p['email'], '.'))
+    ->values()
+    ->toArray();
 
-        DB::beginTransaction();
-        try {
-            foreach ($request->participants as $index => $participant) {
-                if (User::where('email', $participant['email'])->exists()) {
-                    $errors[] = "Email {$participant['email']} sudah terdaftar";
-                    continue;
-                }
+    Log::info('Collective Reg - participants diterima: ' . count($participants), [
+        'raw_count'    => count($request->participants ?? []),
+        'after_filter' => count($participants),
+    ]);
 
-                $defaultPassword = 'password123';
+    $request->merge(['participants' => $participants]);
 
-                $user = User::create([
-                    'name'               => $participant['name'],
-                    'email'              => $participant['email'],
-                    'password'           => Hash::make($defaultPassword),
-                    'role'               => 'asesi',
-                    'is_active'          => true,
-                    'password_changed_at' => null,         // paksa ganti saat first login
-                    'email_verified_at'  => now(),        // skip verifikasi email
-                ]);
+    if (empty($participants)) {
+        return redirect()->back()
+            ->withErrors(['participants' => 'Tidak ada data peserta yang valid.']);
+    }
 
-                Asesmen::create([
-                    'user_id'                => $user->id,
-                    'tuk_id'                 => $tuk->id,
-                    'skema_id'               => $request->skema_id,
-                    'full_name'              => $participant['name'],
-                    'preferred_date'         => $request->preferred_date,
-                    'training_flag'          => $request->training_flag,
-                    'registration_date'      => now(),
-                    'status'                 => 'registered',
-                    'registered_by'          => auth()->id(),
-                    'is_collective'          => true,
-                    'collective_batch_id'    => $batchId,
-                    'payment_phases'         => $request->payment_phases,
-                    'collective_paid_by_tuk' => true,
-                    'skip_payment'           => true,     // skip Midtrans sepenuhnya
-                ]);
+    // ← TAMBAH LOG INI
+    Log::info('Collective Reg - mulai validasi');
 
-                // Log default password agar TUK bisa dibagikan ke peserta
-                Log::info("Collective Registration — User: {$participant['email']}, Default Password: {$defaultPassword}");
+    $request->validate([
+        'batch_name'           => 'nullable|string|max:255',
+        'participants'         => 'required|array|min:1',
+        'participants.*.name'  => 'required|string|max:255',
+        'participants.*.email' => 'required|string|unique:users,email',
+        'skema_id'             => 'required|exists:skemas,id',
+        'payment_phases'       => 'required|in:single,two_phase',
+        'preferred_date'       => 'required|date|after:today',
+        'training_flag'        => 'required|boolean',
+    ]);
 
-                $registeredCount++;
+    // ← TAMBAH LOG INI
+    Log::info('Collective Reg - validasi OK, mulai DB transaction');
+
+    $tuk       = auth()->user()->tuk;
+    $batchName = $request->batch_name
+        ? \Illuminate\Support\Str::slug($request->batch_name, '-')
+        : 'BATCH';
+    $suffix    = strtoupper(\Illuminate\Support\Str::random(6));
+    $batchId   = strtoupper($batchName) . '-' . $tuk->code . '-' . $suffix;
+
+    $registeredCount = 0;
+    $errors          = [];
+    $skippedEmails   = [];
+
+    DB::beginTransaction();
+    try {
+        foreach ($request->participants as $index => $participant) {
+            $email = strtolower(trim($participant['email']));
+            $name  = trim($participant['name']);
+
+            // ← LOG SETIAP 10 PESERTA
+            if ($index % 10 === 0) {
+                Log::info("Collective Reg - progress: peserta ke-{$index}");
             }
 
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Collective Registration Error: ' . $e->getMessage());
+            if (User::where('email', $email)->exists()) {
+                $errors[]        = "Baris " . ($index + 1) . ": Email {$email} sudah terdaftar";
+                $skippedEmails[] = $email;
+                Log::warning("Collective Reg SKIP: {$email}");
+                continue;
+            }
 
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            $user = User::create([
+                'name'               => $name,
+                'email'              => $email,
+                'password'           => Hash::make('password123'),
+                'role'               => 'asesi',
+                'is_active'          => true,
+                'password_changed_at' => null,
+                'email_verified_at'  => now(),
+            ]);
+
+            Asesmen::create([
+                'user_id'                => $user->id,
+                'tuk_id'                 => $tuk->id,
+                'skema_id'               => $request->skema_id,
+                'full_name'              => $name,
+                'preferred_date'         => $request->preferred_date,
+                'training_flag'          => $request->training_flag,
+                'registration_date'      => now(),
+                'status'                 => 'registered',
+                'registered_by'          => auth()->id(),
+                'is_collective'          => true,
+                'collective_batch_id'    => $batchId,
+                'payment_phases'         => $request->payment_phases,
+                'collective_paid_by_tuk' => true,
+                'skip_payment'           => true,
+            ]);
+
+            $registeredCount++;
         }
 
-        $message = "{$registeredCount} peserta berhasil didaftarkan secara kolektif!";
-        if (!empty($errors)) {
-            $message .= ' Namun ' . count($errors) . ' peserta gagal: ' . implode(', ', $errors);
-        }
-        $message .= ' Peserta dapat login dengan password default "password123" dan wajib menggantinya saat pertama login.';
+        // ← TAMBAH LOG INI
+        Log::info("Collective Reg - loop selesai, registeredCount: {$registeredCount}");
 
-        return redirect()->route('tuk.asesi')
-            ->with('success', $message)
-            ->with('batch_id', $batchId)
-            ->with('registered_count', $registeredCount);
+        DB::commit();
+
+        Log::info("Collective Reg - DB commit OK");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Collective Registration Error: ' . $e->getMessage(), [
+            'batch_id'    => $batchId ?? null,
+            'tuk_id'      => $tuk->id,
+            'participant' => $participant ?? null,
+            'trace'       => $e->getTraceAsString(),
+        ]);
+
+        return redirect()->back()
+            ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
     }
+
+    $message = "{$registeredCount} dari " . count($request->participants) . " peserta berhasil didaftarkan.";
+    $message .= ' Password default: "password123".';
+
+    return redirect()->route('tuk.asesi')->with('success', $message);
+}
 
     // =========================================================================
     // Asesi List

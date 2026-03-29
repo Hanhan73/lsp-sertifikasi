@@ -15,6 +15,26 @@
                 <h5 class="mb-0"><i class="bi bi-people"></i> Form Pendaftaran Kolektif Asesi</h5>
             </div>
             <div class="card-body">
+
+                        {{-- Tampilkan validation errors --}}
+            @if($errors->any())
+            <div class="alert alert-danger alert-dismissible">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <strong><i class="bi bi-exclamation-triangle"></i> Pendaftaran gagal:</strong>
+                <ul class="mb-0 mt-2">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+            @endif
+
+            @if(session('error'))
+            <div class="alert alert-danger alert-dismissible">
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <i class="bi bi-exclamation-triangle"></i> {{ session('error') }}
+            </div>
+            @endif
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i>
                     <strong>Pendaftaran Kolektif</strong><br>
@@ -269,6 +289,8 @@
 
                 </form>
             </div>
+
+
         </div>
     </div>
 </div>
@@ -340,19 +362,13 @@ $(document).ready(function() {
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {
-                    type: 'array'
-                });
+                const workbook = XLSX.read(data, { type: 'array' });
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
                 validateAndPreview(jsonData);
                 Swal.close();
             } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Gagal membaca file: ' + error.message
-                });
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membaca file: ' + error.message });
             }
         };
         reader.readAsArrayBuffer(file);
@@ -373,9 +389,9 @@ $(document).ready(function() {
         updateSummary();
     });
 
-        const tukCode = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
+    const tukCode = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
     const randomSuffix = generateRandomSuffix(6);
- 
+
     function generateRandomSuffix(length) {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = '';
@@ -384,36 +400,51 @@ $(document).ready(function() {
         }
         return result;
     }
- 
+
     function slugify(text) {
-        return text
-            .toString()
-            .toUpperCase()
-            .trim()
+        return text.toString().toUpperCase().trim()
             .replace(/\s+/g, '-')
             .replace(/[^A-Z0-9\-]/g, '')
             .replace(/\-+/g, '-')
             .replace(/^-+|-+$/g, '');
     }
- 
+
     function updateBatchPreview() {
         const nameVal = $('#batch_name_input').val().trim();
         const prefix  = nameVal ? slugify(nameVal) : 'BATCH';
-        const preview = prefix + '-' + tukCode + '-' + randomSuffix;
-        $('#batch-id-preview').text(preview);
+        $('#batch-id-preview').text(prefix + '-' + tukCode + '-' + randomSuffix);
     }
- 
+
     $('#batch_name_input').on('input', updateBatchPreview);
-    updateBatchPreview()
+    updateBatchPreview();
+
+    $('#collective-form').on('submit', function(e) {
+        // Sanitize email
+        $('.participant-email').each(function() {
+            $(this).val($(this).val().trim().toLowerCase());
+        });
+
+        if ($('.participant-item').length === 0) {
+            e.preventDefault();
+            Swal.fire({ icon: 'warning', title: 'Peserta Kosong', text: 'Tambahkan minimal 1 peserta.' });
+            return false;
+        }
+
+        // ← FIX UTAMA: Re-index ulang semua name attribute agar sequential
+        // Ini fix gap index ketika ada peserta yang dihapus manual
+        $('.participant-item').each(function(newIdx) {
+            $(this).find('input[name*="[name]"]').attr('name', `participants[${newIdx}][name]`);
+            $(this).find('input[name*="[email]"]').attr('name', `participants[${newIdx}][email]`);
+        });
+
+        $(this).find('[type=submit]').prop('disabled', true)
+            .html('<span class="spinner-border spinner-border-sm me-1"></span> Mendaftarkan...');
+    });
 });
 
 function validateAndPreview(data) {
     if (data.length === 0) {
-        Swal.fire({
-            icon: 'warning',
-            title: 'File Kosong',
-            text: 'File tidak mengandung data peserta'
-        });
+        Swal.fire({ icon: 'warning', title: 'File Kosong', text: 'File tidak mengandung data peserta' });
         return;
     }
 
@@ -423,47 +454,46 @@ function validateAndPreview(data) {
     importedData = [];
 
     data.forEach((row, index) => {
-        const rowNumber = index + 2;
-        const name = (row['Nama Lengkap'] || row['nama_lengkap'] || '').toString().trim();
-        const email = (row['Email'] || row['email'] || '').toString().trim().toLowerCase();        
-        let rowErrors = [];
+        const rowNumber = index + 2; // ← FIX BUG #2: definisikan rowNumber di sini
+        const rawEmail  = (row['Email'] || row['email'] || '').toString();
+        const name      = (row['Nama Lengkap'] || row['nama_lengkap'] || '').toString().trim();
+        const email     = rawEmail.trim().toLowerCase();
+        const wasFixed  = rawEmail.trim() !== rawEmail;
 
-        if (!name) rowErrors.push('Nama wajib diisi');
+        let rowErrors = [];
+        if (!name)  rowErrors.push('Nama wajib diisi');
         if (!email) rowErrors.push('Email wajib diisi');
         else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
 
         const isValid = rowErrors.length === 0;
         if (isValid) {
             validCount++;
-            importedData.push({
-                name,
-                email
-            });
+            importedData.push({ name, email });
         }
 
         const statusClass = isValid ? 'success' : 'danger';
-        const statusIcon = isValid ? 'check-circle' : 'x-circle';
-        const statusText = isValid ? 'Valid' : rowErrors.join(', ');
+        const statusIcon  = isValid ? 'check-circle' : 'x-circle';
+        const fixedBadge  = (isValid && wasFixed)
+            ? ' <span class="badge bg-warning text-dark">Spasi dihapus</span>'
+            : '';
+        const statusText  = isValid ? ('Valid' + fixedBadge) : rowErrors.join(', ');
 
         previewHtml += `
-                <tr class="table-${statusClass}">
-                    <td>${index + 1}</td>
-                    <td>${name  || '<em class="text-muted">Kosong</em>'}</td>
-                    <td>${email || '<em class="text-muted">Kosong</em>'}</td>
-                    <td><i class="bi bi-${statusIcon}"></i> ${statusText}</td>
-                </tr>`;
+            <tr class="table-${statusClass}">
+                <td>${index + 1}</td>
+                <td>${name  || '<em class="text-muted">Kosong</em>'}</td>
+                <td>${email || '<em class="text-muted">Kosong</em>'}</td>
+                <td><i class="bi bi-${statusIcon}"></i> ${statusText}</td>
+            </tr>`;
 
-        if (!isValid) errors.push({
-            row: rowNumber,
-            errors: rowErrors
-        });
+        if (!isValid) errors.push({ row: rowNumber, errors: rowErrors });
     });
 
     $('#preview-tbody').html(previewHtml);
     $('#preview-area').show();
 
     if (errors.length > 0) {
-        let errorHtml = '<strong>Data tidak valid pada baris:</strong><ul>';
+        let errorHtml = '<strong>Data tidak valid:</strong><ul>';
         errors.forEach(err => {
             errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`;
         });
@@ -482,7 +512,7 @@ function importData() {
     $('#participants-list').empty();
     participantCount = 0;
 
-    importedData.forEach(p => addParticipant(p.name, p.email));
+    importedData.forEach(p => addParticipant(p.name.trim(), p.email.trim()));
 
     $('#import-summary').show();
     $('#import-count').text(importedData.length);
@@ -500,30 +530,38 @@ function importData() {
 }
 
 function addParticipant(name = '', email = '') {
-    const idx = participantCount;
+    const idx        = participantCount;
+    const safeName   = name.trim().replace(/"/g, '&quot;');
+    const safeEmail  = email.trim().replace(/"/g, '&quot;'); // ← FIX BUG #1: hapus Blade comment, pakai JS variable biasa
     const html = `
-            <div class="participant-item card mb-3">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="mb-0">Peserta #<span class="participant-number">${idx + 1}</span></h6>
-                        <button type="button" class="btn btn-sm btn-outline-danger remove-participant">
-                            <i class="bi bi-trash"></i> Hapus
-                        </button>
+        <div class="participant-item card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Peserta #<span class="participant-number">${idx + 1}</span></h6>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-participant">
+                        <i class="bi bi-trash"></i> Hapus
+                    </button>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control"
+                               name="participants[${idx}][name]"
+                               value="${safeName}"
+                               placeholder="Nama lengkap peserta" required>
                     </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="participants[${idx}][name]"
-                                   value="${name}" placeholder="Nama lengkap peserta" required>
-                        </div>
-                        <div class="col-md-6 mb-2">
-                            <label class="form-label">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" name="participants[${idx}][email]"
-                                   value="${email}" placeholder="email@contoh.com" required>
-                        </div>
+                    <div class="col-md-6 mb-2">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control participant-email"
+                               name="participants[${idx}][email]"
+                               value="${safeEmail}"
+                               placeholder="email@contoh.com"
+                               pattern="[^\\s@]+@[^\\s@]+\\.[^\\s@]+"
+                               title="Format email tidak valid" required>
                     </div>
                 </div>
-            </div>`;
+            </div>
+        </div>`;
 
     $('#participants-list').append(html);
     participantCount++;
@@ -536,7 +574,6 @@ function updateParticipantNumbers() {
     items.each(function(index) {
         $(this).find('.participant-number').text(index + 1);
     });
-    // Sembunyikan tombol hapus jika hanya 1 peserta
     $('.remove-participant').toggle(items.length > 1);
 }
 
@@ -556,7 +593,8 @@ function selectTraining(withTraining) {
 }
 
 function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    // basic check only
+    return email.includes('@') && email.includes('.');
 }
 </script>
 @endpush

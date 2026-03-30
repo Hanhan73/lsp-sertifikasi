@@ -636,7 +636,7 @@ class AsesiController extends Controller
                 'kode_pos'               => 'nullable|string|max:10',
                 'telp_rumah'             => 'nullable|string|max:20',
                 'hp'                     => 'required|string|max:20',
-                'email'                  => 'required|string|unique:users,email',
+                'email' => 'required|string|max:255',
                 'kualifikasi_pendidikan' => 'nullable|string',
                 'nama_institusi'         => 'nullable|string|max:255',
                 'jabatan'                => 'nullable|string|max:255',
@@ -644,7 +644,7 @@ class AsesiController extends Controller
                 'kode_pos_kantor'        => 'nullable|string|max:10',
                 'telp_kantor_detail'     => 'nullable|string|max:20',
                 'fax_kantor'             => 'nullable|string|max:20',
-                'email_kantor'           => 'nullable|email',
+                'email_kantor'           => 'nullable|string|max:255',
                 'tujuan_asesmen'         => 'required|in:Sertifikasi,PKT,RPL,Lainnya',
                 'tujuan_asesmen_lainnya' => 'nullable|string|max:255',
             ]);

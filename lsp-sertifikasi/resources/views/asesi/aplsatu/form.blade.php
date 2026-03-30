@@ -264,7 +264,8 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Email <span class="text-danger">*</span></label>
-                        <input type="email" name="email" id="f-email" class="form-control"
+                        <input type="text" name="email" id="f-email" class="form-control"
+                            inputmode="email" autocomplete="email"
                             value="{{ $aplsatu->email }}" required
                             oninput="validateEmail(this)">
                         <div class="input-hint" id="hint-email">Contoh: nama@email.com</div>
@@ -328,7 +329,8 @@
 
                     <div class="col-md-4">
                         <label class="form-label">Email Kantor</label>
-                        <input type="email" name="email_kantor" id="f-emailKantor" class="form-control"
+                        <input type="text" name="email_kantor" id="f-emailKantor" class="form-control"
+                            inputmode="email"
                             value="{{ $aplsatu->email_kantor }}"
                             oninput="validateEmailOptional(this, 'hint-emailkantor')">
                         <div class="input-hint" id="hint-emailkantor">Email kantor (opsional).</div>

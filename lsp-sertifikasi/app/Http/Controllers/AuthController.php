@@ -28,47 +28,52 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        Log::info('LOGIN ATTEMPT', ['email' => $request->email, 'password_length' => strlen($request->password)]);
+
+        // Ganti validate dengan sanitasi manual — tidak perlu validasi format email saat login
+        $request->validate([
+            'email'    => ['required', 'string'],  // ← hapus rule 'email:filter'
             'password' => ['required'],
         ]);
 
+        Log::info('VALIDATION PASSED');
+
+        $credentials = [
+            'email'    => strtolower(trim($request->email)),
+            'password' => $request->password,
+        ];
+
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
+            Log::info('AUTH ATTEMPT SUCCESS');
             $request->session()->regenerate();
 
             $user = Auth::user();
-                
+
             if (!$user->is_active) {
                 Auth::logout();
-                return back()->withErrors([
-                    'email' => 'Akun Anda tidak aktif. Hubungi administrator.',
-                ]);
+                return back()->withErrors(['email' => 'Akun Anda tidak aktif. Hubungi administrator.']);
             }
 
-            // ✅ PERBAIKAN: Jangan logout, redirect ke halaman verifikasi
             if ($user->role === 'asesi' && $user->mustVerifyEmail() && !$user->hasVerifiedEmail()) {
                 return redirect()->route('verification.notice')
                     ->with('warning', 'Harap verifikasi email Anda terlebih dahulu.');
             }
 
             switch ($user->role) {
-                case 'admin':
-                    return redirect()->intended(route('admin.dashboard'));
-                case 'tuk':
-                    return redirect()->intended(route('tuk.dashboard'));
+                case 'admin':    return redirect()->intended(route('admin.dashboard'));
+                case 'tuk':      return redirect()->intended(route('tuk.dashboard'));
                 case 'asesi':
                     if ($user->isFirstLogin()) {
                         return redirect()->route('asesi.first-login');
                     }
                     return redirect()->intended(route('asesi.dashboard'));
-                case 'asesor':
-                    return redirect()->intended(route('asesor.dashboard'));
-                case 'direktur':
-                    return redirect()->intended(route('direktur.dashboard'));
-                default:
-                    return redirect('/');
+                case 'asesor':   return redirect()->intended(route('asesor.dashboard'));
+                case 'direktur': return redirect()->intended(route('direktur.dashboard'));
+                default:         return redirect('/');
             }
         }
+
+        Log::info('AUTH ATTEMPT FAILED');
 
         return back()->withErrors([
             'email' => 'Email atau password salah.',
@@ -153,7 +158,7 @@ class AuthController extends Controller
      */
     public function sendResetLink(Request $request)
     {
-        $request->validate(['email' => 'required|string|unique:users,email']);
+        $request->validate(['email' => 'required|email:filter']);
 
         $status = Password::sendResetLink(
             $request->only('email')
@@ -179,7 +184,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'token' => 'required',
-            'email' => 'required|string|unique:users,email',
+            'email' => 'required|email:filter',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 

@@ -58,9 +58,9 @@
                                 <label class="form-label">Email</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror"
+                                    <input type="text" class="form-control @error('email') is-invalid @enderror"
                                         name="email" value="{{ old('email') }}" placeholder="your@email.com" required
-                                        autofocus>
+                                        autofocus autocomplete="email" inputmode="email">
                                 </div>
                                 @error('email')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>

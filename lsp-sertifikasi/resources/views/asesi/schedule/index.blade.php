@@ -365,21 +365,5 @@
     </div>
 </div>
 
-{{-- Tips --}}
-<div class="row">
-    <div class="col-12">
-        <div class="alert alert-info border-0 shadow-sm">
-            <h6 class="alert-heading"><i class="bi bi-lightbulb me-2"></i>Tips Persiapan Asesmen</h6>
-            <ul class="mb-0 small">
-                <li>Pastikan semua formulir dokumen sudah diisi dan disubmit sebelum tanggal asesmen.</li>
-                <li>Siapkan dokumen asli (KTP, ijazah, sertifikat pengalaman kerja) untuk ditunjukkan saat asesmen.</li>
-                <li>Hadir minimal 15 menit sebelum waktu asesmen dimulai.</li>
-                @if($schedule->location)
-                <li>Lokasi asesmen: <strong>{{ $schedule->location }}</strong></li>
-                @endif
-            </ul>
-        </div>
-    </div>
-</div>
 
 @endsection

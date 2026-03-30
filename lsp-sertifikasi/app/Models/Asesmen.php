@@ -349,7 +349,7 @@ class Asesmen extends Model
         return [
             'registered'               => 'Terdaftar',
             'data_completed'           => 'Data Lengkap',
-            'pra_asesmen_started'      => 'Pra-Asesmen Dimulai', // ← baru, gantikan 'verified'
+            'pra_asesmen_started'      => 'Pra-Asesmen', // ← baru, gantikan 'verified'
             'scheduled'                => 'Terjadwal',
             'pra_asesmen_completed' => 'Pra-Asesmen Selesai',
             'assessed'                 => 'Sudah Diases',

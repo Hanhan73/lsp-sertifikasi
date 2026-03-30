@@ -196,9 +196,8 @@
                         <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
                         <input type="date" name="tanggal_lahir" id="f-tgl" class="form-control"
                             value="{{ $aplsatu->tanggal_lahir?->format('Y-m-d') }}" required
-                            max="{{ now()->subYears(17)->format('Y-m-d') }}"
+                            max="{{ now()->subYears(12)->format('Y-m-d') }}"
                             oninput="validateTanggalLahir(this)">
-                        <div class="input-hint" id="hint-tgl">Harus berusia minimal 17 tahun.</div>
                     </div>
 
                     <div class="col-md-3">

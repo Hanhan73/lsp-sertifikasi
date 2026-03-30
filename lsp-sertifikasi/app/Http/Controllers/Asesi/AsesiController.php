@@ -122,7 +122,7 @@ class AsesiController extends Controller
             'document'       => 'required|mimes:pdf|max:10240',
             'training_flag'  => 'required_if:is_collective,false|boolean',
         ], [
-            'birth_date.before_or_equal' => 'Usia minimal untuk mendaftar adalah 17 tahun.',
+            'birth_date.before_or_equal' => 'Usia minimal untuk mendaftar adalah 12 tahun.',
             'birth_date.after_or_equal'  => 'Usia maksimal untuk mendaftar adalah 80 tahun.',
         ]);
 

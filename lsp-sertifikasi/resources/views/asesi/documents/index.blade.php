@@ -373,17 +373,5 @@ $pctWajib = round($selesai / $totalWajib * 100);
     </div>
 </div>
 
-{{-- Tips --}}
-<div class="alert alert-info border-0 shadow-sm mt-4">
-    <h6 class="alert-heading"><i class="bi bi-lightbulb me-2"></i>Tips Persiapan Asesmen</h6>
-    <ul class="mb-0 small">
-        <li>Isi dan submit semua dokumen wajib (APL-01, APL-02, FR.AK.01) sebelum tanggal asesmen.</li>
-        <li>Siapkan dokumen asli — KTP, ijazah, dan sertifikat pengalaman kerja — untuk ditunjukkan saat asesmen.</li>
-        <li>Hadir minimal 15 menit sebelum waktu asesmen dimulai.</li>
-        @if($asesmen->schedule?->location)
-        <li>Lokasi asesmen: <strong>{{ $asesmen->schedule->location }}</strong></li>
-        @endif
-    </ul>
-</div>
 
 @endsection

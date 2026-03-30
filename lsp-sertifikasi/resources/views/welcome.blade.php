@@ -528,8 +528,6 @@
             @foreach([
                 ['1','Daftar Kolektif','Daftarkan asesi secara massal dengan Batch ID','bi-people-fill','tuk.collective','Daftar Kolektif'],
                 ['2','Verifikasi Data','Verifikasi kelengkapan data dan dokumen asesi','bi-clipboard-check','tuk.verifications.index','Verifikasi'],
-                ['3','Jadwalkan Asesmen','Buat jadwal asesmen untuk asesi yang sudah siap','bi-calendar-plus','tuk.schedules','Buat Jadwal'],
-                ['4','Pantau Pembayaran','Monitor status pembayaran asesi kolektif','bi-wallet2','tuk.collective.payments','Pembayaran'],
             ] as [$n, $title, $desc, $icon, $route, $label])
             <div class="col-lg-3 col-md-6">
                 <div class="step-card">

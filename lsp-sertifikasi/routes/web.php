@@ -44,6 +44,12 @@ use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController;
 use App\Http\Controllers\Direktur\DirekturScheduleController;
 use App\Http\Controllers\Direktur\DirekturDashboardController;
 
+// Manajer Sertifikasi
+use App\Http\Controllers\ManajerSertifikasi\DashboardController;
+use App\Http\Controllers\ManajerSertifikasi\ManajerSertifikasiScheduleController;
+use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Public
@@ -522,6 +528,59 @@ Route::prefix('direktur')
             Route::post('/{schedule}/reject',  [DirekturScheduleController::class, 'reject'])->name('reject');
             Route::get('/{schedule}/sk',       [DirekturScheduleController::class, 'downloadSk'])->name('sk.download');
             Route::post('/{schedule}/sk/regenerate', [DirekturScheduleController::class, 'regenerateSk'])->name('sk.regenerate');
+        });
+    });
+
+
+Route::middleware(['auth', 'verified', 'role:manajer_sertifikasi'])
+    ->prefix('manajer-sertifikasi')
+    ->name('manajer-sertifikasi.')
+    ->group(function () {
+ 
+        // Dashboard
+        Route::get('/', [DashboardController::class, 'index'])->name('index');
+ 
+        // Detail jadwal — kelola distribusi soal
+        Route::get('/jadwal/{schedule}', [DistribusiSoalController::class, 'show'])
+            ->name('jadwal.show');
+ 
+        // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
+        // Setiap observasi punya beberapa paket (A, B, C, D, dst)
+        Route::prefix('soal-observasi')->name('soal-observasi.')->group(function () {
+            Route::get('/',                [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');
+            Route::get('/create',          [DistribusiSoalController::class, 'createSoalObservasi'])->name('create');
+            Route::post('/',               [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
+            Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
+            Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
+ 
+            // Paket di dalam observasi
+            Route::post('/{soalObservasi}/paket',     [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
+            Route::get('/paket/{paket}/download',      [DistribusiSoalController::class, 'downloadPaketObservasi'])->name('paket.download');
+            Route::delete('/paket/{paket}',            [DistribusiSoalController::class, 'destroyPaketObservasi'])->name('paket.destroy');
+ 
+            // Distribusi ke jadwal
+            Route::post('/distribusi',    [DistribusiSoalController::class, 'distribusiSoalObservasi'])->name('distribusi');
+            Route::delete('/distribusi',  [DistribusiSoalController::class, 'hapusDistribusiSoalObservasi'])->name('distribusi.hapus');
+        });
+ 
+        // ── Bank Soal 2: Soal Teori PG ───────────────────────────────────
+        Route::prefix('soal-teori')->name('soal-teori.')->group(function () {
+            Route::get('/',               [DistribusiSoalController::class, 'indexSoalTeori'])->name('index');
+            Route::post('/',              [DistribusiSoalController::class, 'storeSoalTeori'])->name('store');
+            Route::put('/{soalTeori}',    [DistribusiSoalController::class, 'updateSoalTeori'])->name('update');
+            Route::delete('/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeori'])->name('destroy');
+            Route::post('/distribusi',    [DistribusiSoalController::class, 'distribusiSoalTeori'])->name('distribusi');
+        });
+ 
+        // ── Bank Soal 3: Portofolio ──────────────────────────────────────
+        Route::prefix('portofolio')->name('portofolio.')->group(function () {
+            Route::get('/',                      [DistribusiSoalController::class, 'indexPortofolio'])->name('index');
+            Route::get('/create',                [DistribusiSoalController::class, 'createPortofolio'])->name('create');
+            Route::post('/',                     [DistribusiSoalController::class, 'storePortofolio'])->name('store');
+            Route::get('/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolio'])->name('download');
+            Route::delete('/{portofolio}',       [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
+            Route::post('/distribusi',           [DistribusiSoalController::class, 'distribusiPortofolio'])->name('distribusi');
+            Route::delete('/distribusi',         [DistribusiSoalController::class, 'hapusDistribusiPortofolio'])->name('distribusi.hapus');
         });
     });
 /*

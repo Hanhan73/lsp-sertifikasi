@@ -168,6 +168,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'direktur';
     }
 
+    public function isManajerSertifikasi(): bool
+    {
+        return $this->role === 'manajer_sertifikasi';
+    }
 
     /**
      * TTD yang sudah tersimpan, siap pakai sebagai data URI.

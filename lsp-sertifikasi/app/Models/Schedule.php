@@ -254,4 +254,27 @@ class Schedule extends Model
     {
         return $query->where('approval_status', 'approved');
     }
+
+    public function distribusiSoalObservasi()
+    {
+        return $this->hasMany(\App\Models\DistribusiSoalObservasi::class);
+    }
+ 
+    public function distribusiPaketSoal()
+    {
+        return $this->hasMany(\App\Models\DistribusiPaketSoal::class);
+    }
+ 
+    /**
+     * Satu schedule hanya punya satu konfigurasi distribusi soal teori.
+     */
+    public function distribusiSoalTeori()
+    {
+        return $this->hasOne(\App\Models\DistribusiSoalTeori::class);
+    }
+    public function distribusiPortofolio()
+    {
+        return $this->hasMany(\App\Models\DistribusiPortofolio::class);
+    }
+ 
 }

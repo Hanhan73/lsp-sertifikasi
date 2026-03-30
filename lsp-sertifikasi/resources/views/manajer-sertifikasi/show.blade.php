@@ -1,0 +1,502 @@
+@extends('layouts.app')
+
+@section('title', 'Kelola Soal — ' . $schedule->skema->name)
+@section('breadcrumb', 'Distribusi › ' . $schedule->skema->name)
+
+@section('sidebar')
+@include('manajer-sertifikasi.partials.sidebar')
+@endsection
+
+@section('content')
+
+{{-- ===== HEADER ===== --}}
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+    <div>
+        <a href="{{ route('manajer-sertifikasi.index') }}" class="btn btn-sm btn-outline-secondary mb-2">
+            <i class="bi bi-arrow-left me-1"></i> Kembali ke Dashboard
+        </a>
+        <h4 class="fw-bold mb-1">{{ $schedule->skema->name }}</h4>
+        <div class="d-flex gap-3 flex-wrap" style="font-size:.875rem;color:#6b7280">
+            <span><i class="bi bi-calendar3 me-1"></i>{{ $schedule->assessment_date->format('d F Y') }}</span>
+            <span><i class="bi bi-clock me-1"></i>{{ $schedule->start_time }} – {{ $schedule->end_time }}</span>
+            <span><i class="bi bi-building me-1"></i>{{ $schedule->tuk->name ?? '-' }}</span>
+            <span><i class="bi bi-people me-1"></i>{{ $schedule->asesmens->count() }} asesi</span>
+            @if($schedule->asesor)
+                <span><i class="bi bi-person-badge me-1"></i>{{ $schedule->asesor->user->name ?? '-' }}</span>
+            @endif
+        </div>
+    </div>
+
+    {{-- Summary counter --}}
+    <div class="d-flex gap-2 flex-wrap">
+        @php
+            $countObservasi  = $distribusiObservasiIds->count();
+            $countPortofolio = $distribusiPortofolioIds->count();
+            $countTeori      = $distribusiTeori?->jumlah_soal ?? 0;
+        @endphp
+        <div class="text-center px-3 py-2 rounded-3" style="background:#f0fdf4;border:1px solid #bbf7d0;min-width:90px">
+            <div style="font-size:1.3rem;font-weight:800;color:#16a34a">{{ $countObservasi }}</div>
+            <div style="font-size:.68rem;color:#6b7280;font-weight:600">Observasi</div>
+        </div>
+        <div class="text-center px-3 py-2 rounded-3"
+             style="background:{{ $distribusiTeori ? '#eff6ff' : '#fffbeb' }};border:1px solid {{ $distribusiTeori ? '#bfdbfe' : '#fde68a' }};min-width:90px">
+            <div style="font-size:1.3rem;font-weight:800;color:{{ $distribusiTeori ? '#2563eb' : '#d97706' }}">
+                {{ $countTeori }}
+            </div>
+            <div style="font-size:.68rem;color:#6b7280;font-weight:600">Soal Teori</div>
+        </div>
+        <div class="text-center px-3 py-2 rounded-3" style="background:#fdf4ff;border:1px solid #e9d5ff;min-width:90px">
+            <div style="font-size:1.3rem;font-weight:800;color:#7c3aed">{{ $countPortofolio }}</div>
+            <div style="font-size:.68rem;color:#6b7280;font-weight:600">Portofolio</div>
+        </div>
+    </div>
+</div>
+
+{{-- ===== CARD 3 TAB ===== --}}
+<div class="card">
+    <div class="card-header pb-0">
+        <ul class="nav nav-tabs" id="soalTabs">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-observasi">
+                    <i class="bi bi-eye me-1"></i> Soal Observasi
+                    @if($countObservasi)
+                        <span class="badge bg-success ms-1" style="font-size:.6rem">{{ $countObservasi }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-teori">
+                    <i class="bi bi-journal-text me-1"></i> Soal Teori (PG)
+                    @if(!$distribusiTeori)
+                        <i class="bi bi-exclamation-circle text-warning ms-1"></i>
+                    @else
+                        <span class="badge bg-primary ms-1" style="font-size:.6rem">{{ $countTeori }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-portofolio">
+                    <i class="bi bi-briefcase me-1"></i> Portofolio
+                    @if($countPortofolio)
+                        <span class="badge bg-success ms-1" style="font-size:.6rem">{{ $countPortofolio }}</span>
+                    @endif
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <div class="tab-content">
+
+        {{-- ================================================================
+             TAB 1: SOAL OBSERVASI
+             Setiap soal observasi punya beberapa paket (A, B, C, D dst)
+        ================================================================ --}}
+        <div class="tab-pane fade show active p-4" id="pane-observasi">
+            <div class="row g-4">
+                {{-- Kiri: daftar observasi tersedia --}}
+                <div class="col-md-7">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-database text-muted me-2"></i>
+                        Soal Observasi Tersedia
+                        <span class="badge bg-secondary ms-1">{{ $soalObservasiTersedia->count() }}</span>
+                    </h6>
+
+                    @if($soalObservasiTersedia->isEmpty())
+                        <div class="text-center py-4 border rounded-3 text-muted">
+                            <i class="bi bi-file-earmark-pdf" style="font-size:2rem;opacity:.3;display:block;margin-bottom:.5rem"></i>
+                            <p class="fw-semibold mb-0">Belum ada soal observasi untuk skema ini</p>
+                        </div>
+                    @else
+                        <div class="d-flex flex-column gap-3">
+                            @foreach($soalObservasiTersedia as $obs)
+                            @php $sudah = $distribusiObservasiIds->contains($obs->id); @endphp
+                            <div class="border rounded-3 overflow-hidden {{ $sudah ? 'border-success' : '' }}">
+                                {{-- Header baris observasi --}}
+                                <div class="d-flex align-items-center justify-content-between px-3 py-2
+                                            {{ $sudah ? 'bg-success-subtle' : 'bg-light' }}">
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.875rem">{{ $obs->judul }}</div>
+                                        <small class="text-muted">
+                                            {{ $obs->paket->count() }} paket
+                                            @if($obs->paket->isNotEmpty())
+                                                ({{ $obs->paket->pluck('kode_paket')->join(', ') }})
+                                            @endif
+                                        </small>
+                                    </div>
+                                    <div class="d-flex gap-2 align-items-center">
+                                        {{-- Tombol distribusi / hapus distribusi --}}
+                                        @if($sudah)
+                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Aktif</span>
+                                            <form method="POST"
+                                                  action="{{ route('manajer-sertifikasi.soal-observasi.distribusi.hapus') }}">
+                                                @csrf @method('DELETE')
+                                                <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                                                <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
+                                                <button class="btn btn-sm btn-outline-danger"
+                                                        onclick="return confirm('Hapus distribusi ini?')">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </form>
+                                        @else
+                                            <form method="POST"
+                                                  action="{{ route('manajer-sertifikasi.soal-observasi.distribusi') }}">
+                                                @csrf
+                                                <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                                                <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
+                                                <button type="submit" class="btn btn-sm btn-primary"
+                                                        {{ $obs->paket->isEmpty() ? 'disabled title=Tambah paket dulu' : '' }}>
+                                                    <i class="bi bi-send me-1"></i> Distribusikan
+                                                </button>
+                                            </form>
+                                        @endif
+                                        {{-- Tombol kelola paket --}}
+                                        <a href="{{ route('manajer-sertifikasi.soal-observasi.show', $obs) }}"
+                                           class="btn btn-sm btn-outline-secondary" title="Kelola Paket">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                {{-- Daftar paket di dalam observasi ini --}}
+                                @if($obs->paket->isNotEmpty())
+                                <div class="px-3 py-2 border-top bg-white">
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        @foreach($obs->paket as $p)
+                                        <span class="badge bg-light text-dark border" style="font-size:.75rem">
+                                            <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
+                                            Paket {{ $p->kode_paket }} — {{ $p->judul }}
+                                        </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                @else
+                                <div class="px-3 py-2 border-top">
+                                    <small class="text-warning">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        Belum ada paket — tambahkan dulu sebelum mendistribusikan
+                                    </small>
+                                </div>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                {{-- Kanan: form buat observasi baru --}}
+                <div class="col-md-5">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Buat Soal Observasi Baru
+                    </h6>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <form method="POST" action="{{ route('manajer-sertifikasi.soal-observasi.store') }}">
+                            @csrf
+                            <input type="hidden" name="skema_id" value="{{ $schedule->skema_id }}">
+                            <input type="hidden" name="redirect_back" value="{{ url()->current() }}">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">Nama Soal Observasi</label>
+                                <input type="text" name="judul" class="form-control form-control-sm"
+                                       placeholder="cth: Observasi Kompetensi Teknis" required>
+                                <div class="form-text">
+                                    Setelah dibuat, kamu akan diarahkan untuk menambahkan paket A, B, C, dst.
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="bi bi-plus-lg me-1"></i> Buat & Tambah Paket
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="mt-3 p-3 border rounded-3 bg-light">
+                        <p class="fw-semibold mb-2" style="font-size:.875rem">
+                            <i class="bi bi-info-circle text-primary me-1"></i>
+                            Cara kerja soal observasi:
+                        </p>
+                        <ol class="ps-3 mb-0" style="font-size:.8rem;color:#6b7280;line-height:1.8">
+                            <li>Buat soal observasi (judul/kelompok)</li>
+                            <li>Tambahkan paket A, B, C, D di halaman detailnya</li>
+                            <li>Distribusikan ke jadwal ini</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ================================================================
+             TAB 2: SOAL TEORI PG
+        ================================================================ --}}
+        <div class="tab-pane fade p-4" id="pane-teori">
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-gear text-muted me-2"></i>Konfigurasi Distribusi Soal Teori
+                    </h6>
+
+                    <div class="d-flex align-items-center gap-3 p-3 rounded-3 mb-3
+                                {{ $jumlahBankSoalTeori >= 30 ? 'bg-success-subtle border border-success' : 'bg-warning-subtle border border-warning' }}">
+                        <i class="bi bi-database fs-4 {{ $jumlahBankSoalTeori >= 30 ? 'text-success' : 'text-warning' }}"></i>
+                        <div>
+                            <div class="fw-bold">{{ $jumlahBankSoalTeori }} soal tersedia</div>
+                            <small class="text-muted">di bank soal skema ini</small>
+                        </div>
+                    </div>
+
+                    @if($distribusiTeori)
+                    <div class="alert alert-success d-flex gap-2 py-2 px-3 mb-3" style="font-size:.875rem">
+                        <i class="bi bi-check-circle-fill flex-shrink-0"></i>
+                        <div>
+                            <strong>{{ $distribusiTeori->jumlah_soal }} soal</strong> per asesi.<br>
+                            <small class="text-muted">
+                                {{ $distribusiTeori->didistribusikanOleh->name ?? '-' }}
+                                · {{ $distribusiTeori->updated_at->diffForHumans() }}
+                            </small>
+                        </div>
+                    </div>
+                    @else
+                    <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3" style="font-size:.875rem">
+                        <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
+                        Belum dikonfigurasi.
+                    </div>
+                    @endif
+
+                    <div class="border rounded-3 p-3 bg-light">
+                        <form method="POST" action="{{ route('manajer-sertifikasi.soal-teori.distribusi') }}"
+                              id="formDistribusiTeori">
+                            @csrf
+                            <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">
+                                    Jumlah Soal per Asesi
+                                </label>
+                                <input type="number" name="jumlah_soal" class="form-control"
+                                       value="{{ $distribusiTeori?->jumlah_soal ?? 30 }}"
+                                       min="1" max="{{ $jumlahBankSoalTeori }}" required>
+                                <div class="form-text">Default 30. Max {{ $jumlahBankSoalTeori }}. Diacak per asesi.</div>
+                            </div>
+                            @if($distribusiTeori)
+                            <div class="alert alert-warning py-2 px-3 mb-3" style="font-size:.8rem">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                Akan <strong>mengacak ulang</strong> soal untuk {{ $schedule->asesmens->count() }} asesi.
+                            </div>
+                            @endif
+                            <button type="button" class="btn btn-primary w-100" onclick="konfirmasiTeori()">
+                                <i class="bi bi-shuffle me-1"></i>
+                                {{ $distribusiTeori ? 'Perbarui Distribusi' : 'Distribusikan Soal Teori' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="col-md-7">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-people text-muted me-2"></i>
+                        Daftar Asesi ({{ $schedule->asesmens->count() }} orang)
+                    </h6>
+                    @if($schedule->asesmens->isEmpty())
+                        <div class="text-center py-4 border rounded-3 text-muted">
+                            <i class="bi bi-person-x" style="font-size:2rem;opacity:.3;display:block;margin-bottom:.5rem"></i>
+                            <p class="mb-0">Belum ada asesi terdaftar</p>
+                        </div>
+                    @else
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Nama</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Soal Teori</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($schedule->asesmens as $i => $asesmen)
+                                @php
+                                    $punya = $distribusiTeori
+                                        ? $distribusiTeori->soalAsesi()->where('asesmen_id', $asesmen->id)->exists()
+                                        : false;
+                                @endphp
+                                <tr>
+                                    <td class="text-muted">{{ $i + 1 }}</td>
+                                    <td>
+                                        <div class="fw-semibold" style="font-size:.875rem">{{ $asesmen->full_name }}</div>
+                                        <small class="text-muted">{{ $asesmen->user->email ?? '-' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $asesmen->status_badge }} badge-status">
+                                            {{ $asesmen->status_label }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        @if($punya)
+                                            <span class="badge bg-success badge-status">
+                                                <i class="bi bi-check-lg"></i> Sudah
+                                            </span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light border mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-plus-circle text-primary me-1"></i>Perlu tambah soal ke bank?
+                        </small>
+                        <a href="{{ route('manajer-sertifikasi.soal-teori.index') }}?skema_id={{ $schedule->skema_id }}"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-journal-text me-1"></i> Kelola Bank Soal
+                        </a>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        {{-- ================================================================
+             TAB 3: PORTOFOLIO
+        ================================================================ --}}
+        <div class="tab-pane fade p-4" id="pane-portofolio">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-database text-muted me-2"></i>
+                        Portofolio Tersedia
+                        <span class="badge bg-secondary ms-1">{{ $portofolioTersedia->count() }}</span>
+                    </h6>
+                    @if($portofolioTersedia->isEmpty())
+                        <div class="text-center py-4 border rounded-3 text-muted">
+                            <i class="bi bi-briefcase" style="font-size:2rem;opacity:.3;display:block;margin-bottom:.5rem"></i>
+                            <p class="fw-semibold mb-0">Belum ada portofolio untuk skema ini</p>
+                        </div>
+                    @else
+                        <div class="d-flex flex-column gap-2">
+                            @foreach($portofolioTersedia as $porto)
+                            @php $sudah = $distribusiPortofolioIds->contains($porto->id); @endphp
+                            <div class="d-flex align-items-center justify-content-between p-3 rounded-3 border
+                                        {{ $sudah ? 'border-success bg-success-subtle' : 'bg-light' }}">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-briefcase fs-5" style="color:#7c3aed"></i>
+                                    <div>
+                                        <div class="fw-semibold" style="font-size:.875rem">{{ $porto->judul }}</div>
+                                        @if($porto->deskripsi)
+                                            <small class="text-muted">{{ Str::limit($porto->deskripsi, 50) }}</small>
+                                        @endif
+                                        @if($porto->hasFile())
+                                            <br><small class="text-muted">
+                                                <i class="bi bi-paperclip me-1"></i>{{ $porto->file_name }}
+                                            </small>
+                                        @else
+                                            <br><small class="text-warning">
+                                                <i class="bi bi-exclamation-circle me-1"></i>File belum diupload (TBD)
+                                            </small>
+                                        @endif
+                                    </div>
+                                </div>
+                                @if($sudah)
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Aktif</span>
+                                        <form method="POST"
+                                              action="{{ route('manajer-sertifikasi.portofolio.distribusi.hapus') }}">
+                                            @csrf @method('DELETE')
+                                            <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                                            <input type="hidden" name="portofolio_id" value="{{ $porto->id }}">
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="return confirm('Hapus distribusi ini?')">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form method="POST"
+                                          action="{{ route('manajer-sertifikasi.portofolio.distribusi') }}">
+                                        @csrf
+                                        <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                                        <input type="hidden" name="portofolio_id" value="{{ $porto->id }}">
+                                        <button type="submit" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-send me-1"></i> Distribusikan
+                                        </button>
+                                    </form>
+                                @endif
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <div class="col-md-6">
+                    <h6 class="fw-bold mb-3">
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Tambah Portofolio Baru
+                    </h6>
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.8rem">
+                        <i class="bi bi-info-circle-fill me-1"></i>
+                        Format file portofolio belum ditentukan (TBD). Bisa simpan tanpa file dulu.
+                    </div>
+                    <div class="border rounded-3 p-3 bg-light">
+                        <form method="POST" action="{{ route('manajer-sertifikasi.portofolio.store') }}"
+                              enctype="multipart/form-data">
+                            @csrf
+                            <input type="hidden" name="skema_id" value="{{ $schedule->skema_id }}">
+                            <input type="hidden" name="redirect_back" value="{{ url()->current() }}">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">Judul</label>
+                                <input type="text" name="judul" class="form-control form-control-sm"
+                                       placeholder="cth: Portofolio Kompetensi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">Deskripsi</label>
+                                <textarea name="deskripsi" class="form-control form-control-sm" rows="2"
+                                          placeholder="Opsional..."></textarea>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">
+                                    File <span class="text-muted fw-normal">(opsional, TBD)</span>
+                                </label>
+                                <input type="file" name="file" class="form-control form-control-sm">
+                                <div class="form-text">Format belum ditentukan. Maks. 20 MB.</div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <i class="bi bi-save me-1"></i> Simpan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>{{-- /tab-content --}}
+</div>
+
+@endsection
+
+@push('scripts')
+<script>
+    function konfirmasiTeori() {
+        const jumlah = document.querySelector('input[name="jumlah_soal"]').value;
+        const asesi  = {{ $schedule->asesmens->count() }};
+        const sudah  = {{ $distribusiTeori ? 'true' : 'false' }};
+        Swal.fire({
+            title: sudah ? 'Perbarui Distribusi?' : 'Distribusikan Soal Teori?',
+            html: `<b>${jumlah} soal</b> diacak untuk <b>${asesi} asesi</b>.`
+                + (sudah ? '<br><small class="text-warning">Data lama akan digantikan.</small>' : ''),
+            icon: sudah ? 'warning' : 'question',
+            showCancelButton: true,
+            confirmButtonText: sudah ? 'Ya, Perbarui' : 'Ya, Distribusikan',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#2563eb',
+        }).then(r => { if (r.isConfirmed) document.getElementById('formDistribusiTeori').submit(); });
+    }
+
+    // Restore tab dari URL hash
+    const hash = window.location.hash;
+    if (hash) {
+        const t = document.querySelector(`[data-bs-target="${hash}"]`);
+        if (t) new bootstrap.Tab(t).show();
+    }
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
+        t.addEventListener('shown.bs.tab', e => {
+            history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
+        });
+    });
+</script>
+@endpush

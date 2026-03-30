@@ -41,7 +41,7 @@
 @section('content')
 
 @php
-    $maxBirthDate = now()->subYears(17)->format('Y-m-d');
+    $maxBirthDate = now()->subYears(12)->format('Y-m-d');
     $minBirthDate = now()->subYears(80)->format('Y-m-d');
 @endphp
 
@@ -219,13 +219,12 @@
                                 class="form-control @error('birth_date') is-invalid @enderror"
                                 name="birth_date"
                                 value="{{ old('birth_date', $asesmen->birth_date ?? '') }}"
-                                {{-- Maksimal: harus sudah berusia 17 tahun --}}
+                                {{-- Maksimal: harus sudah berusia 1 tahun --}}
                                 max="{{ $maxBirthDate }}"
                                 {{-- Minimal: tidak lebih dari 80 tahun --}}
                                 min="{{ $minBirthDate }}"
                                 required>
                             <small class="text-muted">
-                                Usia saat mendaftar: minimal 17 tahun, maksimal 80 tahun
                             </small>
                             @error('birth_date')
                             <div class="invalid-feedback">{{ $message }}</div>

@@ -102,7 +102,7 @@ class AsesiController extends Controller
             'birth_date'     => [
                 'required',
                 'date',
-                'before_or_equal:' . now()->subYears(17)->format('Y-m-d'),
+                'before_or_equal:' . now()->subYears(12)->format('Y-m-d'),
                 'after_or_equal:'  . now()->subYears(80)->format('Y-m-d'),
             ],
             'gender'         => 'required|in:L,P',

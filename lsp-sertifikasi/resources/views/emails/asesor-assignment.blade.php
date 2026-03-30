@@ -18,7 +18,7 @@
     }
 
     .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #889cf1 0%, #dcdadf 100%);
         color: white;
         padding: 30px;
         text-align: center;
@@ -58,7 +58,7 @@
     .button {
         display: inline-block;
         padding: 12px 24px;
-        background: #667eea;
+        background: #bcc5f0;
         color: white;
         text-decoration: none;
         border-radius: 6px;
@@ -77,7 +77,7 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1 style="margin:0;">📋 Penugasan Jadwal Asesmen</h1>
+            <h1 style="margin:0;">Penugasan Jadwal Asesmen</h1>
         </div>
 
         <div class="content">

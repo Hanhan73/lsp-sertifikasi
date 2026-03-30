@@ -223,7 +223,6 @@
                         <th class="text-center">Jenis</th>
                         <th class="text-center">Status</th>
                         <th>Tgl Daftar</th>
-                        <th width="60"></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -295,12 +294,20 @@
 @push('scripts')
 <script>
 $(document).ready(function () {
+    // Destroy existing instance if any (prevents double-init on hot reload)
+    if ($.fn.DataTable.isDataTable('#table-asesmens')) {
+        $('#table-asesmens').DataTable().destroy();
+    }
+
     $('#table-asesmens').DataTable({
         language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
         order: [[6, 'desc']],
         pageLength: 10,
         responsive: true,
-        columnDefs: [{ orderable: false, targets: [4, 5, 7] }],
+        columnDefs: [
+            { orderable: false, targets: [4, 5, 7] },
+            { width: '60px', targets: [7] }   // ← move width here, not on <th>
+        ],
     });
 });
 

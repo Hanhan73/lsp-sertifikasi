@@ -239,6 +239,13 @@
             <li class="nav-item">
                 <button class="nav-link active py-3" data-bs-toggle="tab" data-bs-target="#tab-biodata">
                     <i class="bi bi-person me-1"></i>Biodata
+                    @if($asesmen->biodata_needs_revision)
+                        <span class="badge bg-danger ms-1" style="font-size:.6rem;">Perlu Revisi</span>
+                    @elseif(!$asesmen->biodata_verified_at && in_array($asesmen->status, ['pra_asesmen_started','scheduled','pra_asesmen_completed','assessed']))
+                        <span class="badge bg-warning text-dark ms-1" style="font-size:.6rem;">Perlu Verif</span>
+                    @elseif($asesmen->biodata_verified_at)
+                        <span class="badge bg-success ms-1" style="font-size:.6rem;">✓</span>
+                    @endif
                 </button>
             </li>
             <li class="nav-item">
@@ -404,6 +411,7 @@
                                 @endif
                             </div>
                         </div>
+                        @include('admin.asesmen.partials.biodata-reject-panel')
                     </div>
                 </div>
             </div>

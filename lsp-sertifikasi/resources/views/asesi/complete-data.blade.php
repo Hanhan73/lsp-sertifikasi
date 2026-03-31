@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', $viewOnly ? 'Lihat Data Pribadi' : 'Lengkapi Data Pribadi')
-@section('page-title', $viewOnly ? 'Lihat Data Pribadi' : 'Lengkapi Data Pribadi')
+@section('title', $viewOnly ? 'Lihat Data Pribadi' : ($asesmen->biodata_needs_revision ? 'Revisi Data Pribadi' : 'Lengkapi Data Pribadi'))
+@section('page-title', $viewOnly ? 'Lihat Data Pribadi' : ($asesmen->biodata_needs_revision ? 'Revisi Data Pribadi' : 'Lengkapi Data Pribadi'))
 
 @section('sidebar')
 @include('asesi.partials.sidebar')
@@ -15,7 +15,6 @@
     cursor: not-allowed;
 }
 .locked-field option { color: #6c757d; }
-
 .training-section {
     border: 2px solid #0d6efd;
     border-radius: 8px;
@@ -35,6 +34,16 @@
 .training-option.selected { border-color: #0d6efd; background-color: #cfe2ff; }
 .training-option input[type="radio"] { width: 20px; height: 20px; cursor: pointer; }
 .price-badge { font-size: 1.2rem; font-weight: bold; color: #198754; }
+
+/* Preview dokumen existing */
+.doc-existing {
+    border: 1px solid #d1fae5;
+    background: #f0fdf4;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+}
+.doc-existing.rejected { border-color: #fecaca; background: #fef2f2; }
 </style>
 @endpush
 
@@ -43,36 +52,60 @@
 @php
     $maxBirthDate = now()->subYears(12)->format('Y-m-d');
     $minBirthDate = now()->subYears(80)->format('Y-m-d');
+    $isRevision   = $asesmen->biodata_needs_revision ?? false;
 @endphp
 
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="card">
-            <div class="card-header {{ $viewOnly ? 'bg-info' : 'bg-primary' }} text-white">
+            <div class="card-header {{ $viewOnly ? 'bg-info' : ($isRevision ? 'bg-warning' : 'bg-primary') }} text-{{ $isRevision ? 'dark' : 'white' }}">
                 <h5 class="mb-0">
-                    <i class="bi {{ $viewOnly ? 'bi-eye' : 'bi-clipboard-data' }}"></i>
-                    {{ $viewOnly ? 'Data Pribadi Asesi (View Only)' : 'Form Data Pribadi Asesi' }}
+                    <i class="bi {{ $viewOnly ? 'bi-eye' : ($isRevision ? 'bi-pencil-square' : 'bi-clipboard-data') }}"></i>
+                    {{ $viewOnly ? 'Data Pribadi Asesi (View Only)' : ($isRevision ? 'Revisi Data Pribadi' : 'Form Data Pribadi Asesi') }}
                 </h5>
             </div>
             <div class="card-body">
 
+            {{-- Alert Rejection --}}
+            @if($isRevision)
+            <div class="alert alert-danger border-0 shadow-sm d-flex gap-3 align-items-start mb-4">
+                <i class="bi bi-exclamation-triangle-fill fs-3 flex-shrink-0 mt-1"></i>
+                <div class="flex-grow-1">
+                    <h6 class="fw-bold mb-1">Biodata Dikembalikan oleh Admin LSP</h6>
+                    <p class="mb-2 small">Perbaiki sesuai catatan di bawah, lalu submit ulang. Data yang sudah benar tidak perlu diubah.</p>
+                    <div class="bg-white border border-danger rounded p-3 mb-2">
+                        <strong class="small text-danger"><i class="bi bi-chat-left-text me-1"></i>Catatan Admin:</strong>
+                        <p class="mb-0 mt-1">{{ $asesmen->biodata_rejection_notes }}</p>
+                    </div>
+                    <small class="text-muted">
+                        <i class="bi bi-clock me-1"></i>Dikembalikan pada {{ $asesmen->biodata_rejected_at?->format('d M Y H:i') ?? '-' }}
+                    </small>
+                </div>
+            </div>
+            @endif
+
             @if($viewOnly)
-                {{-- ── VIEW-ONLY MODE ────────────────────────────────────── --}}
+                {{-- ── VIEW-ONLY MODE ──────────────────────────────── --}}
+                @if($asesmen->biodata_verified_at)
+                <div class="alert alert-success d-flex align-items-center gap-2">
+                    <i class="bi bi-patch-check-fill fs-5"></i>
+                    <div>
+                        <strong>Biodata Terverifikasi</strong>
+                        <span class="text-muted small ms-2">
+                            {{ \Carbon\Carbon::parse($asesmen->biodata_verified_at)->format('d M Y H:i') }}
+                        </span>
+                    </div>
+                </div>
+                @else
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i>
                     Data Anda sudah disubmit dan sedang dalam proses verifikasi.
-                    Data tidak dapat diubah setelah diverifikasi oleh Admin LSP.
                 </div>
-                <div class="alert alert-success">
-                    <i class="bi bi-check-circle"></i>
-                    <strong>Status:</strong> {{ $asesmen->status_label }}
-                </div>
+                @endif
 
                 {{-- Data Pribadi --}}
                 <div class="card mb-3">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="bi bi-person"></i> Data Pribadi</h5>
-                    </div>
+                    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-person"></i> Data Pribadi</h5></div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
@@ -103,16 +136,14 @@
 
                 {{-- Data Sertifikasi --}}
                 <div class="card mb-3">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="bi bi-award"></i> Data Sertifikasi</h5>
-                    </div>
+                    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-award"></i> Data Sertifikasi</h5></div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-6">
                                 <table class="table table-borderless table-sm">
                                     <tr><td width="150"><strong>Skema Sertifikasi</strong></td><td>: {{ $asesmen->skema->name ?? '-' }}</td></tr>
                                     <tr><td><strong>TUK</strong></td><td>: {{ $asesmen->tuk->name ?? '-' }}</td></tr>
-                                    <tr><td><strong>Tanggal Dipilih</strong></td><td>: {{ \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') }}</td></tr>
+                                    <tr><td><strong>Tanggal Dipilih</strong></td><td>: {{ $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') : '-' }}</td></tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
@@ -123,7 +154,7 @@
                                     </tr>
                                     <tr>
                                         <td><strong>Pelatihan</strong></td>
-                                        <td>: @if($asesmen->training_flag)<span class="badge bg-success"><i class="bi bi-check-circle"></i> Ya (+ Rp 1.500.000)</span>@else<span class="badge bg-secondary"><i class="bi bi-x-circle"></i> Tidak</span>@endif</td>
+                                        <td>: @if($asesmen->training_flag)<span class="badge bg-success">Ya (+ Rp 1.500.000)</span>@else<span class="badge bg-secondary">Tidak</span>@endif</td>
                                     </tr>
                                     @if($asesmen->fee_amount)
                                     <tr><td><strong>Total Biaya</strong></td><td>: <span class="text-success fw-bold">Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}</span></td></tr>
@@ -136,9 +167,7 @@
 
                 {{-- Dokumen --}}
                 <div class="card mb-3">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0"><i class="bi bi-file-earmark"></i> Dokumen</h5>
-                    </div>
+                    <div class="card-header bg-white"><h5 class="mb-0"><i class="bi bi-file-earmark"></i> Dokumen</h5></div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-md-4 text-center">
@@ -176,24 +205,25 @@
                 </div>
 
             @else
-                {{-- ── EDITABLE FORM MODE ────────────────────────────────── --}}
+                {{-- ── EDITABLE FORM MODE (termasuk revision) ─────── --}}
+                @if(!$isRevision)
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle"></i>
-                    Lengkapi semua data dengan benar sesuai dokumen resmi (KTP/Ijazah). Data yang sudah disubmit akan diverifikasi.
+                    Lengkapi semua data dengan benar sesuai dokumen resmi (KTP/Ijazah).
                 </div>
+                @endif
 
                 <form method="POST" action="{{ route('asesi.store-data') }}" enctype="multipart/form-data">
                     @csrf
 
                     <!-- Data Pribadi -->
                     <h6 class="border-bottom pb-2 mb-3">Data Pribadi</h6>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('full_name') is-invalid @enderror"
-                                name="full_name" value="{{ old('full_name', $asesmen->full_name ?? '') }}" required>
-                            <small class="text-muted">Sesuai KTP/Ijazah</small>
+                                name="full_name"
+                                value="{{ old('full_name', $asesmen->full_name ?? '') }}" required>
                             @error('full_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -209,7 +239,8 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tempat Lahir <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('birth_place') is-invalid @enderror"
-                                name="birth_place" value="{{ old('birth_place', $asesmen->birth_place ?? '') }}" required>
+                                name="birth_place"
+                                value="{{ old('birth_place', $asesmen->birth_place ?? '') }}" required>
                             @error('birth_place')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -218,19 +249,11 @@
                             <input type="date"
                                 class="form-control @error('birth_date') is-invalid @enderror"
                                 name="birth_date"
-                                value="{{ old('birth_date', $asesmen->birth_date ?? '') }}"
-                                {{-- Maksimal: harus sudah berusia 1 tahun --}}
+                                value="{{ old('birth_date', $asesmen->birth_date ? \Carbon\Carbon::parse($asesmen->birth_date)->format('Y-m-d') : '') }}"
                                 max="{{ $maxBirthDate }}"
-                                {{-- Minimal: tidak lebih dari 80 tahun --}}
                                 min="{{ $minBirthDate }}"
                                 required>
-                            <small class="text-muted">
-                            </small>
-                            @error('birth_date')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                            @else
-                            {{-- Tampilkan hint hanya kalau belum ada error --}}
-                            @enderror
+                            @error('birth_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
                         <div class="col-md-6 mb-3">
@@ -246,7 +269,8 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Telepon/HP <span class="text-danger">*</span></label>
                             <input type="tel" class="form-control @error('phone') is-invalid @enderror"
-                                name="phone" value="{{ old('phone', $asesmen->phone ?? '') }}" required>
+                                name="phone"
+                                value="{{ old('phone', $asesmen->phone ?? '') }}" required>
                             @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -279,14 +303,13 @@
 
                     <!-- Data Pendidikan & Pekerjaan -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Data Pendidikan & Pekerjaan</h6>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Pendidikan Terakhir <span class="text-danger">*</span></label>
                             <select class="form-select @error('education') is-invalid @enderror" name="education" required>
                                 <option value="">Pilih</option>
                                 @foreach(['SD','SMP','SMA/SMK','D3','S1','S2','S3'] as $edu)
-                                <option value="{{ $edu }}" {{ old('education') == $edu ? 'selected' : '' }}>{{ $edu }}</option>
+                                <option value="{{ $edu }}" {{ old('education', $asesmen->education ?? '') == $edu ? 'selected' : '' }}>{{ $edu }}</option>
                                 @endforeach
                             </select>
                             @error('education')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -297,7 +320,7 @@
                             <select class="form-select @error('occupation') is-invalid @enderror" name="occupation" required>
                                 <option value="">Pilih</option>
                                 @foreach(['Siswa','Mahasiswa','Guru','Dosen','Karyawan Swasta','PNS','Lainnya'] as $occ)
-                                <option value="{{ $occ }}" {{ old('occupation') == $occ ? 'selected' : '' }}>{{ $occ }}</option>
+                                <option value="{{ $occ }}" {{ old('occupation', $asesmen->occupation ?? '') == $occ ? 'selected' : '' }}>{{ $occ }}</option>
                                 @endforeach
                             </select>
                             @error('occupation')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -308,7 +331,7 @@
                             <select class="form-select @error('budget_source') is-invalid @enderror" name="budget_source" required>
                                 <option value="">Pilih</option>
                                 @foreach(['Mandiri','APBN/APBD','Lembaga'] as $bs)
-                                <option value="{{ $bs }}" {{ old('budget_source') == $bs ? 'selected' : '' }}>{{ $bs }}</option>
+                                <option value="{{ $bs }}" {{ old('budget_source', $asesmen->budget_source ?? '') == $bs ? 'selected' : '' }}>{{ $bs }}</option>
                                 @endforeach
                             </select>
                             @error('budget_source')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -317,20 +340,19 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Asal Lembaga <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('institution') is-invalid @enderror"
-                                name="institution" value="{{ old('institution') }}" required>
+                                name="institution"
+                                value="{{ old('institution', $asesmen->institution ?? '') }}" required>
                             @error('institution')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <!-- Data Sertifikasi -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Data Sertifikasi</h6>
-
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Skema Sertifikasi <span class="text-danger">*</span></label>
-                            @if($asesmen->skema_id != null)
-                            <select class="form-select locked-field" name="skema_id" disabled
-                                style="pointer-events:none;background-color:#e9ecef;appearance:none;" required>
+                            @if($asesmen->skema_id)
+                            <select class="form-select locked-field" name="skema_id" disabled style="pointer-events:none;background-color:#e9ecef;appearance:none;" required>
                                 <option selected>{{ $asesmen->skema->name ?? 'Skema terkunci' }}</option>
                             </select>
                             <input type="hidden" name="skema_id" value="{{ $asesmen->skema_id }}" required>
@@ -347,12 +369,11 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Lokasi Ujian (TUK) <span class="text-danger">*</span></label>
-                            @if($asesmen->tuk_id != null)
-                            <select class="form-select locked-field" name="tuk_id" disabled
-                                style="pointer-events:none;background-color:#e9ecef;appearance:none;">
-                                <option selected required>{{ $asesmen->tuk->name ?? 'TUK terkunci' }}</option>
+                            @if($asesmen->tuk_id)
+                            <select class="form-select locked-field" name="tuk_id" disabled style="pointer-events:none;background-color:#e9ecef;appearance:none;">
+                                <option selected>{{ $asesmen->tuk->name ?? 'TUK terkunci' }}</option>
                             </select>
-                            <input type="hidden" name="tuk_id" value="{{ $asesmen->tuk_id }}" required>
+                            <input type="hidden" name="tuk_id" value="{{ $asesmen->tuk_id }}">
                             @else
                             <select class="form-select @error('tuk_id') is-invalid @enderror" name="tuk_id" required>
                                 <option value="">Pilih TUK</option>
@@ -364,21 +385,13 @@
                             @error('tuk_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
-                        @if($asesmen->is_collective || $asesmen->lock_tuk)
-                        <div class="col-12">
-                            <div class="alert alert-warning mt-2">
-                                <i class="bi bi-lock-fill"></i> Data Skema & TUK sudah ditentukan dan tidak dapat diubah.
-                            </div>
-                        </div>
-                        @endif
-
                         @if(!$isCollective)
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tanggal Sertifikasi yang Dipilih <span class="text-danger">*</span></label>
                             <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
-                                name="preferred_date" value="{{ old('preferred_date') }}"
+                                name="preferred_date"
+                                value="{{ old('preferred_date', $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->format('Y-m-d') : '') }}"
                                 min="{{ now()->addDays(3)->format('Y-m-d') }}" required>
-                            <small class="text-muted">Minimal 3 hari dari sekarang</small>
                             @error('preferred_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         @else
@@ -393,14 +406,8 @@
 
                     @if(!$isCollective)
                     <!-- SECTION PELATIHAN -->
-                    <h6 class="border-bottom pb-2 mb-3 mt-4">
-                        <i class="bi bi-mortarboard-fill"></i> Pelatihan (Opsional)
-                    </h6>
+                    <h6 class="border-bottom pb-2 mb-3 mt-4"><i class="bi bi-mortarboard-fill"></i> Pelatihan (Opsional)</h6>
                     <div class="training-section">
-                        <div class="mb-3">
-                            <h6 class="text-primary"><i class="bi bi-question-circle-fill"></i> Apakah Anda ingin mengikuti pelatihan sebelum asesmen?</h6>
-                            <p class="text-muted mb-3">Pelatihan akan membantu Anda mempersiapkan diri dengan lebih baik untuk menghadapi proses asesmen.</p>
-                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="training-option" onclick="selectTraining(false)" id="option-no">
@@ -411,7 +418,6 @@
                                             <label for="training-no" class="form-label fw-bold mb-1" style="cursor:pointer;">
                                                 <i class="bi bi-x-circle text-danger"></i> Tidak, Hanya Asesmen
                                             </label>
-                                            <p class="text-muted small mb-0">Saya siap untuk langsung mengikuti asesmen.</p>
                                         </div>
                                     </div>
                                 </div>
@@ -425,51 +431,105 @@
                                             <label for="training-yes" class="form-label fw-bold mb-1" style="cursor:pointer;">
                                                 <i class="bi bi-check-circle text-success"></i> Ya, Ikut Pelatihan
                                             </label>
-                                            <p class="text-muted small mb-2">Saya ingin mengikuti pelatihan.</p>
                                             <div class="alert alert-warning mb-0 py-2">
-                                                <small><i class="bi bi-info-circle-fill"></i> <strong>Biaya Tambahan:</strong> <span class="price-badge ms-2">Rp 1.500.000</span></small>
+                                                <small><strong>Biaya Tambahan:</strong> <span class="price-badge ms-2">Rp 1.500.000</span></small>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="alert alert-info mt-3 mb-0">
-                            <small><i class="bi bi-lightbulb-fill"></i> <strong>Catatan:</strong> Biaya pelatihan akan ditambahkan ke total biaya sertifikasi Anda dan akan diinformasikan setelah verifikasi.</small>
-                        </div>
                     </div>
                     @endif
 
                     <!-- Upload Dokumen -->
                     <h6 class="border-bottom pb-2 mb-3 mt-4">Upload Dokumen</h6>
+
+                    @if($isRevision)
+                    <div class="alert alert-info py-2 mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <small>Dokumen yang sudah ada <strong>tidak perlu di-upload ulang</strong> jika masih sesuai.
+                        Upload file baru hanya jika dokumen tersebut yang perlu diganti.</small>
+                    </div>
+                    @endif
+
                     <div class="row">
+                        {{-- Pas Foto --}}
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Pas Foto Formal (3x4) <span class="text-danger">*</span></label>
+                            <label class="form-label">
+                                Pas Foto Formal (3x4)
+                                @if(!$asesmen->photo_path)<span class="text-danger">*</span>@endif
+                            </label>
+                            @if($asesmen->photo_path && $isRevision)
+                            <div class="doc-existing mb-2 text-center">
+                                <img src="{{ asset('storage/' . $asesmen->photo_path) }}"
+                                     class="img-thumbnail mb-2" style="max-height:120px; object-fit:cover;">
+                                <div class="small text-success"><i class="bi bi-check-circle me-1"></i>Foto sudah ada</div>
+                                <a href="{{ asset('storage/' . $asesmen->photo_path) }}" target="_blank" class="btn btn-xs btn-outline-secondary btn-sm mt-1">
+                                    <i class="bi bi-eye me-1"></i>Lihat
+                                </a>
+                            </div>
+                            <div class="small text-muted mb-1">Ganti foto (opsional):</div>
+                            @endif
                             <input type="file" class="form-control @error('photo') is-invalid @enderror"
-                                name="photo" accept="image/*" required>
-                            <small class="text-muted">Format: JPG/PNG, Max: 10MB, Latar merah</small>
+                                name="photo" accept="image/*"
+                                {{ !$asesmen->photo_path ? 'required' : '' }}>
+                            <small class="text-muted">JPG/PNG, Max: 10MB, Latar merah</small>
                             @error('photo')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+
+                        {{-- KTP --}}
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">KTP <span class="text-danger">*</span></label>
+                            <label class="form-label">
+                                KTP
+                                @if(!$asesmen->ktp_path)<span class="text-danger">*</span>@endif
+                            </label>
+                            @if($asesmen->ktp_path && $isRevision)
+                            <div class="doc-existing mb-2 text-center">
+                                <i class="bi bi-file-earmark-pdf text-danger d-block" style="font-size:2.5rem;"></i>
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>KTP sudah ada</div>
+                                <a href="{{ asset('storage/' . $asesmen->ktp_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1">
+                                    <i class="bi bi-eye me-1"></i>Lihat
+                                </a>
+                            </div>
+                            <div class="small text-muted mb-1">Ganti KTP (opsional):</div>
+                            @endif
                             <input type="file" class="form-control @error('ktp') is-invalid @enderror"
-                                name="ktp" accept="application/pdf" required>
-                            <small class="text-muted">Format: PDF, Max: 10MB</small>
+                                name="ktp" accept="application/pdf"
+                                {{ !$asesmen->ktp_path ? 'required' : '' }}>
+                            <small class="text-muted">PDF, Max: 10MB</small>
                             @error('ktp')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
+
+                        {{-- Ijazah --}}
                         <div class="col-md-4 mb-3">
-                            <label class="form-label">Ijazah/Transkrip <span class="text-danger">*</span></label>
+                            <label class="form-label">
+                                Ijazah/Transkrip
+                                @if(!$asesmen->document_path)<span class="text-danger">*</span>@endif
+                            </label>
+                            @if($asesmen->document_path && $isRevision)
+                            <div class="doc-existing mb-2 text-center">
+                                <i class="bi bi-file-earmark-pdf text-danger d-block" style="font-size:2.5rem;"></i>
+                                <div class="small text-success mt-1"><i class="bi bi-check-circle me-1"></i>Ijazah sudah ada</div>
+                                <a href="{{ asset('storage/' . $asesmen->document_path) }}" target="_blank" class="btn btn-sm btn-outline-secondary mt-1">
+                                    <i class="bi bi-eye me-1"></i>Lihat
+                                </a>
+                            </div>
+                            <div class="small text-muted mb-1">Ganti ijazah (opsional):</div>
+                            @endif
                             <input type="file" class="form-control @error('document') is-invalid @enderror"
-                                name="document" accept="application/pdf" required>
-                            <small class="text-muted">Format: PDF, Max: 10MB</small>
+                                name="document" accept="application/pdf"
+                                {{ !$asesmen->document_path ? 'required' : '' }}>
+                            <small class="text-muted">PDF, Max: 10MB</small>
                             @error('document')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
 
                     <div class="mt-4">
-                        <button type="button" class="btn btn-primary btn-lg"
+                        <button type="button" class="btn btn-{{ $isRevision ? 'warning' : 'primary' }} btn-lg"
                             data-bs-toggle="modal" data-bs-target="#confirmSubmitModal">
-                            <i class="bi bi-save"></i> Submit Data
+                            <i class="bi bi-{{ $isRevision ? 'arrow-repeat' : 'save' }}"></i>
+                            {{ $isRevision ? 'Submit Revisi' : 'Submit Data' }}
                         </button>
                         <a href="{{ route('asesi.dashboard') }}" class="btn btn-secondary btn-lg">
                             <i class="bi bi-x-circle"></i> Batal
@@ -479,33 +539,30 @@
             @endif
 
             <!-- Modal Konfirmasi Submit -->
-            <div class="modal fade" id="confirmSubmitModal" tabindex="-1" aria-labelledby="confirmSubmitLabel" aria-hidden="true">
+            <div class="modal fade" id="confirmSubmitModal" tabindex="-1">
                 <div class="modal-dialog modal-dialog-centered">
                     <div class="modal-content">
-                        <div class="modal-header bg-warning">
-                            <h5 class="modal-title" id="confirmSubmitLabel">
-                                <i class="bi bi-exclamation-triangle-fill"></i> Konfirmasi Pengiriman Data
+                        <div class="modal-header bg-{{ $isRevision ? 'warning' : 'warning' }}">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                {{ $isRevision ? 'Konfirmasi Submit Revisi' : 'Konfirmasi Pengiriman Data' }}
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
-                            <p class="mb-2">Apakah Anda yakin semua data yang diisi sudah:</p>
-                            <ul>
-                                <li>Sesuai dengan <strong>KTP / Ijazah</strong></li>
-                                <li>Tidak ada kesalahan penulisan</li>
-                                <li>Dokumen yang diunggah sudah benar</li>
-                                <li>Pilihan pelatihan sudah sesuai keinginan</li>
-                            </ul>
+                            @if($isRevision)
+                            <div class="alert alert-warning mb-3">
+                                <i class="bi bi-arrow-repeat me-1"></i>
+                                Anda akan mengirim ulang data yang sudah direvisi sesuai catatan admin.
+                            </div>
+                            @endif
+                            <p class="mb-2">Pastikan semua data sudah benar sesuai KTP/Ijazah.</p>
                             <div id="training-confirmation" style="display:none;">
                                 <div class="alert alert-warning mb-3">
                                     <i class="bi bi-mortarboard-fill"></i>
                                     <strong>Anda memilih: IKUT PELATIHAN</strong><br>
-                                    <small>Biaya tambahan Rp 1.500.000 akan ditambahkan ke total biaya sertifikasi.</small>
+                                    <small>Biaya tambahan Rp 1.500.000 akan ditambahkan.</small>
                                 </div>
-                            </div>
-                            <div class="alert alert-danger mt-3 mb-0">
-                                <i class="bi bi-info-circle-fill"></i>
-                                <strong>Perhatian:</strong> Data yang sudah dikirim <u>tidak dapat diubah</u> setelah diverifikasi oleh Admin LSP.
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -513,7 +570,7 @@
                                 <i class="bi bi-arrow-left"></i> Periksa Ulang
                             </button>
                             <button type="button" class="btn btn-danger" onclick="submitAsesiForm()">
-                                <i class="bi bi-check-circle-fill"></i> Ya, Kirim Data
+                                <i class="bi bi-check-circle-fill"></i> Ya, Kirim
                             </button>
                         </div>
                     </div>
@@ -528,13 +585,13 @@
 @push('scripts')
 <script>
 function selectTraining(wantTraining) {
-    document.getElementById('option-no').classList.remove('selected');
-    document.getElementById('option-yes').classList.remove('selected');
+    document.getElementById('option-no')?.classList.remove('selected');
+    document.getElementById('option-yes')?.classList.remove('selected');
     if (wantTraining) {
-        document.getElementById('option-yes').classList.add('selected');
+        document.getElementById('option-yes')?.classList.add('selected');
         document.getElementById('training-yes').checked = true;
     } else {
-        document.getElementById('option-no').classList.add('selected');
+        document.getElementById('option-no')?.classList.add('selected');
         document.getElementById('training-no').checked = true;
     }
     updateModalConfirmation();
@@ -543,9 +600,9 @@ function selectTraining(wantTraining) {
 function updateModalConfirmation() {
     const trainingYes = document.getElementById('training-yes');
     const confirmDiv  = document.getElementById('training-confirmation');
-    if (trainingYes && trainingYes.checked) {
+    if (trainingYes && trainingYes.checked && confirmDiv) {
         confirmDiv.style.display = 'block';
-    } else {
+    } else if (confirmDiv) {
         confirmDiv.style.display = 'none';
     }
 }
@@ -555,36 +612,30 @@ function submitAsesiForm() {
 }
 
 document.addEventListener('DOMContentLoaded', function () {
-    // ── Auto-fill province & city dari NIK ──────────────────
+    // Auto-fill province & city dari NIK
     const nikInput      = document.querySelector('input[name="nik"]');
     const provinceInput = document.querySelector('input[name="province_code"]');
     const cityInput     = document.querySelector('input[name="city_code"]');
-
     if (nikInput) {
         nikInput.addEventListener('input', function () {
             const nik = this.value.replace(/\D/g, '');
-            provinceInput.value = nik.length >= 2 ? nik.substring(0, 2) : '';
-            cityInput.value     = nik.length >= 4 ? nik.substring(0, 4) : '';
+            if (provinceInput) provinceInput.value = nik.length >= 2 ? nik.substring(0, 2) : '';
+            if (cityInput)     cityInput.value     = nik.length >= 4 ? nik.substring(0, 4) : '';
         });
     }
 
-    // ── Validasi tanggal lahir realtime ──────────────────────
+    // Validasi tanggal lahir
     const birthInput = document.querySelector('input[name="birth_date"]');
     if (birthInput) {
         birthInput.addEventListener('change', function () {
             const val = this.value;
             if (!val) return;
-
-            const born    = new Date(val);
-            const today   = new Date();
-            const ageMs   = today - born;
-            const ageYears = ageMs / (1000 * 60 * 60 * 24 * 365.25);
-
-            if (ageYears < 17) {
-                this.setCustomValidity('Usia minimal untuk mendaftar adalah 17 tahun.');
+            const ageYears = (new Date() - new Date(val)) / (1000 * 60 * 60 * 24 * 365.25);
+            if (ageYears < 12) {
+                this.setCustomValidity('Usia minimal 12 tahun.');
                 this.reportValidity();
             } else if (ageYears > 80) {
-                this.setCustomValidity('Usia maksimal untuk mendaftar adalah 80 tahun.');
+                this.setCustomValidity('Usia maksimal 80 tahun.');
                 this.reportValidity();
             } else {
                 this.setCustomValidity('');
@@ -592,22 +643,16 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ── Set initial training option highlight ────────────────
+    // Set initial training highlight
     const trainingYes = document.getElementById('training-yes');
     const trainingNo  = document.getElementById('training-no');
-    if (trainingYes && trainingYes.checked) {
-        document.getElementById('option-yes').classList.add('selected');
-    } else if (trainingNo) {
-        document.getElementById('option-no').classList.add('selected');
-    }
+    if (trainingYes?.checked) document.getElementById('option-yes')?.classList.add('selected');
+    else if (trainingNo)      document.getElementById('option-no')?.classList.add('selected');
 
-    // ── Update modal setiap dibuka ───────────────────────────
+    // Modal open
     const confirmModal = document.getElementById('confirmSubmitModal');
-    if (confirmModal) {
-        confirmModal.addEventListener('show.bs.modal', updateModalConfirmation);
-    }
+    if (confirmModal) confirmModal.addEventListener('show.bs.modal', updateModalConfirmation);
 
-    // ── Backup listener di radio button ─────────────────────
     if (trainingYes) trainingYes.addEventListener('change', () => selectTraining(true));
     if (trainingNo)  trainingNo.addEventListener('change',  () => selectTraining(false));
 });

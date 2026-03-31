@@ -24,6 +24,227 @@ use Illuminate\View\View;
 class DistribusiSoalController extends Controller
 {
     // =========================================================================
+    // BANK SOAL — INDEX PER SKEMA
+    // =========================================================================
+    
+    public function indexBankSoal(): View
+    {
+        $skemas = Skema::where('is_active', true)->orderBy('id')->get();
+    
+        // Hitung stats per skema
+        $stats = [];
+        foreach ($skemas as $skema) {
+            $stats[$skema->id] = [
+                'observasi'  => SoalObservasi::where('skema_id', $skema->id)->count(),
+                'teori'      => SoalTeori::where('skema_id', $skema->id)->count(),
+                'portofolio' => Portofolio::where('skema_id', $skema->id)->count(),
+            ];
+        }
+    
+        return view('manajer-sertifikasi.bank-soal.index', compact('skemas', 'stats'));
+    }
+    
+    public function showBankSoal(Request $request, Skema $skema): View
+    {
+        $soalObservasi = SoalObservasi::with('paket')
+            ->where('skema_id', $skema->id)
+            ->get();
+    
+        $soalTeori = SoalTeori::where('skema_id', $skema->id)
+            ->latest()
+            ->paginate(20);
+    
+        $jumlahTeori = SoalTeori::where('skema_id', $skema->id)->count();
+    
+        $portofolios = Portofolio::where('skema_id', $skema->id)
+            ->latest()
+            ->get();
+    
+        return view('manajer-sertifikasi.bank-soal.show', compact(
+            'skema', 'soalObservasi', 'soalTeori', 'jumlahTeori', 'portofolios'
+        ));
+    }
+    
+    // =========================================================================
+    // BANK SOAL — SOAL OBSERVASI (scoped ke skema)
+    // =========================================================================
+    
+    public function storeSoalObservasiBySkema(Request $request, Skema $skema): RedirectResponse
+    {
+        $request->validate([
+            'judul' => 'required|string|max:255',
+        ]);
+    
+        SoalObservasi::create([
+            'skema_id'    => $skema->id,
+            'judul'       => $request->judul,
+            'dibuat_oleh' => Auth::id(),
+        ]);
+    
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', 'Soal observasi berhasil dibuat. Upload paket di bawah.')
+            ->withFragment('pane-observasi');
+    }
+    
+    public function destroySoalObservasiBySkema(Skema $skema, SoalObservasi $soalObservasi): RedirectResponse
+    {
+        foreach ($soalObservasi->paket as $paket) {
+            Storage::disk('private')->delete($paket->file_path);
+        }
+        $soalObservasi->delete();
+    
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', 'Soal observasi beserta semua paket berhasil dihapus.')
+            ->withFragment('pane-observasi');
+    }
+    
+    // =========================================================================
+    // BANK SOAL — PAKET OBSERVASI (scoped ke skema)
+    // =========================================================================
+    
+    public function storePaketBySkema(Request $request, Skema $skema, SoalObservasi $soalObservasi): RedirectResponse
+    {
+        $request->validate([
+            'kode_paket' => 'required|string|max:10',
+            'file'       => 'required|file|mimes:pdf|max:10240',
+        ]);
+    
+        $kode = strtoupper(trim($request->kode_paket));
+    
+        if ($soalObservasi->paket()->where('kode_paket', $kode)->exists()) {
+            return back()->withErrors(['kode_paket' => "Paket {$kode} sudah ada."]);
+        }
+    
+        $file = $request->file('file');
+    
+        PaketSoalObservasi::create([
+            'soal_observasi_id' => $soalObservasi->id,
+            'kode_paket'        => $kode,
+            'judul'             => "Paket {$kode}",   // auto-generate
+            'file_path'         => $file->store('soal/observasi/paket', 'private'),
+            'file_name'         => $file->getClientOriginalName(),
+            'dibuat_oleh'       => Auth::id(),
+        ]);
+    
+        return back()->with('success', "Paket {$kode} berhasil diupload.");
+    }
+    
+    public function downloadPaketBySkema(Skema $skema, PaketSoalObservasi $paket): Response
+    {
+        return Storage::disk('private')->download($paket->file_path, $paket->file_name);
+    }
+    
+    public function destroyPaketBySkema(Skema $skema, PaketSoalObservasi $paket): RedirectResponse
+    {
+        Storage::disk('private')->delete($paket->file_path);
+        $paket->delete();
+        return back()->with('success', 'Paket berhasil dihapus.');
+    }
+    
+    // =========================================================================
+    // BANK SOAL — SOAL TEORI (scoped ke skema, pilihan a-e)
+    // =========================================================================
+    
+    public function storeSoalTeoriBySkema(Request $request, Skema $skema): RedirectResponse
+    {
+        $request->validate([
+            'pertanyaan'    => 'required|string',
+            'pilihan_a'     => 'required|string|max:500',
+            'pilihan_b'     => 'required|string|max:500',
+            'pilihan_c'     => 'required|string|max:500',
+            'pilihan_d'     => 'required|string|max:500',
+            'pilihan_e'     => 'nullable|string|max:500',
+            'jawaban_benar' => 'required|in:a,b,c,d,e',
+        ]);
+    
+        SoalTeori::create([
+            'skema_id'      => $skema->id,
+            'pertanyaan'    => $request->pertanyaan,
+            'pilihan_a'     => $request->pilihan_a,
+            'pilihan_b'     => $request->pilihan_b,
+            'pilihan_c'     => $request->pilihan_c,
+            'pilihan_d'     => $request->pilihan_d,
+            'pilihan_e'     => $request->pilihan_e,
+            'jawaban_benar' => $request->jawaban_benar,
+            'dibuat_oleh'   => Auth::id(),
+        ]);
+    
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', 'Soal teori berhasil ditambahkan.')
+            ->withFragment('pane-teori');
+    }
+    
+    public function updateSoalTeoriBySkema(Request $request, Skema $skema, SoalTeori $soalTeori): RedirectResponse
+    {
+        $request->validate([
+            'pertanyaan'    => 'required|string',
+            'pilihan_a'     => 'required|string|max:500',
+            'pilihan_b'     => 'required|string|max:500',
+            'pilihan_c'     => 'required|string|max:500',
+            'pilihan_d'     => 'required|string|max:500',
+            'pilihan_e'     => 'nullable|string|max:500',
+            'jawaban_benar' => 'required|in:a,b,c,d,e',
+        ]);
+    
+        $soalTeori->update($request->only([
+            'pertanyaan', 'pilihan_a', 'pilihan_b', 'pilihan_c', 'pilihan_d', 'pilihan_e', 'jawaban_benar',
+        ]));
+    
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', 'Soal teori berhasil diperbarui.')
+            ->withFragment('pane-teori');
+    }
+    
+    public function destroySoalTeoriBySkema(Skema $skema, SoalTeori $soalTeori): RedirectResponse
+    {
+        $soalTeori->delete();
+        return back()->with('success', 'Soal teori berhasil dihapus.');
+    }
+    
+    // =========================================================================
+    // BANK SOAL — PORTOFOLIO (scoped ke skema)
+    // =========================================================================
+    
+    public function storePortofolioBySkema(Request $request, Skema $skema): RedirectResponse
+    {
+        $request->validate([
+            'judul'     => 'required|string|max:255',
+            'deskripsi' => 'nullable|string',
+            'file'      => 'nullable|file|max:20480',
+        ]);
+    
+        $file = $request->file('file');
+    
+        Portofolio::create([
+            'skema_id'    => $skema->id,
+            'judul'       => $request->judul,
+            'deskripsi'   => $request->deskripsi,
+            'file_path'   => $file ? $file->store('portofolio', 'private') : null,
+            'file_name'   => $file?->getClientOriginalName(),
+            'tipe_file'   => $file?->getClientOriginalExtension(),
+            'dibuat_oleh' => Auth::id(),
+        ]);
+    
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', 'Form portofolio berhasil disimpan.')
+            ->withFragment('pane-portofolio');
+    }
+    
+    public function downloadPortofolioBySkema(Skema $skema, Portofolio $portofolio): Response
+    {
+        abort_unless($portofolio->hasFile(), 404, 'File tidak tersedia.');
+        return Storage::disk('private')->download($portofolio->file_path, $portofolio->file_name);
+    }
+    
+    public function destroyPortofolioBySkema(Skema $skema, Portofolio $portofolio): RedirectResponse
+    {
+        if ($portofolio->hasFile()) {
+            Storage::disk('private')->delete($portofolio->file_path);
+        }
+        $portofolio->delete();
+        return back()->with('success', 'Form portofolio berhasil dihapus.');
+    }
+    // =========================================================================
     // DETAIL JADWAL
     // =========================================================================
 

@@ -79,7 +79,7 @@ class AsesiController extends Controller
         }
 
         // ✅ PERUBAHAN: Jika status sudah bukan 'registered', tampilkan dalam mode view-only
-        $viewOnly = $asesmen->status !== 'registered';
+        $viewOnly = $asesmen->status !== 'registered' && !$asesmen->biodata_needs_revision;
 
         $tuks = Tuk::where('is_active', true)->get();
         $skemas = Skema::where('is_active', true)->get();
@@ -93,142 +93,154 @@ class AsesiController extends Controller
     /**
      * Complete Personal Data - Store - UPDATED
      */
-    public function storeData(Request $request)
-    {
-        $validated = $request->validate([
-            'full_name'      => 'required|string|max:255',
-            'nik'            => 'required|string|size:16|unique:asesmens,nik',
-            'birth_place'    => 'required|string',
-            'birth_date'     => [
-                'required',
-                'date',
-                'before_or_equal:' . now()->subYears(12)->format('Y-m-d'),
-                'after_or_equal:'  . now()->subYears(80)->format('Y-m-d'),
-            ],
-            'gender'         => 'required|in:L,P',
-            'address'        => 'required|string',
-            'city_code'      => 'required|string|size:4',
-            'province_code'  => 'required|string|size:2',
-            'phone'          => 'required|string|max:15',
-            'education'      => 'required|string',
-            'occupation'     => 'required|string',
-            'budget_source'  => 'required|string',
-            'institution'    => 'required|string',
-            'tuk_id'         => 'required_if:is_collective,false|nullable|exists:tuks,id',
-            'skema_id'       => 'required|exists:skemas,id',
-            'preferred_date' => 'required_if:is_collective,false|nullable|date',
-            'photo'          => 'required|image|max:10240',
-            'ktp'            => 'required|mimes:pdf|max:10240',
-            'document'       => 'required|mimes:pdf|max:10240',
-            'training_flag'  => 'required_if:is_collective,false|boolean',
-        ], [
-            'birth_date.before_or_equal' => 'Usia minimal untuk mendaftar adalah 12 tahun.',
-            'birth_date.after_or_equal'  => 'Usia maksimal untuk mendaftar adalah 80 tahun.',
-        ]);
-
-        $user = auth()->user();
-
-        // Upload files
-        $photoPath = $request->file('photo')->store('uploads/photos', 'public');
-        $ktpPath = $request->file('ktp')->store('uploads/ktp', 'public');
-        $documentPath = $request->file('document')->store('uploads/documents', 'public');
-
-        $asesmen = Asesmen::where('user_id', $user->id)->first();
-
-        if ($asesmen && $asesmen->skema_id) {
-            $request->merge(['skema_id' => $asesmen->skema_id]);
-        }
-
-        if ($asesmen && $asesmen->tuk_id) {
-            $request->merge(['tuk_id' => $asesmen->tuk_id]);
-        }
-
-        if ($asesmen) {
-            // Update existing (collective registration)
-            $updateData = [
-                'full_name' => $validated['full_name'],
-                'nik' => $validated['nik'],
-                'birth_place' => $validated['birth_place'],
-                'birth_date' => $validated['birth_date'],
-                'gender' => $validated['gender'],
-                'address' => $validated['address'],
-                'city_code' => $validated['city_code'],
-                'province_code' => $validated['province_code'],
-                'phone' => $validated['phone'],
-                'education' => $validated['education'],
-                'occupation' => $validated['occupation'],
-                'budget_source' => $validated['budget_source'],
-                'institution' => $validated['institution'],
-                'photo_path' => $photoPath,
-                'ktp_path' => $ktpPath,
-                'document_path' => $documentPath,
-                'status' => 'data_completed',
-            ];
-
-            // Kolektif: preferred_date & training_flag diatur oleh TUK (tidak diisi asesi)
-            if (!$asesmen->is_collective) {
-                $updateData['preferred_date'] = $validated['preferred_date'];
-                $updateData['training_flag'] = $validated['training_flag'];
-                $updateData['tuk_id'] = $validated['tuk_id'];
-                $updateData['skema_id'] = $validated['skema_id'];
-            }
-
-            $asesmen->update($updateData);
-
-            $message = 'Data berhasil dilengkapi!';
-
-            if ($asesmen->is_collective) {
-                $message .= ' (Pendaftaran Kolektif - Menunggu verifikasi TUK)';
-            }
-        } else {
-            // Create new (regular/mandiri registration)
-            $skema = Skema::find($validated['skema_id']);
-
-            // Auto calculate fee untuk mandiri
-            $baseFee = $skema->fee;
-            $trainingFee = $validated['training_flag'] ? 1500000 : 0;
-            $totalFee = $baseFee + $trainingFee;
-
-            $asesmen = Asesmen::create([
-                'user_id' => $user->id,
-                'tuk_id' => null, // Akan di-assign oleh Admin nanti
-                'skema_id' => $validated['skema_id'],
-                'full_name' => $validated['full_name'],
-                'nik' => $validated['nik'],
-                'birth_place' => $validated['birth_place'],
-                'birth_date' => $validated['birth_date'],
-                'gender' => $validated['gender'],
-                'address' => $validated['address'],
-                'city_code' => $validated['city_code'],
-                'province_code' => $validated['province_code'],
-                'phone' => $validated['phone'],
-                'education' => $validated['education'],
-                'occupation' => $validated['occupation'],
-                'budget_source' => $validated['budget_source'],
-                'institution' => $validated['institution'],
-                'preferred_date' => $validated['preferred_date'],
-                'photo_path' => $photoPath,
-                'ktp_path' => $ktpPath,
-                'document_path' => $documentPath,
-                'registration_date' => now(),
-                'status' => 'data_completed', // Langsung ke admin, bukan auto-verified
-                'is_collective' => false,
-                'training_flag' => $validated['training_flag'],
-                'fee_amount' => $totalFee,
-            ]);
-
-            Log::info("Mandiri registration - Asesmen #{$asesmen->id}, Fee: Rp {$totalFee}, Training: " . ($validated['training_flag'] ? 'Yes' : 'No'));
-
-            $message = 'Data berhasil dilengkapi! Menunggu verifikasi dan assignment ke TUK oleh Admin LSP.';
-
-            if ($validated['training_flag']) {
-                $message .= ' (Termasuk biaya pelatihan Rp 1.500.000)';
-            }
-        }
-
-        return redirect()->route('asesi.dashboard')
-            ->with('success', $message);
+public function storeData(Request $request)
+{
+    $user    = auth()->user();
+    $asesmen = Asesmen::where('user_id', $user->id)->first();
+ 
+    // Validasi NIK — ignore NIK milik asesi itu sendiri saat resubmit revision
+    $nikRule = $asesmen
+        ? 'required|string|size:16|unique:asesmens,nik,' . $asesmen->id
+        : 'required|string|size:16|unique:asesmens,nik';
+ 
+    // File upload: wajib hanya jika belum ada file sebelumnya
+    $photoRule    = ($asesmen?->photo_path)    ? 'nullable|image|max:10240'        : 'required|image|max:10240';
+    $ktpRule      = ($asesmen?->ktp_path)      ? 'nullable|mimes:pdf|max:10240'    : 'required|mimes:pdf|max:10240';
+    $documentRule = ($asesmen?->document_path) ? 'nullable|mimes:pdf|max:10240'    : 'required|mimes:pdf|max:10240';
+ 
+    $validated = $request->validate([
+        'full_name'      => 'required|string|max:255',
+        'nik'            => $nikRule,
+        'birth_place'    => 'required|string',
+        'birth_date'     => [
+            'required',
+            'date',
+            'before_or_equal:' . now()->subYears(12)->format('Y-m-d'),
+            'after_or_equal:'  . now()->subYears(80)->format('Y-m-d'),
+        ],
+        'gender'         => 'required|in:L,P',
+        'address'        => 'required|string',
+        'city_code'      => 'required|string|size:4',
+        'province_code'  => 'required|string|size:2',
+        'phone'          => 'required|string|max:15',
+        'education'      => 'required|string',
+        'occupation'     => 'required|string',
+        'budget_source'  => 'required|string',
+        'institution'    => 'required|string',
+        'tuk_id'         => 'required_if:is_collective,false|nullable|exists:tuks,id',
+        'skema_id'       => 'required|exists:skemas,id',
+        'preferred_date' => 'required_if:is_collective,false|nullable|date',
+        'photo'          => $photoRule,
+        'ktp'            => $ktpRule,
+        'document'       => $documentRule,
+        'training_flag'  => 'required_if:is_collective,false|boolean',
+    ], [
+        'birth_date.before_or_equal' => 'Usia minimal untuk mendaftar adalah 12 tahun.',
+        'birth_date.after_or_equal'  => 'Usia maksimal untuk mendaftar adalah 80 tahun.',
+    ]);
+ 
+    // Upload file hanya jika ada file baru yang di-upload
+    $photoPath    = $request->hasFile('photo')    ? $request->file('photo')->store('uploads/photos', 'public')       : $asesmen?->photo_path;
+    $ktpPath      = $request->hasFile('ktp')      ? $request->file('ktp')->store('uploads/ktp', 'public')           : $asesmen?->ktp_path;
+    $documentPath = $request->hasFile('document') ? $request->file('document')->store('uploads/documents', 'public') : $asesmen?->document_path;
+ 
+    if ($asesmen && $asesmen->skema_id) {
+        $request->merge(['skema_id' => $asesmen->skema_id]);
     }
+    if ($asesmen && $asesmen->tuk_id) {
+        $request->merge(['tuk_id' => $asesmen->tuk_id]);
+    }
+ 
+    if ($asesmen) {
+        $updateData = [
+            'full_name'     => $validated['full_name'],
+            'nik'           => $validated['nik'],
+            'birth_place'   => $validated['birth_place'],
+            'birth_date'    => $validated['birth_date'],
+            'gender'        => $validated['gender'],
+            'address'       => $validated['address'],
+            'city_code'     => $validated['city_code'],
+            'province_code' => $validated['province_code'],
+            'phone'         => $validated['phone'],
+            'education'     => $validated['education'],
+            'occupation'    => $validated['occupation'],
+            'budget_source' => $validated['budget_source'],
+            'institution'   => $validated['institution'],
+            'photo_path'    => $photoPath,
+            'ktp_path'      => $ktpPath,
+            'document_path' => $documentPath,
+        ];
+ 
+        // Jangan reset status jika sedang dalam revision — pertahankan status saat ini
+        if (!$asesmen->biodata_needs_revision) {
+            $updateData['status'] = 'data_completed';
+        }
+ 
+        // Kolektif: preferred_date & training_flag diatur oleh TUK
+        if (!$asesmen->is_collective) {
+            $updateData['preferred_date'] = $validated['preferred_date'];
+            $updateData['training_flag']  = $validated['training_flag'];
+            $updateData['tuk_id']         = $validated['tuk_id'];
+            $updateData['skema_id']       = $validated['skema_id'];
+        }
+ 
+        $asesmen->update($updateData);
+ 
+        // Clear revision flag setelah resubmit
+        if ($asesmen->biodata_needs_revision) {
+            $asesmen->update(['biodata_needs_revision' => false]);
+            Log::info("Asesi #{$user->id} submitted biodata revision for Asesmen #{$asesmen->id}");
+        }
+ 
+        $message = 'Data berhasil dilengkapi!';
+        if ($asesmen->is_collective) {
+            $message .= ' (Pendaftaran Kolektif - Menunggu verifikasi TUK)';
+        }
+ 
+    } else {
+        $skema       = Skema::find($validated['skema_id']);
+        $baseFee     = $skema->fee;
+        $trainingFee = $validated['training_flag'] ? 1500000 : 0;
+        $totalFee    = $baseFee + $trainingFee;
+ 
+        $asesmen = Asesmen::create([
+            'user_id'           => $user->id,
+            'tuk_id'            => null,
+            'skema_id'          => $validated['skema_id'],
+            'full_name'         => $validated['full_name'],
+            'nik'               => $validated['nik'],
+            'birth_place'       => $validated['birth_place'],
+            'birth_date'        => $validated['birth_date'],
+            'gender'            => $validated['gender'],
+            'address'           => $validated['address'],
+            'city_code'         => $validated['city_code'],
+            'province_code'     => $validated['province_code'],
+            'phone'             => $validated['phone'],
+            'education'         => $validated['education'],
+            'occupation'        => $validated['occupation'],
+            'budget_source'     => $validated['budget_source'],
+            'institution'       => $validated['institution'],
+            'preferred_date'    => $validated['preferred_date'],
+            'photo_path'        => $photoPath,
+            'ktp_path'          => $ktpPath,
+            'document_path'     => $documentPath,
+            'registration_date' => now(),
+            'status'            => 'data_completed',
+            'is_collective'     => false,
+            'training_flag'     => $validated['training_flag'],
+            'fee_amount'        => $totalFee,
+        ]);
+ 
+        Log::info("Mandiri registration - Asesmen #{$asesmen->id}, Fee: Rp {$totalFee}");
+ 
+        $message = 'Data berhasil dilengkapi! Menunggu verifikasi dan assignment ke TUK oleh Admin LSP.';
+        if ($validated['training_flag']) {
+            $message .= ' (Termasuk biaya pelatihan Rp 1.500.000)';
+        }
+    }
+ 
+    return redirect()->route('asesi.dashboard')->with('success', $message);
+}
 
     /**
      * Payment - Form
@@ -682,8 +694,8 @@ class AsesiController extends Controller
 
         Log::info('[APL01-UPDATE] APL-01 status', ['aplsatu_id' => $aplsatu->id, 'status' => $aplsatu->status]);
 
-        if ($aplsatu->status !== 'draft') {
-            Log::warning('[APL01-UPDATE] APL-01 bukan draft, update ditolak', ['status' => $aplsatu->status]);
+        if ($aplsatu->status !== 'draft' && $aplsatu->status !== 'returned') {
+            Log::warning('[APL01-UPDATE] APL-01 bukan draft atau returned, update ditolak', ['status' => $aplsatu->status]);
             return response()->json(['success' => false, 'message' => 'APL-01 sudah tidak dapat diubah.'], 403);
         }
 
@@ -744,7 +756,7 @@ public function aplsatuBuktiSave(Request $request)
         $aplsatu  = $asesmen->aplsatu;
         $validIds = $aplsatu->buktiKelengkapan->pluck('id')->toArray();
 
-        if ($aplsatu->status !== 'draft') {
+        if ($aplsatu->status !== 'draft' && $aplsatu->status !== 'returned') {
             return response()->json(['success' => false, 'message' => 'APL-01 sudah tidak dapat diubah.'], 403);
         }
 
@@ -801,7 +813,7 @@ public function aplsatuBuktiSave(Request $request)
 
         $aplsatu = $asesmen->aplsatu;
 
-        if ($aplsatu->status !== 'draft') {
+        if (!in_array($aplsatu->status, ['draft', 'returned'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'APL-01 sudah tidak dapat disubmit.',

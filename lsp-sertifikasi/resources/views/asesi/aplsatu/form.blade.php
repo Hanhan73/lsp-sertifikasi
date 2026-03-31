@@ -460,7 +460,7 @@
                             @endforeach
                         </ul>
 
-                        <h6 class="fw-semibold text-secondary mb-2">📁 Administratif</h6>
+                        <h6 class="fw-semibold text-secondary mb-2">Administratif</h6>
                         <ul class="list-group list-group-flush mb-0">
                             @foreach($aplsatu->buktiKelengkapan->where('kategori','administratif') as $i => $bukti)
                             <li class="list-group-item bg-transparent d-flex align-items-center gap-2 py-2 px-0">

@@ -29,8 +29,6 @@
 @endpush
 
 @section('content')
-{{-- ── Breadcrumb ─────────────────────────────────────────── --}}
-
 
 <div class="row g-4">
 
@@ -212,6 +210,14 @@
                 <div class="text-muted small"><i class="bi bi-check2-circle me-1"></i>Verified: {{ $aplsatu->verified_at->format('d M Y H:i') }}</div>
                 @if($aplsatu->verifier)<div class="text-muted small">oleh <strong>{{ $aplsatu->verifier->name }}</strong></div>@endif
                 @endif
+
+                {{-- Rejection notes jika status returned --}}
+                @if($aplsatu->status === 'returned' && $aplsatu->rejection_notes)
+                <div class="alert alert-danger text-start mt-3 py-2 mb-0">
+                    <div class="fw-semibold small mb-1"><i class="bi bi-arrow-return-left me-1"></i>Catatan Pengembalian:</div>
+                    <div class="small">{{ $aplsatu->rejection_notes }}</div>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -254,8 +260,11 @@
                 @if($gdriveLink ?? false)
                 <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-outline-primary btn-sm w-100 mb-2"><i class="bi bi-google me-1"></i>Buka Google Drive Asesi</a>
                 @endif
-                <button class="btn btn-success w-100" onclick="bukaModalVerifikasi()">
+                <button class="btn btn-success w-100 mb-2" onclick="bukaModalVerifikasi()">
                     <i class="bi bi-pen me-1"></i>Isi Nama &amp; Tanda Tangan
+                </button>
+                <button class="btn btn-outline-danger w-100" onclick="openRejectApl01Modal()">
+                    <i class="bi bi-file-earmark-x me-1"></i> Kembalikan untuk Direvisi
                 </button>
             </div>
         </div>
@@ -263,6 +272,11 @@
         <div class="alert alert-success shadow-sm">
             <i class="bi bi-patch-check-fill me-2"></i><strong>APL-01 sudah diverifikasi.</strong>
             @if($aplsatu->nama_ttd_admin)<div class="mt-1 small">Admin: <strong>{{ $aplsatu->nama_ttd_admin }}</strong></div>@endif
+        </div>
+        @elseif($aplsatu->status === 'returned')
+        <div class="alert alert-warning shadow-sm">
+            <i class="bi bi-arrow-return-left me-2"></i><strong>APL-01 dikembalikan ke asesi.</strong>
+            <div class="mt-1 small text-muted">Menunggu asesi memperbaiki dan submit ulang.</div>
         </div>
         @endif
 
@@ -281,30 +295,24 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-
                 <div class="alert alert-info small mb-4">
                     <i class="bi bi-info-circle-fill me-1"></i>
                     Dengan menandatangani, Anda menyatakan APL-01 ini telah diperiksa dan semua bukti kelengkapan telah diverifikasi.
                 </div>
-
                 <div class="mb-4">
                     <label class="form-label fw-semibold" for="admin-nama-input">
                         Nama Lengkap Admin <span class="text-danger">*</span>
                     </label>
                     <input type="text" id="admin-nama-input" class="form-control form-control-lg"
-                        value="Anggriawan Oktobisono, S.Pd." readonly>
+                        value="{{ auth()->user()->name }}" readonly>
                     <div class="form-text">Nama ini akan tercetak di dokumen PDF APL-01.</div>
                 </div>
-
-                {{-- ▼▼▼ SIGNATURE PAD BARU (canvas + upload) ▼▼▼ --}}
                 @include('partials._signature_pad', [
                     'padId'    => 'admin',
                     'padLabel' => 'Tanda Tangan Admin LSP',
                     'padHeight' => 180,
                     'savedSig' => auth()->user()->signature_image,
                 ])
-                {{-- ▲▲▲ --}}
-
                 <div class="card bg-light border-0 mt-3">
                     <div class="card-body py-2 small">
                         <strong>Ringkasan yang akan diverifikasi:</strong>
@@ -312,7 +320,6 @@
                         Skema: <strong>{{ $aplsatu->asesmen?->skema?->name ?? '-' }}</strong>
                     </div>
                 </div>
-
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
@@ -323,6 +330,44 @@
         </div>
     </div>
 </div>
+
+{{-- ══ MODAL REJECT APL-01 ══ --}}
+<div class="modal fade" id="modalRejectApl01" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-x me-2"></i>Kembalikan APL-01
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <small>APL-01 akan dikembalikan ke status <strong>returned</strong>.
+                    Asesi dapat mengedit dan submit ulang.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">
+                        Alasan Pengembalian <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="apl01-rejection-notes" class="form-control" rows="4"
+                        placeholder="Jelaskan apa yang perlu diperbaiki di APL-01. Contoh: Tanda tangan tidak jelas, data pekerjaan tidak lengkap, dsb."
+                        maxlength="1000"></textarea>
+                    <div class="form-text">Min. 10 karakter.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-reject-apl01"
+                    onclick="submitRejectApl01()">
+                    <i class="bi bi-send me-1"></i> Kembalikan APL-01
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
@@ -381,7 +426,6 @@ async function updateStatusBukti(buktiId, status, selectEl) {
 function bukaModalVerifikasi() {
     const modalEl = document.getElementById('modalVerifikasi');
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
-    // Init signature pad setelah modal tampil agar ukuran canvas benar
     modalEl.addEventListener('shown.bs.modal', () => {
         SigPadManager.init('admin', @json(auth()->user()->signature_image));
     }, { once: true });
@@ -408,10 +452,7 @@ async function submitVerifikasi() {
         const res  = await fetch(`/admin/apl01/${APL_ID}/verify`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
-            body: JSON.stringify({
-                signature:  signature,
-                nama_admin: namaAdmin,
-            }),
+            body: JSON.stringify({ signature, nama_admin: namaAdmin }),
         });
         const data = await res.json();
         if (data.success) {
@@ -425,6 +466,47 @@ async function submitVerifikasi() {
     } catch (err) {
         Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Verifikasi & Simpan'; }
+    }
+}
+
+// ── Reject APL-01 ───────────────────────────────────────────
+function openRejectApl01Modal() {
+    document.getElementById('apl01-rejection-notes').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRejectApl01')).show();
+}
+
+async function submitRejectApl01() {
+    const notes = document.getElementById('apl01-rejection-notes').value.trim();
+    if (notes.length < 10) {
+        Swal.fire('Perhatian', 'Catatan penolakan minimal 10 karakter.', 'warning');
+        return;
+    }
+
+    const btn = document.getElementById('btn-confirm-reject-apl01');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+    try {
+        const res = await fetch(`/admin/apl01/${APL_ID}/reject`, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+            body   : JSON.stringify({ catatan: notes }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalRejectApl01'))?.hide();
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 1800, showConfirmButton: false });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i> Kembalikan APL-01';
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i> Kembalikan APL-01';
     }
 }
 </script>

@@ -25,6 +25,7 @@ use App\Http\Controllers\Admin\AdminMandiriVerificationController;
 use App\Http\Controllers\Admin\FrAk01Controller as FrAk01AdminController;
 use App\Http\Controllers\Admin\FrAk04Controller as FrAk04AdminController;
 use App\Http\Controllers\Admin\AdminScheduleController;
+use App\Http\Controllers\Admin\AdminRejectController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -290,6 +291,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{aplsatu}/verify',[AplController::class, 'verifyApl01'])      ->name('verify');
         Route::post('/{aplsatu}/return',[AplController::class, 'returnApl01'])      ->name('return');
         Route::get('/{aplsatu}/pdf',    [AplController::class, 'pdfApl01'])         ->name('pdf');
+        Route::post('/{aplsatu}/reject', [AdminRejectController::class, 'rejectApl01'])->name('apl01.reject');
+
     });
     Route::get('/apl', [AplController::class, 'index'])->name('apl01.index'); // alias lama
 
@@ -323,6 +326,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/export', [AsesmenController::class, 'exportAllBiodata'])->name('export');
         Route::get('/{asesmen}',                   [AsesmenController::class, 'show'])               ->name('show');
         Route::get('/{asesmen}/detail',            [AsesmenController::class, 'detail'])             ->name('detail');
+        
+        Route::post('/{asesmen}/verify-biodata',  [AdminRejectController::class, 'verifyBiodata']) ->name('verify-biodata');
+        Route::post('/{asesmen}/reject-biodata',  [AdminRejectController::class, 'rejectBiodata']) ->name('reject-biodata');
+        Route::post('/{asesmen}/approve-biodata', [AdminRejectController::class, 'approveBiodata'])->name('approve-biodata');
+ 
 
     });
     Route::get('/asesi', [AsesmenController::class, 'index'])->name('asesi'); // alias lama
@@ -407,6 +415,7 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])  ->name('frak04.pdf');
 
         Route::get('/documents', [AsesiController::class, 'documents'])->name('documents');
+
     });
 });
 
@@ -532,7 +541,7 @@ Route::prefix('direktur')
     });
 
 
-Route::middleware(['auth', 'verified', 'role:manajer_sertifikasi'])
+Route::middleware(['auth', 'role:manajer_sertifikasi'])
     ->prefix('manajer-sertifikasi')
     ->name('manajer-sertifikasi.')
     ->group(function () {
@@ -552,6 +561,7 @@ Route::middleware(['auth', 'verified', 'role:manajer_sertifikasi'])
             Route::post('/',               [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
             Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
+
  
             // Paket di dalam observasi
             Route::post('/{soalObservasi}/paket',     [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
@@ -582,6 +592,34 @@ Route::middleware(['auth', 'verified', 'role:manajer_sertifikasi'])
             Route::post('/distribusi',           [DistribusiSoalController::class, 'distribusiPortofolio'])->name('distribusi');
             Route::delete('/distribusi',         [DistribusiSoalController::class, 'hapusDistribusiPortofolio'])->name('distribusi.hapus');
         });
+
+        Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
+    
+        // Index: list semua skema
+        Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
+    
+        // Show per skema: 3 tab
+        Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
+    
+        // Soal Observasi
+        Route::post('/{skema}/observasi',           [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
+        Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
+    
+        // Paket dalam observasi
+        Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
+        Route::get('/{skema}/paket/{paket}/download',           [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
+        Route::delete('/{skema}/paket/{paket}',                 [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
+    
+        // Soal Teori
+        Route::post('/{skema}/teori',           [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
+        Route::put('/{skema}/teori/{soalTeori}',[DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
+        Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
+    
+        // Portofolio
+        Route::post('/{skema}/portofolio',              [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
+        Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
+        Route::delete('/{skema}/portofolio/{portofolio}',       [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
+    });
     });
 /*
 |--------------------------------------------------------------------------

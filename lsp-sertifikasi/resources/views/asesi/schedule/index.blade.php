@@ -65,11 +65,19 @@
 {{-- Alert APL-01 dikembalikan --}}
 @if($aplsatu && $aplsatu->status === 'returned')
 <div class="alert alert-danger border-0 shadow-sm d-flex align-items-start gap-3 mb-4">
-    <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
-    <div>
-        <strong>APL-01 Dikembalikan oleh Admin</strong><br>
-        <span class="small">Admin meminta Anda untuk memperbaiki data APL-01.</span>
-        <a href="{{ route('asesi.apl01') }}" class="btn btn-danger btn-sm mt-2">
+    <i class="bi bi-exclamation-triangle-fill fs-3 flex-shrink-0 mt-1"></i>
+    <div class="flex-grow-1">
+        <h6 class="fw-bold mb-1">APL-01 Dikembalikan oleh Admin</h6>
+        <p class="small mb-2">Admin meminta Anda memperbaiki APL-01. Perbaiki sesuai catatan berikut, lalu submit ulang.</p>
+ 
+        @if($aplsatu->rejection_notes)
+        <div class="bg-white border border-danger rounded p-2 mb-2 small">
+            <strong>Catatan Admin:</strong><br>
+            {{ $aplsatu->rejection_notes }}
+        </div>
+        @endif
+ 
+        <a href="{{ route('asesi.apl01') }}" class="btn btn-danger btn-sm">
             <i class="bi bi-pencil me-1"></i>Perbaiki APL-01 Sekarang
         </a>
     </div>

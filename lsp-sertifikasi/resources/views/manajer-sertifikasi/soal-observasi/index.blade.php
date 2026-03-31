@@ -93,10 +93,6 @@
                             @endif
                         </td>
                         <td class="text-center">
-                            <a href="{{ route('manajer-sertifikasi.soal-observasi.download', $s) }}"
-                                class="btn btn-sm btn-outline-primary me-1" title="Download">
-                                <i class="bi bi-download"></i>
-                            </a>
                             <form method="POST" action="{{ route('manajer-sertifikasi.soal-observasi.destroy', $s) }}"
                                 class="d-inline" onsubmit="return confirm('Hapus soal observasi ini?')">
                                 @csrf @method('DELETE')

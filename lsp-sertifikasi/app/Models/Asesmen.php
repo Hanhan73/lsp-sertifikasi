@@ -63,6 +63,12 @@ class Asesmen extends Model
         'collective_paid_by_tuk',
         'skip_payment',
         'training_flag',
+        'biodata_rejection_notes',
+        'biodata_rejected_at',
+        'biodata_rejected_by',
+        'biodata_needs_revision',
+        'biodata_verified_at',
+        'biodata_verified_by',
     ];
 
     protected $casts = [
@@ -86,6 +92,9 @@ class Asesmen extends Model
         'tuk_verified_at'      => 'date:d-m-Y',
         'training_flag'        => 'boolean',
         'admin_verified_at'    => 'date:d-m-Y',
+        'biodata_rejected_at'  => 'date:d-m-Y',
+        'biodata_needs_revision' => 'boolean',
+        'biodata_verified_at'  => 'date:d-m-Y',
     ];
 
     // =========================================================================

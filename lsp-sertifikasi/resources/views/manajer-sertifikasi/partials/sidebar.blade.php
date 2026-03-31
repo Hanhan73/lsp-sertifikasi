@@ -14,33 +14,16 @@ $route = Route::currentRouteName();
     <span>Bank Soal</span>
 </div>
 
-{{-- 1. Soal Observasi (di dalamnya ada paket A, B, C, D) --}}
-<a href="{{ route('manajer-sertifikasi.soal-observasi.index') }}"
-    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.soal-observasi') ? 'active' : '' }}">
-    <i class="bi bi-eye"></i> Soal Observasi
-    @php $totalObservasi = \App\Models\SoalObservasi::count(); @endphp
-    @if($totalObservasi > 0)
-    <span class="badge bg-light text-primary ms-auto">{{ $totalObservasi }}</span>
-    @endif
-</a>
-
-{{-- 2. Soal Teori PG --}}
-<a href="{{ route('manajer-sertifikasi.soal-teori.index') }}"
-    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.soal-teori') ? 'active' : '' }}">
-    <i class="bi bi-journal-text"></i> Soal Teori (PG)
-    @php $totalTeori = \App\Models\SoalTeori::count(); @endphp
-    @if($totalTeori > 0)
-    <span class="badge bg-light text-primary ms-auto">{{ $totalTeori }}</span>
-    @endif
-</a>
-
-{{-- 3. Portofolio --}}
-<a href="{{ route('manajer-sertifikasi.portofolio.index') }}"
-    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.portofolio') ? 'active' : '' }}">
-    <i class="bi bi-briefcase"></i> Portofolio
-    @php $totalPorto = \App\Models\Portofolio::count(); @endphp
-    @if($totalPorto > 0)
-    <span class="badge bg-light text-primary ms-auto">{{ $totalPorto }}</span>
+<a href="{{ route('manajer-sertifikasi.bank-soal.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.bank-soal') ? 'active' : '' }}">
+    <i class="bi bi-collection"></i> Bank Soal
+    @php
+        $totalSoal = \App\Models\SoalObservasi::count()
+                   + \App\Models\SoalTeori::count()
+                   + \App\Models\Portofolio::count();
+    @endphp
+    @if($totalSoal > 0)
+    <span class="badge bg-light text-primary ms-auto">{{ $totalSoal }}</span>
     @endif
 </a>
 
@@ -53,8 +36,8 @@ $route = Route::currentRouteName();
     class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.jadwal') ? 'active' : '' }}">
     @php
     $jadwalBelumLengkap = \App\Models\Schedule::approved()
-    ->whereDoesntHave('distribusiSoalTeori')
-    ->count();
+        ->whereDoesntHave('distribusiSoalTeori')
+        ->count();
     @endphp
     <i class="bi bi-send-check"></i> Distribusi ke Jadwal
     @if($jadwalBelumLengkap > 0)

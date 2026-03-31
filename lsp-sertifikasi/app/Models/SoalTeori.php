@@ -19,6 +19,7 @@ class SoalTeori extends Model
         'pilihan_b',
         'pilihan_c',
         'pilihan_d',
+        'pilihan_e',
         'jawaban_benar',
         'dibuat_oleh',
     ];

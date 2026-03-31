@@ -26,6 +26,8 @@ class AplSatu extends Model
         'ttd_admin', 'tanggal_ttd_admin', 'nama_ttd_admin',
         // Status
         'status', 'submitted_at', 'verified_at', 'verified_by',
+        // Rejection notes
+        'rejection_notes',
     ];
 
     protected $casts = [
@@ -60,6 +62,7 @@ class AplSatu extends Model
             'submitted' => 'Sudah Disubmit',
             'verified'  => 'Sudah Diverifikasi',
             'approved'  => 'Disetujui',
+            'returned'  => 'Perlu Revisi',
             default     => '-',
         };
     }
@@ -71,6 +74,7 @@ class AplSatu extends Model
             'submitted' => 'info',
             'verified'  => 'warning',
             'approved'  => 'success',
+            'returned'  => 'danger',
             default     => 'secondary',
         };
     }

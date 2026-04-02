@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\DistribusiPortofolio;
 use App\Models\DistribusiSoalObservasi;
 use App\Models\DistribusiSoalTeori;
+use App\Models\BeritaAcara;
+use App\Models\BeritaAcaraAsesi;
+use App\Models\HasilObservasi;
+use App\Models\HasilPortofolio;
+use App\Models\Schedule;
 use App\Models\PaketSoalObservasi;
 use App\Models\Portofolio;
-use App\Models\Schedule;
 use App\Models\Skema;
 use App\Models\SoalObservasi;
 use App\Models\SoalTeori;
@@ -647,4 +651,64 @@ class DistribusiSoalController extends Controller
  
         return $pdf->stream($filename);
     }
+
+        public function rekapPenilaian(Schedule $schedule): \Illuminate\View\View
+    {
+        $schedule->load([
+            'skema', 'tuk', 'asesor.user',
+            'asesmens.soalTeoriAsesi.soalTeori',
+            'distribusiSoalObservasi.soalObservasi',
+            'distribusiPortofolio.portofolio',
+            'beritaAcara.asesis',
+        ]);
+ 
+        $hasilObservasi  = HasilObservasi::where('schedule_id', $schedule->id)->get();
+        $hasilPortofolio = HasilPortofolio::where('schedule_id', $schedule->id)->get();
+        $beritaAcara     = $schedule->beritaAcara;
+ 
+        $rekomendasiMap = [];
+        if ($beritaAcara) {
+            foreach ($beritaAcara->asesis as $ba) {
+                $rekomendasiMap[$ba->asesmen_id] = $ba->rekomendasi;
+            }
+        }
+ 
+        return view('manajer-sertifikasi.rekap-penilaian', [
+            'schedule'        => $schedule,
+            'hasilObservasi'  => $hasilObservasi,
+            'hasilPortofolio' => $hasilPortofolio,
+            'beritaAcara'     => $beritaAcara,
+            'rekomendasiMap'  => $rekomendasiMap,
+            'totalObservasi'  => $schedule->distribusiSoalObservasi->count(),
+            'totalPortofolio' => $schedule->distribusiPortofolio->count(),
+        ]);
+    }
+ 
+    public function downloadHasilObservasi(Schedule $schedule, SoalObservasi $soalObservasi): \Illuminate\Http\Response
+    {
+        $hasil = HasilObservasi::where([
+            'schedule_id'       => $schedule->id,
+            'soal_observasi_id' => $soalObservasi->id,
+        ])->firstOrFail();
+ 
+        return Storage::disk('private')->download($hasil->file_path, $hasil->file_name);
+    }
+ 
+    public function downloadHasilPortofolio(Schedule $schedule, Portofolio $portofolio): \Illuminate\Http\Response
+    {
+        $hasil = HasilPortofolio::where([
+            'schedule_id'   => $schedule->id,
+            'portofolio_id' => $portofolio->id,
+        ])->firstOrFail();
+ 
+        return Storage::disk('private')->download($hasil->file_path, $hasil->file_name);
+    }
+ 
+    public function downloadFileBeritaAcara(Schedule $schedule): \Illuminate\Http\Response
+    {
+        $ba = $schedule->beritaAcara;
+        abort_unless($ba && $ba->file_path, 404, 'File tidak tersedia.');
+        return Storage::disk('private')->download($ba->file_path, $ba->file_name);
+    }
+ 
 }

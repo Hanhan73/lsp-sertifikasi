@@ -299,62 +299,103 @@
                 </button>
             </div>
             @else
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th class="ps-3" style="width:44px">#</th>
-                            <th>Pertanyaan</th>
-                            <th>Pilihan</th>
-                            <th class="text-center" style="width:60px">Jwb</th>
-                            <th class="text-center" style="width:80px">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($soalTeori as $i => $s)
-                        <tr>
-                            <td class="ps-3 text-muted">{{ $soalTeori->firstItem() + $i }}</td>
-                            <td style="max-width:280px">
-                                <div style="font-size:.875rem;font-weight:500">{{ Str::limit($s->pertanyaan, 90) }}</div>
-                            </td>
-                            <td>
-                                <div style="font-size:.75rem;color:#6b7280;line-height:1.7">
-                                    <span class="me-1 fw-semibold">A.</span>{{ Str::limit($s->pilihan_a, 35) }}<br>
-                                    <span class="me-1 fw-semibold">B.</span>{{ Str::limit($s->pilihan_b, 35) }}<br>
-                                    <span class="me-1 fw-semibold">C.</span>{{ Str::limit($s->pilihan_c, 35) }}<br>
-                                    <span class="me-1 fw-semibold">D.</span>{{ Str::limit($s->pilihan_d, 35) }}<br>
-                                    @if($s->pilihan_e)
-                                    <span class="me-1 fw-semibold">E.</span>{{ Str::limit($s->pilihan_e, 35) }}
+            <div class="d-flex flex-column gap-2">
+                @foreach($soalTeori as $i => $s)
+                @php $idx = $soalTeori->firstItem() + $i; @endphp
+                <div class="border rounded-3 overflow-hidden soal-card">
+            
+                    {{-- Header baris — klik untuk expand --}}
+                    <div class="d-flex align-items-start gap-3 px-3 py-3 bg-white soal-header"
+                        onclick="toggleSoal({{ $s->id }})"
+                        style="cursor:pointer;">
+            
+                        {{-- Nomor --}}
+                        <div class="fw-bold text-muted flex-shrink-0"
+                            style="min-width:28px;font-size:.85rem;padding-top:2px;">
+                            {{ $idx }}.
+                        </div>
+            
+                        {{-- Pertanyaan (full, tidak terpotong) --}}
+                        <div class="flex-grow-1" style="min-width:0;overflow:visible;">
+                            <div style="font-size:.875rem;font-weight:500;line-height:1.5;white-space:normal;word-break:break-word;overflow-wrap:anywhere;">
+                                {{ $s->pertanyaan }}
+                            </div>
+                            {{-- Preview pilihan saat collapsed --}}
+                            <div class="soal-preview-pills d-flex flex-wrap gap-1 mt-2" id="preview-{{ $s->id }}">
+                                @foreach(['a','b','c','d','e'] as $opt)
+                                @if($s->{'pilihan_' . $opt})
+                                <span class="badge rounded-pill px-2 py-1
+                                    {{ $s->jawaban_benar === $opt ? 'bg-success text-white' : 'bg-light text-dark border' }}"
+                                    style="font-size:.72rem;">
+                                    {{ strtoupper($opt) }}. {{ Str::limit($s->{'pilihan_' . $opt}, 30) }}
+                                    @if($s->jawaban_benar === $opt)
+                                    <i class="bi bi-check-lg ms-1"></i>
+                                    @endif
+                                </span>
+                                @endif
+                                @endforeach
+                            </div>
+                        </div>
+            
+                        {{-- Jawaban badge --}}
+                        <div class="flex-shrink-0 d-flex align-items-center gap-2">
+                            <span class="badge rounded-circle fw-bold"
+                                style="background:#16a34a;color:white;width:28px;height:28px;line-height:20px;font-size:.85rem;text-align:center;">
+                                {{ strtoupper($s->jawaban_benar) }}
+                            </span>
+                            <i class="bi bi-chevron-down text-muted soal-chevron" id="chevron-{{ $s->id }}"
+                            style="transition:transform .2s;"></i>
+                        </div>
+                    </div>
+            
+                    {{-- Detail expand --}}
+                    <div class="soal-detail border-top bg-light px-3 py-3" id="detail-{{ $s->id }}"
+                        style="display:none;">
+                        <div class="row g-2 mb-3">
+                            @foreach(['a','b','c','d','e'] as $opt)
+                            @php $val = $s->{'pilihan_' . $opt}; @endphp
+                            @if($val)
+                            <div class="col-12">
+                                <div class="d-flex align-items-start gap-2 p-2 rounded-2
+                                    {{ $s->jawaban_benar === $opt ? 'bg-success bg-opacity-10 border border-success' : 'bg-white border' }}">
+                                    <span class="badge flex-shrink-0 mt-1
+                                        {{ $s->jawaban_benar === $opt ? 'bg-success' : 'bg-secondary' }}"
+                                        style="min-width:22px;font-size:.78rem;">
+                                        {{ strtoupper($opt) }}
+                                    </span>
+                                    <span style="font-size:.85rem;">{{ $val }}</span>
+                                    @if($s->jawaban_benar === $opt)
+                                    <i class="bi bi-check-circle-fill text-success ms-auto flex-shrink-0 mt-1"></i>
                                     @endif
                                 </div>
-                            </td>
-                            <td class="text-center">
-                                <span class="badge rounded-circle fw-bold"
-                                      style="background:#16a34a;color:white;width:28px;height:28px;line-height:20px;font-size:.85rem">
-                                    {{ strtoupper($s->jawaban_benar) }}
-                                </span>
-                            </td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-outline-primary me-1"
-                                        onclick="editSoal({{ $s->toJson() }})">
-                                    <i class="bi bi-pencil"></i>
+                            </div>
+                            @endif
+                            @endforeach
+                        </div>
+            
+                        {{-- Aksi --}}
+                        <div class="d-flex gap-2 justify-content-end">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    onclick="event.stopPropagation(); editSoal({{ $s->toJson() }})">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </button>
+                            <form method="POST"
+                                action="{{ route('manajer-sertifikasi.bank-soal.teori.destroy', [$skema, $s]) }}"
+                                class="d-inline"
+                                onsubmit="event.stopPropagation(); return confirm('Hapus soal ini?')">
+                                @csrf @method('DELETE')
+                                <button class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash3 me-1"></i>Hapus
                                 </button>
-                                <form method="POST"
-                                      action="{{ route('manajer-sertifikasi.bank-soal.teori.destroy', [$skema, $s]) }}"
-                                      class="d-inline" onsubmit="return confirm('Hapus soal ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                            </form>
+                        </div>
+                    </div>
+            
+                </div>
+                @endforeach
             </div>
             <div class="px-3 py-3">
-                {{ $soalTeori->appends(request()->query())->links() }}
+                {{ $soalTeori->appends(array_merge(request()->query(), ['tab' => 'teori']))->fragment('pane-teori')->links('pagination::bootstrap-5') }}
             </div>
             @endif
         </div>
@@ -552,7 +593,7 @@ function pilihKode(obsId, kode) {
     event.target.classList.remove('btn-outline-primary');
     event.target.classList.add('btn-primary');
 }
-
+ 
 // ── Preview file portofolio ────────────────────────────────
 function previewPorto(skemaId, input) {
     const label = document.getElementById('labelPorto' + skemaId);
@@ -561,7 +602,7 @@ function previewPorto(skemaId, input) {
         label.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i>${f.name}`;
     }
 }
-
+ 
 // ── Edit soal teori ────────────────────────────────────────
 function editSoal(soal) {
     document.getElementById('modalSoalTitle').innerHTML =
@@ -569,7 +610,7 @@ function editSoal(soal) {
     document.getElementById('formMethod').value = 'PUT';
     document.getElementById('formSoalTeori').action =
         '{{ url("manajer-sertifikasi/bank-soal/' . $skema->id . '/teori") }}/' + soal.id;
-
+ 
     document.getElementById('inputPertanyaan').value = soal.pertanyaan;
     document.getElementById('inputPilihanA').value = soal.pilihan_a;
     document.getElementById('inputPilihanB').value = soal.pilihan_b;
@@ -577,10 +618,10 @@ function editSoal(soal) {
     document.getElementById('inputPilihanD').value = soal.pilihan_d;
     document.getElementById('inputPilihanE').value = soal.pilihan_e ?? '';
     document.getElementById('selectJawaban').value = soal.jawaban_benar;
-
+ 
     new bootstrap.Modal(document.getElementById('modalTambahSoal')).show();
 }
-
+ 
 // Reset modal saat ditutup
 document.getElementById('modalTambahSoal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('formSoalTeori').reset();
@@ -590,17 +631,46 @@ document.getElementById('modalTambahSoal').addEventListener('hidden.bs.modal', f
     document.getElementById('modalSoalTitle').innerHTML =
         '<i class="bi bi-plus-circle text-primary me-2"></i>Tambah Soal Teori';
 });
-
-// ── Restore tab dari URL hash ──────────────────────────────
-const hash = window.location.hash;
-if (hash) {
-    const t = document.querySelector(`[data-bs-target="${hash}"]`);
-    if (t) new bootstrap.Tab(t).show();
-}
-document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
-    t.addEventListener('shown.bs.tab', e => {
-        history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
+ 
+// ── Restore tab — cek query string dulu, baru hash ─────────
+document.addEventListener('DOMContentLoaded', function () {
+    // Prioritas 1: ?tab=teori dari query string (dari pagination)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam  = urlParams.get('tab');
+ 
+    // Prioritas 2: hash (#pane-teori)
+    const hash = window.location.hash;
+ 
+    let targetSelector = null;
+ 
+    if (tabParam) {
+        targetSelector = `[data-bs-target="#pane-${tabParam}"]`;
+    } else if (hash) {
+        targetSelector = `[data-bs-target="${hash}"]`;
+    }
+ 
+    if (targetSelector) {
+        const tabEl = document.querySelector(targetSelector);
+        if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+    }
+ 
+    // Update hash saat tab berganti (untuk navigasi manual)
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
+        t.addEventListener('shown.bs.tab', e => {
+            const target = e.target.getAttribute('data-bs-target');
+            history.replaceState(null, null, target);
+        });
     });
 });
+function toggleSoal(id) {
+    const detail  = document.getElementById('detail-'  + id);
+    const chevron = document.getElementById('chevron-' + id);
+    const preview = document.getElementById('preview-' + id);
+    const open    = detail.style.display !== 'none';
+ 
+    detail.style.display  = open ? 'none' : 'block';
+    preview.style.display = open ? 'flex' : 'none';
+    if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+}
 </script>
 @endpush

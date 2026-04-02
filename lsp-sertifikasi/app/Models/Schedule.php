@@ -264,6 +264,21 @@ class Schedule extends Model
     {
         return $this->hasMany(\App\Models\DistribusiPaketSoal::class);
     }
+
+    public function hasilObservasi()  
+    { 
+        return $this->hasMany(HasilObservasi::class); 
+    }
+
+    public function hasilPortofolio() 
+    { 
+        return $this->hasMany(HasilPortofolio::class);
+    }
+    
+    public function beritaAcara()
+    {
+        return $this->hasOne(BeritaAcara::class);
+    }
  
     /**
      * Satu schedule hanya punya satu konfigurasi distribusi soal teori.

@@ -12,24 +12,47 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(): View
+    public function index(): \Illuminate\View\View
     {
-        // Stat cards
         $totalJadwal      = Schedule::approved()->count();
         $jadwalBelumTeori = Schedule::approved()->whereDoesntHave('distribusiSoalTeori')->count();
         $jadwalLengkap    = Schedule::approved()
             ->whereHas('distribusiSoalObservasi')
-            ->whereHas('distribusiPaketSoal')
             ->whereHas('distribusiSoalTeori')
             ->count();
         $totalBankSoal = SoalTeori::count();
+ 
+        $bankSoalPerSkema = SoalTeori::select('soal_teori.skema_id', DB::raw('count(*) as total'))
+            ->join('skemas', 'skemas.id', '=', 'soal_teori.skema_id')
+            ->addSelect('skemas.name as skema_name', 'skemas.code as skema_code')
+            ->groupBy('soal_teori.skema_id', 'skemas.name', 'skemas.code')
+            ->orderByDesc('total')
+            ->get();
+ 
+        $jadwalMendatang = Schedule::with(['skema', 'tuk', 'distribusiSoalTeori'])
+            ->approved()
+            ->upcoming()
+            ->withCount('asesmens')
+            ->take(6)
+            ->get();
+ 
+        return view('manajer-sertifikasi.dashboard', compact(
+            'totalJadwal', 'jadwalBelumTeori', 'jadwalLengkap',
+            'totalBankSoal', 'bankSoalPerSkema', 'jadwalMendatang',
+        ));
+    }
 
-        // Tabel jadwal utama (paginated)
+    public function distribusi(): \Illuminate\View\View
+    {
+        $jadwalBelumTeori = Schedule::approved()->whereDoesntHave('distribusiSoalTeori')->count();
+        $jadwalLengkap    = Schedule::approved()
+            ->whereHas('distribusiSoalObservasi')
+            ->whereHas('distribusiSoalTeori')
+            ->count();
+ 
         $schedules = Schedule::with([
-            'skema',
-            'tuk',
+            'skema', 'tuk',
             'distribusiSoalObservasi',
-            'distribusiPaketSoal',
             'distribusiSoalTeori',
             'distribusiPortofolio',
         ])
@@ -37,30 +60,11 @@ class DashboardController extends Controller
         ->withCount('asesmens')
         ->latest('assessment_date')
         ->paginate(15);
-
-        // Bank soal teori per skema
-        $bankSoalPerSkema = SoalTeori::select('soal_teori.skema_id', DB::raw('count(*) as total'))
-            ->join('skemas', 'skemas.id', '=', 'soal_teori.skema_id')
-            ->addSelect('skemas.name as skema_name', 'skemas.code as skema_code')
-            ->groupBy('soal_teori.skema_id', 'skemas.name', 'skemas.code')
-            ->orderByDesc('total')
-            ->get();
-
-        // Jadwal mendatang
-        $jadwalMendatang = Schedule::with(['skema', 'tuk', 'distribusiSoalTeori'])
-            ->approved()
-            ->upcoming()
-            ->take(6)
-            ->get();
-
-        return view('manajer-sertifikasi.dashboard', compact(
+ 
+        return view('manajer-sertifikasi.distribusi', compact(
             'schedules',
-            'totalJadwal',
             'jadwalBelumTeori',
             'jadwalLengkap',
-            'totalBankSoal',
-            'bankSoalPerSkema',
-            'jadwalMendatang',
         ));
     }
 }

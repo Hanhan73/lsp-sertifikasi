@@ -41,6 +41,7 @@ use App\Http\Controllers\Tuk\TukVerificationController;
 use App\Http\Controllers\Asesor\AsesorController;
 use App\Http\Controllers\Asesor\FrAk01Controller;
 use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController; 
+use App\Http\Controllers\Asesor\HasilPenilaianController;
 
 // Direktur
 use App\Http\Controllers\Direktur\DirekturScheduleController;
@@ -48,7 +49,6 @@ use App\Http\Controllers\Direktur\DirekturDashboardController;
 
 // Manajer Sertifikasi
 use App\Http\Controllers\ManajerSertifikasi\DashboardController;
-use App\Http\Controllers\ManajerSertifikasi\ManajerSertifikasiScheduleController;
 use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
 
 
@@ -547,6 +547,22 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     Route::get('/dokumen/sk/download',   [AsesorController::class, 'downloadSkPengangkatan'])->name('sk.download');
     Route::delete('/dokumen/sk',         [AsesorController::class, 'deleteSkPengangkatan'])  ->name('sk.delete');
     Route::get('/dokumen/sk',            [AsesorController::class, 'documentSk'])            ->name('dokumen.sk');
+
+    // Hasil observasi
+    Route::post('/observasi/{soalObservasi}/upload',    [HasilPenilaianController::class, 'uploadObservasi'])   ->name('observasi.upload');
+    Route::delete('/observasi/{soalObservasi}/hapus',   [HasilPenilaianController::class, 'hapusObservasi'])    ->name('observasi.hapus');
+    Route::get('/observasi/{soalObservasi}/download',   [HasilPenilaianController::class, 'downloadObservasi']) ->name('observasi.download');
+ 
+    // Hasil portofolio
+    Route::post('/portofolio/{portofolio}/upload',      [HasilPenilaianController::class, 'uploadPortofolio'])   ->name('portofolio.upload');
+    Route::delete('/portofolio/{portofolio}/hapus',     [HasilPenilaianController::class, 'hapusPortofolio'])    ->name('portofolio.hapus');
+    Route::get('/portofolio/{portofolio}/download',     [HasilPenilaianController::class, 'downloadPortofolio']) ->name('portofolio.download');
+ 
+    // Berita acara
+    Route::get('/berita-acara',                         [HasilPenilaianController::class, 'beritaAcara'])              ->name('berita-acara');
+    Route::post('/berita-acara/simpan',                 [HasilPenilaianController::class, 'simpanBeritaAcara'])         ->name('berita-acara.simpan');
+    Route::post('/berita-acara/upload-file',            [HasilPenilaianController::class, 'uploadFileBeritaAcara'])     ->name('berita-acara.upload-file');
+    Route::get('/berita-acara/download-file',           [HasilPenilaianController::class, 'downloadFileBeritaAcara'])   ->name('berita-acara.download-file');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -582,11 +598,17 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
  
         // Dashboard
         Route::get('/', [DashboardController::class, 'index'])->name('index');
+        Route::get('/distribusi', [DashboardController::class, 'distribusi'])->name('distribusi'); 
  
         // Detail jadwal — kelola distribusi soal
-        Route::get('/jadwal/{schedule}', [DistribusiSoalController::class, 'show'])
-            ->name('jadwal.show');
-             Route::get('/jadwal/{schedule}/daftar-hadir', [DistribusiSoalController::class, 'daftarHadir'])->name('jadwal.daftar-hadir');
+        Route::prefix('/jadwal/{schedule}')->name('jadwal.')->group(function () {
+            Route::get('/',        [DistribusiSoalController::class, 'show'])           ->name('show');
+            Route::get('/rekap',   [DistribusiSoalController::class, 'rekapPenilaian']) ->name('rekap');
+            Route::get('/rekap/observasi/{soalObservasi}/download',  [DistribusiSoalController::class, 'downloadHasilObservasi'])->name('rekap.download-observasi');
+            Route::get('/rekap/portofolio/{portofolio}/download',    [DistribusiSoalController::class, 'downloadHasilPortofolio'])->name('rekap.download-portofolio');
+            Route::get('/rekap/berita-acara/download',               [DistribusiSoalController::class, 'downloadFileBeritaAcara'])->name('rekap.download-ba');
+            Route::get('/daftar-hadir', [DistribusiSoalController::class, 'daftarHadir'])->name('daftar-hadir');
+        });
  
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
         // Setiap observasi punya beberapa paket (A, B, C, D, dst)

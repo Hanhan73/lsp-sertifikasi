@@ -14,9 +14,7 @@ return new class extends Migration
             $table->foreignId('returned_by')->nullable()->constrained('users')->nullOnDelete()->after('returned_at');
         });
  
-        // Tambah 'returned' ke enum status
-        // Catatan: jika kolom status sudah enum, gunakan raw statement:
-        DB::statement("ALTER TABLE fr_ak_01 MODIFY COLUMN status ENUM('draft','submitted','returned','verified','approved') NOT NULL DEFAULT 'draft'");
+
     }
  
     public function down(): void
@@ -25,6 +23,5 @@ return new class extends Migration
             $table->dropForeign(['returned_by']);
             $table->dropColumn(['rejection_notes', 'returned_at', 'returned_by']);
         });
-        DB::statement("ALTER TABLE fr_ak_01 MODIFY COLUMN status ENUM('draft','submitted','verified','approved') NOT NULL DEFAULT 'draft'");
     }
 };

@@ -19,6 +19,27 @@
 
 @section('content')
 
+{{-- ── Alert returned (ditambah di atas, mirip APL-01 returned) ── --}}
+@if($frak01->status === 'returned')
+<div class="alert alert-danger border-0 shadow-sm d-flex align-items-start gap-3 mb-4">
+    <i class="bi bi-exclamation-triangle-fill fs-3 flex-shrink-0 mt-1"></i>
+    <div class="flex-grow-1">
+        <h6 class="fw-bold mb-1">FR.AK.01 Dikembalikan oleh Admin</h6>
+        <p class="small mb-2">Admin meminta Anda memperbaiki FR.AK.01. Bacalah catatan berikut, perbaiki isian, lalu tanda tangan ulang.</p>
+        @if($frak01->rejection_notes)
+        <div class="bg-white border border-danger rounded p-2 mb-3 small">
+            <strong>Catatan Admin:</strong><br>
+            {{ $frak01->rejection_notes }}
+        </div>
+        @endif
+        <p class="small text-muted mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            Tanda tangan sebelumnya sudah direset. Isi ulang bukti yang diperlukan lalu tanda tangan kembali.
+        </p>
+    </div>
+</div>
+@endif
+
 {{-- Status banner --}}
 @if(in_array($frak01->status, ['verified', 'approved']))
 <div class="alert alert-success d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">
@@ -34,6 +55,11 @@
     <a href="{{ route('asesi.frak01.pdf') }}" class="btn btn-sm btn-outline-success">
         <i class="bi bi-download me-1"></i>Download
     </a>
+</div>
+@elseif($frak01->status === 'returned')
+<div class="alert alert-danger d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">
+    <i class="bi bi-arrow-return-left fs-4"></i>
+    <div><strong>FR.AK.01 dikembalikan.</strong> Perbaiki sesuai catatan, lalu tanda tangan ulang.</div>
 </div>
 @elseif($frak01->status === 'submitted')
 <div class="alert alert-info d-flex align-items-center gap-3 mb-4 border-0 shadow-sm">

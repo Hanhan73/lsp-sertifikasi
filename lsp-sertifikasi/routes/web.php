@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\AdminRejectController;
 use App\Http\Controllers\Asesi\AsesiController;
 use App\Http\Controllers\Asesi\FrAk01Controller as FrAk01AsesiController;
 use App\Http\Controllers\Asesi\FrAk04Controller as FrAk04AsesiController;
+use App\Http\Controllers\Asesi\SoalAsesiController;
 
 // TUK
 use App\Http\Controllers\Tuk\TukController;
@@ -241,6 +242,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::put('/{asesor}',      [AdminAsesorController::class, 'update']) ->name('update');
         Route::delete('/{asesor}',   [AdminAsesorController::class, 'destroy'])->name('destroy');
         Route::post('/{asesor}/buat-akun', [AdminAsesorController::class, 'buatAkun'])->name('buat-akun');
+        Route::get('/{asesor}/sk/download', [AdminAsesorController::class, 'downloadSk'])->name('sk.download');
+
 
     });
 
@@ -309,7 +312,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // FR.AK.01
     Route::prefix('frak01')->name('frak01.')->group(function () {
-        Route::get('/{frak01}/pdf', [FrAk01AdminController::class, 'adminPdf'])->name('pdf');
+        Route::get('/{frak01}/pdf',    [FrAk01AdminController::class, 'adminPdf'])      ->name('pdf');
+        Route::post('/{frak01}/return',[FrAk01AdminController::class, 'returnFrak01'])  ->name('return');
     });
 
     // FR.AK.04
@@ -350,8 +354,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
     });
     Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // alias lama
-
-
 
 });
 
@@ -415,6 +417,23 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])  ->name('frak04.pdf');
 
         Route::get('/documents', [AsesiController::class, 'documents'])->name('documents');
+
+        Route::prefix('soal')->name('soal.')->group(function () {
+        // Halaman ujian teori
+        Route::get('/teori/intro',         [SoalAsesiController::class, 'teoriIntro'])->name('teori.intro');
+        Route::get('/teori',         [SoalAsesiController::class, 'teoriIndex'])->name('teori.index');
+        Route::post('/teori/mulai',  [SoalAsesiController::class, 'teoriMulai'])->name('teori.mulai');
+        Route::post('/teori/save',   [SoalAsesiController::class, 'teoriSave']) ->name('teori.save');
+        Route::post('/teori/submit', [SoalAsesiController::class, 'teoriSubmit'])->name('teori.submit');
+    
+        // Soal Observasi
+        Route::get('/observasi',              [SoalAsesiController::class, 'observasiIndex'])  ->name('observasi.index');
+        Route::post('/observasi/save-link',   [SoalAsesiController::class, 'observasiSaveLink'])->name('observasi.save');
+    
+        // Download paket observasi (PDF) — asesi hanya bisa download dari jadwal mereka
+        Route::get('/observasi/paket/{paket}/download', [SoalAsesiController::class, 'downloadPaket'])
+            ->name('observasi.download');
+    });
 
     });
 });
@@ -485,6 +504,16 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     // Jadwal
     Route::get('/schedule',          [AsesorController::class, 'schedule'])      ->name('schedule');
     Route::get('/schedule/{schedule}',[AsesorController::class, 'scheduleDetail'])->name('schedule.detail');
+    Route::get('/schedule/{schedule}/daftar-hadir', [AsesorController::class, 'daftarHadir'])->name('schedule.daftar-hadir');
+    // SK download untuk asesor
+    Route::get('/schedule/{schedule}/sk', [AsesorController::class, 'downloadSk'])->name('schedule.sk.download');
+
+    // Download paket observasi
+    Route::get('/observasi/paket/{paket}/download', [AsesorController::class, 'downloadPaketObservasi'])->name('observasi.download-paket');
+
+    // Daftar hadir AJAX
+    Route::post('/asesmen/{asesmen}/hadir', [AsesorController::class, 'toggleHadir'])->name('asesmen.hadir');
+
 
     // Asesi di dalam jadwal
     Route::prefix('schedule/{schedule}/asesi/{asesmen}')->name('asesi.')->group(function () {
@@ -513,6 +542,11 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak04')->name('frak04.')->group(function () {
         Route::get('/pdf', [FrAk04AsesorController::class, 'previewPdf'])->name('pdf');
     });
+
+    Route::post('/dokumen/sk/upload',    [AsesorController::class, 'uploadSk'])              ->name('sk.upload');
+    Route::get('/dokumen/sk/download',   [AsesorController::class, 'downloadSkPengangkatan'])->name('sk.download');
+    Route::delete('/dokumen/sk',         [AsesorController::class, 'deleteSkPengangkatan'])  ->name('sk.delete');
+    Route::get('/dokumen/sk',            [AsesorController::class, 'documentSk'])            ->name('dokumen.sk');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -552,6 +586,7 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
         // Detail jadwal — kelola distribusi soal
         Route::get('/jadwal/{schedule}', [DistribusiSoalController::class, 'show'])
             ->name('jadwal.show');
+             Route::get('/jadwal/{schedule}/daftar-hadir', [DistribusiSoalController::class, 'daftarHadir'])->name('jadwal.daftar-hadir');
  
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
         // Setiap observasi punya beberapa paket (A, B, C, D, dst)

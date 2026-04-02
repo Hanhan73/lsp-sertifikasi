@@ -373,4 +373,16 @@ class AdminAsesorController extends Controller
             ], 500);
         }
     }
+
+    public function downloadSk(Asesor $asesor)
+    {
+        abort_unless($asesor->sk_pengangkatan_path, 404, 'SK belum tersedia.');
+        abort_unless(
+            Storage::disk('private')->exists($asesor->sk_pengangkatan_path),
+            404, 'File tidak ditemukan.'
+        );
+        return response()->streamDownload(function () use ($asesor) {
+            echo Storage::disk('private')->get($asesor->sk_pengangkatan_path);
+        }, $asesor->sk_pengangkatan_filename ?? 'SK_Asesor.pdf', ['Content-Type' => 'application/pdf']);
+    }
 }

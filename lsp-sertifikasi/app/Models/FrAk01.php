@@ -42,6 +42,10 @@ class FrAk01 extends Model
         'submitted_at',
         'verified_at',
         'verified_by',
+        // Rejection (jika returned)
+        'rejection_notes',
+        'returned_at',
+        'returned_by',
     ];
 
     protected $casts = [
@@ -57,6 +61,7 @@ class FrAk01 extends Model
         'tanggal_ttd_asesor'             => 'datetime',
         'submitted_at'                   => 'datetime',
         'verified_at'                    => 'datetime',
+        'returned_at'                    => 'datetime',
     ];
 
     // ── Relations ──
@@ -78,6 +83,7 @@ class FrAk01 extends Model
             'submitted' => 'Sudah Disubmit',
             'verified'  => 'Sudah Diverifikasi',
             'approved'  => 'Disetujui',
+            ';returned'  => 'Ditolak / Dikembalikan',
             default     => '-',
         };
     }
@@ -89,6 +95,7 @@ class FrAk01 extends Model
             'submitted' => 'info',
             'verified'  => 'warning',
             'approved'  => 'success',
+            'returned'  => 'danger',
             default     => 'secondary',
         };
     }

@@ -27,6 +27,19 @@
         </div>
     </div>
 
+    @if($schedule->asesor?->user?->signature)
+    <a href="{{ route('manajer-sertifikasi.jadwal.daftar-hadir', $schedule) }}"
+    target="_blank"
+    class="btn btn-sm btn-outline-danger align-self-center">
+        <i class="bi bi-file-pdf me-1"></i>Daftar Hadir
+    </a>
+    @else
+    <button class="btn btn-sm btn-outline-secondary align-self-center disabled"
+            title="Asesor belum menandatangani daftar hadir">
+        <i class="bi bi-file-pdf me-1"></i>Daftar Hadir
+    </button>
+    @endif
+
     {{-- Summary counter --}}
     <div class="d-flex gap-2 flex-wrap">
         @php

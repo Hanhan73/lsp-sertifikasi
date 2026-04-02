@@ -49,9 +49,7 @@
         <div class="alert alert-secondary py-2 text-start mb-2">
             <i class="bi bi-person-x"></i> Belum ada akun login
         </div>
-        <button type="button"
-            class="btn btn-sm btn-outline-primary w-100"
-            id="btn-buat-akun-{{ $asesor->id }}"
+        <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btn-buat-akun-{{ $asesor->id }}"
             onclick="buatAkunAsesor({{ $asesor->id }}, '{{ addslashes($asesor->nama) }}')">
             <i class="bi bi-person-plus"></i> Buatkan Akun Login
         </button>
@@ -89,6 +87,42 @@
                     @if($asesor->provinsi) / {{ $asesor->provinsi }} @endif
                 </td>
             </tr>
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
+                    <i class="bi bi-file-earmark-check text-primary"></i>SK Pengangkatan
+                    @if($asesor->sk_pengangkatan_path)
+                    <span class="badge bg-success ms-auto">Tersedia</span>
+                    @else
+                    <span class="badge bg-secondary ms-auto">Belum Diupload</span>
+                    @endif
+                </div>
+                <div class="card-body">
+                    @if($asesor->sk_pengangkatan_path)
+                    <table class="table table-sm table-borderless mb-3">
+                        <tr>
+                            <td class="text-muted" style="width:130px;">Nomor SK</td>
+                            <td class="fw-semibold font-monospace">{{ $asesor->sk_pengangkatan_number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Tanggal</td>
+                            <td>{{ $asesor->sk_pengangkatan_date?->format('d M Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-muted">Berlaku Hingga</td>
+                            <td
+                                class="{{ $asesor->sk_pengangkatan_valid_until?->isPast() ? 'text-danger fw-bold' : '' }}">
+                                {{ $asesor->sk_pengangkatan_valid_until?->format('d M Y') ?? 'Tidak ditentukan' }}
+                            </td>
+                        </tr>
+                    </table>
+                    <a href="{{ route('admin.asesors.sk.download', $asesor) }}" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-download me-1"></i>Download SK
+                    </a>
+                    @else
+                    <p class="text-muted small mb-0">Asesor belum mengupload SK Pengangkatan.</p>
+                    @endif
+                </div>
+            </div>
         </table>
 
         {{-- KONTAK --}}

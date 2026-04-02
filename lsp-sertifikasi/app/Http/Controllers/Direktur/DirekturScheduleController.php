@@ -181,18 +181,18 @@ class DirekturScheduleController extends Controller
             abort(404, 'SK belum tersedia untuk jadwal ini.');
         }
 
-        $path = Storage::disk('public')->path($schedule->sk_path);
-
-        if (!file_exists($path)) {
+        if (!Storage::disk('private')->exists($schedule->sk_path)) {
             abort(404, 'File SK tidak ditemukan.');
         }
 
-        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $ext      = pathinfo($schedule->sk_path, PATHINFO_EXTENSION);
+        $filename = 'SK_' . str_replace('/', '-', $schedule->sk_number) . '.' . $ext;
 
-        return response()->download(
-            $path,
-            'SK_' . str_replace('/', '-', $schedule->sk_number) . '.' . $ext
-        );
+        return response()->streamDownload(function () use ($schedule) {
+            echo Storage::disk('private')->get($schedule->sk_path);
+        }, $filename, [
+            'Content-Type' => $ext === 'pdf' ? 'application/pdf' : 'text/html',
+        ]);
     }
 
     /**

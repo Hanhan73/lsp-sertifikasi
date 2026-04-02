@@ -623,4 +623,28 @@ class DistribusiSoalController extends Controller
         return redirect()->route('manajer-sertifikasi.jadwal.show', $schedule)
             ->with('success', "{$request->jumlah_soal} soal teori berhasil didistribusikan ke {$schedule->asesmens->count()} asesi.");
     }
+
+    // =========================================================================
+    // DAFTAR HADIR
+    // =========================================================================
+    public function daftarHadir(Schedule $schedule): \Illuminate\Http\Response
+    {
+        $schedule->load(['tuk', 'skema', 'asesor.user', 'asesmens']);
+ 
+        // TTD asesor diambil dari akun user si asesor
+        $ttdAsesor = $schedule->asesor?->user?->signature_image;
+ 
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.daftar-hadir', [
+            'schedule'  => $schedule,
+            'asesmens'  => $schedule->asesmens,
+            'asesor'    => $schedule->asesor,
+            'ttdAsesor' => $ttdAsesor,
+        ])->setPaper('A4', 'portrait');
+ 
+        $filename = 'Daftar_Hadir_'
+            . str_replace(' ', '_', $schedule->skema->name ?? 'Asesmen')
+            . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
+ 
+        return $pdf->stream($filename);
+    }
 }

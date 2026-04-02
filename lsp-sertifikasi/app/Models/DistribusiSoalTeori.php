@@ -16,6 +16,7 @@ class DistribusiSoalTeori extends Model
     protected $fillable = [
         'schedule_id',
         'jumlah_soal',
+        'durasi_menit',   // ← TAMBAHKAN INI
         'didistribusikan_oleh',
     ];
 

@@ -4,32 +4,15 @@ namespace App\Services;
 
 use App\Models\Schedule;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
-/**
- * SkGeneratorService
- *
- * Generate Surat Tugas PDF untuk jadwal asesmen yang sudah disetujui Direktur.
- * Format mengikuti dokumen: Nomor SK, daftar asesor, daftar peserta per halaman.
- *
- * Requires: composer require tecnickcom/tcpdf
- * Atau gunakan reportlab via Python jika stack backend berbeda.
- *
- * Jika TCPDF belum tersedia, service ini menyediakan fallback HTML-to-PDF
- * menggunakan DomPDF (bawaaan Laravel).
- */
 class SkGeneratorService
 {
-    /**
-     * Generate nomor SK otomatis.
-     * Format: 025/LSP-KAP/SER.{skema_kode}/{bulan_romawi}/{tahun}
-     */
     public function generateSkNumber(Schedule $schedule): string
     {
         $count = Schedule::whereYear('approved_at', now()->year)
             ->whereMonth('approved_at', now()->month)
             ->where('approval_status', 'approved')
-            ->count() + 1;
+            ->count();
 
         $months = [
             1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV',
@@ -37,282 +20,280 @@ class SkGeneratorService
             9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
         ];
 
-        $bulan = $months[now()->month];
-        $tahun = now()->year;
+        $bulan = $months[$schedule->approved_at->month];
+        $tahun = $schedule->approved_at->year;
         $nomor = str_pad($count, 3, '0', STR_PAD_LEFT);
 
         return "{$nomor}/LSP-KAP/SER.20.07/{$bulan}/{$tahun}";
     }
 
-    /**
-     * Generate SK PDF dan simpan ke storage.
-     * Mengembalikan path file yang tersimpan.
-     */
     public function generate(Schedule $schedule): string
     {
         $schedule->load(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy']);
-
         $html = $this->buildHtml($schedule);
 
-        // Coba DomPDF (tersedia di Laravel via barryvdh/laravel-dompdf)
         if (class_exists(\Barryvdh\DomPDF\Facade\Pdf::class)) {
             return $this->generateWithDompdf($schedule, $html);
         }
 
-        // Fallback: simpan sebagai HTML (untuk lingkungan tanpa PDF library)
         return $this->saveAsHtml($schedule, $html);
     }
 
-    /**
-     * Generate menggunakan DomPDF.
-     */
     private function generateWithDompdf(Schedule $schedule, string $html): string
     {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
             ->setPaper('a4', 'portrait');
 
-        $filename = 'sk_' . $schedule->id . '_' . Str::slug($schedule->sk_number ?? now()->timestamp) . '.pdf';
+        $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
+        $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
+
+        $filename = 'sk_' . $schedule->id . '_' . now()->timestamp . '.pdf';
         $path     = 'sk/' . $filename;
 
-        Storage::disk('public')->put($path, $pdf->output());
+        Storage::disk('private')->put($path, $pdf->output());
 
         return $path;
     }
 
-    /**
-     * Fallback: simpan sebagai HTML jika tidak ada PDF library.
-     */
     private function saveAsHtml(Schedule $schedule, string $html): string
     {
         $filename = 'sk_' . $schedule->id . '_' . now()->timestamp . '.html';
         $path     = 'sk/' . $filename;
-        Storage::disk('public')->put($path, $html);
+        Storage::disk('private')->put($path, $html);
         return $path;
     }
 
-    /**
-     * Build HTML Surat Tugas — mengikuti format dokumen yang dilampirkan.
-     */
+    // =========================================================================
+    // HTML Builder
+    // =========================================================================
+
     public function buildHtml(Schedule $schedule): string
     {
-        $asesmens     = $schedule->asesmens;
-        $tukName      = $schedule->tuk?->name ?? '-';
-        $skemaName    = $schedule->skema?->name ?? '-';
-        $tanggal      = $schedule->assessment_date->translatedFormat('d F Y');
-        $skNumber     = $schedule->sk_number ?? '-';
-        $direkturName = $schedule->approvedBy?->name ?? 'Direktur';
-        $direkturNip  = $schedule->approvedBy?->asesor?->no_reg_met ?? '';
+        $html  = $this->buildDocHead($schedule->sk_number ?? '-');
+        $html .= $this->buildSuratTugasPage($schedule);
 
-        // Daftar asesor — ambil dari schedule atau dari relasi
-        // Jika ada 1 asesor di schedule, bisa ditampilkan; 
-        // jika ingin multi-asesor, perlu tabel pivot schedule_asesor
-        $asesorList = [];
-        if ($schedule->asesor) {
-            $asesorList[] = [
-                'nama'   => $schedule->asesor->nama,
-                'no_reg' => $schedule->asesor->no_reg_met ?? '-',
-            ];
-        }
-
-        // Tanggal asesmen (mungkin 2 hari)
-        $tanggalRange = $schedule->assessment_date->format('d') .
-            ($schedule->end_time ? '' : '') .
-            ' ' . $schedule->assessment_date->translatedFormat('F Y');
-
-        // Split peserta per halaman (30 per halaman)
-        $chunks = $asesmens->chunk(30);
-
-        $html = $this->buildHeader($skNumber);
-        $html .= $this->buildSuratTugasPage($skNumber, $tukName, $skemaName, $tanggal, $asesorList, $direkturName, $direkturNip, $schedule);
-
-        // Lampiran: daftar peserta
-        $pesertaAll = $asesmens->values();
-        $pageSize   = 30;
-        $pages      = ceil($pesertaAll->count() / $pageSize);
+        $asesmens = $schedule->asesmens->values();
+        $pageSize = 30;
+        $pages    = (int) ceil($asesmens->count() / $pageSize);
 
         for ($p = 0; $p < $pages; $p++) {
-            $slice = $pesertaAll->slice($p * $pageSize, $pageSize);
+            $slice   = $asesmens->slice($p * $pageSize, $pageSize);
             $startNo = $p * $pageSize + 1;
-            $html .= $this->buildLampiranPage($skNumber, $tukName, $skemaName, $asesorList, $slice, $startNo);
+            $html   .= $this->buildLampiranPage($schedule, $slice, $startNo);
         }
 
         $html .= '</body></html>';
-
         return $html;
     }
 
-    private function buildHeader(string $skNumber): string
+    private function buildDocHead(string $skNumber): string
     {
+        // Kunci untuk DomPDF agar margin benar:
+        // 1. @page { margin } — ini yang mengatur margin kertas di DomPDF
+        // 2. body { margin: 0 } — jangan double margin
+        // 3. Semua lebar elemen pakai 100% bukan px fixed
+        // 4. Tabel pakai width:100%, bukan px
+        // 5. display:flex TIDAK didukung DomPDF — pakai table
+
         return '<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <title>Surat Tugas ' . htmlspecialchars($skNumber) . '</title>
 <style>
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; }
-  .page { width: 100%; max-width: 210mm; margin: 0 auto; padding: 20mm 25mm; page-break-after: always; }
+
+  body {
+    font-family: "Times New Roman", Times, serif;
+    font-size: 12pt;
+    color: #000;
+    background: #fff;
+    padding: 1.3cm 3cm 2cm 3cm;
+
+  }
+
+  .page {
+    width: 100%;
+    page-break-after: always;
+  }
   .page:last-child { page-break-after: auto; }
 
   /* Kop surat */
-  .kop { display: flex; align-items: center; gap: 16px; border-bottom: 3px solid #c00; padding-bottom: 10px; margin-bottom: 20px; }
-  .kop img { width: 70px; height: 70px; object-fit: contain; }
-  .kop-text { flex: 1; }
-  .kop-text h1 { font-size: 16pt; font-weight: bold; letter-spacing: 1px; }
-  .kop-text h2 { font-size: 13pt; font-weight: bold; }
-  .kop-text p { font-size: 9pt; margin-top: 2px; }
+  .kop-img   { width: 100%; height: auto; display: block; }
+  .kop-border { border-bottom: 3px solid #ffffff; margin-bottom: 14pt; }
 
   /* Judul */
-  .judul { text-align: center; margin: 24px 0 4px; }
-  .judul h3 { font-size: 14pt; font-weight: bold; text-decoration: underline; letter-spacing: 1px; }
-  .judul p { font-size: 11pt; }
+  .judul { text-align: center; margin: 16pt 0 4pt; }
+  .judul h3 {
+    font-size: 14pt;
+    font-weight: bold;
+    letter-spacing: 1pt;
+    text-transform: uppercase;
+  }
+  .judul p { font-size: 12pt; margin-top: 1pt; }
 
-  /* Body */
-  .body-text { margin-top: 20px; text-align: justify; line-height: 1.8; }
+  /* Body teks */
+  .body-text {
+    margin-top: 12pt;
+    text-align: justify;
+    line-height: 1.9;
+    font-size: 12pt;
+  }
+  .body-text p { margin-bottom: 8pt; }
 
-  /* Tabel asesor */
-  .tabel-asesor { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12pt; }
-  .tabel-asesor th { background: #000; color: #fff; padding: 6px 8px; text-align: center; font-weight: bold; }
-  .tabel-asesor td { border: 1px solid #000; padding: 5px 8px; }
-  .tabel-asesor tr:nth-child(even) td { background: #f9f9f9; }
-
-  /* Tabel peserta */
-  .tabel-peserta { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 11pt; }
-  .tabel-peserta th { background: #000; color: #fff; padding: 5px 8px; text-align: center; font-weight: bold; }
-  .tabel-peserta td { border: 1px solid #000; padding: 4px 8px; }
-  .tabel-peserta tr:nth-child(even) td { background: #f9f9f9; }
+  /* Asesor block */
+  .asesor-block { margin: 8pt 0 8pt 16pt; font-size: 12pt; line-height: 1.9; }
+  .asesor-table { border: none; border-collapse: collapse; }
+  .asesor-label { width: 150pt; padding: 1pt 0; vertical-align: top; }
+  .asesor-colon { width: 12pt; padding: 1pt 0; vertical-align: top; }
+  .asesor-value { padding: 1pt 0; vertical-align: top; }
 
   /* TTD */
-  .ttd { margin-top: 40px; text-align: right; }
-  .ttd p { margin-bottom: 4px; }
-  .ttd .nama { font-weight: bold; text-decoration: underline; margin-top: 70px; }
-  .ttd .nip { font-size: 10pt; }
+  .ttd-outer  { margin-top:24pt; width: 100%; }
+  .ttd-table  { width: 100%; border: none; border-collapse: collapse; }
+  .ttd-left   { width: 60%; }
+  .ttd-right  { width: 40%; text-align: center; vertical-align: top; font-size: 12pt; line-height: 1.2; }
+  .ttd-img    { width: 250pt; height: 130pt; display: block; margin: 0 auto; }
+  .ttd-placeholder { width: 140pt; height: 70pt; display: block; margin: 0 auto; }
+  .nama-direktur { font-weight: bold; text-decoration: underline; font-size: 12pt; }
+  .nip-direktur  { font-size: 10pt; }
 
-  /* Lampiran header */
-  .lampiran-header { margin-bottom: 16px; }
-  .lampiran-judul { text-align: center; font-weight: bold; text-decoration: underline; margin: 16px 0 4px; font-size: 12pt; }
-  .lampiran-sub { text-align: center; font-weight: bold; font-size: 11pt; }
+  /* Lampiran */
+  .lampiran-header { margin-bottom: 8pt; line-height: 1.7; font-size: 12pt; }
+  .lampiran-judul  { text-align: center; font-weight: bold; margin: 10pt 0 2pt; font-size: 12pt; }
+  .lampiran-sub    { text-align: center; font-weight: bold; font-size: 11pt; line-height: 1.6; }
 
-  @media print {
-    .page { page-break-after: always; padding: 15mm 20mm; }
-    .page:last-child { page-break-after: auto; }
+  /* Tabel peserta */
+  .tabel-peserta { width: 100%; border-collapse: collapse; margin-top: 10pt; font-size: 11pt; }
+  .tabel-peserta th {
+    background: #ffffff;
+    color: #000000;
+    padding: 5pt 8pt;
+    text-align: center;
+    font-weight: bold;
+    border: 1pt solid #222222;
   }
+  .tabel-peserta td { border: 1pt solid #020202; padding: 4pt 8pt; vertical-align: top; }
+  .tabel-peserta tr.even td { background: #f5f5f5; }
 </style>
 </head>
 <body>';
     }
 
-    private function buildKop(): string
+    // =========================================================================
+    // Halaman 1: Surat Tugas
+    // =========================================================================
+
+    private function buildSuratTugasPage(Schedule $schedule): string
     {
-        // Logo bisa diganti dengan path sebenarnya atau base64
-        return '<div class="kop">
-            <div style="width:70px;height:70px;border:2px solid #c00;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:bold;text-align:center;color:#c00;">BNSP<br>LSP</div>
-            <div class="kop-text">
-                <h1>LEMBAGA SERTIFIKASI PROFESI</h1>
-                <h2>Kompetensi Administrasi Perkantoran</h2>
-                <p>Jalan Otto Iskandar Dinata Nomor 392 Bandung Jawa Barat. Telepon 087716252855</p>
-                <p>Email: lspkap2024@gmail.com. Laman: www.lsp-ap.com</p>
-            </div>
-        </div>';
-    }
+        $skNumber     = $schedule->sk_number ?? '-';
+        $tukName      = $schedule->tuk?->name ?? '-';
+        $skemaName    = $schedule->skema?->name ?? '-';
+        $location     = $schedule->location ?? '-';
+        $direkturName = $schedule->approvedBy?->name ?? 'Direktur';
+        $direkturNip  = $schedule->approvedBy?->asesor?->no_reg_met ?? '';
 
-    private function buildSuratTugasPage(
-        string $skNumber,
-        string $tukName,
-        string $skemaName,
-        string $tanggal,
-        array  $asesorList,
-        string $direkturName,
-        string $direkturNip,
-        Schedule $schedule
-    ): string {
-        $asesorRows = '';
-        foreach ($asesorList as $i => $a) {
-            $no = $i + 1;
-            $asesorRows .= "<tr>
-                <td style=\"text-align:center;width:40px;\">{$no}</td>
-                <td>" . htmlspecialchars($a['nama']) . "</td>
-                <td>" . htmlspecialchars($a['no_reg']) . "</td>
-            </tr>";
-        }
+        $tanggalAsesmen = $this->formatTanggalId($schedule->assessment_date);
+        $tanggalSurat   = $schedule->approved_at
+            ? $this->formatTanggalId($schedule->approved_at)
+            : $this->formatTanggalId(now());
 
-        if (empty($asesorRows)) {
-            $asesorRows = '<tr><td colspan="3" style="text-align:center;font-style:italic;">Asesor belum ditugaskan</td></tr>';
-        }
+        $asesorNama  = $schedule->asesor?->nama ?? '-';
+        $asesorNoReg = $schedule->asesor?->no_reg_met ?? '-';
 
-        $tanggalSurat = now()->translatedFormat('d F Y');
-        $pesertaCount = $schedule->asesmens->count();
+        $kopHtml = $this->buildKop();
+        $ttdHtml = $this->buildTtd($tanggalSurat, $direkturName, $direkturNip);
 
         return '<div class="page">
-            ' . $this->buildKop() . '
+            ' . $kopHtml . '
 
             <div class="judul">
-                <h3>SURAT TUGAS</h3>
-                <p>Nomor: ' . htmlspecialchars($skNumber) . '</p>
+                <h3>Surat Tugas</h3>
+                <p style="margin-bottom:32pt;">Nomor: ' . htmlspecialchars($skNumber) . '</p>
             </div>
 
             <div class="body-text">
-                <p>Berdasarkan permohonan dari TUK ' . htmlspecialchars($tukName) . '
-                   dan tentang Sertifikasi Kompetensi, maka Kami menugaskan:</p>
+                <p>Berdasarkan permohonan dari ' . htmlspecialchars($tukName) . '
+                dan tentang Sertifikasi Kompetensi, maka Kami menugaskan:</p>
             </div>
 
-            <table class="tabel-asesor" style="margin:16px 0;">
-                <thead>
+            <div class="asesor-block">
+                <table class="asesor-table">
                     <tr>
-                        <th style="width:40px;">NO</th>
-                        <th>NAMA ASESOR</th>
-                        <th>NOMOR REGISTRASI ASESOR</th>
+                        <td class="asesor-label">Nama</td>
+                        <td class="asesor-colon">:</td>
+                        <td class="asesor-value">' . htmlspecialchars($asesorNama) . '</td>
                     </tr>
-                </thead>
-                <tbody>' . $asesorRows . '</tbody>
-            </table>
+                    <tr>
+                        <td class="asesor-label">Nomor Registrasi</td>
+                        <td class="asesor-colon">:</td>
+                        <td class="asesor-value">' . htmlspecialchars($asesorNoReg) . '</td>
+                    </tr>
+                </table>
+            </div>
 
             <div class="body-text">
                 <p>untuk melaksanakan tugas sebagai penguji Sertifikasi Kompetensi pada Skema
-                   <strong>' . htmlspecialchars($skemaName) . '</strong>
-                   pada tanggal <strong>' . htmlspecialchars($tanggal) . '</strong>
-                   beralamat <strong>' . htmlspecialchars($schedule->location ?? '-') . '</strong>.</p>
-                <br>
+                ' . htmlspecialchars($skemaName) . '
+                pada tanggal ' . htmlspecialchars($tanggalAsesmen) . '
+                beralamat ' . htmlspecialchars($location) . '.</p>
+
                 <p>Demikian surat tugas ini Kami sampaikan untuk dilaksanakan dengan penuh tanggung
-                   jawab, atas perhatian dan kerjasamanya Kami ucapkan terima kasih.</p>
+                jawab, atas perhatian dan kerjasamanya Kami ucapkan terima kasih.</p>
             </div>
 
-            <div class="ttd">
-                <p>' . htmlspecialchars($schedule->assessment_date->format('d F Y')) . '</p>
-                <p>Direktur,</p>
-                <p class="nama">' . htmlspecialchars($direkturName) . '</p>
-                ' . ($direkturNip ? '<p class="nip">Met. ' . htmlspecialchars($direkturNip) . '</p>' : '') . '
-            </div>
+            ' . $ttdHtml . '
         </div>';
     }
 
-    private function buildLampiranPage(
-        string $skNumber,
-        string $tukName,
-        string $skemaName,
-        array  $asesorList,
-        $peserta,
-        int    $startNo
-    ): string {
-        $rows = '';
-        $no   = $startNo;
-        foreach ($peserta as $p) {
-            $rows .= '<tr>
-                <td style="text-align:center;width:40px;">' . $no++ . '.</td>
-                <td>' . htmlspecialchars($p->full_name) . '</td>
-                <td></td>
-            </tr>';
+    // =========================================================================
+    // Halaman Lampiran
+    // =========================================================================
+
+    private function buildLampiranPage(Schedule $schedule, $peserta, int $startNo): string
+    {
+        $skNumber   = $schedule->sk_number ?? '-';
+        $tukName    = $schedule->tuk?->name ?? '-';
+        $skemaName  = $schedule->skema?->name ?? '-';
+        $asesorNama = $schedule->asesor?->nama ?? '-';
+
+        $pesertaList = $peserta instanceof \Illuminate\Support\Collection
+            ? $peserta->all()
+            : (array) $peserta;
+        $count = count($pesertaList);
+
+        $rows  = '';
+        $no    = $startNo;
+        $first = true;
+        $i     = 0;
+        foreach ($pesertaList as $p) {
+            $evenClass = ($i % 2 === 1) ? ' class="even"' : '';
+            if ($first) {
+                $rows .= '<tr' . $evenClass . '>
+                    <td style="text-align:center;width:30pt;">' . $no++ . '.</td>
+                    <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
+                    <td rowspan="' . $count . '" style="vertical-align:top;padding:5pt;width:130pt;">'
+                        . htmlspecialchars($asesorNama) . '</td>
+                </tr>';
+                $first = false;
+            } else {
+                $rows .= '<tr' . $evenClass . '>
+                    <td style="text-align:center;">' . $no++ . '.</td>
+                    <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
+                </tr>';
+            }
+            $i++;
         }
 
-        // Kolom asesor di kanan — tampilkan di baris pertama saja (rowspan)
-        // Untuk PDF sederhana, tampilkan sebagai list terpisah
-        $asesorListHtml = '';
-        foreach ($asesorList as $i => $a) {
-            $asesorListHtml .= '<li>' . ($i + 1) . '. ' . htmlspecialchars($a['nama']) . '</li>';
-        }
+        $kopHtml = $this->buildKop();
 
         return '<div class="page">
-            ' . $this->buildKop() . '
+            ' . $kopHtml . '
 
             <div class="lampiran-header">
                 <p>Lampiran Surat Tugas</p>
@@ -320,54 +301,122 @@ class SkGeneratorService
             </div>
 
             <div class="lampiran-judul">DAFTAR PESERTA SERTIFIKASI KOMPETENSI</div>
-            <div class="lampiran-sub">TUK ' . strtoupper(htmlspecialchars($tukName)) . '</div>
+            <div class="lampiran-sub"> ' . strtoupper(htmlspecialchars($tukName)) . '</div>
             <div class="lampiran-sub">SKEMA ' . strtoupper(htmlspecialchars($skemaName)) . '</div>
 
-            <table class="tabel-peserta" style="margin-top:16px;">
+            <table class="tabel-peserta">
                 <thead>
                     <tr>
-                        <th style="width:40px;">No</th>
+                        <th style="width:30pt;">No</th>
                         <th>Nama Peserta</th>
-                        <th style="width:200px;">Asesor</th>
+                        <th style="width:130pt;">Asesor</th>
                     </tr>
                 </thead>
-                <tbody>' . $this->buildPesertaRowsWithAsesor($peserta, $startNo, $asesorList) . '</tbody>
+                <tbody>' . $rows . '</tbody>
             </table>
         </div>';
     }
 
-    /**
-     * Build peserta rows — asesor ditampilkan sebagai rowspan di baris pertama setiap halaman,
-     * mengikuti format dokumen asli.
-     */
-    private function buildPesertaRowsWithAsesor($peserta, int $startNo, array $asesorList): string
+    // =========================================================================
+    // Komponen: Kop Surat
+    // =========================================================================
+
+    private function buildKop(): string
     {
-        $rows       = '';
-        $no         = $startNo;
-        $count      = count($peserta instanceof \Illuminate\Support\Collection ? $peserta->all() : $peserta);
-        $asesorHtml = '';
+        $kopPath = storage_path('app/public/images/kop_surat.png');
 
-        foreach ($asesorList as $i => $a) {
-            $asesorHtml .= ($i + 1) . '. ' . htmlspecialchars($a['nama']) . '<br>';
+        if (file_exists($kopPath)) {
+            $b64 = base64_encode(file_get_contents($kopPath));
+            $src = 'data:image/png;base64,' . $b64;
+            return '<div class="kop-border">
+                <img src="' . $src . '" class="kop-img" alt="Kop Surat LSP-KAP">
+            </div>';
         }
 
-        $first = true;
-        foreach ($peserta as $p) {
-            if ($first) {
-                $rows .= '<tr>
-                    <td style="text-align:center;">' . $no++ . '.</td>
-                    <td>' . htmlspecialchars($p->full_name) . '</td>
-                    <td rowspan="' . $count . '" style="vertical-align:top;padding:8px;">' . $asesorHtml . '</td>
-                </tr>';
-                $first = false;
-            } else {
-                $rows .= '<tr>
-                    <td style="text-align:center;">' . $no++ . '.</td>
-                    <td>' . htmlspecialchars($p->full_name) . '</td>
-                </tr>';
-            }
+        // Fallback pakai table (DomPDF tidak support flex)
+        return '<div class="kop-border" style="padding-bottom:8pt;">
+            <table style="width:100%;border:none;border-collapse:collapse;">
+                <tr>
+                    <td style="width:75pt;vertical-align:middle;padding-right:10pt;">
+                        <div style="width:65pt;height:65pt;border:2pt solid #cc0000;border-radius:32pt;text-align:center;font-size:8pt;font-weight:bold;color:#cc0000;padding-top:20pt;">BNSP<br>LSP</div>
+                    </td>
+                    <td style="vertical-align:middle;border-left:2pt solid #555;padding-left:10pt;">
+                        <div style="font-size:15pt;font-weight:bold;font-family:Arial,sans-serif;">LEMBAGA SERTIFIKASI PROFESI</div>
+                        <div style="font-size:12pt;font-weight:bold;font-family:Arial,sans-serif;">Kompetensi Administrasi Perkantoran</div>
+                        <div style="font-size:9pt;margin-top:2pt;">
+                            Jalan Otto Iskandar Dinata Nomor 392 Bandung Jawa Barat. Telepon 087716252855<br>
+                            Email: lspkap2024@gmail.com. Laman: www.lsp-ap.com
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>';
+    }
+
+    // =========================================================================
+    // Komponen: TTD Direktur
+    // =========================================================================
+
+    private function buildTtd(string $tanggalSurat, string $direkturName, string $direkturNip): string
+    {
+        $ttdPath = storage_path('app/private/direktur/ttd.png');
+
+        if (file_exists($ttdPath)) {
+            $b64        = base64_encode(file_get_contents($ttdPath));
+            $ttdImgHtml = '<img src="data:image/png;base64,' . $b64 . '" class="ttd-img" alt="TTD Direktur">';
+        } else {
+            $ttdImgHtml = '<div class="ttd-placeholder"></div>';
         }
 
-        return $rows;
+        // Format tanggal singkat tanpa nama hari
+        $tanggalSingkat = $this->formatTanggalSingkat($tanggalSurat);
+
+        return '<div class="ttd-outer">
+            <table class="ttd-table">
+                <tr>
+                    <td class="ttd-left"></td>
+                    <td class="ttd-right">
+                        <p style="line-height:1.2;margin-bottom:-15pt;">Bandung, ' . $tanggalSingkat . '</p>
+                        ' . $ttdImgHtml . '
+                    </td>
+                </tr>
+            </table>
+        </div>';
+    }
+
+    // =========================================================================
+    // Helper: Format tanggal bahasa Indonesia
+    // =========================================================================
+
+    private function formatTanggalId(\DateTimeInterface|string $date): string
+    {
+        if (is_string($date)) {
+            $date = \Carbon\Carbon::parse($date);
+        }
+
+        $hari = [
+            'Sunday' => 'Minggu', 'Monday' => 'Senin', 'Tuesday' => 'Selasa',
+            'Wednesday' => 'Rabu', 'Thursday' => 'Kamis',
+            'Friday' => 'Jumat', 'Saturday' => 'Sabtu',
+        ];
+        $bulan = [
+            1 => 'Januari',  2 => 'Februari', 3 => 'Maret',
+            4 => 'April',    5 => 'Mei',       6 => 'Juni',
+            7 => 'Juli',     8 => 'Agustus',   9 => 'September',
+            10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $namaHari  = $hari[$date->format('l')] ?? $date->format('l');
+        $namaBulan = $bulan[(int) $date->format('n')] ?? $date->format('F');
+
+        return $namaHari . ', ' . $date->format('d') . ' ' . $namaBulan . ' ' . $date->format('Y');
+    }
+
+    // Format tanggal singkat: "01 April 2026" (tanpa nama hari)
+    private function formatTanggalSingkat(string $tanggalPanjang): string
+    {
+        // Input: "Rabu, 01 April 2026" → Output: "01 April 2026"
+        $parts = explode(', ', $tanggalPanjang, 2);
+        return $parts[1] ?? $tanggalPanjang;
     }
 }

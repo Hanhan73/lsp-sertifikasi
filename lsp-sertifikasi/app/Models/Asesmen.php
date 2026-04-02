@@ -69,6 +69,7 @@ class Asesmen extends Model
         'biodata_needs_revision',
         'biodata_verified_at',
         'biodata_verified_by',
+        'hadir',
     ];
 
     protected $casts = [
@@ -201,6 +202,16 @@ class Asesmen extends Model
     public function frak04()
     {
         return $this->hasOne(\App\Models\FrAk04::class, 'asesmen_id');
+    }
+
+    public function soalTeoriAsesi()
+    {
+        return $this->hasMany(\App\Models\SoalTeoriAsesi::class);
+    }
+    
+    public function jawabanObservasi()
+    {
+        return $this->hasMany(\App\Models\JawabanObservasiAsesi::class);
     }
 
     // =========================================================================

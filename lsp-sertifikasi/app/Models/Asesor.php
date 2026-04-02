@@ -14,13 +14,15 @@ class Asesor extends Model
         'jenis_kelamin', 'alamat', 'kota', 'provinsi',
         'telepon', 'email', 'no_reg_met', 'no_blanko',
         'siap_kerja', 'keterangan', 'status_reg', 'expire_date',
-        'foto_path', 'user_id', 'is_active',
+        'foto_path', 'user_id', 'is_active', 'sk_pengangkatan_number', 'sk_pengangkatan_date', 'sk_pengangkatan_valid_until', 'sk_pengangkatan_path', 'sk_pengangkatan_filename',
     ];
 
     protected $casts = [
         'tanggal_lahir' => 'date',
         'expire_date'   => 'date',
         'is_active'     => 'boolean',
+        'sk_pengangkatan_date' => 'date',
+        'sk_pengangkatan_valid_until' => 'date',
     ];
 
     public function user()

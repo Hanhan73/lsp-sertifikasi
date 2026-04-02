@@ -18,6 +18,14 @@ class SoalTeoriAsesi extends Model
         'soal_teori_id',
         'urutan',
         'jawaban',
+        'started_at',
+        'submitted_at',
+    ];
+
+    // ← INI yang missing — tanpa ini ->min('started_at') return string mentah
+    protected $casts = [
+        'started_at'   => 'datetime',
+        'submitted_at' => 'datetime',
     ];
 
     public function distribusiSoalTeori(): BelongsTo
@@ -25,10 +33,6 @@ class SoalTeoriAsesi extends Model
         return $this->belongsTo(DistribusiSoalTeori::class);
     }
 
-    /**
-     * Relasi ke Asesmen (bukan langsung ke User),
-     * karena satu User bisa punya banyak Asesmen.
-     */
     public function asesmen(): BelongsTo
     {
         return $this->belongsTo(Asesmen::class);

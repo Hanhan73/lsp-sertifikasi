@@ -53,10 +53,10 @@
                     {{ $payment->status_label }}
                 </span>
             </td>
-            <td>{{ $payment->created_at->format('d/m/Y H:i') }}</td>
+            <td>{{ $payment->created_at->translatedFormat('d/m/Y H:i') }}</td>
             <td>
                 @if($payment->verified_at)
-                {{ $payment->verified_at->format('d/m/Y H:i') }}
+                {{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}
                 @else
                 <span class="text-muted">-</span>
                 @endif

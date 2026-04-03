@@ -30,7 +30,7 @@ class DirekturDashboardController extends Controller
         $progressStatus = [
             'registered'            => ['label' => 'Baru Daftar',    'icon' => 'bi-person-plus',    'color' => '#94a3b8'],
             'data_completed'        => ['label' => 'Biodata Lengkap', 'icon' => 'bi-clipboard-check','color' => '#60a5fa'],
-            'pra_pra_asesmen_started'   => ['label' => 'Pra-Asesmen',    'icon' => 'bi-pencil-square',  'color' => '#818cf8'],
+            'pra_asesmen_started'   => ['label' => 'Pra-Asesmen',    'icon' => 'bi-pencil-square',  'color' => '#818cf8'],
             'scheduled'             => ['label' => 'Terjadwal',      'icon' => 'bi-calendar-event', 'color' => '#f59e0b'],
             'pra_asesmen_completed' => ['label' => 'Siap Diasesmen', 'icon' => 'bi-hourglass-split','color' => '#fb923c'],
             'assessed'              => ['label' => 'Sudah Diasesmen','icon' => 'bi-person-check',   'color' => '#34d399'],

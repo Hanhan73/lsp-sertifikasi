@@ -117,7 +117,7 @@
                         <img src="{{ $frak01->ttd_asesi_image }}"
                             style="max-height:80px; max-width:100%;" alt="TTD Asesi">
                         <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesi }}</div>
-                        <div class="text-muted small">{{ $frak01->tanggal_ttd_asesi?->format('d M Y, H:i') }}</div>
+                        <div class="text-muted small">{{ $frak01->tanggal_ttd_asesi?->translatedFormat('d M Y, H:i') }}</div>
                         @else
                         <div class="py-4 text-muted">
                             <i class="bi bi-hourglass-split fs-2 d-block mb-2 opacity-50"></i>
@@ -145,7 +145,7 @@
                             <img src="{{ $frak01->ttd_asesor_image }}"
                                 style="max-height:80px; max-width:100%;" alt="TTD Asesor">
                             <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesor }}</div>
-                            <div class="text-muted small">{{ $frak01->tanggal_ttd_asesor?->format('d M Y, H:i') }}</div>
+                            <div class="text-muted small">{{ $frak01->tanggal_ttd_asesor?->translatedFormat('d M Y, H:i') }}</div>
                         </div>
                         @elseif($frak01->status === 'submitted')
                         {{-- Form TTD asesor --}}

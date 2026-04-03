@@ -25,7 +25,7 @@
             <div>
                 <strong>Menunggu Revisi Asesi</strong>
                 <p class="small mb-2 mt-1">
-                    Dikembalikan pada {{ $asesmen->biodata_rejected_at?->format('d M Y H:i') ?? '-' }}.
+                    Dikembalikan pada {{ $asesmen->biodata_rejected_at?->translatedFormat('d M Y H:i') ?? '-' }}.
                 </p>
                 <div class="bg-white border rounded p-2 small">
                     <strong>Catatan Admin:</strong><br>
@@ -49,7 +49,7 @@
             <div>
                 <strong>Biodata Terverifikasi</strong>
                 <div class="small text-muted mt-1">
-                    {{ \Carbon\Carbon::parse($asesmen->biodata_verified_at)->format('d M Y H:i') }}
+                    {{ \Carbon\Carbon::parse($asesmen->biodata_verified_at)->translatedFormat('d M Y H:i') }}
                     @if($asesmen->biodata_verified_by)
                     — oleh <strong>{{ \App\Models\User::find($asesmen->biodata_verified_by)?->name ?? '-' }}</strong>
                     @endif

@@ -94,7 +94,7 @@
             <div class="info-box">
                 <div class="info-row">
                     <div class="info-label">Tanggal</div>
-                    <div class="info-value">{{ $schedule->assessment_date->format('d F Y') }}</div>
+                    <div class="info-value">{{ $schedule->assessment_date->translatedFormat('d F Y') }}</div>
                 </div>
                 <div class="info-row">
                     <div class="info-label">Waktu</div>

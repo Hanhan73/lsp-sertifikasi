@@ -109,7 +109,7 @@
                     @foreach($schedules as $schedule)
                     <tr id="schedule-row-{{ $schedule->id }}">
                         <td>
-                            <strong>{{ $schedule->assessment_date->format('d M Y') }}</strong><br>
+                            <strong>{{ $schedule->assessment_date->translatedFormat('d M Y') }}</strong><br>
                             <small class="text-muted">
                                 <i class="bi bi-clock"></i> {{ $schedule->start_time }} - {{ $schedule->end_time }}
                             </small>

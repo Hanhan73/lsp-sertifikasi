@@ -548,21 +548,31 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     Route::delete('/dokumen/sk',         [AsesorController::class, 'deleteSkPengangkatan'])  ->name('sk.delete');
     Route::get('/dokumen/sk',            [AsesorController::class, 'documentSk'])            ->name('dokumen.sk');
 
-    // Hasil observasi
-    Route::post('/observasi/{soalObservasi}/upload',    [HasilPenilaianController::class, 'uploadObservasi'])   ->name('observasi.upload');
-    Route::delete('/observasi/{soalObservasi}/hapus',   [HasilPenilaianController::class, 'hapusObservasi'])    ->name('observasi.hapus');
-    Route::get('/observasi/{soalObservasi}/download',   [HasilPenilaianController::class, 'downloadObservasi']) ->name('observasi.download');
+
+    Route::prefix('/jadwal/{schedule}')->name('jadwal.')->group(function () {
  
-    // Hasil portofolio
-    Route::post('/portofolio/{portofolio}/upload',      [HasilPenilaianController::class, 'uploadPortofolio'])   ->name('portofolio.upload');
-    Route::delete('/portofolio/{portofolio}/hapus',     [HasilPenilaianController::class, 'hapusPortofolio'])    ->name('portofolio.hapus');
-    Route::get('/portofolio/{portofolio}/download',     [HasilPenilaianController::class, 'downloadPortofolio']) ->name('portofolio.download');
+        // Template download (nama asesi sudah ter-inject)
+        Route::get('/template/observasi/{soalObservasi}', [HasilPenilaianController::class, 'downloadTemplateObservasi'])  ->name('template.observasi');
+        Route::get('/template/portofolio/{portofolio}',   [HasilPenilaianController::class, 'downloadTemplatePortofolio']) ->name('template.portofolio');
  
-    // Berita acara
-    Route::get('/berita-acara',                         [HasilPenilaianController::class, 'beritaAcara'])              ->name('berita-acara');
-    Route::post('/berita-acara/simpan',                 [HasilPenilaianController::class, 'simpanBeritaAcara'])         ->name('berita-acara.simpan');
-    Route::post('/berita-acara/upload-file',            [HasilPenilaianController::class, 'uploadFileBeritaAcara'])     ->name('berita-acara.upload-file');
-    Route::get('/berita-acara/download-file',           [HasilPenilaianController::class, 'downloadFileBeritaAcara'])   ->name('berita-acara.download-file');
+        // Hasil observasi
+        Route::post('/observasi/{soalObservasi}/upload',  [HasilPenilaianController::class, 'uploadObservasi'])   ->name('observasi.upload');
+        Route::delete('/observasi/{soalObservasi}/hapus', [HasilPenilaianController::class, 'hapusObservasi'])    ->name('observasi.hapus');
+        Route::get('/observasi/{soalObservasi}/download', [HasilPenilaianController::class, 'downloadObservasi']) ->name('observasi.download');
+        Route::get('/observasi/{soalObservasi}/form-penilaian', [HasilPenilaianController::class, 'downloadFormPenilaianObservasi'])->name('observasi.form-penilaian');
+ 
+        // Hasil portofolio
+        Route::post('/portofolio/{portofolio}/upload',    [HasilPenilaianController::class, 'uploadPortofolio'])   ->name('portofolio.upload');
+        Route::delete('/portofolio/{portofolio}/hapus',   [HasilPenilaianController::class, 'hapusPortofolio'])    ->name('portofolio.hapus');
+        Route::get('/portofolio/{portofolio}/download',   [HasilPenilaianController::class, 'downloadPortofolio']) ->name('portofolio.download');
+ 
+        // Berita acara
+        Route::get('/berita-acara',              [HasilPenilaianController::class, 'beritaAcara'])            ->name('berita-acara');
+        Route::post('/berita-acara/simpan',      [HasilPenilaianController::class, 'simpanBeritaAcara'])      ->name('berita-acara.simpan');
+        Route::post('/berita-acara/upload-file', [HasilPenilaianController::class, 'uploadFileBeritaAcara'])  ->name('berita-acara.upload-file');
+        Route::get('/berita-acara/download-file',[HasilPenilaianController::class, 'downloadFileBeritaAcara'])->name('berita-acara.download-file');
+        Route::get('/berita-acara/pdf',          [HasilPenilaianController::class, 'pdfBeritaAcara'])         ->name('berita-acara.pdf');
+    });
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -608,26 +618,34 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/rekap/portofolio/{portofolio}/download',    [DistribusiSoalController::class, 'downloadHasilPortofolio'])->name('rekap.download-portofolio');
             Route::get('/rekap/berita-acara/download',               [DistribusiSoalController::class, 'downloadFileBeritaAcara'])->name('rekap.download-ba');
             Route::get('/daftar-hadir', [DistribusiSoalController::class, 'daftarHadir'])->name('daftar-hadir');
+
+                // Form penilaian observasi
+            Route::post('/observasi/{soalObservasi}/form-penilaian',   [DistribusiSoalController::class, 'uploadFormPenilaianObservasi'])   ->name('observasi.form-penilaian.upload');
+            Route::get('/observasi/{soalObservasi}/form-penilaian',    [DistribusiSoalController::class, 'downloadFormPenilaianObservasi'])  ->name('observasi.form-penilaian.download');
+            Route::delete('/observasi/{soalObservasi}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianObservasi'])     ->name('observasi.form-penilaian.hapus');
         });
  
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
         // Setiap observasi punya beberapa paket (A, B, C, D, dst)
         Route::prefix('soal-observasi')->name('soal-observasi.')->group(function () {
-            Route::get('/',                [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');
-            Route::get('/create',          [DistribusiSoalController::class, 'createSoalObservasi'])->name('create');
-            Route::post('/',               [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
-            Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
+            Route::get('/',       [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');
+            Route::get('/create', [DistribusiSoalController::class, 'createSoalObservasi'])->name('create');
+            Route::post('/',      [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
+
+            // Paket
+            Route::get('/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketObservasi'])->name('paket.download');
+            Route::delete('/paket/{paket}',       [DistribusiSoalController::class, 'destroyPaketObservasi'])->name('paket.destroy');
+
+            // ── DISTRIBUSI HARUS SEBELUM /{soalObservasi} ──
+            Route::post('/distribusi',   [DistribusiSoalController::class, 'distribusiSoalObservasi'])->name('distribusi');
+            Route::delete('/distribusi', [DistribusiSoalController::class, 'hapusDistribusiSoalObservasi'])->name('distribusi.hapus');
+
+            // Wildcard ini harus paling bawah
+            Route::get('/{soalObservasi}',    [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
 
- 
-            // Paket di dalam observasi
-            Route::post('/{soalObservasi}/paket',     [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
-            Route::get('/paket/{paket}/download',      [DistribusiSoalController::class, 'downloadPaketObservasi'])->name('paket.download');
-            Route::delete('/paket/{paket}',            [DistribusiSoalController::class, 'destroyPaketObservasi'])->name('paket.destroy');
- 
-            // Distribusi ke jadwal
-            Route::post('/distribusi',    [DistribusiSoalController::class, 'distribusiSoalObservasi'])->name('distribusi');
-            Route::delete('/distribusi',  [DistribusiSoalController::class, 'hapusDistribusiSoalObservasi'])->name('distribusi.hapus');
+            // Paket di dalam observasi (scoped ke soalObservasi)
+            Route::post('/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
         });
  
         // ── Bank Soal 2: Soal Teori PG ───────────────────────────────────
@@ -694,3 +712,91 @@ Route::get('/debug-paths', function () {
         'index_php_exists' => file_exists(public_path('index.php')),
     ];
 })->middleware('auth');
+
+Route::get('/debug-ba-parser', function () {
+    $python = null;
+ 
+    $test3 = shell_exec('python3 --version 2>&1');
+    if ($test3 && str_contains($test3, 'Python 3')) {
+        $python = 'python3';
+    } else {
+        $test = shell_exec('python --version 2>&1');
+        if ($test && str_contains($test, 'Python 3')) {
+            $python = 'python';
+        }
+    }
+ 
+    return [
+        'python_command'  => $python,
+        'python3_output'  => shell_exec('python3 --version 2>&1'),
+        'python_output'   => shell_exec('python --version 2>&1'),
+        'script_exists'   => file_exists(base_path('scripts/parse_berita_acara.py')),
+        'script_path'     => base_path('scripts/parse_berita_acara.py'),
+        'shell_exec_works'=> function_exists('shell_exec'),
+        'openpyxl_check'  => $python
+            ? shell_exec($python . ' -c "import openpyxl; print(openpyxl.__version__)" 2>&1')
+            : 'python not found',
+    ];
+})->middleware('auth');
+
+
+Route::get('/debug-ba/{scheduleId}', function ($scheduleId) {
+    $schedule = \App\Models\Schedule::with(['asesmens', 'beritaAcara.asesis'])->find($scheduleId);
+ 
+    if (!$schedule) return response()->json(['error' => 'Schedule not found']);
+ 
+    // BA langsung dari DB (bypass model)
+    $baRaw      = \DB::table('berita_acara')->where('schedule_id', $scheduleId)->first();
+    $baAsesiRaw = \DB::table('berita_acara_asesi')
+        ->whereIn('berita_acara_id',
+            \DB::table('berita_acara')->where('schedule_id', $scheduleId)->pluck('id')
+        )->get();
+ 
+    // Python
+    $py3    = shell_exec('python3 --version 2>&1');
+    $py     = shell_exec('python --version 2>&1');
+    $python = null;
+    if ($py3 && str_contains($py3, 'Python 3'))      $python = 'python3';
+    elseif ($py && str_contains($py, 'Python 3'))    $python = 'python';
+ 
+    $scriptPath   = base_path('scripts/parse_berita_acara.py');
+    $scriptExists = file_exists($scriptPath);
+    $openpyxl     = $python
+        ? shell_exec($python . ' -c "import openpyxl; print(openpyxl.__version__)" 2>&1')
+        : 'no python';
+ 
+    // Cek hasil observasi/portofolio yang sudah diupload
+    $hasilObs   = \DB::table('hasil_observasi')->where('schedule_id', $scheduleId)->get();
+    $hasilPorto = \DB::table('hasil_portofolio')->where('schedule_id', $scheduleId)->get();
+ 
+    return response()->json([
+        'schedule_id'     => $scheduleId,
+        'asesmens'        => $schedule->asesmens->pluck('full_name'),
+ 
+        // Model relations exist?
+        'model_has_beritaAcara'    => method_exists($schedule, 'beritaAcara'),
+        'model_has_hasilObservasi' => method_exists($schedule, 'hasilObservasi'),
+        'model_has_hasilPortofolio'=> method_exists($schedule, 'hasilPortofolio'),
+ 
+        // BA data
+        'ba_in_db'        => $baRaw,
+        'ba_asesi_in_db'  => $baAsesiRaw,
+        'ba_via_model'    => $schedule->beritaAcara
+            ? ['id' => $schedule->beritaAcara->id, 'asesis_count' => $schedule->beritaAcara->asesis->count()]
+            : null,
+ 
+        // File uploads
+        'hasil_observasi_uploaded'  => $hasilObs->map(fn($r) => ['id'=>$r->id,'file'=>$r->file_name,'path'=>$r->file_path]),
+        'hasil_portofolio_uploaded' => $hasilPorto->map(fn($r) => ['id'=>$r->id,'file'=>$r->file_name,'path'=>$r->file_path]),
+ 
+        // Python
+        'python_command'     => $python,
+        'python3_raw'        => trim($py3 ?? ''),
+        'python_raw'         => trim($py ?? ''),
+        'script_exists'      => $scriptExists,
+        'script_path'        => $scriptPath,
+        'openpyxl'           => trim($openpyxl ?? ''),
+        'shell_exec_enabled' => function_exists('shell_exec'),
+    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+})->middleware('auth');
+ 

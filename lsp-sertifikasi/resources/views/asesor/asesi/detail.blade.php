@@ -22,7 +22,7 @@
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small">
         <li class="breadcrumb-item"><a href="{{ route('asesor.schedule') }}">Jadwal</a></li>
-        <li class="breadcrumb-item"><a href="{{ route('asesor.schedule.detail', $schedule) }}">{{ $schedule->assessment_date->format('d M Y') }}</a></li>
+        <li class="breadcrumb-item"><a href="{{ route('asesor.schedule.detail', $schedule) }}">{{ $schedule->assessment_date->translatedFormat('d M Y') }}</a></li>
         <li class="breadcrumb-item active">{{ $asesmen->full_name }}</li>
     </ol>
 </nav>
@@ -44,7 +44,7 @@
                 <h4 class="fw-bold mb-1">{{ $asesmen->full_name }}</h4>
                 <div class="row g-1 text-muted small">
                     <div class="col-md-6"><strong>NIK:</strong> {{ $asesmen->nik }}</div>
-                    <div class="col-md-6"><strong>TTL:</strong> {{ $asesmen->birth_place }}, {{ $asesmen->birth_date?->format('d M Y') }}</div>
+                    <div class="col-md-6"><strong>TTL:</strong> {{ $asesmen->birth_place }}, {{ $asesmen->birth_date?->translatedFormat('d M Y') }}</div>
                     <div class="col-md-6"><strong>Telepon:</strong> {{ $asesmen->phone }}</div>
                     <div class="col-md-6"><strong>Pendidikan:</strong> {{ $asesmen->education }}</div>
                     <div class="col-md-6"><strong>Institusi:</strong> {{ $asesmen->institution }}</div>
@@ -260,7 +260,7 @@
                         @if($frak01->ttd_asesi)
                         <img src="{{ $frak01->ttd_asesi_image }}" style="max-height:80px;max-width:100%;" alt="TTD Asesi">
                         <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesi }}</div>
-                        <div class="text-muted small">{{ $frak01->tanggal_ttd_asesi?->format('d M Y, H:i') }}</div>
+                        <div class="text-muted small">{{ $frak01->tanggal_ttd_asesi?->translatedFormat('d M Y, H:i') }}</div>
                         @else
                         <div class="py-4 text-muted">
                             <i class="bi bi-hourglass-split fs-2 d-block mb-2 opacity-40"></i>
@@ -288,7 +288,7 @@
                         <div class="text-center">
                             <img src="{{ $frak01->ttd_asesor_image }}" style="max-height:80px;max-width:100%;" alt="TTD Asesor">
                             <div class="small fw-semibold mt-2">{{ $frak01->nama_ttd_asesor }}</div>
-                            <div class="text-muted small">{{ $frak01->tanggal_ttd_asesor?->format('d M Y, H:i') }}</div>
+                            <div class="text-muted small">{{ $frak01->tanggal_ttd_asesor?->translatedFormat('d M Y, H:i') }}</div>
                         </div>
 
                         @elseif($frak01->status === 'submitted')
@@ -339,7 +339,7 @@
                         <table class="table table-sm table-borderless mb-0">
                             <tr><td class="text-muted small" style="width:45%">Nama Lengkap</td><td class="fw-semibold small">{{ $aplsatu->nama_lengkap }}</td></tr>
                             <tr><td class="text-muted small">NIK</td><td class="small">{{ $aplsatu->nik }}</td></tr>
-                            <tr><td class="text-muted small">TTL</td><td class="small">{{ $aplsatu->tempat_lahir }}, {{ \Carbon\Carbon::parse($aplsatu->tanggal_lahir)->format('d M Y') }}</td></tr>
+                            <tr><td class="text-muted small">TTL</td><td class="small">{{ $aplsatu->tempat_lahir }}, {{ \Carbon\Carbon::parse($aplsatu->tanggal_lahir)->translatedFormat('d M Y') }}</td></tr>
                             <tr><td class="text-muted small">HP</td><td class="small">{{ $aplsatu->hp }}</td></tr>
                             <tr><td class="text-muted small">Email</td><td class="small">{{ $aplsatu->email }}</td></tr>
                         </table>
@@ -361,7 +361,7 @@
                     <div>
                         <div class="text-muted small">Nama: <span class="fw-semibold">{{ $aplsatu->nama_ttd_asesi ?? $aplsatu->nama_lengkap }}</span></div>
                         @if($aplsatu->submitted_at ?? false)
-                        <div class="text-muted small">Tanggal: {{ \Carbon\Carbon::parse($aplsatu->submitted_at)->format('d M Y') }}</div>
+                        <div class="text-muted small">Tanggal: {{ \Carbon\Carbon::parse($aplsatu->submitted_at)->translatedFormat('d M Y') }}</div>
                         @endif
                     </div>
                 </div>
@@ -489,7 +489,7 @@
                      style="max-height:60px;border:1px solid #e2e8f0;border-radius:6px;padding:4px;background:#fff;" alt="TTD Asesi">
                 <div>
                     <div class="fw-semibold">{{ $apldua->nama_ttd_asesi }}</div>
-                    <div class="text-muted small">{{ $apldua->tanggal_ttd_asesi?->format('d M Y H:i') }}</div>
+                    <div class="text-muted small">{{ $apldua->tanggal_ttd_asesi?->translatedFormat('d M Y H:i') }}</div>
                 </div>
             </div>
         </div>
@@ -562,7 +562,7 @@
                      style="max-height:60px;border:1px solid #e2e8f0;border-radius:6px;padding:4px;background:#fff;" alt="TTD Asesor">
                 <div>
                     <div class="fw-semibold">{{ $apldua->nama_ttd_asesor }}</div>
-                    <div class="text-muted small">{{ $apldua->tanggal_ttd_asesor?->format('d M Y H:i') }}</div>
+                    <div class="text-muted small">{{ $apldua->tanggal_ttd_asesor?->translatedFormat('d M Y H:i') }}</div>
                     <span class="badge bg-{{ $apldua->rekomendasi_asesor === 'lanjut' ? 'success' : 'danger' }} mt-1">
                         {{ $apldua->rekomendasi_asesor === 'lanjut' ? '✅ Lanjut Asesmen' : '❌ Tidak Lanjut' }}
                     </span>
@@ -590,7 +590,7 @@
         <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
             <i class="bi bi-megaphone-fill fs-4"></i>
             <div class="flex-grow-1">
-                <strong>Asesi mengajukan Banding</strong> pada {{ $frak04->submitted_at?->format('d M Y H:i') }}
+                <strong>Asesi mengajukan Banding</strong> pada {{ $frak04->submitted_at?->translatedFormat('d M Y H:i') }}
             </div>
             <a href="{{ route('asesor.frak04.pdf', [$schedule, $asesmen]) }}" target="_blank"
                class="btn btn-sm btn-warning flex-shrink-0">
@@ -642,7 +642,7 @@
                     <div class="card-body text-center">
                         <img src="{{ $frak04->ttd_asesi_image }}" style="max-height:70px;max-width:200px;" alt="TTD">
                         <div class="small text-muted mt-2">{{ $frak04->nama_ttd_asesi }}</div>
-                        <div class="small text-muted">{{ $frak04->tanggal_ttd_asesi?->format('d M Y H:i') }}</div>
+                        <div class="small text-muted">{{ $frak04->tanggal_ttd_asesi?->translatedFormat('d M Y H:i') }}</div>
                     </div>
                 </div>
                 @endif

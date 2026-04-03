@@ -224,7 +224,7 @@
                                 </td>
                                 <td>
                                     @if($asesmen->schedule)
-                                    <small>{{ $asesmen->schedule->assessment_date->format('d/m/Y') }}</small>
+                                    <small>{{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}</small>
                                     @else
                                     <span class="text-muted">-</span>
                                     @endif
@@ -238,7 +238,7 @@
                                     <span class="text-muted">-</span>
                                     @endif
                                 </td>
-                                <td><small>{{ $asesmen->registration_date->format('d/m/Y') }}</small></td>
+                                <td><small>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</small></td>
                                 <td>
                                     <a href="{{ route('admin.asesi.show', $asesmen) }}"
                                         class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Lihat Detail">
@@ -305,7 +305,7 @@
                             <small class="text-muted fw-semibold">MANDIRI</small>
                             <div class="d-flex align-items-center justify-content-between mt-1">
                                 <span class="small">{{ $mandiriCount }} asesi mandiri</span>
-                                <a href="{{ route('admin.asesi.index') }}?tuk={{ $tuk->id }}&type=mandiri"
+                                <a href="{{ route('admin.asesi') }}?tuk={{ $tuk->id }}&type=mandiri"
                                     class="btn btn-xs btn-outline-secondary py-0 px-2"
                                     style="font-size:0.75rem;">
                                     <i class="bi bi-eye"></i> Lihat
@@ -349,7 +349,7 @@
                                                 {{ $first->skema->name ?? '-' }}
                                             </div>
                                             <div class="text-muted" style="font-size:0.72rem;">
-                                                {{ $first->registration_date->format('d M Y') }}
+                                                {{ $first->registration_date->translatedFormat('d M Y') }}
                                             </div>
                                         </div>
                                         <div class="d-flex flex-column align-items-end gap-1">

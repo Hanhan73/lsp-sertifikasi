@@ -190,8 +190,8 @@ $noAsesorCount  = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)-
                                          style="background:{{ $isToday ? '#eff6ff' : ($isPast ? '#f8fafc' : '#f0fdf4') }};
                                                 border:1px solid {{ $isToday ? '#bfdbfe' : ($isPast ? '#e2e8f0' : '#bbf7d0') }};
                                                 min-width:46px;">
-                                        <div style="font-size:.65rem;color:#64748b;line-height:1;">{{ $schedule->assessment_date->format('M Y') }}</div>
-                                        <div style="font-size:1.2rem;font-weight:800;line-height:1;color:{{ $isToday ? '#2563eb' : ($isPast ? '#94a3b8' : '#16a34a') }};">{{ $schedule->assessment_date->format('d') }}</div>
+                                        <div style="font-size:.65rem;color:#64748b;line-height:1;">{{ $schedule->assessment_date->translatedFormat('M Y') }}</div>
+                                        <div style="font-size:1.2rem;font-weight:800;line-height:1;color:{{ $isToday ? '#2563eb' : ($isPast ? '#94a3b8' : '#16a34a') }};">{{ $schedule->assessment_date->translatedFormat('d') }}</div>
                                     </div>
                                     <div>
                                         <div class="fw-semibold small">

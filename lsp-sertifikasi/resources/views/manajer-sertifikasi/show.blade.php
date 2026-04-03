@@ -17,7 +17,7 @@
         </a>
         <h4 class="fw-bold mb-1">{{ $schedule->skema->name }}</h4>
         <div class="d-flex gap-3 flex-wrap" style="font-size:.875rem;color:#6b7280">
-            <span><i class="bi bi-calendar3 me-1"></i>{{ $schedule->assessment_date->format('d F Y') }}</span>
+            <span><i class="bi bi-calendar3 me-1"></i>{{ $schedule->assessment_date->translatedFormat('d F Y') }}</span>
             <span><i class="bi bi-clock me-1"></i>{{ $schedule->start_time }} – {{ $schedule->end_time }}</span>
             <span><i class="bi bi-building me-1"></i>{{ $schedule->tuk->name ?? '-' }}</span>
             <span><i class="bi bi-people me-1"></i>{{ $schedule->asesmens->count() }} asesi</span>
@@ -139,65 +139,213 @@
                     @else
                         <div class="d-flex flex-column gap-3">
                             @foreach($soalObservasiTersedia as $obs)
-                            @php $sudah = $distribusiObservasiIds->contains($obs->id); @endphp
+                            @php
+                                $sudah      = $distribusiObservasiIds->contains($obs->id);
+                                $distRecord = $sudah
+                                    ? $schedule->distribusiSoalObservasi->firstWhere('soal_observasi_id', $obs->id)
+                                    : null;
+                                $paketAktif = $distRecord?->paketSoalObservasi;
+                                $hasForm    = $distRecord?->form_penilaian_path !== null;
+                                                                                
+                            @endphp
+                            
                             <div class="border rounded-3 overflow-hidden {{ $sudah ? 'border-success' : '' }}">
-                                {{-- Header baris observasi --}}
+                            
+                                {{-- ── HEADER ── --}}
                                 <div class="d-flex align-items-center justify-content-between px-3 py-2
                                             {{ $sudah ? 'bg-success-subtle' : 'bg-light' }}">
                                     <div>
                                         <div class="fw-semibold" style="font-size:.875rem">{{ $obs->judul }}</div>
                                         <small class="text-muted">
-                                            {{ $obs->paket->count() }} paket
+                                            {{ $obs->paket->count() }} paket tersedia
                                             @if($obs->paket->isNotEmpty())
                                                 ({{ $obs->paket->pluck('kode_paket')->join(', ') }})
                                             @endif
                                         </small>
                                     </div>
-                                    <div class="d-flex gap-2 align-items-center">
+                            
+                                    <div class="d-flex gap-2 align-items-center flex-shrink-0">
                                         @if($sudah)
-                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Aktif</span>
+                                            {{-- Badge paket aktif --}}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-lg me-1"></i>
+
+                                                Paket {{ $paketAktif?->kode_paket ?? '?' }} Aktif
+                                            </span>
+                            
+                                            {{-- Ganti paket --}}
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    data-bs-toggle="collapse"
+                                                    data-bs-target="#gantiPaket{{ $obs->id }}"
+                                                    title="Ganti paket yang didistribusikan">
+                                                <i class="bi bi-arrow-repeat me-1"></i>Ganti
+                                            </button>
+                            
+                                            {{-- Hapus distribusi --}}
                                             <form method="POST"
-                                                  action="{{ route('manajer-sertifikasi.soal-observasi.distribusi.hapus') }}">
-                                                @csrf @method('DELETE')
+                                                action="{{ route('manajer-sertifikasi.soal-observasi.distribusi.hapus') }}">
+                                                @csrf 
+                                                @method('DELETE')
                                                 <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                                 <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
-                                                <button class="btn btn-sm btn-outline-danger"
+                                                <button type="submit" class="btn btn-sm btn-outline-danger"
                                                         onclick="return confirm('Hapus distribusi ini?')">
                                                     <i class="bi bi-trash3"></i>
                                                 </button>
                                             </form>
                                         @else
-                                            <form method="POST"
-                                                  action="{{ route('manajer-sertifikasi.soal-observasi.distribusi') }}">
-                                                @csrf
-                                                <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
-                                                <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
-                                                <button type="submit" class="btn btn-sm btn-primary"
-                                                        {{ $obs->paket->isEmpty() ? 'disabled title=Tambah paket dulu' : '' }}>
-                                                    <i class="bi bi-send me-1"></i> Distribusikan
+                                            @if($obs->paket->isEmpty())
+                                                <span class="btn btn-sm btn-outline-secondary disabled">
+                                                    <i class="bi bi-exclamation-circle me-1"></i>Belum ada paket
+                                                </span>
+                                            @else
+                                                {{-- Tombol pilih paket --}}
+                                                <button class="btn btn-sm btn-primary"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#gantiPaket{{ $obs->id }}">
+                                                    <i class="bi bi-send me-1"></i>Distribusikan
                                                 </button>
-                                            </form>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>
-                                {{-- Daftar paket --}}
+                            
+                                {{-- ── PILIH PAKET (collapse) ── --}}
                                 @if($obs->paket->isNotEmpty())
-                                <div class="px-3 py-2 border-top bg-white">
-                                    <div class="d-flex gap-2 flex-wrap">
-                                        @foreach($obs->paket as $p)
-                                        <span class="badge bg-light text-dark border" style="font-size:.75rem">
-                                            <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>
-                                            Paket {{ $p->kode_paket }}
-                                        </span>
-                                        @endforeach
+                                <div class="collapse" id="gantiPaket{{ $obs->id }}">
+                                    <div class="px-3 py-3 border-top bg-white">
+                                        <p class="fw-semibold small mb-2">
+                                            <i class="bi bi-collection text-primary me-1"></i>
+                                            Pilih 1 paket untuk jadwal ini:
+                                        </p>
+                                        <form method="POST"
+                                            action="{{ route('manajer-sertifikasi.soal-observasi.distribusi') }}">
+                                            @csrf
+                                            <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
+                                            <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
+                            
+                                            {{-- Tombol pilih paket (radio style) --}}
+                                            <div class="d-flex gap-2 flex-wrap mb-3">
+                                                @foreach($obs->paket as $p)
+                                                <label class="paket-option {{ $paketAktif?->id === $p->id ? 'active' : '' }}"
+                                                    style="cursor:pointer;">
+                                                    <input type="radio" name="paket_soal_observasi_id"
+                                                        value="{{ $p->id }}"
+                                                        class="d-none paket-radio"
+                                                        {{ $paketAktif?->id === $p->id ? 'checked' : '' }}
+                                                        required>
+                                                    <div class="border rounded-3 px-3 py-2 d-flex align-items-center gap-2 paket-card
+                                                                {{ $paketAktif?->id === $p->id ? 'border-primary bg-primary bg-opacity-10' : 'bg-light' }}"
+                                                        onclick="pilihanPaket(this, '{{ $p->id }}')"
+                                                        style="font-size:.82rem;transition:all .15s;">
+                                                        <span class="badge rounded-circle fw-bold"
+                                                            style="width:26px;height:26px;line-height:18px;text-align:center;background:#2563eb;color:white;font-size:.82rem;">
+                                                            {{ $p->kode_paket }}
+                                                        </span>
+                                                        <div>
+                                                            <div class="fw-semibold">Paket {{ $p->kode_paket }}</div>
+                                                            <div class="text-muted" style="font-size:.72rem;">
+                                                                <i class="bi bi-file-earmark-pdf-fill text-danger me-1"></i>{{ $p->file_name }}
+                                                            </div>
+                                                        </div>
+                                                        @if($paketAktif?->id === $p->id)
+                                                        <i class="bi bi-check-circle-fill text-primary ms-2"></i>
+                                                        @endif
+                                                    </div>
+                                                </label>
+                                                @endforeach
+                                            </div>
+                            
+                                            <div class="d-flex gap-2">
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-send me-1"></i>
+                                                    {{ $sudah ? 'Ganti Paket' : 'Distribusikan Paket Ini' }}
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#gantiPaket{{ $obs->id }}">
+                                                    Batal
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
-                                @else
-                                <div class="px-3 py-2 border-top">
-                                    <small class="text-warning">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                        Belum ada paket — tambahkan dulu sebelum mendistribusikan
-                                    </small>
+                                @endif
+                            
+                                {{-- ── INFO PAKET YANG AKTIF ── --}}
+                                @if($sudah && $paketAktif)
+                                <div class="px-3 py-2 border-top bg-white d-flex align-items-center gap-2">
+                                    <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
+                                    <div class="flex-grow-1 small">
+                                        <span class="fw-semibold">Paket {{ $paketAktif->kode_paket }}</span>
+                                        <span class="text-muted ms-2">{{ $paketAktif->file_name }}</span>
+                                    </div>
+                                    <a href="{{ route('manajer-sertifikasi.soal-observasi.paket.download', $paketAktif) }}"
+                                    class="btn btn-sm btn-outline-secondary" title="Preview paket aktif">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                                @endif
+                            
+                                {{-- ── FORM PENILAIAN — hanya tampil jika sudah didistribusikan ── --}}
+                                @if($sudah)
+                                <div class="px-3 py-2 border-top {{ $hasForm ? 'bg-primary-subtle' : 'bg-white' }}">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold small">
+                                                <i class="bi bi-clipboard2-check me-1 {{ $hasForm ? 'text-primary' : 'text-muted' }}"></i>
+                                                Form Penilaian
+                                                @if(!$hasForm)
+                                                <span class="badge bg-warning ms-1" style="font-size:.65rem;">Belum diupload</span>
+                                                @endif
+                                            </div>
+                                            @if($hasForm)
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                <i class="bi bi-file-earmark-check me-1 text-success"></i>
+                                                {{ $distRecord->form_penilaian_name }}
+                                            </div>
+                                            @else
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                Template Excel penilaian yang akan didownload asesor
+                                            </div>
+                                            @endif
+                                        </div>
+                            
+                                        @if($hasForm)
+                                        <a href="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.download', [$schedule, $obs]) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <form method="POST"
+                                            action="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.hapus', [$schedule, $obs]) }}"
+                                            onsubmit="return confirm('Hapus form penilaian ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
+                                        </form>
+                                        @endif
+                            
+                                        <button class="btn btn-sm {{ $hasForm ? 'btn-outline-secondary' : 'btn-outline-primary' }}"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#uploadFormPenilaian{{ $obs->id }}">
+                                            <i class="bi bi-upload me-1"></i>{{ $hasForm ? 'Ganti' : 'Upload' }}
+                                        </button>
+                                    </div>
+                            
+                                    <div class="collapse mt-2" id="uploadFormPenilaian{{ $obs->id }}">
+                                        <form method="POST"
+                                            action="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.upload', [$schedule, $obs]) }}"
+                                            enctype="multipart/form-data">
+                                            @csrf
+                                            <div class="d-flex gap-2">
+                                                <input type="file" name="file" class="form-control form-control-sm"
+                                                    accept=".xlsx,.xlsm,.xls,.pdf" required>
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Excel (.xlsm/.xlsx) atau PDF · Maks. 20 MB</div>
+                                        </form>
+                                    </div>
                                 </div>
                                 @endif
                             </div>
@@ -513,5 +661,23 @@ document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
         history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
     });
 });
+
+function pilihanPaket(cardEl, paketId) {
+    // Reset semua card dalam form yang sama
+    const form = cardEl.closest('form');
+    form.querySelectorAll('.paket-card').forEach(c => {
+        c.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10');
+        c.classList.add('bg-light');
+        const chk = c.querySelector('.bi-check-circle-fill');
+        if (chk) chk.remove();
+    });
+ 
+    // Aktifkan card yang dipilih
+    cardEl.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+    cardEl.classList.remove('bg-light');
+ 
+    // Set radio input
+    form.querySelector(`input[value="${paketId}"]`).checked = true;
+}
 </script>
 @endpush

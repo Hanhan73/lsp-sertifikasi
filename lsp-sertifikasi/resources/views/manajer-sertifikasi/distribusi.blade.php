@@ -97,7 +97,7 @@
                         </td>
                         <td style="font-size:.875rem;">{{ $s->tuk->name ?? '-' }}</td>
                         <td>
-                            <div style="font-size:.875rem;">{{ $s->assessment_date->format('d M Y') }}</div>
+                            <div style="font-size:.875rem;">{{ $s->assessment_date->translatedFormat('d M Y') }}</div>
                             <small class="text-muted">{{ $s->start_time }} – {{ $s->end_time }}</small>
                         </td>
                         <td class="text-center">

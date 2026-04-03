@@ -43,10 +43,31 @@
             <div class="d-flex gap-2 align-items-start flex-wrap">
                 @if($schedule->hasSk())
                 <a href="{{ route('asesor.schedule.sk.download', $schedule) }}"
-                   class="btn btn-sm btn-success">
+                class="btn btn-sm btn-success">
                     <i class="bi bi-download me-1"></i>Unduh SK
                 </a>
                 @endif
+            
+                {{-- Daftar Hadir: langsung download jika sudah TTD, tombol TTD jika belum --}}
+                @php $asesorSig = $asesor?->user?->signature ?? null; @endphp
+                <a href="{{ route('asesor.schedule.daftar-hadir', $schedule) }}"
+                class="btn btn-sm btn-outline-info" target="_blank">
+                    <i class="bi bi-file-person me-1"></i>Daftar Hadir
+                </a>
+                @if(!$asesorSig)
+                <button type="button" class="btn btn-sm btn-outline-warning"
+                        onclick="bukaModalTtd('daftar-hadir')"
+                        title="Anda belum menambahkan tanda tangan">
+                    <i class="bi bi-pen me-1"></i>TTD Saya
+                </button>
+                @else
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-sm"
+                        onclick="bukaModalTtd('daftar-hadir')"
+                        title="Ubah tanda tangan">
+                    <i class="bi bi-pen me-1"></i>Ubah TTD
+                </button>
+                @endif
+            
                 <a href="{{ route('asesor.schedule') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i>Kembali
                 </a>
@@ -117,11 +138,6 @@
                     @if($apl02Subm > 0)
                     <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">{{ $apl02Subm }}</span>
                     @endif
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-soal" type="button">
-                    <i class="bi bi-collection me-1"></i>Soal Asesmen
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -247,189 +263,6 @@
         </div>
 
         {{-- ═══════════════════════════════════════════════════
-             TAB 2: SOAL ASESMEN (detail bank soal yang terdistribusi)
-        ═══════════════════════════════════════════════════ --}}
-        <div class="tab-pane fade p-0" id="tab-soal" role="tabpanel">
-
-            {{-- Sub-tabs: Teori | Observasi | Portofolio --}}
-            <div class="px-4 pt-3 pb-0">
-                <ul class="nav nav-pills gap-1 mb-3" id="soalTabs">
-                    <li class="nav-item">
-                        <button class="nav-link active btn-sm" data-bs-toggle="pill" data-bs-target="#soal-teori" type="button">
-                            <i class="bi bi-journal-text me-1"></i>Soal Teori PG
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link btn-sm" data-bs-toggle="pill" data-bs-target="#soal-observasi" type="button">
-                            <i class="bi bi-eye me-1"></i>Observasi
-                        </button>
-                    </li>
-                    <li class="nav-item">
-                        <button class="nav-link btn-sm" data-bs-toggle="pill" data-bs-target="#soal-portofolio" type="button">
-                            <i class="bi bi-folder2-open me-1"></i>Portofolio
-                        </button>
-                    </li>
-                </ul>
-            </div>
-
-            <div class="tab-content px-4 pb-4">
-
-                {{-- Soal Teori --}}
-                <div class="tab-pane fade show active" id="soal-teori">
-                    @if(!$distribusiTeori)
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-journal-x" style="font-size:2.5rem;opacity:.3;"></i>
-                        <p class="mt-2 fw-semibold">Soal teori belum didistribusikan ke jadwal ini</p>
-                        <small>Hubungi Manajer Sertifikasi untuk mendistribusikan soal.</small>
-                    </div>
-                    @else
-                    {{-- Konfigurasi distribusi --}}
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 bg-light text-center">
-                                <div class="fs-4 fw-bold text-primary">{{ $distribusiTeori->jumlah_soal }}</div>
-                                <div class="small text-muted">Soal / Asesi</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 bg-light text-center">
-                                @php $totalBankTeori = \App\Models\SoalTeori::where('skema_id', $schedule->skema_id)->count(); @endphp
-                                <div class="fs-4 fw-bold text-secondary">{{ $totalBankTeori }}</div>
-                                <div class="small text-muted">Total di Bank Soal</div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="border rounded-3 p-3 bg-light text-center">
-                                <div class="fs-4 fw-bold text-success">{{ $asesmens->count() }}</div>
-                                <div class="small text-muted">Peserta Menerima</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Daftar soal teori (read-only) --}}
-                    @php
-                        $bankTeori = \App\Models\SoalTeori::where('skema_id', $schedule->skema_id)
-                            ->orderBy('id')->get();
-                    @endphp
-                    @if($bankTeori->isEmpty())
-                    <p class="text-muted">Bank soal teori kosong.</p>
-                    @else
-                    <div class="d-flex flex-column gap-2">
-                        @foreach($bankTeori as $i => $soal)
-                        <div class="border rounded-3 p-3">
-                            <div class="d-flex gap-2 align-items-start">
-                                <span class="badge bg-primary bg-opacity-10 text-primary fw-bold"
-                                      style="min-width:28px;font-size:.8rem;">{{ $i + 1 }}</span>
-                                <div class="flex-grow-1">
-                                    <div class="fw-semibold mb-2" style="font-size:.875rem;">{{ $soal->pertanyaan }}</div>
-                                    <div class="row g-1">
-                                        @foreach(['a','b','c','d','e'] as $opt)
-                                            @php $val = $soal->{'pilihan_' . $opt} ?? null; @endphp
-                                            @if($val)
-                                            <div class="col-md-6">
-                                                <span class="d-inline-flex align-items-center gap-2 px-2 py-1 rounded-2 w-100
-                                                    {{ $soal->jawaban_benar === $opt ? 'bg-success bg-opacity-10 border border-success' : 'bg-light' }}"
-                                                    style="font-size:.8rem;">
-                                                    <span class="badge {{ $soal->jawaban_benar === $opt ? 'bg-success' : 'bg-secondary' }}"
-                                                          style="font-size:.7rem;min-width:20px;">
-                                                        {{ strtoupper($opt) }}
-                                                    </span>
-                                                    {{ $val }}
-                                                    @if($soal->jawaban_benar === $opt)
-                                                    <i class="bi bi-check-circle-fill text-success ms-auto"></i>
-                                                    @endif
-                                                </span>
-                                            </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                    @endif
-                    @endif
-                </div>
-
-                {{-- Soal Observasi --}}
-                <div class="tab-pane fade" id="soal-observasi">
-                    @if($distribusiObservasi->isEmpty())
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-eye-slash" style="font-size:2.5rem;opacity:.3;"></i>
-                        <p class="mt-2 fw-semibold">Soal observasi belum didistribusikan</p>
-                    </div>
-                    @else
-                    @php
-                        $observasiList = \App\Models\SoalObservasi::with('paket')
-                            ->where('skema_id', $schedule->skema_id)->get();
-                    @endphp
-                    @foreach($distribusiObservasi as $dist)
-                    @php $obs = $dist->soalObservasi; @endphp
-                    <div class="border rounded-3 p-4 mb-3">
-                        <div class="d-flex align-items-center gap-2 mb-3">
-                            <i class="bi bi-file-earmark-text text-primary fs-5"></i>
-                            <h6 class="fw-bold mb-0">{{ $obs->judul }}</h6>
-                            <span class="badge bg-primary ms-auto">{{ $obs->paket->count() }} Paket</span>
-                        </div>
-                        <div class="row g-2">
-                            @foreach($obs->paket as $paket)
-                            <div class="col-md-6 col-lg-4">
-                                <div class="border rounded-3 p-3 bg-light d-flex align-items-center gap-2">
-                                    <span class="badge bg-primary" style="font-size:.75rem;">Paket {{ $paket->kode_paket }}</span>
-                                    <div class="flex-grow-1 small">
-                                        <div class="fw-semibold text-truncate">{{ $paket->file_name ?? 'File tersedia' }}</div>
-                                    </div>
-                                    @if($paket->file_path)
-                                    <a href="{{ route('asesor.observasi.download-paket', $paket) }}"
-                                       class="btn btn-xs btn-outline-primary btn-sm flex-shrink-0" style="font-size:.7rem;"
-                                       title="Unduh paket">
-                                        <i class="bi bi-download"></i>
-                                    </a>
-                                    @endif
-                                </div>
-                            </div>
-                            @endforeach
-                        </div>
-                    </div>
-                    @endforeach
-                    @endif
-                </div>
-
-                {{-- Portofolio --}}
-                <div class="tab-pane fade" id="soal-portofolio">
-                    @php
-                        $distribusiPortofolio = $schedule->distribusiPortofolio ?? collect();
-                    @endphp
-                    @if($distribusiPortofolio->isEmpty())
-                    <div class="text-center py-5 text-muted">
-                        <i class="bi bi-folder-x" style="font-size:2.5rem;opacity:.3;"></i>
-                        <p class="mt-2 fw-semibold">Portofolio belum didistribusikan</p>
-                    </div>
-                    @else
-                    @foreach($distribusiPortofolio as $dp)
-                    @php $porto = $dp->portofolio; @endphp
-                    <div class="border rounded-3 p-4 mb-3 d-flex align-items-center gap-3">
-                        <i class="bi bi-folder2-open text-warning fs-4"></i>
-                        <div class="flex-grow-1">
-                            <div class="fw-semibold">{{ $porto->nama ?? '-' }}</div>
-                            <div class="text-muted small">{{ $porto->deskripsi ?? '-' }}</div>
-                        </div>
-                        @if($porto->file_path)
-                        <a href="{{ route('asesor.portofolio.download', $porto) }}"
-                           class="btn btn-sm btn-outline-warning flex-shrink-0">
-                            <i class="bi bi-download me-1"></i>Unduh Form
-                        </a>
-                        @endif
-                    </div>
-                    @endforeach
-                    @endif
-                </div>
-
-            </div>{{-- /soal sub-tab content --}}
-        </div>
-
-        {{-- ═══════════════════════════════════════════════════
              TAB 3: PROGRESS ASESI
         ═══════════════════════════════════════════════════ --}}
         <div class="tab-pane fade p-0" id="tab-progress" role="tabpanel">
@@ -539,10 +372,10 @@
                                         @endif
                                     </td>
                                     <td class="text-center text-muted" style="font-size:.78rem;">
-                                        {{ $startedAt ? \Carbon\Carbon::parse($startedAt)->format('H:i') : '—' }}
+                                        {{ $startedAt ? \Carbon\Carbon::parse($startedAt)->translatedFormat('H:i') : '—' }}
                                     </td>
                                     <td class="text-center text-muted" style="font-size:.78rem;">
-                                        {{ $submittedAt ? \Carbon\Carbon::parse($submittedAt)->format('H:i') : '—' }}
+                                        {{ $submittedAt ? \Carbon\Carbon::parse($submittedAt)->translatedFormat('H:i') : '—' }}
                                     </td>
                                     <td class="text-center">
                                         @if($submitted && $total > 0)
@@ -630,291 +463,398 @@
         {{-- ═══════════════════════════════════════════════════
              TAB 4: PENILAIAN ASESMEN
         ═══════════════════════════════════════════════════ --}}
-<div class="tab-pane fade" id="tab-penilaian">
-    <div class="row g-4 p-3">
- 
-        {{-- ── KOLOM KIRI: Upload Hasil ── --}}
-        <div class="col-lg-7">
- 
-            {{-- Hasil Observasi --}}
-            @php
-                $distribusiObs = $schedule->distribusiSoalObservasi ?? collect();
-            @endphp
-            @if($distribusiObs->isNotEmpty())
-            <div class="mb-4">
-                <h6 class="fw-bold mb-3">
-                    <i class="bi bi-eye text-primary me-2"></i>Hasil Observasi
-                </h6>
-                <div class="d-flex flex-column gap-2">
-                    @foreach($distribusiObs as $dist)
-                    @php
-                        $obs   = $dist->soalObservasi;
-                        $hasil = $schedule->hasilObservasi
-                            ->where('soal_observasi_id', $obs->id)->first();
-                    @endphp
-                    <div class="border rounded-3 overflow-hidden {{ $hasil ? 'border-success' : '' }}">
-                        <div class="d-flex align-items-center gap-3 px-3 py-2
-                            {{ $hasil ? 'bg-success-subtle' : 'bg-light' }}">
-                            <i class="bi {{ $hasil ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted' }} fs-5 flex-shrink-0"></i>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold small">{{ $obs->judul }}</div>
-                                @if($hasil)
-                                <div class="text-muted" style="font-size:.75rem;">
-                                    <i class="bi bi-file-earmark me-1"></i>{{ $hasil->file_name }}
-                                    · {{ $hasil->uploaded_at->format('d M Y H:i') }}
-                                </div>
-                                @endif
-                            </div>
-                            <div class="d-flex gap-2 flex-shrink-0">
-                                @if($hasil)
-                                <a href="{{ route('asesor.jadwal.observasi.download', [$schedule, $obs]) }}"
-                                   class="btn btn-sm btn-outline-success" title="Download">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                                <form method="POST"
-                                      action="{{ route('asesor.jadwal.observasi.hapus', [$schedule, $obs]) }}"
-                                      onsubmit="return confirm('Hapus file ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </form>
-                                @endif
-                                <button class="btn btn-sm {{ $hasil ? 'btn-outline-primary' : 'btn-primary' }}"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#uploadObs{{ $obs->id }}">
-                                    <i class="bi bi-upload me-1"></i>{{ $hasil ? 'Ganti' : 'Upload' }}
-                                </button>
-                            </div>
+        <div class="tab-pane fade" id="tab-penilaian">
+            <div class="row g-4 p-3">
+        
+                {{-- ── KOLOM KIRI: Template + Upload ── --}}
+                <div class="col-lg-7">
+        
+                    {{-- Daftar Nama Asesi --}}
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white fw-semibold small py-2">
+                            <i class="bi bi-people me-2 text-primary"></i>Daftar Nama Asesi
                         </div>
-                        <div class="collapse" id="uploadObs{{ $obs->id }}">
-                            <div class="px-3 py-3 border-top bg-light">
-                                <form method="POST"
-                                      action="{{ route('asesor.jadwal.observasi.upload', [$schedule, $obs]) }}"
-                                      enctype="multipart/form-data">
-                                    @csrf
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-semibold">
-                                            File Hasil Penilaian
-                                            <span class="text-muted fw-normal">(Excel/PDF, maks. 20 MB)</span>
-                                        </label>
-                                        <input type="file" name="file" class="form-control form-control-sm"
-                                               accept=".xlsx,.xlsm,.xls,.pdf" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <input type="text" name="catatan" class="form-control form-control-sm"
-                                               placeholder="Catatan (opsional)">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-upload me-1"></i>Upload
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
+                        <table class="table table-sm table-bordered mb-0" style="font-size:.875rem;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3" style="width:40px;">No</th>
+                                    <th>Nama</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($schedule->asesmens as $i => $asesmen)
+                                <tr>
+                                    <td class="ps-3 text-muted text-center">{{ $i + 1 }}</td>
+                                    <td>{{ $asesmen->full_name }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
- 
-            {{-- Hasil Portofolio --}}
-            @php
-                $distribusiPorto = $schedule->distribusiPortofolio ?? collect();
-            @endphp
-            @if($distribusiPorto->isNotEmpty())
-            <div class="mb-4">
-                <h6 class="fw-bold mb-3">
-                    <i class="bi bi-briefcase text-purple me-2" style="color:#7c3aed"></i>Hasil Portofolio
-                </h6>
-                <div class="d-flex flex-column gap-2">
-                    @foreach($distribusiPorto as $dist)
-                    @php
-                        $porto = $dist->portofolio;
-                        $hasil = $schedule->hasilPortofolio
-                            ->where('portofolio_id', $porto->id)->first();
-                    @endphp
-                    <div class="border rounded-3 overflow-hidden {{ $hasil ? 'border-success' : '' }}">
-                        <div class="d-flex align-items-center gap-3 px-3 py-2
-                            {{ $hasil ? 'bg-success-subtle' : 'bg-light' }}">
-                            <i class="bi {{ $hasil ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted' }} fs-5 flex-shrink-0"></i>
-                            <div class="flex-grow-1">
-                                <div class="fw-semibold small">{{ $porto->judul }}</div>
-                                @if($hasil)
-                                <div class="text-muted" style="font-size:.75rem;">
-                                    <i class="bi bi-file-earmark me-1"></i>{{ $hasil->file_name }}
-                                    · {{ $hasil->uploaded_at->format('d M Y H:i') }}
-                                </div>
-                                @endif
-                            </div>
-                            <div class="d-flex gap-2 flex-shrink-0">
-                                @if($hasil)
-                                <a href="{{ route('asesor.jadwal.portofolio.download', [$schedule, $porto]) }}"
-                                   class="btn btn-sm btn-outline-success">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                                <form method="POST"
-                                      action="{{ route('asesor.jadwal.portofolio.hapus', [$schedule, $porto]) }}"
-                                      onsubmit="return confirm('Hapus file ini?')">
-                                    @csrf @method('DELETE')
-                                    <button class="btn btn-sm btn-outline-danger">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </form>
-                                @endif
-                                <button class="btn btn-sm {{ $hasil ? 'btn-outline-primary' : 'btn-primary' }}"
-                                        data-bs-toggle="collapse"
-                                        data-bs-target="#uploadPorto{{ $porto->id }}">
-                                    <i class="bi bi-upload me-1"></i>{{ $hasil ? 'Ganti' : 'Upload' }}
-                                </button>
-                            </div>
-                        </div>
-                        <div class="collapse" id="uploadPorto{{ $porto->id }}">
-                            <div class="px-3 py-3 border-top bg-light">
-                                <form method="POST"
-                                      action="{{ route('asesor.jadwal.portofolio.upload', [$schedule, $porto]) }}"
-                                      enctype="multipart/form-data">
-                                    @csrf
-                                    <div class="mb-2">
-                                        <label class="form-label small fw-semibold">
-                                            File Hasil Penilaian
-                                            <span class="text-muted fw-normal">(Excel/PDF, maks. 20 MB)</span>
-                                        </label>
-                                        <input type="file" name="file" class="form-control form-control-sm"
-                                               accept=".xlsx,.xlsm,.xls,.pdf" required>
-                                    </div>
-                                    <div class="mb-2">
-                                        <input type="text" name="catatan" class="form-control form-control-sm"
-                                               placeholder="Catatan (opsional)">
-                                    </div>
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="bi bi-upload me-1"></i>Upload
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-            @endif
- 
-            @if($distribusiObs->isEmpty() && $distribusiPorto->isEmpty())
-            <div class="text-center py-5 text-muted border rounded-3">
-                <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
-                <p class="mt-2 mb-0 small">Tidak ada soal observasi atau portofolio yang perlu diupload untuk jadwal ini.</p>
-            </div>
-            @endif
- 
-        </div>
- 
-        {{-- ── KOLOM KANAN: Berita Acara ── --}}
-        <div class="col-lg-5">
-            @php $ba = $schedule->beritaAcara; @endphp
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
-                    <i class="bi bi-file-text text-warning"></i>Berita Acara
-                    @if($ba)
-                    <span class="badge bg-success ms-auto" style="font-size:.65rem;">Tersimpan</span>
-                    @else
-                    <span class="badge bg-secondary ms-auto" style="font-size:.65rem;">Belum Diisi</span>
-                    @endif
-                </div>
-                <div class="card-body">
- 
-                    {{-- Upload file BA (opsional) --}}
-                    <div class="mb-3 p-3 border rounded-3 bg-light">
-                        <div class="fw-semibold small mb-2">
-                            <i class="bi bi-file-earmark-arrow-up me-1"></i>Upload File Berita Acara
-                            <span class="text-muted fw-normal">(opsional)</span>
-                        </div>
-                        @if($ba && $ba->file_path)
-                        <div class="d-flex align-items-center gap-2 mb-2 p-2 bg-white border rounded-2">
-                            <i class="bi bi-file-earmark-check text-success"></i>
-                            <span class="small text-truncate flex-grow-1">{{ $ba->file_name }}</span>
-                            <a href="{{ route('asesor.jadwal.berita-acara.download-file', $schedule) }}"
-                               class="btn btn-link btn-sm p-0 text-primary">
-                                <i class="bi bi-download"></i>
-                            </a>
-                        </div>
-                        @endif
-                        <form method="POST"
-                              action="{{ route('asesor.jadwal.berita-acara.upload-file', $schedule) }}"
-                              enctype="multipart/form-data">
-                            @csrf
-                            <div class="d-flex gap-2">
-                                <input type="file" name="file" class="form-control form-control-sm"
-                                       accept=".pdf,.xlsx,.xlsm,.xls,.doc,.docx" required>
-                                <button type="submit" class="btn btn-sm btn-outline-primary flex-shrink-0">
-                                    <i class="bi bi-upload"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
- 
-                    {{-- Form isi K/BK per asesi --}}
-                    <form method="POST" action="{{ route('asesor.jadwal.berita-acara.simpan', $schedule) }}">
-                        @csrf
- 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">
-                                Tanggal Pelaksanaan <span class="text-danger">*</span>
-                            </label>
-                            <input type="date" name="tanggal_pelaksanaan"
-                                   class="form-control form-control-sm"
-                                   value="{{ $ba?->tanggal_pelaksanaan?->format('Y-m-d') ?? $schedule->assessment_date->format('Y-m-d') }}"
-                                   required>
-                        </div>
- 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Rekomendasi per Asesi</label>
-                            <div class="d-flex flex-column gap-2">
-                                @foreach($schedule->asesmens as $asesmen)
-                                @php $rek = $rekomendasiMap[$asesmen->id] ?? null; @endphp
-                                <div class="d-flex align-items-center gap-3 p-2 border rounded-2
-                                    {{ $rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light') }}">
-                                    <div class="flex-grow-1 small fw-semibold">
-                                        {{ $asesmen->full_name }}
+        
+                    {{-- Observasi --}}
+                    @php $distribusiObs = $schedule->distribusiSoalObservasi ?? collect(); @endphp
+                    @if($distribusiObs->isNotEmpty())
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-eye text-primary me-2"></i>Observasi
+                        </h6>
+                        <div class="d-flex flex-column gap-3">
+                            @foreach($distribusiObs as $dist)
+                            @php
+                                $obs   = $dist->soalObservasi;
+                                $hasil = $schedule->hasilObservasi->where('soal_observasi_id', $obs->id)->first();
+                            @endphp
+                            <div class="border rounded-3 overflow-hidden {{ $hasil ? 'border-success' : '' }}">
+                                {{-- Header --}}
+                                <div class="d-flex align-items-center gap-3 px-3 py-2
+                                    {{ $hasil ? 'bg-success-subtle' : 'bg-light' }}">
+                                    <i class="bi {{ $hasil ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted' }} fs-5 flex-shrink-0"></i>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold small">{{ $obs->judul }}</div>
+                                        @if($hasil)
+                                        <div class="text-muted" style="font-size:.75rem;">
+                                            <i class="bi bi-file-earmark me-1"></i>{{ $hasil->file_name }}
+                                            · {{ $hasil->uploaded_at->translatedFormat('d M Y H:i') }}
+                                        </div>
+                                        @endif
                                     </div>
                                     <div class="d-flex gap-2 flex-shrink-0">
-                                        <div class="form-check form-check-inline mb-0">
-                                            <input class="form-check-input" type="radio"
-                                                   name="rekomendasi[{{ $asesmen->id }}]"
-                                                   id="k_{{ $asesmen->id }}" value="K"
-                                                   {{ $rek === 'K' ? 'checked' : '' }} required>
-                                            <label class="form-check-label fw-bold text-success small"
-                                                   for="k_{{ $asesmen->id }}">K</label>
-                                        </div>
-                                        <div class="form-check form-check-inline mb-0">
-                                            <input class="form-check-input" type="radio"
-                                                   name="rekomendasi[{{ $asesmen->id }}]"
-                                                   id="bk_{{ $asesmen->id }}" value="BK"
-                                                   {{ $rek === 'BK' ? 'checked' : '' }}>
-                                            <label class="form-check-label fw-bold text-danger small"
-                                                   for="bk_{{ $asesmen->id }}">BK</label>
-                                        </div>
+                                        {{-- Download template --}}
+                                        @if($obs->paket->isNotEmpty())
+                                        <a href="{{ route('asesor.jadwal.template.observasi', [$schedule, $obs]) }}"
+                                        class="btn btn-sm btn-outline-secondary" title="Download soal observasi (paket)">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i>Soal
+                                        </a>
+                                        @endif
+                                        @php
+                                            $distObs = $schedule->distribusiSoalObservasi->firstWhere('soal_observasi_id', $obs->id);
+                                        @endphp
+                                        @if($distObs?->form_penilaian_path)
+                                        <a href="{{ route('asesor.jadwal.observasi.form-penilaian', [$schedule, $obs]) }}"
+                                        class="btn btn-sm btn-outline-primary" title="Download form penilaian observasi">
+                                            <i class="bi bi-clipboard2-check me-1"></i>Form Penilaian
+                                        </a>
+                                        @else
+                                        <span class="btn btn-sm btn-outline-secondary disabled" title="Form penilaian belum tersedia">
+                                            <i class="bi bi-clipboard2-x me-1"></i>Form Penilaian
+                                        </span>
+                                        @endif
+                                        {{-- Download hasil yang sudah diupload --}}
+                                        @if($hasil)
+                                        <a href="{{ route('asesor.jadwal.observasi.download', [$schedule, $obs]) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <form method="POST"
+                                            action="{{ route('asesor.jadwal.observasi.hapus', [$schedule, $obs]) }}"
+                                            onsubmit="return confirm('Hapus file ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <button class="btn btn-sm {{ $hasil ? 'btn-outline-primary' : 'btn-primary' }}"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#uploadObs{{ $obs->id }}">
+                                            <i class="bi bi-upload me-1"></i>{{ $hasil ? 'Ganti' : 'Upload Hasil' }}
+                                        </button>
                                     </div>
                                 </div>
-                                @endforeach
+                                {{-- Form upload --}}
+                                <div class="collapse" id="uploadObs{{ $obs->id }}">
+                                    <div class="px-3 py-3 border-top bg-light">
+                                        <form method="POST"
+                                            action="{{ route('asesor.jadwal.observasi.upload', [$schedule, $obs]) }}"
+                                            enctype="multipart/form-data">
+                                            @csrf
+                                            <div class="d-flex gap-2 align-items-end">
+                                                <div class="flex-grow-1">
+                                                    <input type="file" name="file" class="form-control form-control-sm"
+                                                        accept=".xlsx,.xlsm,.xls,.pdf" required>
+                                                    <div class="form-text">Excel/PDF · Maks. 20 MB</div>
+                                                </div>
+                                                <input type="text" name="catatan" class="form-control form-control-sm"
+                                                    placeholder="Catatan" style="width:130px;">
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+        
+                    {{-- Portofolio --}}
+                    @php $distribusiPorto = $schedule->distribusiPortofolio ?? collect(); @endphp
+                    @if($distribusiPorto->isNotEmpty())
+                    <div class="mb-4">
+                        <h6 class="fw-bold mb-3">
+                            <i class="bi bi-briefcase me-2" style="color:#7c3aed"></i>Portofolio
+                        </h6>
+                        <div class="d-flex flex-column gap-3">
+                            @foreach($distribusiPorto as $dist)
+                            @php
+                                $porto = $dist->portofolio;
+                                $hasil = $schedule->hasilPortofolio->where('portofolio_id', $porto->id)->first();
+                            @endphp
+                            <div class="border rounded-3 overflow-hidden {{ $hasil ? 'border-success' : '' }}">
+                                <div class="d-flex align-items-center gap-3 px-3 py-2
+                                    {{ $hasil ? 'bg-success-subtle' : 'bg-light' }}">
+                                    <i class="bi {{ $hasil ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted' }} fs-5 flex-shrink-0"></i>
+                                    <div class="flex-grow-1">
+                                        <div class="fw-semibold small">{{ $porto->judul }}</div>
+                                        @if($hasil)
+                                        <div class="text-muted" style="font-size:.75rem;">
+                                            {{ $hasil->file_name }} · {{ $hasil->uploaded_at->translatedFormat('d M Y H:i') }}
+                                        </div>
+                                        @endif
+                                    </div>
+                                    <div class="d-flex gap-2 flex-shrink-0">
+                                        @if($porto->hasFile())
+                                        <a href="{{ route('asesor.jadwal.template.portofolio', [$schedule, $porto]) }}"
+                                        class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-file-earmark-arrow-down me-1"></i>Template
+                                        </a>
+                                        @endif
+                                        @if($hasil)
+                                        <a href="{{ route('asesor.jadwal.portofolio.download', [$schedule, $porto]) }}"
+                                        class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <form method="POST"
+                                            action="{{ route('asesor.jadwal.portofolio.hapus', [$schedule, $porto]) }}"
+                                            onsubmit="return confirm('Hapus file ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <button class="btn btn-sm {{ $hasil ? 'btn-outline-primary' : 'btn-primary' }}"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#uploadPorto{{ $porto->id }}">
+                                            <i class="bi bi-upload me-1"></i>{{ $hasil ? 'Ganti' : 'Upload Hasil' }}
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="collapse" id="uploadPorto{{ $porto->id }}">
+                                    <div class="px-3 py-3 border-top bg-light">
+                                        <form method="POST"
+                                            action="{{ route('asesor.jadwal.portofolio.upload', [$schedule, $porto]) }}"
+                                            enctype="multipart/form-data">
+                                            @csrf
+                                            <div class="d-flex gap-2 align-items-end">
+                                                <div class="flex-grow-1">
+                                                    <input type="file" name="file" class="form-control form-control-sm"
+                                                        accept=".xlsx,.xlsm,.xls,.pdf" required>
+                                                    <div class="form-text">Excel/PDF · Maks. 20 MB</div>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+        
+                    @if($distribusiObs->isEmpty() && $distribusiPorto->isEmpty())
+                    <div class="text-center py-5 text-muted border rounded-3">
+                        <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
+                        <p class="mt-2 mb-0 small">Tidak ada observasi atau portofolio untuk jadwal ini.</p>
+                    </div>
+                    @endif
+        
+                </div>
+        
+                {{-- ── KOLOM KANAN: Berita Acara ── --}}
+                <div class="col-lg-5">
+                    @php $ba = $schedule->beritaAcara; @endphp
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+                            <div><i class="bi bi-file-text text-warning me-2"></i>Berita Acara</div>
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
+                                @if($ba && $ba->asesis->isNotEmpty())
+                                {{-- Langsung buka PDF --}}
+                                <a href="{{ route('asesor.jadwal.berita-acara.pdf', $schedule) }}?preview=1"
+                                target="_blank" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-file-pdf me-1"></i>Preview
+                                </a>
+                                <a href="{{ route('asesor.jadwal.berita-acara.pdf', $schedule) }}"
+                                class="btn btn-sm btn-danger">
+                                    <i class="bi bi-download me-1"></i>PDF
+                                </a>
+                                @endif
+                                {{-- Tombol TTD terpisah --}}
+                                @if(!($asesorSig ?? $asesor?->user?->signature ?? null))
+                                <button type="button" class="btn btn-sm btn-outline-warning"
+                                        onclick="bukaModalTtd('berita-acara')"
+                                        title="Tambahkan tanda tangan agar muncul di PDF">
+                                    <i class="bi bi-pen me-1"></i>TTD
+                                </button>
+                                @else
+                                <button type="button" class="btn btn-sm btn-link btn-sm text-muted p-0 ps-1"
+                                        onclick="bukaModalTtd('berita-acara')"
+                                        title="Tanda tangan sudah ada — klik untuk ubah">
+                                    <i class="bi bi-pen-fill text-success"></i>
+                                </button>
+                                @endif
+                                @if($ba)
+                                <span class="badge bg-success" style="font-size:.65rem;">Tersimpan</span>
+                                @else
+                                <span class="badge bg-secondary" style="font-size:.65rem;">Belum Diisi</span>
+                                @endif
                             </div>
                         </div>
- 
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold small">Catatan</label>
-                            <textarea name="catatan" class="form-control form-control-sm" rows="2"
-                                      placeholder="Catatan tambahan (opsional)...">{{ $ba?->catatan }}</textarea>
+                        <div class="card-body">
+        
+                            {{-- ── PREVIEW HASIL PARSE BERITA ACARA ── --}}
+                            @if($ba && $ba->asesis->isNotEmpty())
+                            @php
+                                $jumlahK  = $ba->asesis->where('rekomendasi', 'K')->count();
+                                $jumlahBK = $ba->asesis->where('rekomendasi', 'BK')->count();
+                            @endphp
+                            <div class="mb-3 border rounded-3 overflow-hidden">
+                                <div class="px-3 py-2 d-flex align-items-center justify-content-between fw-semibold small"
+                                    style="background:#f0fdf4;border-bottom:1px solid #bbf7d0;">
+                                    <span><i class="bi bi-check-circle-fill text-success me-2"></i>Hasil Terbaca</span>
+                                    <div class="d-flex gap-2">
+                                        <span class="badge bg-success">{{ $jumlahK }} K</span>
+                                        <span class="badge bg-danger">{{ $jumlahBK }} BK</span>
+                                    </div>
+                                </div>
+                                <table class="table table-sm mb-0" style="font-size:.8rem;">
+                                    <tbody>
+                                        @foreach($schedule->asesmens as $i => $asesmen)
+                                        @php $rek = $rekomendasiMap[$asesmen->id] ?? null; @endphp
+                                        <tr class="{{ $rek === 'K' ? 'table-success' : ($rek === 'BK' ? 'table-danger' : '') }}">
+                                            <td class="ps-3 text-muted" style="width:32px;">{{ $i+1 }}</td>
+                                            <td>{{ $asesmen->full_name }}</td>
+                                            <td class="text-end pe-3" style="width:55px;">
+                                                @if($rek)
+                                                <span class="badge {{ $rek === 'K' ? 'bg-success' : 'bg-danger' }}">{{ $rek }}</span>
+                                                @else
+                                                <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @else
+                            <div class="mb-3 p-3 border rounded-3 text-center text-muted bg-light" style="font-size:.8rem;">
+                                <i class="bi bi-file-earmark-x d-block mb-1" style="font-size:1.5rem;opacity:.3;"></i>
+                                Berita Acara belum terbaca dari file.<br>
+                                Upload file Excel hasil penilaian di kolom kiri untuk auto-extract K/BK.
+                            </div>
+                            @endif
+        
+                            {{-- Form manual K/BK --}}
+                            <form method="POST" action="{{ route('asesor.jadwal.berita-acara.simpan', $schedule) }}">
+                                @csrf
+        
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold small">
+                                        Tanggal Pelaksanaan <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="date" name="tanggal_pelaksanaan"
+                                        class="form-control form-control-sm"
+                                        value="{{ $ba?->tanggal_pelaksanaan?->translatedFormat('Y-m-d') ?? $schedule->assessment_date->translatedFormat('Y-m-d') }}"
+                                        required>
+                                </div>
+        
+                                <div class="mb-2">
+                                    <label class="form-label fw-semibold small">
+                                        Rekomendasi per Asesi
+                                        <span class="text-muted fw-normal">(edit jika perlu)</span>
+                                    </label>
+                                    <div class="d-flex flex-column gap-1">
+                                        @foreach($schedule->asesmens as $asesmen)
+                                        @php $rek = $rekomendasiMap[$asesmen->id] ?? null; @endphp
+                                        <div class="d-flex align-items-center gap-2 px-2 py-1 border rounded-2
+                                            {{ $rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light') }}"
+                                            style="font-size:.8rem;">
+                                            <div class="flex-grow-1 fw-semibold">{{ $asesmen->full_name }}</div>
+                                            <div class="d-flex gap-2 flex-shrink-0">
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input" type="radio"
+                                                        name="rekomendasi[{{ $asesmen->id }}]"
+                                                        id="k_{{ $asesmen->id }}" value="K"
+                                                        {{ $rek === 'K' ? 'checked' : '' }} required>
+                                                    <label class="form-check-label fw-bold text-success"
+                                                        for="k_{{ $asesmen->id }}">K</label>
+                                                </div>
+                                                <div class="form-check mb-0">
+                                                    <input class="form-check-input" type="radio"
+                                                        name="rekomendasi[{{ $asesmen->id }}]"
+                                                        id="bk_{{ $asesmen->id }}" value="BK"
+                                                        {{ $rek === 'BK' ? 'checked' : '' }}>
+                                                    <label class="form-check-label fw-bold text-danger"
+                                                        for="bk_{{ $asesmen->id }}">BK</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+        
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small">Catatan</label>
+                                    <textarea name="catatan" class="form-control form-control-sm" rows="2"
+                                            placeholder="Opsional...">{{ $ba?->catatan }}</textarea>
+                                </div>
+        
+                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                    <i class="bi bi-save me-1"></i>Simpan Berita Acara
+                                </button>
+                            </form>
+        
                         </div>
- 
-                        <button type="submit" class="btn btn-primary btn-sm w-100">
-                            <i class="bi bi-save me-1"></i>Simpan Berita Acara
+                    </div>
+                </div>
+        
+            </div>
+        </div>
+
+        {{-- Modal TTD universal --}}
+        <div class="modal fade" id="modalTtdAsesor" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header">
+                        <h6 class="modal-title fw-bold">
+                            <i class="bi bi-pen me-2 text-primary"></i>
+                            <span id="modalTtdTitle">Tanda Tangan Asesor</span>
+                        </h6>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @include('partials._signature_pad', [
+                            'padId'    => 'asesor-ttd',
+                            'padLabel' => 'Tanda Tangan',
+                            'padHeight'=> 160,
+                            'savedSig' => $asesor?->user?->signature_image,
+                        ])
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="simpanTtdAsesor()">
+                            <i class="bi bi-save me-1"></i>Simpan Tanda Tangan
                         </button>
-                    </form>
- 
+                    </div>
                 </div>
             </div>
         </div>
- 
-    </div>
-</div>
     </div>{{-- /tab-content --}}
 </div>
 
@@ -957,6 +897,84 @@ document.addEventListener('DOMContentLoaded', function () {
             }).catch(() => {
                 this.checked = !hadir;
             });
+        });
+    });
+});
+
+
+const CSRF     = document.querySelector('meta[name="csrf-token"]')?.content;
+ 
+// ── Init sig pad saat modal dibuka ──
+document.getElementById('modalTtdAsesor').addEventListener('shown.bs.modal', () => {
+    SigPadManager.init('asesor-ttd', @json($asesor?->user?->signature_image));
+});
+ 
+// ── Buka modal TTD ──
+function bukaModalTtd(konteks) {
+    const titles = {
+        'daftar-hadir': 'Tanda Tangan untuk Daftar Hadir',
+        'berita-acara': 'Tanda Tangan untuk Berita Acara',
+    };
+    document.getElementById('modalTtdTitle').textContent = titles[konteks] ?? 'Tanda Tangan Asesor';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdAsesor')).show();
+}
+ 
+// ── Simpan TTD ke profil ──
+async function simpanTtdAsesor() {
+    if (SigPadManager.isEmpty('asesor-ttd')) {
+        Swal.fire({ icon: 'warning', title: 'Tanda Tangan Kosong', text: 'Gambar atau upload tanda tangan dulu.' });
+        return;
+    }
+ 
+    const dataURL = await SigPadManager.prepareAndGet('asesor-ttd');
+ 
+    try {
+        const res  = await fetch('/user/signature', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({ signature: dataURL }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdAsesor')).hide();
+            Swal.fire({
+                icon: 'success', title: 'Tanda tangan disimpan!',
+                text: 'Tanda tangan akan muncul di Daftar Hadir dan Berita Acara PDF.',
+                timer: 2000, showConfirmButton: false,
+            }).then(() => location.reload());
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan.', 'error');
+    }
+}
+ 
+// Restore active tab from URL hash
+document.addEventListener('DOMContentLoaded', function () {
+    const hash = window.location.hash;
+    if (hash) {
+        const tab = document.querySelector(`[data-bs-target="${hash}"]`);
+        if (tab) new bootstrap.Tab(tab).show();
+    }
+    document.querySelectorAll('#mainTabs [data-bs-toggle="tab"]').forEach(tabEl => {
+        tabEl.addEventListener('shown.bs.tab', e => {
+            history.replaceState(null, null, e.target.dataset.bsTarget);
+        });
+    });
+ 
+    // Hadir toggle AJAX
+    document.querySelectorAll('.hadir-toggle').forEach(el => {
+        el.addEventListener('change', function () {
+            const asesmenId = this.dataset.id;
+            const hadir     = this.checked;
+            fetch(`/asesor/asesmen/${asesmenId}/hadir`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+                body: JSON.stringify({ hadir }),
+            }).then(r => r.json()).then(data => {
+                if (!data.success) { this.checked = !hadir; alert('Gagal mengubah status kehadiran.'); }
+            }).catch(() => { this.checked = !hadir; });
         });
     });
 });

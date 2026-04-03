@@ -32,10 +32,10 @@
             <div class="text-center rounded-3 px-3 py-2 flex-shrink-0"
                  style="background:{{ $schedule->assessment_date->isToday() ? '#fef9c3' : '#f1f5f9' }}; min-width:60px;">
                 <div class="fw-bold text-primary" style="font-size:1.4rem; line-height:1;">
-                    {{ $schedule->assessment_date->format('d') }}
+                    {{ $schedule->assessment_date->translatedFormat('d') }}
                 </div>
                 <div class="text-muted" style="font-size:.72rem;">
-                    {{ $schedule->assessment_date->format('M Y') }}
+                    {{ $schedule->assessment_date->translatedFormat('M Y') }}
                 </div>
                 @if($schedule->assessment_date->isToday())
                 <span class="badge bg-warning text-dark mt-1" style="font-size:.6rem;">Hari ini</span>

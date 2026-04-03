@@ -50,8 +50,8 @@
 @section('content')
 
 @php
-    $maxBirthDate = now()->subYears(12)->format('Y-m-d');
-    $minBirthDate = now()->subYears(80)->format('Y-m-d');
+    $maxBirthDate = now()->subYears(12)->translatedFormat('Y-m-d');
+    $minBirthDate = now()->subYears(80)->translatedFormat('Y-m-d');
     $isRevision   = $asesmen->biodata_needs_revision ?? false;
 @endphp
 
@@ -78,7 +78,7 @@
                         <p class="mb-0 mt-1">{{ $asesmen->biodata_rejection_notes }}</p>
                     </div>
                     <small class="text-muted">
-                        <i class="bi bi-clock me-1"></i>Dikembalikan pada {{ $asesmen->biodata_rejected_at?->format('d M Y H:i') ?? '-' }}
+                        <i class="bi bi-clock me-1"></i>Dikembalikan pada {{ $asesmen->biodata_rejected_at?->translatedFormat('d M Y H:i') ?? '-' }}
                     </small>
                 </div>
             </div>
@@ -92,7 +92,7 @@
                     <div>
                         <strong>Biodata Terverifikasi</strong>
                         <span class="text-muted small ms-2">
-                            {{ \Carbon\Carbon::parse($asesmen->biodata_verified_at)->format('d M Y H:i') }}
+                            {{ \Carbon\Carbon::parse($asesmen->biodata_verified_at)->translatedFormat('d M Y H:i') }}
                         </span>
                     </div>
                 </div>
@@ -113,7 +113,7 @@
                                     <tr><td width="150"><strong>Nama Lengkap</strong></td><td>: {{ $asesmen->full_name }}</td></tr>
                                     <tr><td><strong>NIK</strong></td><td>: {{ $asesmen->nik }}</td></tr>
                                     <tr><td><strong>Tempat Lahir</strong></td><td>: {{ $asesmen->birth_place }}</td></tr>
-                                    <tr><td><strong>Tanggal Lahir</strong></td><td>: {{ \Carbon\Carbon::parse($asesmen->birth_date)->format('d F Y') }}</td></tr>
+                                    <tr><td><strong>Tanggal Lahir</strong></td><td>: {{ \Carbon\Carbon::parse($asesmen->birth_date)->translatedFormat('d F Y') }}</td></tr>
                                     <tr><td><strong>Jenis Kelamin</strong></td><td>: {{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</td></tr>
                                     <tr><td><strong>Email</strong></td><td>: {{ auth()->user()->email }}</td></tr>
                                     <tr><td><strong>Telepon</strong></td><td>: {{ $asesmen->phone }}</td></tr>
@@ -143,7 +143,7 @@
                                 <table class="table table-borderless table-sm">
                                     <tr><td width="150"><strong>Skema Sertifikasi</strong></td><td>: {{ $asesmen->skema->name ?? '-' }}</td></tr>
                                     <tr><td><strong>TUK</strong></td><td>: {{ $asesmen->tuk->name ?? '-' }}</td></tr>
-                                    <tr><td><strong>Tanggal Dipilih</strong></td><td>: {{ $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->format('d F Y') : '-' }}</td></tr>
+                                    <tr><td><strong>Tanggal Dipilih</strong></td><td>: {{ $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->translatedFormat('d F Y') : '-' }}</td></tr>
                                 </table>
                             </div>
                             <div class="col-md-6">
@@ -249,7 +249,7 @@
                             <input type="date"
                                 class="form-control @error('birth_date') is-invalid @enderror"
                                 name="birth_date"
-                                value="{{ old('birth_date', $asesmen->birth_date ? \Carbon\Carbon::parse($asesmen->birth_date)->format('Y-m-d') : '') }}"
+                                value="{{ old('birth_date', $asesmen->birth_date ? \Carbon\Carbon::parse($asesmen->birth_date)->translatedFormat('Y-m-d') : '') }}"
                                 max="{{ $maxBirthDate }}"
                                 min="{{ $minBirthDate }}"
                                 required>
@@ -390,8 +390,8 @@
                             <label class="form-label">Tanggal Sertifikasi yang Dipilih <span class="text-danger">*</span></label>
                             <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
                                 name="preferred_date"
-                                value="{{ old('preferred_date', $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->format('Y-m-d') : '') }}"
-                                min="{{ now()->addDays(3)->format('Y-m-d') }}" required>
+                                value="{{ old('preferred_date', $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->translatedFormat('Y-m-d') : '') }}"
+                                min="{{ now()->addDays(3)->translatedFormat('Y-m-d') }}" required>
                             @error('preferred_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         @else

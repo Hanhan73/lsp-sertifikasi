@@ -11,8 +11,8 @@
     <div class="sched-card-header">
         {{-- Date chip --}}
         <div class="date-chip">
-            <div class="day">{{ $schedule->assessment_date->format('d') }}</div>
-            <div class="month">{{ $schedule->assessment_date->format('M Y') }}</div>
+            <div class="day">{{ $schedule->assessment_date->translatedFormat('d') }}</div>
+            <div class="month">{{ $schedule->assessment_date->translatedFormat('M Y') }}</div>
         </div>
 
         {{-- Info --}}
@@ -38,7 +38,7 @@
                         @endif
                     </div>
                     <div class="text-muted" style="font-size:.72rem;margin-top:4px;">
-                        Dibuat oleh {{ $schedule->creator?->name ?? '-' }} pada {{ $schedule->created_at->format('d M Y H:i') }}
+                        Dibuat oleh {{ $schedule->creator?->name ?? '-' }} pada {{ $schedule->created_at->translatedFormat('d M Y H:i') }}
                     </div>
                 </div>
 

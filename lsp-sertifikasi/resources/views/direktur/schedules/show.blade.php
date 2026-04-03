@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Review Jadwal — ' . $schedule->assessment_date->format('d M Y'))
+@section('title', 'Review Jadwal — ' . $schedule->assessment_date->translatedFormat('d M Y'))
 @section('page-title', 'Review Jadwal Asesmen')
 @section('sidebar')
 @include('direktur.partials.sidebar')
@@ -43,7 +43,7 @@
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small">
         <li class="breadcrumb-item"><a href="{{ route('direktur.schedules.index') }}">Approval Jadwal</a></li>
-        <li class="breadcrumb-item active">{{ $schedule->assessment_date->format('d M Y') }}</li>
+        <li class="breadcrumb-item active">{{ $schedule->assessment_date->translatedFormat('d M Y') }}</li>
     </ol>
 </nav>
 
@@ -73,7 +73,7 @@
     <div>
         <div class="fw-bold">Jadwal Telah Disetujui</div>
         <div class="small text-muted">
-            Disetujui oleh {{ $schedule->approvedBy?->name ?? '-' }} pada {{ $schedule->approved_at?->format('d M Y H:i') }}.
+            Disetujui oleh {{ $schedule->approvedBy?->name ?? '-' }} pada {{ $schedule->approved_at?->translatedFormat('d M Y H:i') }}.
             Nomor SK: <strong class="font-monospace">{{ $schedule->sk_number }}</strong>
         </div>
         @if($schedule->approval_notes)
@@ -98,7 +98,7 @@
     <div>
         <div class="fw-bold">Jadwal Ditolak</div>
         <div class="small text-danger mt-1">{{ $schedule->approval_notes }}</div>
-        <div class="small text-muted mt-1">Ditolak pada {{ $schedule->rejected_at?->format('d M Y H:i') }}</div>
+        <div class="small text-muted mt-1">Ditolak pada {{ $schedule->rejected_at?->translatedFormat('d M Y H:i') }}</div>
     </div>
     @endif
 </div>

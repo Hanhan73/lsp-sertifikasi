@@ -194,7 +194,7 @@
                     <label class="form-label small fw-semibold">Tanggal Asesmen <span class="text-danger">*</span></label>
                     <input type="date" name="assessment_date" id="input-date"
                            class="form-control form-control-sm @error('assessment_date') is-invalid @enderror"
-                           value="{{ old('assessment_date', $schedule->assessment_date->format('Y-m-d')) }}"
+                           value="{{ old('assessment_date', $schedule->assessment_date->translatedFormat('Y-m-d')) }}"
                            required>
                     @error('assessment_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>

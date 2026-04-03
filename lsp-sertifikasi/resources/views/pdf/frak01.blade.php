@@ -360,7 +360,7 @@
                     </span>
                     <span class="sig-label">Tanggal :&nbsp;</span>
                     <span class="sig-tanggal">
-                        @if($frak01->tanggal_ttd_asesor){{ $frak01->tanggal_ttd_asesor->format('d-m-Y') }}@endif
+                        @if($frak01->tanggal_ttd_asesor){{ $frak01->tanggal_ttd_asesor->translatedFormat('d-m-Y') }}@endif
                     </span>
                 </div>
 
@@ -375,7 +375,7 @@
                     </span>
                     <span class="sig-label">Tanggal :&nbsp;</span>
                     <span class="sig-tanggal">
-                        @if($frak01->tanggal_ttd_asesi){{ $frak01->tanggal_ttd_asesi->format('d-m-Y') }}@endif
+                        @if($frak01->tanggal_ttd_asesi){{ $frak01->tanggal_ttd_asesi->translatedFormat('d-m-Y') }}@endif
                     </span>
                 </div>
 

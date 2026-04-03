@@ -256,7 +256,7 @@
         <tr>
             <td class="lbl">Tempat / tgl. Lahir</td>
             <td class="sep">:</td>
-            <td class="val">{{ $aplsatu->tempat_lahir }}, {{ $aplsatu->tanggal_lahir?->format('d-m-Y') }}</td>
+            <td class="val">{{ $aplsatu->tempat_lahir }}, {{ $aplsatu->tanggal_lahir?->translatedFormat('d-m-Y') }}</td>
         </tr>
         <tr>
             <td class="lbl">Jenis kelamin</td>
@@ -507,7 +507,7 @@
                     </div>
                     <div class="sig-date">
                         {{ $aplsatu->tanggal_ttd_pemohon
-                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->format('d-m-Y')
+                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->translatedFormat('d-m-Y')
                             : '' }}
                     </div>
                 </td>
@@ -542,7 +542,7 @@
                     </div>
                     <div class="sig-date">
                         {{ $aplsatu->tanggal_ttd_admin
-                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->format('d-m-Y')
+                            ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->translatedFormat('d-m-Y')
                             : '' }}
                     </div>
                 </td>

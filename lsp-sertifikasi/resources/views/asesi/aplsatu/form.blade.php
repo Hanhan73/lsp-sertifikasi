@@ -43,7 +43,7 @@
 <div class="alert alert-success d-flex align-items-center gap-3 mb-4">
     <i class="bi bi-check-circle-fill fs-4"></i>
     <div>
-        <strong>APL-01 sudah disubmit</strong> pada {{ $aplsatu->submitted_at?->format('d M Y H:i') }}.
+        <strong>APL-01 sudah disubmit</strong> pada {{ $aplsatu->submitted_at?->translatedFormat('d M Y H:i') }}.
         @if($aplsatu->status === 'verified')
             <span class="badge bg-primary ms-2">Sudah Diverifikasi Admin</span>
         @elseif($aplsatu->status === 'submitted')
@@ -96,7 +96,7 @@
             <div class="col-md-12"><label class="form-label text-muted small">Nama Lengkap</label><div class="fw-semibold">{{ $aplsatu->nama_lengkap }}</div></div>
             <div class="col-md-6"><label class="form-label text-muted small">NIK</label><div class="fw-semibold">{{ $aplsatu->nik }}</div></div>
             <div class="col-md-3"><label class="form-label text-muted small">Tempat Lahir</label><div class="fw-semibold">{{ $aplsatu->tempat_lahir }}</div></div>
-            <div class="col-md-3"><label class="form-label text-muted small">Tanggal Lahir</label><div class="fw-semibold">{{ $aplsatu->tanggal_lahir?->format('d M Y') }}</div></div>
+            <div class="col-md-3"><label class="form-label text-muted small">Tanggal Lahir</label><div class="fw-semibold">{{ $aplsatu->tanggal_lahir?->translatedFormat('d M Y') }}</div></div>
             <div class="col-md-3"><label class="form-label text-muted small">Jenis Kelamin</label><div class="fw-semibold">{{ $aplsatu->jenis_kelamin }}</div></div>
             <div class="col-md-3"><label class="form-label text-muted small">Kebangsaan</label><div class="fw-semibold">{{ $aplsatu->kebangsaan }}</div></div>
             <div class="col-md-6"><label class="form-label text-muted small">Kualifikasi Pendidikan</label><div class="fw-semibold">{{ $aplsatu->kualifikasi_pendidikan ?? '-' }}</div></div>
@@ -195,8 +195,8 @@
                     <div class="col-md-3">
                         <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
                         <input type="date" name="tanggal_lahir" id="f-tgl" class="form-control"
-                            value="{{ $aplsatu->tanggal_lahir?->format('Y-m-d') }}" required
-                            max="{{ now()->subYears(12)->format('Y-m-d') }}"
+                            value="{{ $aplsatu->tanggal_lahir?->translatedFormat('Y-m-d') }}" required
+                            max="{{ now()->subYears(12)->translatedFormat('Y-m-d') }}"
                             oninput="validateTanggalLahir(this)">
                     </div>
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\DistribusiSoalObservasi;
 
 class PaketSoalObservasi extends Model
 {
@@ -24,6 +25,11 @@ class PaketSoalObservasi extends Model
     public function soalObservasi(): BelongsTo
     {
         return $this->belongsTo(SoalObservasi::class);
+    }
+
+    public function distribusiSoalObservasi()
+    {
+        return $this->hasMany(DistribusiSoalObservasi::class, 'paket_soal_observasi_id');
     }
 
     public function dibuatOleh(): BelongsTo

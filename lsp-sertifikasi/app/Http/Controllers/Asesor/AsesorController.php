@@ -9,6 +9,7 @@ use App\Models\Asesmen;
 use App\Models\AplDua;
 use App\Models\AplSatu;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AsesorController extends Controller
 {
@@ -69,20 +70,32 @@ class AsesorController extends Controller
     {
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
-    
+ 
         $schedule->load([
             'tuk',
             'skema',
             'asesmens.user',
             'asesmens.aplsatu',
             'asesmens.apldua.jawabans',
-            'asesmens.soalTeoriAsesi',          // ← TAMBAH
-            'asesmens.jawabanObservasi',        // ← TAMBAH
-            'distribusiSoalTeori',              // ← TAMBAH
-            'distribusiSoalObservasi.soalObservasi.paket', // ← TAMBAH
+            'asesmens.soalTeoriAsesi.soalTeori',
+            'asesmens.jawabanObservasi',
+            'distribusiSoalTeori',
+            'distribusiSoalObservasi.soalObservasi.paket',
+            'distribusiPortofolio.portofolio',
+            'hasilObservasi',
+            'hasilPortofolio',
+            'beritaAcara.asesis',   // ← INI yang kurang
         ]);
-    
-        return view('asesor.schedule.detail', compact('schedule', 'asesor'));
+ 
+        // Build rekomendasiMap dari beritaAcara yang sudah ada
+        $rekomendasiMap = [];
+        if ($schedule->beritaAcara) {
+            foreach ($schedule->beritaAcara->asesis as $ba) {
+                $rekomendasiMap[$ba->asesmen_id] = $ba->rekomendasi;
+            }
+        }
+ 
+        return view('asesor.schedule.detail', compact('schedule', 'asesor', 'rekomendasiMap'));
     }
 
     /**
@@ -278,28 +291,28 @@ class AsesorController extends Controller
         return response()->json(['success' => true, 'hadir' => $asesmen->hadir]);
     }
 
-    public function daftarHadir(Schedule $schedule)
+    public function daftarHadir(Request $request, Schedule $schedule)
     {
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
  
-        $schedule->load(['tuk', 'skema', 'asesor', 'asesmens']);
- 
-        // TTD dari signature user yang login (accessor sudah return data URI)
-        $ttdAsesor = auth()->user()->signature_image;
+        $schedule->load(['tuk', 'skema', 'asesor.user', 'asesmens.user']);
  
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.daftar-hadir', [
-            'schedule'  => $schedule,
-            'asesmens'  => $schedule->asesmens,
-            'asesor'    => $asesor,
-            'ttdAsesor' => $ttdAsesor,
+            'schedule' => $schedule,
+            'asesor'   => $schedule->asesor,
+            'asesmens' => $schedule->asesmens,
         ])->setPaper('A4', 'portrait');
  
-        $filename = 'Daftar_Hadir_'
-            . str_replace(' ', '_', $schedule->skema->name ?? 'Asesmen')
-            . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
+        $skemaName = preg_replace('/[\/\\\]/', '-', $schedule->skema->name);
+        $skemaName = str_replace(' ', '_', $skemaName);
+        $filename = 'Daftar_Hadir_' . str_replace(' ', '_', $skemaName) . '.pdf';
  
-        return $pdf->stream($filename);
+        if ($request->boolean('preview')) {
+            return $pdf->stream($filename);
+        }
+ 
+        return $pdf->download($filename);
     }
  
         /**

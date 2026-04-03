@@ -82,7 +82,7 @@
                     @if($asesmen->payment->transaction_id)
                     <small class="d-block mt-2">
                         <strong>Transaction ID:</strong> {{ $asesmen->payment->transaction_id }}<br>
-                        <strong>Verified at:</strong> {{ $asesmen->payment->verified_at->format('d/m/Y H:i') }}
+                        <strong>Verified at:</strong> {{ $asesmen->payment->verified_at->translatedFormat('d/m/Y H:i') }}
                     </small>
                     @endif
                 </div>

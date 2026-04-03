@@ -41,7 +41,7 @@
                     @endif
                 </td>
                 <td>
-                    <small>{{ $asesmen->registration_date->format('d/m/Y H:i') }}</small>
+                    <small>{{ $asesmen->registration_date->translatedFormat('d/m/Y H:i') }}</small>
                 </td>
                 <td>
                     <div class="btn-group btn-group-sm">

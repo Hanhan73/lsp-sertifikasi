@@ -148,7 +148,7 @@
                                     <br>
                                     <small class="text-muted">
                                         {{ $asesor->jenis_kelamin_label }} &bull;
-                                        {{ $asesor->tempat_lahir }}, {{ $asesor->tanggal_lahir->format('d/m/Y') }}
+                                        {{ $asesor->tempat_lahir }}, {{ $asesor->tanggal_lahir->translatedFormat('d/m/Y') }}
                                         ({{ $asesor->umur }} th)
                                     </small>
                                 </div>
@@ -209,7 +209,7 @@
                             @if($asesor->status_reg === 'expire' && $asesor->expire_date)
                             <br>
                             <small class="text-muted" style="font-size:0.7rem;">
-                                s/d {{ $asesor->expire_date->format('d/m/Y') }}
+                                s/d {{ $asesor->expire_date->translatedFormat('d/m/Y') }}
                             </small>
                             @endif
                             @if($asesor->user_id)

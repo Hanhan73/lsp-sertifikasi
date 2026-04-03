@@ -137,7 +137,7 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
     <span class="badge bg-warning text-dark ms-1">!</span>
     @else
     <span class="badge bg-info ms-1" style="font-size:.65rem;">
-        {{ $asesmen->schedule->assessment_date->format('d/m') }}
+        {{ $asesmen->schedule->assessment_date->translatedFormat('d/m') }}
     </span>
     @endif
 </a>

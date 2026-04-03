@@ -36,7 +36,7 @@
 
                 <small class="text-muted">
                     <i class="bi bi-person"></i> oleh {{ $history->assignedBy->name }} • 
-                    {{ $history->action_at->format('d M Y H:i') }}
+                    {{ $history->action_at->translatedFormat('d M Y H:i') }}
                 </small>
             </div>
         </div>

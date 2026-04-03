@@ -52,7 +52,7 @@
 <div class="alert alert-success d-flex align-items-center gap-3 mb-4">
     <i class="bi bi-check-circle-fill fs-4 flex-shrink-0"></i>
     <div class="flex-grow-1">
-        <strong>Banding berhasil diajukan</strong> pada {{ $frak04->submitted_at?->format('d M Y H:i') }}.<br>
+        <strong>Banding berhasil diajukan</strong> pada {{ $frak04->submitted_at?->translatedFormat('d M Y H:i') }}.<br>
         <span class="text-muted small">Dokumen banding Anda sedang dalam proses peninjauan.</span>
     </div>
     <div class="d-flex gap-2 flex-shrink-0">
@@ -266,7 +266,7 @@
                     @if($frak04->ttd_asesi)
                     <img src="{{ $frak04->ttd_asesi_image }}" style="max-height:70px; max-width:100%;" alt="TTD">
                     <div class="small text-muted mt-2">{{ $frak04->nama_ttd_asesi }}</div>
-                    <div class="small text-muted">{{ $frak04->tanggal_ttd_asesi?->format('d M Y H:i') }}</div>
+                    <div class="small text-muted">{{ $frak04->tanggal_ttd_asesi?->translatedFormat('d M Y H:i') }}</div>
                     @endif
                 </div>
             </div>

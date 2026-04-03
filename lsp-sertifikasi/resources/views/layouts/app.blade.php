@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/icon-lsp.png') }}">
 
+    @php
+    \Carbon\Carbon::setLocale('id');
+    @endphp
 
 
     <style>
@@ -250,7 +253,8 @@
                             <i class="bi bi-person-circle"></i> {{ auth()->user()->name }}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('profile.show') }}"><i class="bi bi-person"></i> Profile</a></li>
+                            <li><a class="dropdown-item" href="{{ route('profile.show') }}"><i class="bi bi-person"></i>
+                                    Profile</a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>

@@ -27,7 +27,7 @@
                         </div>
                         <div class="col-md-6">
                             <small><strong>Tanggal:</strong></small><br>
-                            <p>{{ $asesmen->payment->verified_at->format('d F Y H:i') }}</p>
+                            <p>{{ $asesmen->payment->verified_at->translatedFormat('d F Y H:i') }}</p>
                         </div>
                         @if($asesmen->payment->transaction_id)
                         <div class="col-12">
@@ -105,7 +105,7 @@
                                 </p>
                                 <p class="mb-0">
                                     <small>Tanggal:</small><br>
-                                    {{ $phase1->verified_at->format('d M Y H:i') }}
+                                    {{ $phase1->verified_at->translatedFormat('d M Y H:i') }}
                                 </p>
                                 @else
                                 <p class="text-muted mb-0">Belum dibayar</p>
@@ -133,7 +133,7 @@
                                 </p>
                                 <p class="mb-0">
                                     <small>Tanggal:</small><br>
-                                    {{ $phase2->verified_at->format('d M Y H:i') }}
+                                    {{ $phase2->verified_at->translatedFormat('d M Y H:i') }}
                                 </p>
                                 @else
                                 <p class="text-muted mb-0">Belum dibayar</p>

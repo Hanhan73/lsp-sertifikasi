@@ -42,7 +42,7 @@
                             </tr>
                             <tr>
                                 <td class="text-muted">Tgl Daftar</td>
-                                <td>: {{ $firstBatch->registration_date->format('d M Y') }}</td>
+                                <td>: {{ $firstBatch->registration_date->translatedFormat('d M Y') }}</td>
                             </tr>
                             <tr>
                                 <td class="text-muted">Didaftarkan oleh</td>

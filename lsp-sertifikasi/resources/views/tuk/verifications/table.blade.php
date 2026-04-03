@@ -47,7 +47,7 @@
                     <span class="badge bg-warning"><i class="bi bi-exclamation-circle"></i> Belum Lengkap</span>
                     @endif
                 </td>
-                <td>{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                <td>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                 <td>
                     <a href="{{ route('tuk.verifications.show', $asesmen) }}" class="btn btn-sm btn-primary">
                         <i class="bi bi-eye"></i> Lihat & Verifikasi

@@ -65,7 +65,7 @@
 
                 <div class="text-start">
                     <p class="mb-1"><strong>Member Since:</strong></p>
-                    <p class="text-muted">{{ $user->created_at->format('d F Y') }}</p>
+                    <p class="text-muted">{{ $user->created_at->translatedFormat('d F Y') }}</p>
 
                     <p class="mb-1"><strong>Status Akun:</strong></p>
                     <p>

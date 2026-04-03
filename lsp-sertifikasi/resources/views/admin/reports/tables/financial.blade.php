@@ -16,7 +16,7 @@
     <tbody>
         @foreach($payments as $payment)
         <tr>
-            <td>{{ $payment->verified_at ? $payment->verified_at->format('d/m/Y') : $payment->created_at->format('d/m/Y') }}
+            <td>{{ $payment->verified_at ? $payment->verified_at->translatedFormat('d/m/Y') : $payment->created_at->translatedFormat('d/m/Y') }}
             </td>
             <td><strong>#{{ $payment->asesmen->id }}</strong></td>
             <td>

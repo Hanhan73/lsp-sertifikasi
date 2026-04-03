@@ -166,7 +166,7 @@
                                 {{ $asesmen->status_label }}
                             </span>
                         </td>
-                        <td>{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                        <td>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                         <td>
                             <a href="{{ route('tuk.asesi.show', $asesmen) }}" class="btn btn-sm btn-info">
                                 <i class="bi bi-eye"></i>

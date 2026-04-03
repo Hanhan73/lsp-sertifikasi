@@ -16,7 +16,7 @@
         <div class="fw-semibold mb-1">Dikembalikan ke Asesi</div>
         <div class="small">{{ $ak01->rejection_notes }}</div>
         <div class="text-muted small mt-1">
-            {{ $ak01->returned_at?->format('d M Y H:i') }}
+            {{ $ak01->returned_at?->translatedFormat('d M Y H:i') }}
         </div>
     </div>
 </div>
@@ -28,7 +28,7 @@
     flex-wrap">
     <span class="badge bg-{{ $ak01->status_badge }} fs-6">{{ $ak01->status_label }}</span>
     @if($ak01->submitted_at)
-    <span class="small text-muted">Submit: {{ $ak01->submitted_at->format('d M Y H:i') }}</span>
+    <span class="small text-muted">Submit: {{ $ak01->submitted_at->translatedFormat('d M Y H:i') }}</span>
     @endif
  
     <div class="ms-auto d-flex gap-2 flex-wrap">
@@ -91,7 +91,7 @@
             <img src="{{ $ak01->ttd_asesi_image }}" class="ttd-thumb">
             <div class="small text-muted">
                 <div class="fw-semibold text-dark">{{ $ak01->nama_ttd_asesi }}</div>
-                {{ $ak01->tanggal_ttd_asesi?->format('d M Y') }}
+                {{ $ak01->tanggal_ttd_asesi?->translatedFormat('d M Y') }}
             </div>
         </div>
         @else
@@ -111,7 +111,7 @@
             <img src="{{ $ak01->ttd_asesor_image }}" class="ttd-thumb">
             <div class="small text-muted">
                 <div class="fw-semibold text-dark">{{ $ak01->nama_ttd_asesor }}</div>
-                {{ $ak01->tanggal_ttd_asesor?->format('d M Y') }}
+                {{ $ak01->tanggal_ttd_asesor?->translatedFormat('d M Y') }}
             </div>
         </div>
         @else

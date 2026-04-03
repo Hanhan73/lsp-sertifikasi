@@ -86,7 +86,7 @@
                                 </span>
                             </td>
                             <td>
-                                {{ $asesmen->payment?->verified_at?->format('d/m/Y H:i') ?? '-' }}
+                                {{ $asesmen->payment?->verified_at?->translatedFormat('d/m/Y H:i') ?? '-' }}
                             </td>
                         </tr>
                         @endforeach
@@ -198,7 +198,7 @@
         @php
         // Group schedules by date + time + location
         $groupedSchedules = $scheduled->groupBy(function($schedule) {
-            return $schedule->assessment_date->format('Y-m-d') . '|' .
+            return $schedule->assessment_date->translatedFormat('Y-m-d') . '|' .
                    $schedule->start_time . '|' .
                    $schedule->end_time . '|' .
                    $schedule->location;
@@ -239,7 +239,7 @@
                         <td>{{ $loop->iteration }}</td>
                         <td>
                             <strong>{{ \Carbon\Carbon::parse($date)->isoFormat('dddd') }}</strong><br>
-                            <small class="text-muted">{{ \Carbon\Carbon::parse($date)->format('d F Y') }}</small>
+                            <small class="text-muted">{{ \Carbon\Carbon::parse($date)->translatedFormat('d F Y') }}</small>
                         </td>
                         <td>
                             <i class="bi bi-clock text-primary"></i>

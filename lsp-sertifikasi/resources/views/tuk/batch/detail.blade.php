@@ -36,7 +36,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Daftar</strong></td>
-                                <td>: {{ $firstAsesmen->created_at->format('d F Y H:i') }}</td>
+                                <td>: {{ $firstAsesmen->created_at->translatedFormat('d F Y H:i') }}</td>
                             </tr>
                         </table>
                     </div>
@@ -110,7 +110,7 @@
                             @foreach($payments as $payment)
                             <tr>
                                 <td class="ps-3">
-                                    {{ $payment->verified_at ? $payment->verified_at->format('d M Y H:i') : '-' }}
+                                    {{ $payment->verified_at ? $payment->verified_at->translatedFormat('d M Y H:i') : '-' }}
                                 </td>
                                 <td>
                                     <strong>Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong>

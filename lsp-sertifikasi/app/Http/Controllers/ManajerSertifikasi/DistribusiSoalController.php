@@ -386,16 +386,28 @@ class DistribusiSoalController extends Controller
     public function distribusiSoalObservasi(Request $request): RedirectResponse
     {
         $request->validate([
-            'schedule_id'       => 'required|exists:schedules,id',
-            'soal_observasi_id' => 'required|exists:soal_observasi,id',
+            'schedule_id'              => 'required|exists:schedules,id',
+            'soal_observasi_id'        => 'required|exists:soal_observasi,id',
+            'paket_soal_observasi_id'  => 'required|exists:paket_soal_observasi,id',
         ]);
-
+ 
+        // Pastikan paket yang dipilih memang milik soal observasi ini
+        $paket = \App\Models\PaketSoalObservasi::where('id', $request->paket_soal_observasi_id)
+            ->where('soal_observasi_id', $request->soal_observasi_id)
+            ->firstOrFail();
+ 
         DistribusiSoalObservasi::updateOrCreate(
-            ['schedule_id' => $request->schedule_id, 'soal_observasi_id' => $request->soal_observasi_id],
-            ['didistribusikan_oleh' => Auth::id()]
+            [
+                'schedule_id'       => $request->schedule_id,
+                'soal_observasi_id' => $request->soal_observasi_id,
+            ],
+            [
+                'paket_soal_observasi_id' => $paket->id,
+                'didistribusikan_oleh'    => Auth::id(),
+            ]
         );
-
-        return back()->with('success', 'Soal observasi berhasil didistribusikan.');
+ 
+        return back()->with('success', "Soal observasi '{$paket->soalObservasi->judul}' — Paket {$paket->kode_paket} berhasil didistribusikan.");
     }
 
     public function hapusDistribusiSoalObservasi(Request $request): RedirectResponse
@@ -410,7 +422,11 @@ class DistribusiSoalController extends Controller
             'soal_observasi_id' => $request->soal_observasi_id,
         ])->delete();
 
-        return back()->with('success', 'Distribusi soal observasi dihapus.');
+        // Redirect eksplisit ke jadwal, bukan back()
+        return redirect()
+            ->route('manajer-sertifikasi.jadwal.show', $request->schedule_id)
+            ->with('success', 'Distribusi soal observasi dihapus.')
+            ->withFragment('pane-observasi');
     }
 
     // =========================================================================
@@ -507,7 +523,10 @@ class DistribusiSoalController extends Controller
             'portofolio_id' => $request->portofolio_id,
         ])->delete();
 
-        return back()->with('success', 'Distribusi portofolio dihapus.');
+        return redirect()
+            ->route('manajer-sertifikasi.jadwal.show', $request->schedule_id)
+            ->with('success', 'Distribusi portofolio dihapus.')
+            ->withFragment('pane-portofolio');
     }
 
     // =========================================================================
@@ -711,4 +730,73 @@ class DistribusiSoalController extends Controller
         return Storage::disk('private')->download($ba->file_path, $ba->file_name);
     }
  
+    /**
+     * Upload form penilaian observasi untuk jadwal tertentu
+     * POST /manajer-sertifikasi/jadwal/{schedule}/observasi/{soalObservasi}/form-penilaian
+     */
+    public function uploadFormPenilaianObservasi(Request $request, Schedule $schedule, SoalObservasi $soalObservasi): RedirectResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xlsm,xls,pdf|max:20480',
+        ]);
+ 
+        $dist = DistribusiSoalObservasi::where([
+            'schedule_id'       => $schedule->id,
+            'soal_observasi_id' => $soalObservasi->id,
+        ])->firstOrFail();
+ 
+        // Hapus file lama jika ada
+        if ($dist->form_penilaian_path) {
+            Storage::disk('private')->delete($dist->form_penilaian_path);
+        }
+ 
+        $file = $request->file('file');
+        $path = $file->store("form-penilaian/observasi/{$schedule->id}", 'private');
+ 
+        $dist->update([
+            'form_penilaian_path' => $path,
+            'form_penilaian_name' => $file->getClientOriginalName(),
+        ]);
+ 
+        return back()->with('success', "Form penilaian '{$soalObservasi->judul}' berhasil diupload.");
+    }
+ 
+    /**
+     * Download form penilaian observasi
+     * GET /manajer-sertifikasi/jadwal/{schedule}/observasi/{soalObservasi}/form-penilaian
+     */
+    public function downloadFormPenilaianObservasi(Schedule $schedule, SoalObservasi $soalObservasi): mixed
+    {
+        $dist = DistribusiSoalObservasi::where([
+            'schedule_id'       => $schedule->id,
+            'soal_observasi_id' => $soalObservasi->id,
+        ])->firstOrFail();
+ 
+        abort_unless($dist->form_penilaian_path && Storage::disk('private')->exists($dist->form_penilaian_path), 404, 'Form belum diupload.');
+ 
+        return Storage::disk('private')->download($dist->form_penilaian_path, $dist->form_penilaian_name);
+    }
+ 
+    /**
+     * Hapus form penilaian observasi
+     * DELETE /manajer-sertifikasi/jadwal/{schedule}/observasi/{soalObservasi}/form-penilaian
+     */
+    public function hapusFormPenilaianObservasi(Schedule $schedule, SoalObservasi $soalObservasi): RedirectResponse
+    {
+        $dist = DistribusiSoalObservasi::where([
+            'schedule_id'       => $schedule->id,
+            'soal_observasi_id' => $soalObservasi->id,
+        ])->firstOrFail();
+ 
+        if ($dist->form_penilaian_path) {
+            Storage::disk('private')->delete($dist->form_penilaian_path);
+        }
+ 
+        $dist->update([
+            'form_penilaian_path' => null,
+            'form_penilaian_name' => null,
+        ]);
+ 
+        return back()->with('success', 'Form penilaian dihapus.');
+    }
 }

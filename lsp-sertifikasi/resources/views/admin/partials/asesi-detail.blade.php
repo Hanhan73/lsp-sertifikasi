@@ -33,7 +33,7 @@
                     </tr>
                     <tr>
                         <td><strong>Tanggal Lahir</strong></td>
-                        <td>: {{ $asesmen->birth_date ? $asesmen->birth_date->format('d/m/Y') : '-' }}</td>
+                        <td>: {{ $asesmen->birth_date ? $asesmen->birth_date->translatedFormat('d/m/Y') : '-' }}</td>
                     </tr>
                     <tr>
                         <td><strong>Jenis Kelamin</strong></td>
@@ -87,7 +87,7 @@
                             @if($asesmen->admin_verified_at)
                             <span class="badge bg-success"><i class="bi bi-check-circle"></i> Terverifikasi</span>
                             <br><small class="text-muted">
-                                {{ \Carbon\Carbon::parse($asesmen->admin_verified_at)->format('d/m/Y H:i') }}
+                                {{ \Carbon\Carbon::parse($asesmen->admin_verified_at)->translatedFormat('d/m/Y H:i') }}
                                 @if($asesmen->assessorRegistrar)
                                 <br>oleh: {{ $asesmen->assessorRegistrar->name }}
                                 @endif
@@ -103,7 +103,7 @@
                             @if($asesmen->tuk_verified_at)
                             <span class="badge bg-success"><i class="bi bi-check-circle"></i> Terverifikasi</span>
                             <br><small class="text-muted">
-                                {{ \Carbon\Carbon::parse($asesmen->tuk_verified_at)->format('d/m/Y H:i') }}
+                                {{ \Carbon\Carbon::parse($asesmen->tuk_verified_at)->translatedFormat('d/m/Y H:i') }}
                                 @if($asesmen->tukVerifier)
                                 <br>oleh: {{ $asesmen->tukVerifier->name }}
                                 @endif
@@ -138,7 +138,7 @@
                     <tr>
                         <td><strong>Tanggal Assign</strong></td>
                         <td>:
-                            {{ $asesmen->assigned_at ? \Carbon\Carbon::parse($asesmen->assigned_at)->format('d/m/Y H:i') : '-' }}
+                            {{ $asesmen->assigned_at ? \Carbon\Carbon::parse($asesmen->assigned_at)->translatedFormat('d/m/Y H:i') : '-' }}
                         </td>
                     </tr>
                     @if($asesmen->assigner)
@@ -239,7 +239,7 @@
                     </tr>
                     <tr>
                         <td><strong>Tanggal Daftar</strong></td>
-                        <td>: {{ $asesmen->registration_date->format('d/m/Y H:i') }}</td>
+                        <td>: {{ $asesmen->registration_date->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                 </table>
             </div>
@@ -293,7 +293,7 @@
                         @if($payment->verified_at)
                         <tr>
                             <td>Tanggal</td>
-                            <td>: {{ $payment->verified_at->format('d/m/Y H:i') }}</td>
+                            <td>: {{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}</td>
                         </tr>
                         @endif
                     </table>
@@ -336,7 +336,7 @@
                     @if($asesmen->payment->verified_at)
                     <tr>
                         <td><strong>Tanggal Bayar</strong></td>
-                        <td>: {{ $asesmen->payment->verified_at->format('d/m/Y H:i') }}</td>
+                        <td>: {{ $asesmen->payment->verified_at->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     @endif
                 </table>
@@ -354,7 +354,7 @@
                 <table class="table table-sm table-borderless">
                     <tr>
                         <td width="150"><strong>Tanggal</strong></td>
-                        <td>: <strong>{{ $asesmen->schedule->assessment_date->format('d/m/Y') }}</strong></td>
+                        <td>: <strong>{{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}</strong></td>
                     </tr>
                     <tr>
                         <td><strong>Waktu</strong></td>
@@ -396,7 +396,7 @@
                     @if($asesmen->assessed_at)
                     <tr>
                         <td><strong>Tanggal</strong></td>
-                        <td>: {{ \Carbon\Carbon::parse($asesmen->assessed_at)->format('d/m/Y H:i') }}</td>
+                        <td>: {{ \Carbon\Carbon::parse($asesmen->assessed_at)->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     @endif
                     @if($asesmen->assessor)
@@ -430,11 +430,11 @@
                     </tr>
                     <tr>
                         <td><strong>Tanggal Terbit</strong></td>
-                        <td>: {{ $asesmen->certificate->issued_date->format('d/m/Y') }}</td>
+                        <td>: {{ $asesmen->certificate->issued_date->translatedFormat('d/m/Y') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Berlaku Sampai</strong></td>
-                        <td>: {{ $asesmen->certificate->valid_until->format('d/m/Y') }}</td>
+                        <td>: {{ $asesmen->certificate->valid_until->translatedFormat('d/m/Y') }}</td>
                     </tr>
                     @if($asesmen->certificate->pdf_path)
                     <tr>
@@ -468,7 +468,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-award"></i> Sertifikat Diterbitkan</strong>
                             <br><small
-                                class="text-muted">{{ $asesmen->certificate->issued_date->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ $asesmen->certificate->issued_date->translatedFormat('d/m/Y H:i') }}</small>
                             <br><span class="badge bg-success">No:
                                 {{ $asesmen->certificate->certificate_number }}</span>
                         </div>
@@ -481,7 +481,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-clipboard-check"></i> Asesmen Selesai</strong>
                             <br><small
-                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->assessed_at)->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->assessed_at)->translatedFormat('d/m/Y H:i') }}</small>
                             @if($asesmen->result)
                             <br><span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }}">
                                 {{ strtoupper($asesmen->result) }}
@@ -500,9 +500,9 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-calendar-event"></i> Jadwal Ditentukan</strong>
                             <br><small
-                                class="text-muted">{{ $asesmen->schedule->created_at->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ $asesmen->schedule->created_at->translatedFormat('d/m/Y H:i') }}</small>
                             <br><span
-                                class="badge bg-info">{{ $asesmen->schedule->assessment_date->format('d/m/Y') }}</span>
+                                class="badge bg-info">{{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}</span>
                         </div>
                     </div>
                     @endif
@@ -522,7 +522,7 @@
                                 Penuh
                                 @endif
                             </strong>
-                            <br><small class="text-muted">{{ $payment->verified_at->format('d/m/Y H:i') }}</small>
+                            <br><small class="text-muted">{{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}</small>
                             <br><span class="badge bg-success">Rp
                                 {{ number_format($payment->amount, 0, ',', '.') }}</span>
                         </div>
@@ -535,7 +535,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-credit-card"></i> Pembayaran Terverifikasi</strong>
                             <br><small
-                                class="text-muted">{{ $asesmen->payment->verified_at->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ $asesmen->payment->verified_at->translatedFormat('d/m/Y H:i') }}</small>
                             <br><span class="badge bg-success">Rp
                                 {{ number_format($asesmen->payment->amount, 0, ',', '.') }}</span>
                         </div>
@@ -548,7 +548,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-building-check"></i> Di-assign ke TUK</strong>
                             <br><small
-                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->assigned_at)->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->assigned_at)->translatedFormat('d/m/Y H:i') }}</small>
                             @if($asesmen->assignedTuk)
                             <br><span class="badge bg-info">{{ $asesmen->assignedTuk->name }}</span>
                             @endif
@@ -565,7 +565,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-building-check"></i> Diverifikasi TUK</strong>
                             <br><small
-                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->tuk_verified_at)->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->tuk_verified_at)->translatedFormat('d/m/Y H:i') }}</small>
                             @if($asesmen->tukVerifier)
                             <br><span class="badge bg-primary">{{ $asesmen->tukVerifier->name }}</span>
                             @endif
@@ -579,7 +579,7 @@
                         <div class="timeline-content">
                             <strong><i class="bi bi-shield-check"></i> Diverifikasi Admin</strong>
                             <br><small
-                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->admin_verified_at)->format('d/m/Y H:i') }}</small>
+                                class="text-muted">{{ \Carbon\Carbon::parse($asesmen->admin_verified_at)->translatedFormat('d/m/Y H:i') }}</small>
                             @if($asesmen->assessorRegistrar)
                             <br><span class="badge bg-warning">{{ $asesmen->assessorRegistrar->name }}</span>
                             @endif
@@ -591,7 +591,7 @@
                         <div class="timeline-marker bg-secondary"></div>
                         <div class="timeline-content">
                             <strong><i class="bi bi-person-plus"></i> Pendaftaran</strong>
-                            <br><small class="text-muted">{{ $asesmen->registration_date->format('d/m/Y H:i') }}</small>
+                            <br><small class="text-muted">{{ $asesmen->registration_date->translatedFormat('d/m/Y H:i') }}</small>
                             @if($asesmen->is_collective)
                             <br><span class="badge bg-primary">Kolektif - {{ $asesmen->collective_batch_id }}</span>
                             @if($asesmen->registrar)

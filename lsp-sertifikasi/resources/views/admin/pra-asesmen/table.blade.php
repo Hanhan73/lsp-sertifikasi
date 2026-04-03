@@ -46,7 +46,7 @@
                         </span>
                     @endif
                 </td>
-                <td class="small">{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                <td class="small">{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                 <td class="text-center">
                     <span class="badge bg-{{ $asesmen->status_badge }}">
                         {{ $asesmen->status_label }}

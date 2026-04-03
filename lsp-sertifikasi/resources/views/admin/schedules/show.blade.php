@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Detail Jadwal — ' . $schedule->assessment_date->format('d M Y'))
+@section('title', 'Detail Jadwal — ' . $schedule->assessment_date->translatedFormat('d M Y'))
 @section('page-title', 'Detail Jadwal Asesmen')
 @section('sidebar')
 @include('admin.partials.sidebar')
@@ -56,7 +56,7 @@
     <div class="flex-grow-1">
         <div class="fw-semibold">Jadwal Ditolak oleh Direktur</div>
         <div class="mt-1"><strong>Alasan:</strong> {{ $schedule->approval_notes }}</div>
-        <div class="small text-muted mt-1">Ditolak pada {{ $schedule->rejected_at?->format('d M Y H:i') }}</div>
+        <div class="small text-muted mt-1">Ditolak pada {{ $schedule->rejected_at?->translatedFormat('d M Y H:i') }}</div>
         <div class="mt-2">
             <a href="{{ route('admin.schedules.edit', $schedule) }}" class="btn btn-sm btn-warning">
                 <i class="bi bi-pencil me-1"></i>Perbaiki &amp; Ajukan Ulang
@@ -71,7 +71,7 @@
         <div class="fw-semibold">Jadwal Telah Disetujui Direktur</div>
         <div class="small">
             Nomor SK: <span class="font-monospace fw-bold">{{ $schedule->sk_number }}</span>
-            &nbsp;&bull;&nbsp; Disetujui pada {{ $schedule->approved_at?->format('d M Y H:i') }}
+            &nbsp;&bull;&nbsp; Disetujui pada {{ $schedule->approved_at?->translatedFormat('d M Y H:i') }}
         </div>
     </div>
     @if($schedule->hasSk())
@@ -85,7 +85,7 @@
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb small">
         <li class="breadcrumb-item"><a href="{{ route('admin.schedules.index') }}">Jadwal Asesmen</a></li>
-        <li class="breadcrumb-item active">{{ $schedule->assessment_date->format('d M Y') }}</li>
+        <li class="breadcrumb-item active">{{ $schedule->assessment_date->translatedFormat('d M Y') }}</li>
     </ol>
 </nav>
 
@@ -106,9 +106,9 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex gap-3 align-items-start">
                 <div class="date-badge {{ $dateClass }}">
-                    <div class="day" style="color:{{ $isToday ? '#0284c7' : ($isPast ? '#94a3b8' : '#16a34a') }}">{{ $schedule->assessment_date->format('d') }}</div>
-                    <div class="month" style="color:{{ $isToday ? '#0284c7' : ($isPast ? '#94a3b8' : '#16a34a') }}">{{ $schedule->assessment_date->format('M') }}</div>
-                    <div class="year">{{ $schedule->assessment_date->format('Y') }}</div>
+                    <div class="day" style="color:{{ $isToday ? '#0284c7' : ($isPast ? '#94a3b8' : '#16a34a') }}">{{ $schedule->assessment_date->translatedFormat('d') }}</div>
+                    <div class="month" style="color:{{ $isToday ? '#0284c7' : ($isPast ? '#94a3b8' : '#16a34a') }}">{{ $schedule->assessment_date->translatedFormat('M') }}</div>
+                    <div class="year">{{ $schedule->assessment_date->translatedFormat('Y') }}</div>
                 </div>
                 <div class="flex-grow-1">
                     <h5 class="fw-bold mb-1">
@@ -202,7 +202,7 @@
                 @if($schedule->created_at)
                 <div class="info-row">
                     <span class="info-label">Dibuat</span>
-                    <span class="info-value small">{{ $schedule->created_at->format('d M Y H:i') }}</span>
+                    <span class="info-value small">{{ $schedule->created_at->translatedFormat('d M Y H:i') }}</span>
                 </div>
                 @endif
             </div>

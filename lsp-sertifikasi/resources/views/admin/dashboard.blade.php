@@ -130,7 +130,7 @@
                 <div class="list-group-item px-3 py-2 d-flex justify-content-between align-items-center">
                     <div>
                         <div class="fw-semibold small">
-                            {{ $s->assessment_date->format('d M Y') }}
+                            {{ $s->assessment_date->translatedFormat('d M Y') }}
                             &bull; {{ $s->start_time }}
                         </div>
                         <div class="text-muted" style="font-size:.78rem;">
@@ -251,7 +251,7 @@
                                 {{ $asesmen->status_label }}
                             </span>
                         </td>
-                        <td class="small text-muted">{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                        <td class="small text-muted">{{ $asesmen->registration_date->translatedFormat('d M Y') }}</td>
                         <td>
                           <a href="{{ route('admin.asesi.show', $asesmen) }}"
                                 class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Lihat Detail">

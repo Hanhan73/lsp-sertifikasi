@@ -36,7 +36,7 @@
                 <span class="badge bg-success">Mandiri</span>
                 @endif
             </td>
-            <td>{{ $asesmen->registration_date ? $asesmen->registration_date->format('d/m/Y') : '-' }}</td>
+            <td>{{ $asesmen->registration_date ? $asesmen->registration_date->translatedFormat('d/m/Y') : '-' }}</td>
             <td>
                 <span class="badge bg-{{ $asesmen->status_badge }}">
                     {{ $asesmen->status_label }}
@@ -60,21 +60,21 @@
             </td>
             <td>
                 @if($asesmen->admin_verified_at)
-                {{ $asesmen->admin_verified_at->format('d/m/Y') }}
+                {{ $asesmen->admin_verified_at->translatedFormat('d/m/Y') }}
                 @else
                 <span class="text-muted">-</span>
                 @endif
             </td>
             <td>
                 @if($asesmen->payment && $asesmen->payment->verified_at)
-                {{ $asesmen->payment->verified_at->format('d/m/Y') }}
+                {{ $asesmen->payment->verified_at->translatedFormat('d/m/Y') }}
                 @else
                 <span class="text-muted">-</span>
                 @endif
             </td>
             <td>
                 @if($asesmen->schedule)
-                {{ $asesmen->schedule->assessment_date->format('d/m/Y') }}
+                {{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}
                 @else
                 <span class="text-muted">-</span>
                 @endif

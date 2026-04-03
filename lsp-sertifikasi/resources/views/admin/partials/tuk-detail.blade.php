@@ -197,11 +197,11 @@
                     </tr>
                     <tr>
                         <td><strong>Dibuat</strong></td>
-                        <td>: {{ $tuk->created_at->format('d/m/Y H:i') }} ({{ $tuk->created_at->diffForHumans() }})</td>
+                        <td>: {{ $tuk->created_at->translatedFormat('d/m/Y H:i') }} ({{ $tuk->created_at->diffForHumans() }})</td>
                     </tr>
                     <tr>
                         <td><strong>Update Terakhir</strong></td>
-                        <td>: {{ $tuk->updated_at->format('d/m/Y H:i') }} ({{ $tuk->updated_at->diffForHumans() }})</td>
+                        <td>: {{ $tuk->updated_at->translatedFormat('d/m/Y H:i') }} ({{ $tuk->updated_at->diffForHumans() }})</td>
                     </tr>
                     <tr>
                         <td><strong>Status TUK</strong></td>

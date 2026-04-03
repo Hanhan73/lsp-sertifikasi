@@ -68,7 +68,7 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
                                     <input type="date" name="tanggal_lahir" class="form-control"
-                                        value="{{ old('tanggal_lahir', $asesor->tanggal_lahir->format('Y-m-d')) }}"
+                                        value="{{ old('tanggal_lahir', $asesor->tanggal_lahir->translatedFormat('Y-m-d')) }}"
                                         required>
                                 </div>
 
@@ -155,7 +155,7 @@
                                     style="display: {{ old('status_reg', $asesor->status_reg) === 'expire' ? 'block' : 'none' }};">
                                     <label class="form-label">Tanggal Expire</label>
                                     <input type="date" name="expire_date" class="form-control"
-                                        value="{{ old('expire_date', $asesor->expire_date?->format('Y-m-d')) }}">
+                                        value="{{ old('expire_date', $asesor->expire_date?->translatedFormat('Y-m-d')) }}">
                                 </div>
 
                                 <div class="col-md-12">

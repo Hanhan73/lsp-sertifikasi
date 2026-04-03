@@ -40,7 +40,7 @@
                 <td>
                     @if($asesmen->schedule)
                     <i class="bi bi-calendar-check text-success"></i>
-                    {{ $asesmen->schedule->assessment_date->format('d/m/Y') }}
+                    {{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}
                     <br>
                     <small class="text-muted">{{ $asesmen->schedule->start_time }} -
                         {{ $asesmen->schedule->end_time }}</small>

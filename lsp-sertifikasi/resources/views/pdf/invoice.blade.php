@@ -399,9 +399,9 @@
                 <div class="info-title">Detail Invoice</div>
                 <div class="info-content">
                     <p><span class="label">Tanggal Invoice:</span>
-                        {{ $payment->verified_at ? $payment->verified_at->format('d F Y') : date('d F Y') }}</p>
+                        {{ $payment->verified_at ? $payment->verified_at->translatedFormat('d F Y') : date('d F Y') }}</p>
                     <p><span class="label">Tanggal Bayar:</span>
-                        {{ $payment->verified_at ? $payment->verified_at->format('d F Y') : '-' }}</p>
+                        {{ $payment->verified_at ? $payment->verified_at->translatedFormat('d F Y') : '-' }}</p>
                     <p><span class="label">Metode:</span> {{ strtoupper($payment->method) }}</p>
                     @if($payment->transaction_id)
                     <p><span class="label">Trans ID:</span> {{ Str::limit($payment->transaction_id, 25) }}</p>
@@ -519,7 +519,7 @@
                 </div>
                 <div class="payment-info-item">
                     <div class="label">Tanggal Verifikasi</div>
-                    <div class="value">{{ $payment->verified_at ? $payment->verified_at->format('d M Y H:i') : '-' }}
+                    <div class="value">{{ $payment->verified_at ? $payment->verified_at->translatedFormat('d M Y H:i') : '-' }}
                     </div>
                 </div>
             </div>
@@ -539,7 +539,7 @@
             <p>Invoice ini dicetak secara otomatis dan sah tanpa tanda tangan</p>
             <p>Untuk pertanyaan, hubungi: <span class="website">info@sikaplsp.id</span></p>
             <p style="margin-top: 10px; color: #ccc; font-size: 8px;">
-                Dicetak pada: {{ now()->format('d F Y H:i:s') }}
+                Dicetak pada: {{ now()->translatedFormat('d F Y H:i:s') }}
             </p>
         </div>
     </div>

@@ -281,7 +281,7 @@
                     </tr>
                     <tr>
                         <td class="text-muted ps-3">Tgl Daftar</td>
-                        <td>{{ $asesmen->registration_date->format('d M Y') }}</td>
+                        <td>{{ $asesmen->registration_date->translatedFormat('d M Y') }}</td>
                     </tr>
                     @if($asesmen->training_flag)
                     <tr>

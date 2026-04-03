@@ -71,7 +71,7 @@
                         <div>
                             <div class="text-muted" style="font-size:.7rem;font-weight:600">DIMULAI</div>
                             <div class="fw-semibold">
-                                {{ $startedAt ? $startedAt->format('H:i, d M Y') : '-' }}
+                                {{ $startedAt ? $startedAt->translatedFormat('H:i, d M Y') : '-' }}
                             </div>
                         </div>
                     </div>
@@ -80,7 +80,7 @@
                         <div>
                             <div class="text-muted" style="font-size:.7rem;font-weight:600">DIKUMPULKAN</div>
                             <div class="fw-semibold">
-                                {{ $submittedAt ? $submittedAt->format('H:i, d M Y') : '-' }}
+                                {{ $submittedAt ? $submittedAt->translatedFormat('H:i, d M Y') : '-' }}
                             </div>
                         </div>
                     </div>
@@ -209,7 +209,7 @@
                     <div style="font-size:.85rem">
                         <div class="fw-bold">{{ $asesmen->full_name }}</div>
                         <div class="text-muted">NIK: {{ $asesmen->nik }}</div>
-                        <div class="text-muted">Jadwal: {{ $asesmen->schedule?->assessment_date->format('d M Y') ?? '-' }}</div>
+                        <div class="text-muted">Jadwal: {{ $asesmen->schedule?->assessment_date->translatedFormat('d M Y') ?? '-' }}</div>
                     </div>
                 </div>
             </div>

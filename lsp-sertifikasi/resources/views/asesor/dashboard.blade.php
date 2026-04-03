@@ -93,8 +93,8 @@
         <div class="d-flex align-items-center gap-3 px-4 py-3 border-bottom">
             <div class="text-center" style="min-width:48px;">
                 <div class="fw-bold text-primary" style="font-size:1.2rem;">
-                    {{ $schedule->assessment_date->format('d') }}</div>
-                <div class="text-muted" style="font-size:.72rem;">{{ $schedule->assessment_date->format('M Y') }}</div>
+                    {{ $schedule->assessment_date->translatedFormat('d') }}</div>
+                <div class="text-muted" style="font-size:.72rem;">{{ $schedule->assessment_date->translatedFormat('M Y') }}</div>
             </div>
             <div class="flex-grow-1">
                 <div class="fw-semibold small">{{ $schedule->skema->name ?? '-' }}</div>

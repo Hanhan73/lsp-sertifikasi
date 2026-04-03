@@ -20,7 +20,7 @@
                     <div class="col-md-6">
                         <table class="table table-borderless table-sm mb-0">
                             <tr><td class="text-muted" width="140">No. Registrasi</td><td>: <strong>#{{ $asesmen->id }}</strong></td></tr>
-                            <tr><td class="text-muted">Tgl Daftar</td><td>: {{ $asesmen->registration_date->format('d F Y') }}</td></tr>
+                            <tr><td class="text-muted">Tgl Daftar</td><td>: {{ $asesmen->registration_date->translatedFormat('d F Y') }}</td></tr>
                             <tr><td class="text-muted">Jenis</td><td>: <span class="badge bg-success">Mandiri</span></td></tr>
                             <tr><td class="text-muted">Skema</td><td>: {{ $asesmen->skema->name ?? '-' }}</td></tr>
                         </table>
@@ -28,7 +28,7 @@
                     <div class="col-md-6">
                         <table class="table table-borderless table-sm mb-0">
                             <tr><td class="text-muted" width="140">TUK</td><td>: {{ $asesmen->tuk->name ?? '-' }}</td></tr>
-                            <tr><td class="text-muted">Tanggal Pilihan</td><td>: {{ $asesmen->preferred_date?->format('d F Y') ?? '-' }}</td></tr>
+                            <tr><td class="text-muted">Tanggal Pilihan</td><td>: {{ $asesmen->preferred_date?->translatedFormat('d F Y') ?? '-' }}</td></tr>
                             <tr><td class="text-muted">Pelatihan</td>
                                 <td>: @if($asesmen->training_flag)
                                     <span class="badge bg-warning text-dark">Ya</span>
@@ -54,7 +54,7 @@
                             <tr><td class="text-muted" width="140">Nama Lengkap</td><td>: <strong>{{ $asesmen->full_name }}</strong></td></tr>
                             <tr><td class="text-muted">NIK</td><td>: <code>{{ $asesmen->nik }}</code></td></tr>
                             <tr><td class="text-muted">Tempat Lahir</td><td>: {{ $asesmen->birth_place }}</td></tr>
-                            <tr><td class="text-muted">Tgl Lahir</td><td>: {{ $asesmen->birth_date->format('d F Y') }}</td></tr>
+                            <tr><td class="text-muted">Tgl Lahir</td><td>: {{ $asesmen->birth_date->translatedFormat('d F Y') }}</td></tr>
                             <tr><td class="text-muted">Jenis Kelamin</td><td>: {{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</td></tr>
                             <tr><td class="text-muted">No. HP</td><td>: {{ $asesmen->phone }}</td></tr>
                         </table>

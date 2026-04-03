@@ -49,13 +49,13 @@
                  style="min-width:110px;
                  background:{{ $daysLeft === 0 ? '#f59e0b' : ($daysLeft < 0 ? '#64748b' : '#3b82f6') }};">
                 <div style="font-size:2.8rem;font-weight:900;line-height:1;">
-                    {{ $schedule->assessment_date->format('d') }}
+                    {{ $schedule->assessment_date->translatedFormat('d') }}
                 </div>
                 <div style="font-size:.85rem;font-weight:600;text-transform:uppercase;opacity:.85;">
-                    {{ $schedule->assessment_date->format('M') }}
+                    {{ $schedule->assessment_date->translatedFormat('M') }}
                 </div>
                 <div style="font-size:.8rem;opacity:.75;">
-                    {{ $schedule->assessment_date->format('Y') }}
+                    {{ $schedule->assessment_date->translatedFormat('Y') }}
                 </div>
             </div>
 

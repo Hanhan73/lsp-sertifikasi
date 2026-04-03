@@ -14,7 +14,7 @@
 
         @if($asesor->status_reg === 'expire' && $asesor->expire_date)
         <br>
-        <small class="text-muted">Expire: {{ $asesor->expire_date->format('d M Y') }}</small>
+        <small class="text-muted">Expire: {{ $asesor->expire_date->translatedFormat('d M Y') }}</small>
         @endif
 
         <hr>
@@ -70,7 +70,7 @@
             </tr>
             <tr>
                 <td class="text-muted">Tempat, Tgl Lahir</td>
-                <td>{{ $asesor->tempat_lahir }}, {{ $asesor->tanggal_lahir->format('d F Y') }}</td>
+                <td>{{ $asesor->tempat_lahir }}, {{ $asesor->tanggal_lahir->translatedFormat('d F Y') }}</td>
             </tr>
             <tr>
                 <td class="text-muted">Jenis Kelamin</td>
@@ -105,13 +105,13 @@
                         </tr>
                         <tr>
                             <td class="text-muted">Tanggal</td>
-                            <td>{{ $asesor->sk_pengangkatan_date?->format('d M Y') }}</td>
+                            <td>{{ $asesor->sk_pengangkatan_date?->translatedFormat('d M Y') }}</td>
                         </tr>
                         <tr>
                             <td class="text-muted">Berlaku Hingga</td>
                             <td
                                 class="{{ $asesor->sk_pengangkatan_valid_until?->isPast() ? 'text-danger fw-bold' : '' }}">
-                                {{ $asesor->sk_pengangkatan_valid_until?->format('d M Y') ?? 'Tidak ditentukan' }}
+                                {{ $asesor->sk_pengangkatan_valid_until?->translatedFormat('d M Y') ?? 'Tidak ditentukan' }}
                             </td>
                         </tr>
                     </table>
@@ -167,7 +167,7 @@
             </tr>
             <tr>
                 <td class="text-muted">Dibuat</td>
-                <td>{{ $asesor->created_at->format('d F Y H:i') }}</td>
+                <td>{{ $asesor->created_at->translatedFormat('d F Y H:i') }}</td>
             </tr>
             <tr>
                 <td class="text-muted">Diupdate</td>

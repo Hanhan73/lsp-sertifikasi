@@ -90,7 +90,7 @@
                     @if($skema->tanggal_pengesahan)
                     <tr>
                         <td class="text-muted small">Tgl. Pengesahan</td>
-                        <td>{{ $skema->tanggal_pengesahan->format('d M Y') }}</td>
+                        <td>{{ $skema->tanggal_pengesahan->translatedFormat('d M Y') }}</td>
                     </tr>
                     @endif
                     @if($skema->dokumen_pengesahan_path)

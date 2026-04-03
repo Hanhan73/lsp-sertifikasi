@@ -30,7 +30,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tempat, Tgl Lahir</strong></td>
-                                <td>: {{ $asesmen->birth_place }}, {{ $asesmen->birth_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->birth_place }}, {{ $asesmen->birth_date->translatedFormat('d F Y') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Jenis Kelamin</strong></td>
@@ -93,7 +93,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Dipilih</strong></td>
-                                <td>: {{ $asesmen->preferred_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->preferred_date->translatedFormat('d F Y') }}</td>
                             </tr>
                         </table>
                     </div>
@@ -125,7 +125,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Daftar</strong></td>
-                                <td>: {{ $asesmen->registration_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->registration_date->translatedFormat('d F Y') }}</td>
                             </tr>
                         </table>
                     </div>

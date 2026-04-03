@@ -29,7 +29,7 @@ return new class extends Migration
                 'pra_asesmen_completed',
                 'assessed',
                 'certified',
-                'pra_pra_asesmen_started' // <-- tambah di sini
+                'pra_asesmen_started' // <-- tambah di sini
             ])->default('registered')->change();
             // Jika pakai string biasa, tidak perlu migration tambahan
         });

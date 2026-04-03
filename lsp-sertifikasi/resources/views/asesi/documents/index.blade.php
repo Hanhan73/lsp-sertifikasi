@@ -134,7 +134,7 @@ $pctWajib = round($selesai / $totalWajib * 100);
                                 <span class="badge bg-{{ $aplsatu->status_badge }}">{{ $aplsatu->status_label }}</span>
                                 @if($aplsatu->submitted_at)
                                 <span class="text-muted small ms-2">
-                                    Disubmit: {{ $aplsatu->submitted_at->format('d/m/Y H:i') }}
+                                    Disubmit: {{ $aplsatu->submitted_at->translatedFormat('d/m/Y H:i') }}
                                 </span>
                                 @endif
                                 @else
@@ -213,7 +213,7 @@ $pctWajib = round($selesai / $totalWajib * 100);
                                 <span class="badge bg-{{ $apldua->status_badge }}">{{ $apldua->status_label }}</span>
                                 @if($apldua->submitted_at)
                                 <span class="text-muted small ms-2">
-                                    Disubmit: {{ $apldua->submitted_at->format('d/m/Y H:i') }}
+                                    Disubmit: {{ $apldua->submitted_at->translatedFormat('d/m/Y H:i') }}
                                 </span>
                                 @endif
                                 {{-- Progress jawaban --}}
@@ -287,7 +287,7 @@ $pctWajib = round($selesai / $totalWajib * 100);
                                 <span class="badge bg-{{ $frak01->status_badge }}">{{ $frak01->status_label }}</span>
                                 @if($frak01->submitted_at)
                                 <span class="text-muted small ms-2">
-                                    Ditandatangani: {{ $frak01->submitted_at->format('d/m/Y H:i') }}
+                                    Ditandatangani: {{ $frak01->submitted_at->translatedFormat('d/m/Y H:i') }}
                                 </span>
                                 @endif
                                 @else
@@ -343,7 +343,7 @@ $pctWajib = round($selesai / $totalWajib * 100);
                                 @if($frak04Status === 'submitted')
                                 <span class="badge bg-warning text-dark">Banding Diajukan</span>
                                 <span class="text-muted small ms-2">
-                                    {{ $frak04->submitted_at?->format('d/m/Y H:i') }}
+                                    {{ $frak04->submitted_at?->translatedFormat('d/m/Y H:i') }}
                                 </span>
                                 @else
                                 <span class="badge bg-light text-secondary border">Belum Diajukan</span>

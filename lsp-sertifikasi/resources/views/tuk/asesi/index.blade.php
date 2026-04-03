@@ -122,7 +122,7 @@
                                     </tr>
                                     <tr>
                                         <td><i class="bi bi-calendar"></i> Didaftar:</td>
-                                        <td>{{ $firstAsesmen->created_at->format('d/m/Y') }}</td>
+                                        <td>{{ $firstAsesmen->created_at->translatedFormat('d/m/Y') }}</td>
                                     </tr>
                                     <tr>
                                         <td><i class="bi bi-credit-card"></i> Status:</td>

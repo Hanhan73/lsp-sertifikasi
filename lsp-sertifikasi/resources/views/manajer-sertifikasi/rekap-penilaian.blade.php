@@ -19,7 +19,7 @@
             <h4 class="fw-bold mb-1">Rekap Penilaian</h4>
             <div class="d-flex flex-wrap gap-3 text-muted small">
                 <span><i class="bi bi-patch-check me-1"></i>{{ $schedule->skema->name }}</span>
-                <span><i class="bi bi-calendar3 me-1"></i>{{ $schedule->assessment_date->format('d M Y') }}</span>
+                <span><i class="bi bi-calendar3 me-1"></i>{{ $schedule->assessment_date->translatedFormat('d M Y') }}</span>
                 <span><i class="bi bi-building me-1"></i>{{ $schedule->tuk->name ?? '-' }}</span>
                 <span><i class="bi bi-person-badge me-1"></i>{{ $schedule->asesor?->nama ?? '-' }}</span>
                 <span><i class="bi bi-people me-1"></i>{{ $schedule->asesmens->count() }} asesi</span>
@@ -112,7 +112,7 @@
                         <div class="fw-semibold small">{{ $obs->judul }}</div>
                         @if($hasil)
                         <div class="text-muted" style="font-size:.75rem;">
-                            {{ $hasil->file_name }} · {{ $hasil->uploaded_at->format('d M Y H:i') }}
+                            {{ $hasil->file_name }} · {{ $hasil->uploaded_at->translatedFormat('d M Y H:i') }}
                             @if($hasil->catatan)· {{ $hasil->catatan }}@endif
                         </div>
                         @else
@@ -150,7 +150,7 @@
                         <div class="fw-semibold small">{{ $porto->judul }}</div>
                         @if($hasil)
                         <div class="text-muted" style="font-size:.75rem;">
-                            {{ $hasil->file_name }} · {{ $hasil->uploaded_at->format('d M Y H:i') }}
+                            {{ $hasil->file_name }} · {{ $hasil->uploaded_at->translatedFormat('d M Y H:i') }}
                         </div>
                         @else
                         <div class="text-muted small">Belum diupload asesor</div>
@@ -230,7 +230,7 @@
             @else
             <div class="card-body">
                 <div class="small text-muted mb-3">
-                    Tanggal: <strong>{{ $beritaAcara->tanggal_pelaksanaan->format('d M Y') }}</strong>
+                    Tanggal: <strong>{{ $beritaAcara->tanggal_pelaksanaan->translatedFormat('d M Y') }}</strong>
                     @if($beritaAcara->catatan)
                     <br>Catatan: {{ $beritaAcara->catatan }}
                     @endif

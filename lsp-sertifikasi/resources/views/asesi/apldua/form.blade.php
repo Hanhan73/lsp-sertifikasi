@@ -123,7 +123,7 @@
     <i class="bi bi-check-circle-fill fs-4"></i>
     <div>
         <strong>APL-02 sudah disubmit</strong>
-        pada {{ $apldua->submitted_at?->format('d M Y H:i') }}.
+        pada {{ $apldua->submitted_at?->translatedFormat('d M Y H:i') }}.
         <span class="badge bg-{{ $apldua->status_badge }} ms-2">{{ $apldua->status_label }}</span>
     </div>
 </div>
@@ -257,7 +257,7 @@
                 <div class="text-muted small">Nama Asesor:</div>
                 <div class="fw-semibold">{{ $apldua->nama_ttd_asesor }}</div>
                 @if($apldua->tanggal_ttd_asesor)
-                <div class="text-muted small">{{ $apldua->tanggal_ttd_asesor->format('d M Y') }}</div>
+                <div class="text-muted small">{{ $apldua->tanggal_ttd_asesor->translatedFormat('d M Y') }}</div>
                 @endif
             </div>
             @endif

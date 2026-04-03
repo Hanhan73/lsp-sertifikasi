@@ -134,10 +134,10 @@
                             @endif
                         </td>
                         <td>
-                            {{ $payment->created_at->format('d/m/Y H:i') }}<br>
+                            {{ $payment->created_at->translatedFormat('d/m/Y H:i') }}<br>
                             @if($payment->verified_at)
                             <small class="text-success">
-                                <i class="bi bi-check"></i> {{ $payment->verified_at->format('d/m/Y H:i') }}
+                                <i class="bi bi-check"></i> {{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}
                             </small>
                             @endif
                         </td>

@@ -22,7 +22,7 @@ class AdminController extends Controller
             'pending_mulai'        => Asesmen::where('status', 'data_completed')->count(),
 
             // Sudah dimulai, sedang isi dokumen
-            'sedang_asesmen'       => Asesmen::where('status', 'pra_pra_asesmen_started')->count(),
+            'sedang_asesmen'       => Asesmen::where('status', 'pra_asesmen_started')->count(),
 
             // Sudah dijadwalkan
             'scheduled'            => Asesmen::where('status', 'scheduled')->count(),

@@ -78,7 +78,7 @@
                             <br><small class="text-muted">+ Pelatihan</small>
                             @endif
                         </td>
-                        <td>{{ $asesmen->registration_date->format('d/m/Y') }}</td>
+                        <td>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                         <td>
                             <a href="{{ route('admin.mandiri.verify', $asesmen) }}" class="btn btn-sm btn-success"
                                 data-bs-toggle="tooltip" title="Verifikasi & Tetapkan Biaya">

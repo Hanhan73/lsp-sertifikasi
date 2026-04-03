@@ -68,12 +68,12 @@
                     </tr>
                     <tr>
                         <td><strong>Tanggal Dibuat</strong></td>
-                        <td>: {{ $payment->created_at->format('d/m/Y H:i') }}</td>
+                        <td>: {{ $payment->created_at->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     @if($payment->verified_at)
                     <tr>
                         <td><strong>Tanggal Verifikasi</strong></td>
-                        <td>: {{ $payment->verified_at->format('d/m/Y H:i') }}</td>
+                        <td>: {{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     @endif
                 </table>
@@ -241,7 +241,7 @@
                                 <small {{ $p->id === $payment->id ? '' : 'class=text-muted' }}>
                                     Rp {{ number_format($p->amount, 0, ',', '.') }}
                                     <br>
-                                    {{ $p->created_at->format('d/m/Y H:i') }}
+                                    {{ $p->created_at->translatedFormat('d/m/Y H:i') }}
                                 </small>
                             </div>
                             <div>
@@ -306,7 +306,7 @@
                                 <i class="bi bi-{{ $payment->is_auto_verified ? 'robot' : 'person-check' }}"></i>
                                 {{ $payment->is_auto_verified ? 'Auto-Verified' : 'Manual Verification' }}
                             </strong>
-                            <br><small class="text-muted">{{ $payment->verified_at->format('d/m/Y H:i') }}</small>
+                            <br><small class="text-muted">{{ $payment->verified_at->translatedFormat('d/m/Y H:i') }}</small>
                             @if($payment->verifier)
                             <br><span class="badge bg-info">{{ $payment->verifier->name }}</span>
                             @endif
@@ -319,7 +319,7 @@
                         </div>
                         <div class="timeline-content">
                             <strong><i class="bi bi-cash"></i> Pembayaran Dibuat</strong>
-                            <br><small class="text-muted">{{ $payment->created_at->format('d/m/Y H:i') }}</small>
+                            <br><small class="text-muted">{{ $payment->created_at->translatedFormat('d/m/Y H:i') }}</small>
                             <br><span class="badge bg-success">Rp
                                 {{ number_format($payment->amount, 0, ',', '.') }}</span>
                         </div>

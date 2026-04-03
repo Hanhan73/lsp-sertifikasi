@@ -35,7 +35,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Pendaftaran:</strong></td>
-                                <td>{{ $asesmen->registration_date?->format('d M Y') ?? '-' }}</td>
+                                <td>{{ $asesmen->registration_date?->translatedFormat('d M Y') ?? '-' }}</td>
                             </tr>
                         </table>
                     </div>
@@ -152,7 +152,7 @@
                         <tbody>
                             @foreach($paymentInfo['verified_payments'] as $payment)
                             <tr>
-                                <td>{{ $payment->created_at->format('d M Y H:i') }}</td>
+                                <td>{{ $payment->created_at->translatedFormat('d M Y H:i') }}</td>
                                 <td>
                                     @if($payment->payment_phase === 'phase1')
                                         <span class="badge bg-warning">Fase 1 (50%)</span>
@@ -238,7 +238,7 @@
                                     @if($member->schedule)
                                         <small>
                                             <i class="bi bi-calendar3"></i>
-                                            {{ $member->schedule->assessment_date->format('d M Y') }}<br>
+                                            {{ $member->schedule->assessment_date->translatedFormat('d M Y') }}<br>
                                             <i class="bi bi-clock"></i>
                                             {{ $member->schedule->start_time }} - {{ $member->schedule->end_time }}
                                         </small>

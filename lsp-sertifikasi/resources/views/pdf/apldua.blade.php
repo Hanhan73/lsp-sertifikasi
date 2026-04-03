@@ -292,7 +292,7 @@
                 @endif
             </div>
             <div class="sig-date">
-                {{ $apldua->tanggal_ttd_asesi?->format('d-m-Y') ?? '' }}
+                {{ $apldua->tanggal_ttd_asesi?->translatedFormat('d-m-Y') ?? '' }}
             </div>
         </td>
     </tr>
@@ -330,7 +330,7 @@
                 @endif
             </div>
             <div class="sig-date">
-                {{ $apldua->tanggal_ttd_asesor?->format('d-m-Y') ?? '' }}
+                {{ $apldua->tanggal_ttd_asesor?->translatedFormat('d-m-Y') ?? '' }}
             </div>
         </td>
     </tr>

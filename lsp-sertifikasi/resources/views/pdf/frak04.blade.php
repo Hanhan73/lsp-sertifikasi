@@ -377,7 +377,7 @@
                     </span>
                     <span class="sig-label">Tanggal :&nbsp;</span>
                     <span class="sig-tanggal">
-                        @if($frak04->tanggal_ttd_asesi){{ $frak04->tanggal_ttd_asesi->format('d-m-Y') }}@endif
+                        @if($frak04->tanggal_ttd_asesi){{ $frak04->tanggal_ttd_asesi->translatedFormat('d-m-Y') }}@endif
                     </span>
                 </div>
 

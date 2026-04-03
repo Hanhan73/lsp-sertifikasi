@@ -63,7 +63,7 @@
                         <td>
                             <small class="text-success">
                                 <i class="bi bi-check-circle"></i>
-                                {{ $asesmen->admin_verified_at->format('d/m/Y') }}
+                                {{ $asesmen->admin_verified_at->translatedFormat('d/m/Y') }}
                             </small>
                         </td>
                         <td>
@@ -135,7 +135,7 @@
                                 <tbody>
                                     @foreach($schedules as $schedule)
                                     <tr>
-                                        <td>{{ $schedule->assessment_date->format('d/m/Y') }}</td>
+                                        <td>{{ $schedule->assessment_date->translatedFormat('d/m/Y') }}</td>
                                         <td>{{ $schedule->start_time }} - {{ $schedule->end_time }}</td>
                                         <td>
                                             <span class="badge bg-primary">
@@ -145,7 +145,7 @@
                                         <td>{{ $schedule->location }}</td>
                                         <td>
                                             <button class="btn btn-sm btn-info"
-                                                onclick="showScheduleDetail({{ $schedule->id }}, '{{ $schedule->assessment_date->format('d/m/Y') }}', '{{ $schedule->start_time }} - {{ $schedule->end_time }}', '{{ $schedule->location }}', '{{ $schedule->skema->name }}', '{{ $schedule->asesmens->pluck('full_name')->join(', ') ?: 'Belum ada peserta' }}')"
+                                                onclick="showScheduleDetail({{ $schedule->id }}, '{{ $schedule->assessment_date->translatedFormat('d/m/Y') }}', '{{ $schedule->start_time }} - {{ $schedule->end_time }}', '{{ $schedule->location }}', '{{ $schedule->skema->name }}', '{{ $schedule->asesmens->pluck('full_name')->join(', ') ?: 'Belum ada peserta' }}')"
                                                 data-bs-toggle="tooltip" title="Lihat detail jadwal">
                                                 <i class="bi bi-eye"></i> Detail
                                             </button>

@@ -47,7 +47,7 @@
                     <div class="col-md-12"><div class="info-label">Nama Lengkap</div><div class="info-value fs-5">{{ $aplsatu->nama_lengkap }}</div></div>
                     <div class="col-md-6"><div class="info-label">No. KTP / NIK</div><div class="info-value font-monospace">{{ $aplsatu->nik }}</div></div>
                     <div class="col-md-3"><div class="info-label">Tempat Lahir</div><div class="info-value">{{ $aplsatu->tempat_lahir }}</div></div>
-                    <div class="col-md-3"><div class="info-label">Tanggal Lahir</div><div class="info-value">{{ $aplsatu->tanggal_lahir?->format('d M Y') ?? '-' }}</div></div>
+                    <div class="col-md-3"><div class="info-label">Tanggal Lahir</div><div class="info-value">{{ $aplsatu->tanggal_lahir?->translatedFormat('d M Y') ?? '-' }}</div></div>
                     <div class="col-md-3"><div class="info-label">Jenis Kelamin</div><div class="info-value">{{ $aplsatu->jenis_kelamin }}</div></div>
                     <div class="col-md-3"><div class="info-label">Kebangsaan</div><div class="info-value">{{ $aplsatu->kebangsaan ?? 'Indonesia' }}</div></div>
                     <div class="col-md-6"><div class="info-label">Kualifikasi Pendidikan</div><div class="info-value">{{ $aplsatu->kualifikasi_pendidikan ?? '-' }}</div></div>
@@ -163,8 +163,8 @@
                 <div class="small">
                     <div class="info-label">Nama</div><div class="info-value mb-2">{{ $aplsatu->nama_ttd_pemohon ?? $aplsatu->nama_lengkap }}</div>
                     <div class="info-label">Tanggal TTD</div>
-                    <div class="info-value">{{ $aplsatu->tanggal_ttd_pemohon ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->format('d M Y') : '-' }}</div>
-                    <div class="mt-2 text-muted small"><i class="bi bi-clock me-1"></i>Submit: {{ $aplsatu->submitted_at?->format('d M Y H:i') ?? '-' }}</div>
+                    <div class="info-value">{{ $aplsatu->tanggal_ttd_pemohon ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_pemohon)->translatedFormat('d M Y') : '-' }}</div>
+                    <div class="mt-2 text-muted small"><i class="bi bi-clock me-1"></i>Submit: {{ $aplsatu->submitted_at?->translatedFormat('d M Y H:i') ?? '-' }}</div>
                 </div>
             </div>
         </div>
@@ -179,9 +179,9 @@
                 <div class="small">
                     <div class="info-label">Nama Admin</div><div class="info-value mb-2">{{ $aplsatu->nama_ttd_admin ?? '-' }}</div>
                     <div class="info-label">Tanggal Verifikasi</div>
-                    <div class="info-value">{{ $aplsatu->tanggal_ttd_admin ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->format('d M Y') : '-' }}</div>
+                    <div class="info-value">{{ $aplsatu->tanggal_ttd_admin ? \Carbon\Carbon::parse($aplsatu->tanggal_ttd_admin)->translatedFormat('d M Y') : '-' }}</div>
                     @if($aplsatu->verified_at)
-                    <div class="mt-2 text-muted small"><i class="bi bi-clock me-1"></i>Diverifikasi: {{ $aplsatu->verified_at->format('d M Y H:i') }}@if($aplsatu->verifier) oleh <strong>{{ $aplsatu->verifier->name }}</strong>@endif</div>
+                    <div class="mt-2 text-muted small"><i class="bi bi-clock me-1"></i>Diverifikasi: {{ $aplsatu->verified_at->translatedFormat('d M Y H:i') }}@if($aplsatu->verifier) oleh <strong>{{ $aplsatu->verifier->name }}</strong>@endif</div>
                     @endif
                 </div>
             </div>
@@ -205,9 +205,9 @@
         <div class="card mb-3 shadow-sm">
             <div class="card-body text-center py-4">
                 <span class="badge bg-{{ $aplsatu->status_badge }} fs-6 px-3 py-2">{{ $aplsatu->status_label }}</span>
-                @if($aplsatu->submitted_at)<div class="text-muted small mt-2"><i class="bi bi-send me-1"></i>Submit: {{ $aplsatu->submitted_at->format('d M Y H:i') }}</div>@endif
+                @if($aplsatu->submitted_at)<div class="text-muted small mt-2"><i class="bi bi-send me-1"></i>Submit: {{ $aplsatu->submitted_at->translatedFormat('d M Y H:i') }}</div>@endif
                 @if($aplsatu->verified_at)
-                <div class="text-muted small"><i class="bi bi-check2-circle me-1"></i>Verified: {{ $aplsatu->verified_at->format('d M Y H:i') }}</div>
+                <div class="text-muted small"><i class="bi bi-check2-circle me-1"></i>Verified: {{ $aplsatu->verified_at->translatedFormat('d M Y H:i') }}</div>
                 @if($aplsatu->verifier)<div class="text-muted small">oleh <strong>{{ $aplsatu->verifier->name }}</strong></div>@endif
                 @endif
 

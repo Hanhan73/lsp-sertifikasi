@@ -137,7 +137,7 @@
                     </span>
                 </div>
                 <div class="info-row"><span class="info-label">Asesor</span><span class="info-value">{{ $asesmen->schedule?->asesor?->nama ?? '-' }}</span></div>
-                <div class="info-row"><span class="info-label">Tgl Daftar</span><span class="info-value">{{ $asesmen->registration_date->format('d M Y') }}</span></div>
+                <div class="info-row"><span class="info-label">Tgl Daftar</span><span class="info-value">{{ $asesmen->registration_date->translatedFormat('d M Y') }}</span></div>
                 @if($asesmen->is_collective)
                 <div class="info-row"><span class="info-label">Didaftarkan oleh</span><span class="info-value">{{ $asesmen->registrar->name ?? '-' }}</span></div>
                 @endif
@@ -297,7 +297,7 @@
                         {{-- Informasi Pendaftaran --}}
                         <div class="section-heading">Informasi Pendaftaran</div>
                         <div class="info-row"><span class="info-label">No. Registrasi</span><span class="info-value font-monospace">#{{ $asesmen->id }}</span></div>
-                        <div class="info-row"><span class="info-label">Tanggal Daftar</span><span class="info-value">{{ $asesmen->registration_date->format('d F Y') }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Daftar</span><span class="info-value">{{ $asesmen->registration_date->translatedFormat('d F Y') }}</span></div>
                         <div class="info-row">
                             <span class="info-label">Tipe Pendaftaran</span>
                             <span class="info-value">
@@ -322,14 +322,14 @@
                         @endif
                         <div class="info-row"><span class="info-label">Skema</span><span class="info-value">{{ $asesmen->skema->name ?? '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Kode Skema</span><span class="info-value font-monospace small">{{ $asesmen->skema->nomor_skema ?? '-' }}</span></div>
-                        <div class="info-row"><span class="info-label">Tanggal Pilihan</span><span class="info-value">{{ $asesmen->preferred_date ? $asesmen->preferred_date->format('d F Y') : '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Pilihan</span><span class="info-value">{{ $asesmen->preferred_date ? $asesmen->preferred_date->translatedFormat('d F Y') : '-' }}</span></div>
 
                         {{-- Data Pribadi --}}
                         <div class="section-heading mt-4">Data Pribadi</div>
                         <div class="info-row"><span class="info-label">Nama Lengkap</span><span class="info-value">{{ $asesmen->full_name }}</span></div>
                         <div class="info-row"><span class="info-label">NIK</span><span class="info-value font-monospace">{{ $asesmen->nik }}</span></div>
                         <div class="info-row"><span class="info-label">Tempat Lahir</span><span class="info-value">{{ $asesmen->birth_place }}</span></div>
-                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $asesmen->birth_date->format('d F Y') }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $asesmen->birth_date->translatedFormat('d F Y') }}</span></div>
                         <div class="info-row"><span class="info-label">Jenis Kelamin</span><span class="info-value">{{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</span></div>
                         <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ $asesmen->email ?? $asesmen->user->email ?? '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Telepon</span><span class="info-value">{{ $asesmen->phone }}</span></div>
@@ -433,7 +433,7 @@
                     {{ $apl->status === 'verified' ? 'status-bar-verified' : ($apl->status === 'submitted' ? 'status-bar-submitted' : 'status-bar-default') }}">
                     <span class="badge bg-{{ $apl->status_badge }} fs-6">{{ $apl->status_label }}</span>
                     @if($apl->submitted_at)
-                    <span class="small text-muted">Submit: {{ $apl->submitted_at->format('d M Y H:i') }}</span>
+                    <span class="small text-muted">Submit: {{ $apl->submitted_at->translatedFormat('d M Y H:i') }}</span>
                     @endif
                     <div class="ms-auto d-flex gap-2">
                         <a href="{{ route('admin.apl01.pdf', [$apl, 'preview' => 1]) }}" target="_blank"
@@ -460,7 +460,7 @@
                         <div class="info-row"><span class="info-label">Nama Lengkap</span><span class="info-value">{{ $apl->nama_lengkap }}</span></div>
                         <div class="info-row"><span class="info-label">NIK</span><span class="info-value font-monospace">{{ $apl->nik }}</span></div>
                         <div class="info-row"><span class="info-label">Tempat Lahir</span><span class="info-value">{{ $apl->tempat_lahir }}</span></div>
-                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $apl->tanggal_lahir?->format('d M Y') ?? '-' }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $apl->tanggal_lahir?->translatedFormat('d M Y') ?? '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Jenis Kelamin</span><span class="info-value">{{ $apl->jenis_kelamin }}</span></div>
                         <div class="info-row"><span class="info-label">Kebangsaan</span><span class="info-value">{{ $apl->kebangsaan ?? 'Indonesia' }}</span></div>
                         <div class="info-row"><span class="info-label">Kualifikasi Pendidikan</span><span class="info-value">{{ $apl->kualifikasi_pendidikan ?? '-' }}</span></div>
@@ -570,7 +570,7 @@
                             <img src="{{ $apl->ttd_pemohon_image }}" class="ttd-thumb" alt="TTD Pemohon">
                             <div class="small text-muted">
                                 <div class="fw-semibold text-dark">{{ $apl->nama_ttd_pemohon }}</div>
-                                {{ $apl->tanggal_ttd_pemohon ? \Carbon\Carbon::parse($apl->tanggal_ttd_pemohon)->format('d M Y') : '-' }}
+                                {{ $apl->tanggal_ttd_pemohon ? \Carbon\Carbon::parse($apl->tanggal_ttd_pemohon)->translatedFormat('d M Y') : '-' }}
                             </div>
                         </div>
                         @endif
@@ -582,9 +582,9 @@
                             <img src="{{ $apl->ttd_admin_image }}" class="ttd-thumb" style="border-color:#bbf7d0;" alt="TTD Admin">
                             <div class="small text-muted">
                                 <div class="fw-semibold text-dark">{{ $apl->nama_ttd_admin }}</div>
-                                {{ $apl->tanggal_ttd_admin ? \Carbon\Carbon::parse($apl->tanggal_ttd_admin)->format('d M Y') : '-' }}
+                                {{ $apl->tanggal_ttd_admin ? \Carbon\Carbon::parse($apl->tanggal_ttd_admin)->translatedFormat('d M Y') : '-' }}
                                 @if($apl->verified_at)
-                                <div class="mt-1"><i class="bi bi-clock me-1"></i>{{ $apl->verified_at->format('d M Y H:i') }}
+                                <div class="mt-1"><i class="bi bi-clock me-1"></i>{{ $apl->verified_at->translatedFormat('d M Y H:i') }}
                                     @if($apl->verifier) — <strong>{{ $apl->verifier->name }}</strong>@endif
                                 </div>
                                 @endif
@@ -746,7 +746,7 @@
                      style="background:#fffbeb; border:1px solid #fde68a;">
                     <span class="badge bg-{{ $ak04->status_badge }} fs-6">{{ $ak04->status_label }}</span>
                     @if($ak04->submitted_at)
-                    <span class="small text-muted">Diajukan: {{ $ak04->submitted_at->format('d M Y H:i') }}</span>
+                    <span class="small text-muted">Diajukan: {{ $ak04->submitted_at->translatedFormat('d M Y H:i') }}</span>
                     @endif
                     <div class="ms-auto d-flex gap-2">
                         <a href="{{ route('admin.frak04.pdf', [$ak04, 'preview' => 1]) }}" target="_blank"
@@ -794,7 +794,7 @@
                             <img src="{{ $ak04->ttd_asesi_image }}" class="ttd-thumb">
                             <div class="small text-muted">
                                 <div class="fw-semibold text-dark">{{ $ak04->nama_ttd_asesi }}</div>
-                                {{ $ak04->tanggal_ttd_asesi?->format('d M Y H:i') }}
+                                {{ $ak04->tanggal_ttd_asesi?->translatedFormat('d M Y H:i') }}
                             </div>
                         </div>
                         @endif

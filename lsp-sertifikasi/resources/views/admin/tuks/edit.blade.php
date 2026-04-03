@@ -217,11 +217,11 @@
                     </tr>
                     <tr>
                         <td><strong>Dibuat:</strong></td>
-                        <td>{{ $tuk->created_at->format('d/m/Y H:i') }}</td>
+                        <td>{{ $tuk->created_at->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Update Terakhir:</strong></td>
-                        <td>{{ $tuk->updated_at->format('d/m/Y H:i') }}</td>
+                        <td>{{ $tuk->updated_at->translatedFormat('d/m/Y H:i') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Status:</strong></td>

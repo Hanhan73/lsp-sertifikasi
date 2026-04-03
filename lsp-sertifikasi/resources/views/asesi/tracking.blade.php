@@ -66,7 +66,7 @@
                         <div class="timeline-content">
                             <h6>Pendaftaran</h6>
                             <p class="text-muted mb-1">
-                                {{ $asesmen->registration_date->format('d F Y, H:i') }}
+                                {{ $asesmen->registration_date->translatedFormat('d F Y, H:i') }}
                             </p>
                             @if($asesmen->is_collective && $asesmen->registrar)
                             <small class="text-muted">Didaftarkan oleh: {{ $asesmen->registrar->name }}</small>
@@ -99,7 +99,7 @@
                         <div class="timeline-content">
                             <h6>Verifikasi TUK</h6>
                             @if($asesmen->tuk_verified_at)
-                            <p class="text-muted mb-1">{{ $asesmen->tuk_verified_at->format('d F Y, H:i') }}</p>
+                            <p class="text-muted mb-1">{{ $asesmen->tuk_verified_at->translatedFormat('d F Y, H:i') }}</p>
                             @if($asesmen->tukVerifier)
                             <small class="text-muted">Oleh: {{ $asesmen->tukVerifier->name }}</small>
                             @endif
@@ -118,7 +118,7 @@
                         <div class="timeline-content">
                             <h6>Penetapan Biaya</h6>
                             @if($asesmen->admin_verified_at)
-                            <p class="text-muted mb-1">{{ $asesmen->admin_verified_at->format('d F Y, H:i') }}</p>
+                            <p class="text-muted mb-1">{{ $asesmen->admin_verified_at->translatedFormat('d F Y, H:i') }}</p>
                             @if($asesmen->fee_amount)
                             <p class="mb-1">
                                 <strong>Biaya:</strong> Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
@@ -152,7 +152,7 @@
                             </h6>
                             @if($asesmen->payment)
                             <p class="text-muted mb-1">
-                                {{ $asesmen->payment->verified_at ? $asesmen->payment->verified_at->format('d F Y, H:i') : 'Menunggu verifikasi' }}
+                                {{ $asesmen->payment->verified_at ? $asesmen->payment->verified_at->translatedFormat('d F Y, H:i') : 'Menunggu verifikasi' }}
                             </p>
                             <p class="mb-1">
                                 <strong>Jumlah:</strong> Rp {{ number_format($asesmen->payment->amount, 0, ',', '.') }}
@@ -210,7 +210,7 @@
                         <div class="timeline-content">
                             <h6>Penjadwalan Asesmen</h6>
                             @if($asesmen->schedule)
-                            <p class="text-muted mb-1">{{ $asesmen->schedule->assessment_date->format('d F Y') }}</p>
+                            <p class="text-muted mb-1">{{ $asesmen->schedule->assessment_date->translatedFormat('d F Y') }}</p>
                             <p class="mb-1">
                                 <strong>Waktu:</strong> {{ $asesmen->schedule->start_time }} -
                                 {{ $asesmen->schedule->end_time }}
@@ -250,7 +250,7 @@
                         <div class="timeline-content">
                             <h6>Asesmen</h6>
                             @if($asesmen->assessed_at)
-                            <p class="text-muted mb-1">{{ $asesmen->assessed_at->format('d F Y') }}</p>
+                            <p class="text-muted mb-1">{{ $asesmen->assessed_at->translatedFormat('d F Y') }}</p>
                             @if($asesmen->result)
                             <p class="mb-1">
                                 <strong>Hasil:</strong>
@@ -276,7 +276,7 @@
                         <div class="timeline-content">
                             <h6>Sertifikat</h6>
                             @if($asesmen->certificate)
-                            <p class="text-muted mb-1">{{ $asesmen->certificate->issue_date->format('d F Y') }}</p>
+                            <p class="text-muted mb-1">{{ $asesmen->certificate->issue_date->translatedFormat('d F Y') }}</p>
                             <p class="mb-0">
                                 <strong>No. Sertifikat:</strong> {{ $asesmen->certificate->certificate_number }}
                             </p>

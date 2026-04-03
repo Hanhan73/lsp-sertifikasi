@@ -256,7 +256,7 @@
                         </div>
                     </div>
                     <div class="text-muted" style="font-size:.7rem;min-width:70px;text-align:right;">
-                        {{ \Carbon\Carbon::parse($batch->created_date)->format('d M Y') }}
+                        {{ \Carbon\Carbon::parse($batch->created_date)->translatedFormat('d M Y') }}
                     </div>
                 </div>
                 @endforeach
@@ -377,10 +377,10 @@
         <div class="panel-row">
             <div class="text-center" style="min-width:44px;">
                 <div style="font-size:1.2rem;font-weight:800;color:var(--c-blue);line-height:1;">
-                    {{ $schedule->assessment_date->format('d') }}
+                    {{ $schedule->assessment_date->translatedFormat('d') }}
                 </div>
                 <div style="font-size:.62rem;color:var(--c-slate);text-transform:uppercase;">
-                    {{ $schedule->assessment_date->format('M Y') }}
+                    {{ $schedule->assessment_date->translatedFormat('M Y') }}
                 </div>
             </div>
             <div style="flex:1;min-width:0;">

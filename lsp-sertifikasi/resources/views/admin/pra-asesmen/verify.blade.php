@@ -25,7 +25,7 @@
                         </p>
                         <p class="mb-1">
                             <strong>Tanggal Verifikasi:</strong>
-                            {{ $asesmen->tuk_verified_at->format('d F Y H:i') }}
+                            {{ $asesmen->tuk_verified_at->translatedFormat('d F Y H:i') }}
                         </p>
                     </div>
                     <div class="col-md-6">
@@ -57,7 +57,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Daftar</strong></td>
-                                <td>: {{ $asesmen->registration_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->registration_date->translatedFormat('d F Y') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Type</strong></td>
@@ -115,7 +115,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Pilihan</strong></td>
-                                <td>: {{ $asesmen->preferred_date ? $asesmen->preferred_date->format('d F Y') : '-' }}
+                                <td>: {{ $asesmen->preferred_date ? $asesmen->preferred_date->translatedFormat('d F Y') : '-' }}
                                 </td>
                             </tr>
                         </table>
@@ -147,7 +147,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Lahir</strong></td>
-                                <td>: {{ $asesmen->birth_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->birth_date->translatedFormat('d F Y') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Jenis Kelamin</strong></td>

@@ -109,7 +109,7 @@
                         </td>
                         <td>
                             <small class="text-muted">
-                                {{ $batch['registration_date'] ? $batch['registration_date']->format('d/m/Y') : '-' }}
+                                {{ $batch['registration_date'] ? $batch['registration_date']->translatedFormat('d/m/Y') : '-' }}
                             </small>
                         </td>
                         <td>

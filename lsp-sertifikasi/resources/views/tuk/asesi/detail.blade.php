@@ -26,7 +26,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Daftar</strong></td>
-                                <td>: {{ $asesmen->registration_date->format('d F Y') }}</td>
+                                <td>: {{ $asesmen->registration_date->translatedFormat('d F Y') }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Jenis Pendaftaran</strong></td>
@@ -60,7 +60,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Pilihan</strong></td>
-                                <td>: {{ $asesmen->preferred_date ? $asesmen->preferred_date->format('d F Y') : '-' }}
+                                <td>: {{ $asesmen->preferred_date ? $asesmen->preferred_date->translatedFormat('d F Y') : '-' }}
                                 </td>
                             </tr>
                         </table>
@@ -132,7 +132,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Lahir</strong></td>
-                                <td>: {{ $asesmen->birth_date ? $asesmen->birth_date->format('d F Y') : '-' }}</td>
+                                <td>: {{ $asesmen->birth_date ? $asesmen->birth_date->translatedFormat('d F Y') : '-' }}</td>
                             </tr>
                             <tr>
                                 <td><strong>Jenis Kelamin</strong></td>
@@ -263,7 +263,7 @@
                             @if($phase1->verified_at)
                             <tr>
                                 <td>Tanggal:</td>
-                                <td>{{ $phase1->verified_at->format('d M Y H:i') }}</td>
+                                <td>{{ $phase1->verified_at->translatedFormat('d M Y H:i') }}</td>
                             </tr>
                             @endif
                         </table>
@@ -293,7 +293,7 @@
                             @if($phase2->verified_at)
                             <tr>
                                 <td>Tanggal:</td>
-                                <td>{{ $phase2->verified_at->format('d M Y H:i') }}</td>
+                                <td>{{ $phase2->verified_at->translatedFormat('d M Y H:i') }}</td>
                             </tr>
                             @endif
                         </table>
@@ -323,7 +323,7 @@
                     @if($asesmen->payment && $asesmen->payment->verified_at)
                     <tr>
                         <td><strong>Tanggal Bayar</strong></td>
-                        <td>: {{ $asesmen->payment->verified_at->format('d F Y H:i') }}</td>
+                        <td>: {{ $asesmen->payment->verified_at->translatedFormat('d F Y H:i') }}</td>
                     </tr>
                     @endif
                     @if($asesmen->payment && $asesmen->payment->transaction_id)
@@ -348,7 +348,7 @@
                 <table class="table table-borderless table-sm">
                     <tr>
                         <td width="150"><strong>Tanggal</strong></td>
-                        <td>: {{ $asesmen->schedule->assessment_date->format('d F Y') }}</td>
+                        <td>: {{ $asesmen->schedule->assessment_date->translatedFormat('d F Y') }}</td>
                     </tr>
                     <tr>
                         <td><strong>Waktu</strong></td>
@@ -388,7 +388,7 @@
                     @if($asesmen->assessed_at)
                     <tr>
                         <td><strong>Tanggal</strong></td>
-                        <td>: {{ $asesmen->assessed_at->format('d F Y') }}</td>
+                        <td>: {{ $asesmen->assessed_at->translatedFormat('d F Y') }}</td>
                     </tr>
                     @endif
                     @if($asesmen->assessor)
@@ -455,7 +455,7 @@
                 </p>
                 <p class="mb-1">
                     <strong>Tanggal:</strong><br>
-                    {{ $asesmen->tuk_verified_at->format('d F Y H:i') }}
+                    {{ $asesmen->tuk_verified_at->translatedFormat('d F Y H:i') }}
                 </p>
                 @if($asesmen->tuk_verification_notes)
                 <p class="mb-0">

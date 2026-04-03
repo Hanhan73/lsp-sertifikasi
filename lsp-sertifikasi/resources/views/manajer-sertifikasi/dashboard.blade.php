@@ -75,10 +75,10 @@
                         <div class="text-center flex-shrink-0"
                              style="min-width:46px;background:#f1f5f9;border-radius:8px;padding:6px;">
                             <div class="fw-bold text-primary" style="font-size:1.2rem;line-height:1;">
-                                {{ $s->assessment_date->format('d') }}
+                                {{ $s->assessment_date->translatedFormat('d') }}
                             </div>
                             <div class="text-muted" style="font-size:.68rem;text-transform:uppercase;">
-                                {{ $s->assessment_date->format('M') }}
+                                {{ $s->assessment_date->translatedFormat('M') }}
                             </div>
                         </div>
                         {{-- Info --}}

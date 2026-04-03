@@ -353,7 +353,7 @@
                                     <span><i class="bi bi-award me-1"></i>{{ $first->skema?->name ?? '-' }}</span>
                                     <span><i class="bi bi-people me-1"></i>{{ $total }} peserta</span>
                                     <span><i
-                                            class="bi bi-calendar me-1"></i>{{ $first->registration_date->format('d M Y') }}</span>
+                                            class="bi bi-calendar me-1"></i>{{ $first->registration_date->translatedFormat('d M Y') }}</span>
 
                                     {{-- Progress dokumen mini --}}
                                     <span class="ms-2">

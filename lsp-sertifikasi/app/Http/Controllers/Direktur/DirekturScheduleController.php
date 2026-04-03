@@ -90,22 +90,28 @@ class DirekturScheduleController extends Controller
 
         DB::beginTransaction();
         try {
-            // 1. Generate nomor SK
-            $skNumber = $this->skGenerator->generateSkNumber($schedule);
 
-            // 2. Update jadwal
+            // 1. set dulu approved_at
             $schedule->update([
                 'approval_status' => 'approved',
                 'approval_notes'  => $request->input('notes'),
                 'approved_by'     => auth()->id(),
                 'approved_at'     => now(),
-                'sk_number'       => $skNumber,
             ]);
 
-            // 3. Update semua asesi ke 'scheduled'
+            // 2. baru generate nomor SK
+            $skNumber = $this->skGenerator->generateSkNumber($schedule);
+
+            // 3. update sk_number
+            $schedule->update([
+                'sk_number' => $skNumber,
+            ]);
+
+
+            // 4. Update semua asesi ke 'scheduled'
             $schedule->asesmens()->update(['status' => 'scheduled']);
 
-            // 4. Generate SK PDF
+            // 5. Generate SK PDF
             $skPath = $this->skGenerator->generate($schedule->fresh(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy']));
             $schedule->update(['sk_path' => $skPath]);
 

@@ -66,7 +66,7 @@
                 @if($skExpired)
                 <div class="alert alert-danger border-0 py-2 mb-3 small">
                     <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                    SK kadaluarsa sejak {{ $skValid->format('d M Y') }}. Upload SK baru.
+                    SK kadaluarsa sejak {{ $skValid->translatedFormat('d M Y') }}. Upload SK baru.
                 </div>
                 @elseif($skNearExpiry)
                 <div class="alert alert-warning border-0 py-2 mb-3 small">
@@ -83,12 +83,12 @@
                     </tr>
                     <tr>
                         <td class="text-muted">Tanggal SK</td>
-                        <td>{{ $asesor->sk_pengangkatan_date?->format('d M Y') ?? '—' }}</td>
+                        <td>{{ $asesor->sk_pengangkatan_date?->translatedFormat('d M Y') ?? '—' }}</td>
                     </tr>
                     <tr>
                         <td class="text-muted">Berlaku Hingga</td>
                         <td class="{{ $skExpired ? 'text-danger fw-bold' : '' }}">
-                            {{ $skValid ? $skValid->format('d M Y') : 'Tidak ditentukan' }}
+                            {{ $skValid ? $skValid->translatedFormat('d M Y') : 'Tidak ditentukan' }}
                         </td>
                     </tr>
                     <tr>
@@ -187,7 +187,7 @@
                         @foreach($schedules as $schedule)
                         <tr>
                             <td class="ps-4">
-                                <div class="fw-semibold small">{{ $schedule->assessment_date->format('d M Y') }}</div>
+                                <div class="fw-semibold small">{{ $schedule->assessment_date->translatedFormat('d M Y') }}</div>
                                 <div class="text-muted" style="font-size:.73rem;">
                                     {{ $schedule->start_time }} – {{ $schedule->end_time }}
                                 </div>

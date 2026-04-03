@@ -120,10 +120,10 @@
                                 @endif
                             </td>
                             <td class="text-center" style="font-size:.78rem;color:#6b7280">
-                                {{ $startedAt ? \Carbon\Carbon::parse($startedAt)->format('H:i') : '—' }}
+                                {{ $startedAt ? \Carbon\Carbon::parse($startedAt)->translatedFormat('H:i') : '—' }}
                             </td>
                             <td class="text-center" style="font-size:.78rem;color:#6b7280">
-                                {{ $submittedAt ? \Carbon\Carbon::parse($submittedAt)->format('H:i') : '—' }}
+                                {{ $submittedAt ? \Carbon\Carbon::parse($submittedAt)->translatedFormat('H:i') : '—' }}
                             </td>
                         </tr>
                         @endforeach

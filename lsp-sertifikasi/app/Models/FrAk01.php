@@ -83,7 +83,7 @@ class FrAk01 extends Model
             'submitted' => 'Sudah Disubmit',
             'verified'  => 'Sudah Diverifikasi',
             'approved'  => 'Disetujui',
-            ';returned'  => 'Ditolak / Dikembalikan',
+            'returned'  => 'Perlu Revisi',
             default     => '-',
         };
     }

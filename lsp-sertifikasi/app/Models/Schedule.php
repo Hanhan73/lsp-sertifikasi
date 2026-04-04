@@ -34,6 +34,7 @@ class Schedule extends Model
         // SK
         'sk_number',
         'sk_path',
+        'assessment_start',
     ];
 
     protected $casts = [
@@ -41,6 +42,7 @@ class Schedule extends Model
         'approved_at'     => 'datetime',
         'rejected_at'     => 'datetime',
         'assigned_at'     => 'datetime',
+        'assessment_start' => 'boolean',
     ];
 
     // =========================================================================

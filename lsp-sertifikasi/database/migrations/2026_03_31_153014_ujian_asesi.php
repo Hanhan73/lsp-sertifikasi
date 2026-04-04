@@ -10,7 +10,7 @@ return new class extends Migration
     {
         // Tambah durasi_menit ke distribusi_soal_teori
         Schema::table('distribusi_soal_teori', function (Blueprint $table) {
-            $table->unsignedSmallInteger('durasi_menit')->default(60)->after('jumlah_soal');
+            $table->unsignedSmallInteger('durasi_menit')->default(30)->after('jumlah_soal');
         });
 
         // Tambah tracking timer dan status pengerjaan per asesi

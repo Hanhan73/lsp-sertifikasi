@@ -16,11 +16,27 @@
 
     $daysLeft = now()->startOfDay()->diffInDays($schedule->assessment_date->startOfDay(), false);
 
-    // Hitung status soal teori asesi ini
+    // Asesmen sudah dimulai jika status asesi = 'assessed'
+    $asesmenDimulai = in_array($asesmen->status, ['asesmen_started']);
+    $asesmenSelesai  = in_array($asesmen->status, ['assessed', 'certified']);
+
+    // Hitung status soal teori (hanya relevan jika asesmen sudah dimulai)
     $soalTeori   = $asesmen->soalTeoriAsesi ?? collect();
     $totalTeori  = $soalTeori->count();
     $teoriSubmit = $totalTeori > 0 && $soalTeori->whereNotNull('submitted_at')->count() > 0;
     $teoriMulai  = $totalTeori > 0 && $soalTeori->whereNotNull('started_at')->count() > 0;
+
+    // Soal observasi
+    $distribusiObservasi = $asesmen->schedule?->distribusiSoalObservasi ?? collect();
+    $obsTotal  = 0;
+    $obsUpload = 0;
+    foreach ($distribusiObservasi as $dist) {
+        foreach ($dist->soalObservasi->paket ?? [] as $p) {
+            $obsTotal++;
+            $jwb = ($asesmen->jawabanObservasi ?? collect())->where('paket_soal_observasi_id', $p->id)->first();
+            if ($jwb?->hasLink()) $obsUpload++;
+        }
+    }
 @endphp
 
 {{-- Alert APL-01 dikembalikan --}}
@@ -81,8 +97,8 @@
                         @endif
                     </div>
 
-                    {{-- Countdown badge --}}
-                    <div class="flex-shrink-0">
+                    {{-- Countdown / status badge --}}
+                    <div class="flex-shrink-0 d-flex flex-column align-items-end gap-1">
                         @if($daysLeft > 0)
                         <span class="badge bg-primary px-3 py-2" style="font-size:.85rem;">
                             <i class="bi bi-hourglass-split me-1"></i>{{ $daysLeft }} hari lagi
@@ -91,9 +107,15 @@
                         <span class="badge bg-warning text-dark px-3 py-2" style="font-size:.85rem;">
                             <i class="bi bi-alarm me-1"></i>Hari ini!
                         </span>
-                        @else
-                        <span class="badge bg-secondary px-3 py-2" style="font-size:.85rem;">
-                            <i class="bi bi-check-circle me-1"></i>Selesai
+                        @endif
+
+                        @if($asesmenDimulai)
+                        <span class="badge bg-danger px-3 py-2" style="font-size:.78rem;">
+                            <i class="bi bi-play-fill me-1"></i>Asesmen Berjalan
+                        </span>
+                        @elseif($asesmenSelesai)
+                        <span class="badge bg-success px-3 py-2" style="font-size:.78rem;">
+                            <i class="bi bi-check-lg me-1"></i>Asesmen Selesai
                         </span>
                         @endif
                     </div>
@@ -167,7 +189,7 @@
                         <div class="text-muted" style="font-size:.78rem;">Permohonan Sertifikasi</div>
                         @if($aplsatu && $aplsatu->buktiKelengkapan->isNotEmpty())
                         @php
-                            $totalBukti = $aplsatu->buktiKelengkapan->count();
+                            $totalBukti  = $aplsatu->buktiKelengkapan->count();
                             $uploadBukti = $aplsatu->buktiKelengkapan->whereNotNull('gdrive_file_url')->count();
                         @endphp
                         <div class="progress mt-1" style="height:3px;width:80px;">
@@ -227,8 +249,6 @@
                     </div>
                     @if($frak04?->status === 'submitted')
                     <span class="badge bg-warning text-dark" style="font-size:.68rem;">Diajukan</span>
-                    @else
-                    <span class="badge bg-light text-muted border" style="font-size:.68rem;">Belum</span>
                     @endif
                     <i class="bi bi-chevron-right text-muted small"></i>
                 </a>
@@ -243,12 +263,27 @@
             <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
                 <i class="bi bi-journal-check text-primary"></i>Soal Asesmen
             </div>
+
+            @if(!$asesmenDimulai)
+            {{-- Asesmen belum dimulai oleh asesor --}}
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
+                <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mb-3"
+                     style="width:64px;height:64px;">
+                    <i class="bi bi-lock text-muted" style="font-size:1.6rem;"></i>
+                </div>
+                <p class="fw-semibold mb-1">Soal Belum Tersedia</p>
+                <p class="text-muted small mb-0">
+                    Soal akan muncul setelah asesor memulai sesi asesmen pada hari pelaksanaan.
+                    Pastikan dokumen pra-asesmen di kolom kiri sudah lengkap.
+                </p>
+            </div>
+
+            @else
+            {{-- Asesmen sudah dimulai — tampilkan soal --}}
             <div class="card-body d-flex flex-column gap-3 p-4">
 
                 {{-- Soal Teori --}}
-                @php
-                    $distribusiTeori = $asesmen->schedule?->distribusiSoalTeori ?? null;
-                @endphp
+                @php $distribusiTeori = $asesmen->schedule?->distribusiSoalTeori ?? null; @endphp
                 <div class="border rounded-3 p-3 d-flex align-items-center gap-3
                     {{ $teoriSubmit ? 'border-success bg-success bg-opacity-5' : ($totalTeori > 0 ? 'border-primary bg-primary bg-opacity-5' : '') }}">
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
@@ -257,30 +292,28 @@
                         <i class="bi {{ $teoriSubmit ? 'bi-check-lg' : 'bi-journal-text' }}"></i>
                     </div>
                     <div class="flex-grow-1">
-                        <div class="fw-semibold">Soal Teori (Pilihan Ganda)</div>
+                        <div class="fw-semibold" style="color: #ffffff;">Soal Teori (Pilihan Ganda)</div>
                         @if($totalTeori > 0)
-                        <div class="small text-muted">{{ $distribusiTeori->jumlah_soal ?? $totalTeori }} soal
+                        <div class="small" style="color:#ffffff">{{ $distribusiTeori->jumlah_soal ?? $totalTeori }} soal
                             @if($teoriSubmit) · <span class="text-success fw-semibold">Selesai</span>
                             @elseif($teoriMulai) · <span class="text-warning fw-semibold">Sedang dikerjakan</span>
                             @else · Belum dimulai
                             @endif
                         </div>
-                        @if(!$teoriSubmit && $totalTeori > 0)
-                        @php
-                            $answered = $soalTeori->whereNotNull('jawaban')->count();
-                        @endphp
+                        @if(!$teoriSubmit)
+                        @php $answered = $soalTeori->whereNotNull('jawaban')->count(); @endphp
                         <div class="progress mt-2" style="height:5px;">
                             <div class="progress-bar bg-primary"
-                                 style="width:{{ round($answered/$totalTeori*100) }}%"></div>
+                                 style="width:{{ round($answered / $totalTeori * 100) }}%"></div>
                         </div>
                         @endif
                         @else
-                        <div class="small text-muted">Belum ada soal terdistribusi</div>
+                        <div class="small text-muted">Soal belum tersedia</div>
                         @endif
                     </div>
                     @if($totalTeori > 0 && !$teoriSubmit)
                     <a href="{{ route('asesi.soal.teori.intro') }}"
-                       class="btn btn-sm {{ $teoriMulai ? 'btn-warning' : 'btn-primary' }} flex-shrink-0">
+                       class="btn btn-sm {{ $teoriMulai ? 'btn-warning' : 'btn-light' }} flex-shrink-0" style="color: #000000;">
                         {{ $teoriMulai ? 'Lanjutkan' : 'Mulai' }}
                     </a>
                     @elseif($teoriSubmit)
@@ -293,20 +326,8 @@
                 </div>
 
                 {{-- Soal Observasi --}}
-                @php
-                    $distribusiObservasi = $asesmen->schedule?->distribusiSoalObservasi ?? collect();
-                    $obsTotal   = 0;
-                    $obsUpload  = 0;
-                    foreach($distribusiObservasi as $dist) {
-                        foreach($dist->soalObservasi->paket ?? [] as $p) {
-                            $obsTotal++;
-                            $jwb = ($asesmen->jawabanObservasi ?? collect())->where('paket_soal_observasi_id', $p->id)->first();
-                            if($jwb?->hasLink()) $obsUpload++;
-                        }
-                    }
-                @endphp
                 <div class="border rounded-3 p-3 d-flex align-items-center gap-3
-                    {{ $obsUpload > 0 && $obsUpload === $obsTotal ? 'border-success bg-success bg-opacity-5' : ($obsTotal > 0 ? '' : '') }}">
+                    {{ $obsUpload > 0 && $obsUpload === $obsTotal ? 'border-success bg-success bg-opacity-5' : '' }}">
                     <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
                         {{ $obsUpload === $obsTotal && $obsTotal > 0 ? 'bg-success' : ($obsTotal > 0 ? 'bg-info' : 'bg-secondary') }} text-white"
                          style="width:44px;height:44px;">
@@ -315,15 +336,13 @@
                     <div class="flex-grow-1">
                         <div class="fw-semibold">Soal Observasi</div>
                         @if($obsTotal > 0)
-                        <div class="small text-muted">
-                            {{ $obsUpload }}/{{ $obsTotal }} paket diupload
-                        </div>
+                        <div class="small text-muted">{{ $obsUpload }}/{{ $obsTotal }} paket diupload</div>
                         <div class="progress mt-2" style="height:5px;">
                             <div class="progress-bar bg-info"
-                                 style="width:{{ round($obsUpload/$obsTotal*100) }}%"></div>
+                                 style="width:{{ round($obsUpload / $obsTotal * 100) }}%"></div>
                         </div>
                         @else
-                        <div class="small text-muted">Belum ada soal terdistribusi</div>
+                        <div class="small text-muted">Soal belum tersedia</div>
                         @endif
                     </div>
                     @if($obsTotal > 0)
@@ -336,37 +355,9 @@
                     @endif
                 </div>
 
-                {{-- Portofolio --}}
-                @php
-                    $distribusiPortofolio = $asesmen->schedule?->distribusiPortofolio ?? collect();
-                @endphp
-                <div class="border rounded-3 p-3 d-flex align-items-center gap-3">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
-                        {{ $distribusiPortofolio->isNotEmpty() ? 'bg-warning' : 'bg-secondary' }} text-white"
-                         style="width:44px;height:44px;">
-                        <i class="bi bi-folder2-open"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Portofolio</div>
-                        <div class="small text-muted">
-                            @if($distribusiPortofolio->isNotEmpty())
-                            {{ $distribusiPortofolio->count() }} form tersedia
-                            @else
-                            Belum ada portofolio terdistribusi
-                            @endif
-                        </div>
-                    </div>
-                    @if($distribusiPortofolio->isNotEmpty())
-                    <a href="{{ route('asesi.documents') }}"
-                       class="btn btn-sm btn-outline-warning flex-shrink-0">
-                        <i class="bi bi-eye me-1"></i>Lihat
-                    </a>
-                    @else
-                    <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
-                    @endif
-                </div>
-
             </div>
+            @endif
+
         </div>
     </div>
 

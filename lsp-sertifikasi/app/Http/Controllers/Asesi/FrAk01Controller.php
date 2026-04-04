@@ -55,7 +55,7 @@ class FrAk01Controller extends Controller
             return response()->json(['success' => false, 'message' => 'FR.AK.01 tidak ditemukan.'], 404);
         }
 
-        if ($frak01->status !== 'draft') {
+        if ($frak01->status !== 'draft' && $frak01->status !== 'returned') {
             return response()->json([
                 'success' => false,
                 'message' => 'FR.AK.01 sudah ditandatangani sebelumnya.',
@@ -119,7 +119,7 @@ class FrAk01Controller extends Controller
 
         $frak01 = $asesmen->frak01;
 
-        if (!$frak01 || $frak01->status !== 'draft') {
+        if (!$frak01 || !in_array($frak01->status, ['draft', 'returned'])) {            
             return response()->json(['success' => false, 'message' => 'FR.AK.01 tidak dapat diubah.'], 403);
         }
 

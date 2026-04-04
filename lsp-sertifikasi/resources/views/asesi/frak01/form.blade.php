@@ -199,12 +199,6 @@
                         </div>
                     </div>
                 </div>
-                <button type="button" class="btn btn-outline-primary btn-sm mt-3" onclick="saveBukti()" id="btn-save-bukti">
-                    <i class="bi bi-save me-1"></i>Simpan Checklist
-                </button>
-                <span id="bukti-save-status" class="text-success small ms-2" style="display:none;">
-                    <i class="bi bi-check-circle me-1"></i>Tersimpan
-                </span>
                 @endif
             </div>
         </div>
@@ -318,35 +312,133 @@
 
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
+
+<style>
+/* 🔥 Autosave indicator */
+#autosave-status {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #16a34a;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: .8rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15);
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all .3s ease;
+    z-index: 9999;
+}
+#autosave-status.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+</style>
+
+<div id="autosave-status">
+    <i class="bi bi-cloud-check me-1"></i> Tersimpan
+</div>
+
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
+const BUKTI_SAVE_URL = '{{ route("asesi.frak01.bukti.save") }}'; // ← tambah ini
 let sigPad = null;
+let saveTimeout = null;
+
+// ─────────────────────────────
+// INIT
+// ─────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // INIT SIGNATURE PAD
+
+    // SIGNATURE
     SigPadManager.init('asesi', @json(auth()->user()->signature_image));
-});
-document.addEventListener('DOMContentLoaded', () => {
+
     const canvas = document.getElementById('signature-pad');
-    if (!canvas) return;
+    if (canvas) {
+        sigPad = new SignaturePad(canvas, { penColor: '#1e293b' });
 
-    sigPad = new SignaturePad(canvas, { penColor: '#1e293b' });
+        function resizeCanvas() {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = 160 * ratio;
+            canvas.getContext('2d').scale(ratio, ratio);
+            sigPad.clear();
+        }
 
-    // Resize canvas
-    function resizeCanvas() {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = 160 * ratio;
-        canvas.getContext('2d').scale(ratio, ratio);
-        sigPad.clear();
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        sigPad.addEventListener('endStroke', () => {
+            canvas.classList.add('has-sig');
+        });
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
 
-    sigPad.addEventListener('endStroke', () => {
-        canvas.classList.add('has-sig');
+    // AUTOSAVE LISTENER
+    document.querySelectorAll('.bukti-check').forEach(el => {
+        el.addEventListener('change', triggerAutoSave);
     });
+
+    document.getElementById('bukti_lainnya_keterangan')
+        ?.addEventListener('input', triggerAutoSave);
 });
 
+// ─────────────────────────────
+// AUTOSAVE (DEBOUNCE)
+// ─────────────────────────────
+function triggerAutoSave() {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(autoSaveBukti, 400);
+}
+
+function autoSaveBukti() {
+    const data = {
+        _token: CSRF,
+        bukti_verifikasi_portofolio: document.getElementById('bukti_verifikasi_portofolio')?.checked ? 1 : 0,
+        bukti_hasil_review_produk: document.getElementById('bukti_hasil_review_produk')?.checked ? 1 : 0,
+        bukti_observasi_langsung: document.getElementById('bukti_observasi_langsung')?.checked ? 1 : 0,
+        bukti_hasil_kegiatan_terstruktur: document.getElementById('bukti_hasil_kegiatan_terstruktur')?.checked ? 1 : 0,
+        bukti_pertanyaan_lisan: document.getElementById('bukti_pertanyaan_lisan')?.checked ? 1 : 0,
+        bukti_pertanyaan_tertulis: document.getElementById('bukti_pertanyaan_tertulis')?.checked ? 1 : 0,
+        bukti_pertanyaan_wawancara: document.getElementById('bukti_pertanyaan_wawancara')?.checked ? 1 : 0,
+        bukti_lainnya: document.getElementById('bukti_lainnya')?.checked ? 1 : 0,
+        bukti_lainnya_keterangan: document.getElementById('bukti_lainnya_keterangan')?.value ?? ''
+    };
+
+        fetch(BUKTI_SAVE_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': CSRF
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) showSaved();
+    })
+    .catch(() => {
+        console.error('Autosave gagal');
+    });
+}
+
+// ─────────────────────────────
+// ANIMASI SAVE
+// ─────────────────────────────
+function showSaved() {
+    const el = document.getElementById('autosave-status');
+    if (!el) return;
+
+    el.classList.add('show');
+
+    setTimeout(() => {
+        el.classList.remove('show');
+    }, 1500);
+}
+
+// ─────────────────────────────
+// CLEAR SIGNATURE
+// ─────────────────────────────
 function clearSig() {
     if (sigPad) {
         sigPad.clear();
@@ -354,39 +446,9 @@ function clearSig() {
     }
 }
 
-async function saveBukti() {
-    const payload = {};
-    document.querySelectorAll('.bukti-check').forEach(cb => {
-        payload[cb.dataset.field] = cb.checked;
-    });
-    payload['bukti_lainnya_keterangan'] = document.getElementById('bukti_lainnya_keterangan')?.value || '';
-
-    const btn = document.getElementById('btn-save-bukti');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-
-    try {
-        const res  = await fetch('{{ route("asesi.frak01.bukti.save") }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.success) {
-            const status = document.getElementById('bukti-save-status');
-            status.style.display = 'inline';
-            setTimeout(() => status.style.display = 'none', 3000);
-        } else {
-            Swal.fire('Gagal', data.message, 'error');
-        }
-    } catch (e) {
-        Swal.fire('Error', 'Terjadi kesalahan.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-save me-1"></i>Simpan Checklist';
-    }
-}
-
+// ─────────────────────────────
+// SUBMIT SIGN
+// ─────────────────────────────
 async function submitSign() {
 
     const sig = await SigPadManager.prepareAndGet('asesi');
@@ -412,12 +474,11 @@ async function submitSign() {
     if (!result.isConfirmed) return;
 
     try {
-
         const res = await fetch('{{ route("asesi.frak01.sign") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                'X-CSRF-TOKEN': CSRF
             },
             body: JSON.stringify({
                 signature: sig,

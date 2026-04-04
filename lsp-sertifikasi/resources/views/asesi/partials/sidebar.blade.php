@@ -27,6 +27,8 @@ $asesmen = auth()->user()->asesmen;
     Data Pribadi
     @if($asesmen->status === 'registered')
     <span class="badge bg-warning text-dark ms-1">!</span>
+    @elseif($asesmen->biodata_needs_revision)
+    <span class="badge bg-danger ms-1">!</span>
     @endif
 </a>
 @endif
@@ -78,6 +80,7 @@ in_array($frak01Status, ['submitted', 'verified', 'approved']),
     <i class="bi bi-file-earmark-text"></i> APL-01
     @if($aplStatus === 'draft') <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Draft</span>
     @elseif($aplStatus === 'submitted') <span class="badge bg-info ms-1" style="font-size:.65rem;">Review</span>
+    @elseif ($aplStatus === 'returned') <span class="badge bg-danger ms-1" style="font-size:.65rem;">Perbaiki</span>
     @elseif(in_array($aplStatus, ['verified','approved'])) <span class="badge bg-success ms-1"
         style="font-size:.65rem;">✓</span>
     @else <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Belum</span>
@@ -88,6 +91,7 @@ in_array($frak01Status, ['submitted', 'verified', 'approved']),
     <i class="bi bi-file-earmark-check"></i> APL-02
     @if($apldStatus === 'draft') <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">Draft</span>
     @elseif($apldStatus === 'submitted') <span class="badge bg-info ms-1" style="font-size:.65rem;">Review</span>
+    @elseif ($apldStatus === 'returned') <span class="badge bg-danger ms-1" style="font-size:.65rem;">Perbaiki</span>
     @elseif(in_array($apldStatus, ['verified','approved'])) <span class="badge bg-success ms-1"
         style="font-size:.65rem;">✓</span>
     @else <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Belum</span>
@@ -97,19 +101,19 @@ in_array($frak01Status, ['submitted', 'verified', 'approved']),
 <a href="{{ route('asesi.frak01') }}" class="nav-link {{ $currentRoute === 'asesi.frak01' ? 'active' : '' }}">
     <i class="bi bi-file-earmark-person"></i> FR.AK.01
     @if($frak01Status === 'returned')
-        <span class="badge bg-danger ms-1" style="font-size:.65rem;">Perbaiki</span>
+    <span class="badge bg-danger ms-1" style="font-size:.65rem;">Perbaiki</span>
     @elseif($frak01Status === 'draft')
-        <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">TTD</span>
+    <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">TTD</span>
     @elseif($frak01Status === 'submitted')
-        <span class="badge bg-info ms-1" style="font-size:.65rem;">Tunggu</span>
+    <span class="badge bg-info ms-1" style="font-size:.65rem;">Review</span>
     @elseif(in_array($frak01Status, ['verified','approved']))
-        <span class="badge bg-success ms-1" style="font-size:.65rem;">✓</span>
+    <span class="badge bg-success ms-1" style="font-size:.65rem;">✓</span>
     @else
-        <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Belum</span>
+    <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Belum</span>
     @endif
 </a>
 
-<hr class="my-2 mx-3" style="border-color: rgba(255,255,255,0.2);">
+<hr class="my-2 mx-3" style="border-color: rgba(255,255,255,0.2);;">
 @endif
 
 {{-- ── Jadwal Asesmen — jadi hub utama setelah dijadwalkan ── --}}
@@ -121,7 +125,7 @@ $teoriSubmit = ($asesmen->soalTeoriAsesi ?? collect())->whereNotNull('submitted_
 
 // Alert badge: ada dokumen yang perlu perhatian
 $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak01?->status === 'returned')
-    || ($asesmen->soalTeoriAsesi ?? collect())->whereNull('submitted_at')->count() > 0;
+|| ($asesmen->soalTeoriAsesi ?? collect())->whereNull('submitted_at')->count() > 0;
 @endphp
 
 <a href="{{ route('asesi.schedule') }}" class="nav-link {{ in_array($currentRoute, [
@@ -179,6 +183,7 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
             'pra_asesmen_started' => 40,
             'scheduled' => 55,
             'pre_assessment_completed' => 70,
+            'asesmen_started' => 75,
             'assessed' => 85,
             'certified' => 100,
             default => 0,

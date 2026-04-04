@@ -38,6 +38,7 @@ class AplDua extends Model
             'submitted' => 'Sudah Disubmit',
             'verified'  => 'Sudah Diverifikasi',
             'approved'  => 'Disetujui',
+            'returned'  => 'Perlu Revisi',
             default     => '-',
         };
     }

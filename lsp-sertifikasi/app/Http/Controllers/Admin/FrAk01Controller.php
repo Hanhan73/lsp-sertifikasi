@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\FrAk01;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 
 /**

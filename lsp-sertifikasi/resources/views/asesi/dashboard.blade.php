@@ -57,14 +57,15 @@
     $currentIdx  = array_search($asesmen->status, $statusOrder) ?: 0;
 
     $progress = match($asesmen->status) {
-        'registered'               => 10,
-        'data_completed'           => 22,
-        'pra_asesmen_started'      => 38,
-        'scheduled'                => 55,
-        'pre_assessment_completed' => 70,
-        'assessed'                 => 85,
-        'certified'                => 100,
-        default                    => 0,
+            'registered' => 10,
+            'data_completed' => 25,
+            'pra_asesmen_started' => 40,
+            'scheduled' => 55,
+            'pre_assessment_completed' => 70,
+            'asesmen_started' => 75,
+            'assessed' => 85,
+            'certified' => 100,
+            default => 0,
     };
 @endphp
 
@@ -183,6 +184,14 @@
                         ],
                         [
                             'label'  => 'Pelaksanaan Asesmen',
+                            'status' => 'asesmen_started',
+                            'icon'   => 'bi-person-check',
+                            'sub'    => $asesmen->assessed_at
+                                            ? $asesmen->assessed_at->translatedFormat('d M Y')
+                                            : 'Belum dilakukan',
+                        ],
+                        [
+                            'label'  => 'Hasil Asesmen',
                             'status' => 'assessed',
                             'icon'   => 'bi-person-check',
                             'sub'    => $asesmen->assessed_at
@@ -236,7 +245,7 @@
                             @endif
                         </div>
                         @endif
-                        @if($isDone && $step['status'] === 'assessed' && $asesmen->result)
+                        @if($isDone && $step['status'] === 'asesmen_started' && $asesmen->result)
                         <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
                             {{ strtoupper($asesmen->result) }}
                         </span>

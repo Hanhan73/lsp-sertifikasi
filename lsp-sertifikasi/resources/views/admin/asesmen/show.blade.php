@@ -437,18 +437,21 @@
                     @endif
                     <div class="ms-auto d-flex gap-2">
                         <a href="{{ route('admin.apl01.pdf', [$apl, 'preview' => 1]) }}" target="_blank"
-                           class="btn btn-sm btn-outline-secondary">
+                        class="btn btn-sm btn-outline-secondary">
                             <i class="bi bi-file-pdf me-1"></i>Preview PDF
                         </a>
                         <a href="{{ route('admin.apl01.pdf', $apl) }}"
-                           class="btn btn-sm btn-success">
+                        class="btn btn-sm btn-success">
                             <i class="bi bi-download me-1"></i>Download PDF
                         </a>
+                        {{-- HAPUS tombol kuning "Verifikasi" yang redirect ke page lain --}}
                         @if($apl->status === 'submitted')
-                        <a href="{{ route('admin.apl01.show', $apl) }}"
-                           class="btn btn-sm btn-warning text-dark">
+                        <button class="btn btn-sm btn-warning text-dark" onclick="bukaModalVerifikasiApl()">
                             <i class="bi bi-pen me-1"></i>Verifikasi
-                        </a>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="openRejectApl01Modal()">
+                            <i class="bi bi-arrow-return-left me-1"></i>Kembalikan
+                        </button>
                         @endif
                     </div>
                 </div>
@@ -519,22 +522,52 @@
 
                         {{-- Bukti Kelengkapan --}}
                         <div class="section-heading">Bukti Kelengkapan</div>
+
+                        {{-- Google Drive link dari asesi --}}
                         @php $gdriveLink = $apl->buktiKelengkapan->whereNotNull('gdrive_file_url')->first()?->gdrive_file_url; @endphp
                         @if($gdriveLink)
                         <div class="alert alert-info d-flex align-items-center gap-3 mb-3 py-2">
                             <i class="bi bi-google fs-4 flex-shrink-0"></i>
                             <div class="flex-grow-1 small overflow-hidden">
-                                <strong>Google Drive:</strong><br>
+                                <strong>Google Drive dari Asesi:</strong><br>
                                 <a href="{{ $gdriveLink }}" target="_blank" class="text-break small">{{ $gdriveLink }}</a>
                             </div>
-                            <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-sm btn-primary flex-shrink-0">Buka</a>
+                            <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-sm btn-primary flex-shrink-0">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Buka
+                            </a>
+                        </div>
+                        @else
+                        <div class="alert alert-secondary py-2 mb-3 small">
+                            <i class="bi bi-exclamation-circle me-2"></i>Asesi belum mengisi link Google Drive.
                         </div>
                         @endif
 
+                        {{-- Progress bukti --}}
+                        @php
+                            $totalBukti = $apl->buktiKelengkapan->count();
+                            $isiCount   = $apl->buktiKelengkapan->where('status', '!=', 'Tidak Ada')->count();
+                            $okCount    = $apl->buktiKelengkapan->where('status', 'Ada Memenuhi Syarat')->count();
+                            $pctIsi     = $totalBukti > 0 ? round($isiCount / $totalBukti * 100) : 0;
+                        @endphp
+                        @if($totalBukti > 0)
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="progress flex-grow-1" style="height:6px;">
+                                <div class="progress-bar bg-{{ $isiCount === $totalBukti ? 'success' : 'warning' }}"
+                                    style="width:{{ $pctIsi }}%;"></div>
+                            </div>
+                            <span class="small text-muted text-nowrap">{{ $isiCount }}/{{ $totalBukti }} diperiksa</span>
+                            <span class="badge bg-success">{{ $okCount }} OK</span>
+                            <span class="badge bg-secondary">{{ $totalBukti - $isiCount }} Belum</span>
+                        </div>
+                        @endif
+
+                        {{-- List bukti per kategori --}}
                         @foreach(['persyaratan_dasar' => 'Persyaratan Dasar', 'administratif' => 'Administratif'] as $kat => $katLabel)
                         @php $items = $apl->buktiKelengkapan->where('kategori', $kat); @endphp
                         @if($items->isNotEmpty())
-                        <div class="fw-semibold small text-muted mb-2 mt-3">{{ $katLabel }}</div>
+                        <div class="fw-semibold small text-muted mb-2 mt-3">
+                            <i class="bi bi-folder2-open me-1"></i>{{ $katLabel }}
+                        </div>
                         @foreach($items as $bukti)
                         @php
                             $bc = match($bukti->status) {
@@ -549,14 +582,32 @@
                             };
                         @endphp
                         <div class="card bukti-card {{ $bc }} mb-2 shadow-sm">
-                            <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center gap-2">
-                                <div class="small flex-grow-1">
-                                    <span class="fw-semibold">{{ $bukti->nama_dokumen }}</span>
-                                    @if($bukti->catatan)
-                                    <div class="text-muted" style="font-size:.78rem;"><i class="bi bi-chat-left-dots me-1"></i>{{ $bukti->catatan }}</div>
+                            <div class="card-body py-2 px-3">
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div class="small flex-grow-1">
+                                        <span class="fw-semibold">{{ $bukti->nama_dokumen }}</span>
+                                        @if($bukti->catatan)
+                                        <div class="text-muted" style="font-size:.78rem;">
+                                            <i class="bi bi-chat-left-dots me-1"></i>{{ $bukti->catatan }}
+                                        </div>
+                                        @endif
+                                    </div>
+                                    {{-- Editable hanya jika APL masih submitted, read-only jika sudah verified --}}
+                                    @if($apl->status === 'submitted')
+                                    <select class="form-select form-select-sm flex-shrink-0" style="min-width:200px;"
+                                        data-bukti-id="{{ $bukti->id }}"
+                                        onchange="updateStatusBuktiInline({{ $bukti->id }}, this.value, this)">
+                                        <option value="Tidak Ada"                {{ $bukti->status === 'Tidak Ada'                ? 'selected' : '' }}>Tidak Ada</option>
+                                        <option value="Ada Memenuhi Syarat"      {{ $bukti->status === 'Ada Memenuhi Syarat'      ? 'selected' : '' }}>Ada — Memenuhi Syarat</option>
+                                        <option value="Ada Tidak Memenuhi Syarat"{{ $bukti->status === 'Ada Tidak Memenuhi Syarat'? 'selected' : '' }}>Ada — Tidak Memenuhi</option>
+                                    </select>
+                                    @else
+                                    <span class="badge bg-{{ $badgeColor }} text-nowrap flex-shrink-0"
+                                        id="badge-bukti-{{ $bukti->id }}">
+                                        {{ $bukti->status }}
+                                    </span>
                                     @endif
                                 </div>
-                                <span class="badge bg-{{ $badgeColor }} text-nowrap flex-shrink-0">{{ $bukti->status }}</span>
                             </div>
                         </div>
                         @endforeach
@@ -584,14 +635,14 @@
                                 <div class="fw-semibold text-dark">{{ $apl->nama_ttd_admin }}</div>
                                 {{ $apl->tanggal_ttd_admin ? \Carbon\Carbon::parse($apl->tanggal_ttd_admin)->translatedFormat('d M Y') : '-' }}
                                 @if($apl->verified_at)
-                                <div class="mt-1"><i class="bi bi-clock me-1"></i>{{ $apl->verified_at->translatedFormat('d M Y H:i') }}
+                                <div class="mt-1">
+                                    <i class="bi bi-clock me-1"></i>{{ $apl->verified_at->translatedFormat('d M Y H:i') }}
                                     @if($apl->verifier) — <strong>{{ $apl->verifier->name }}</strong>@endif
                                 </div>
                                 @endif
                             </div>
                         </div>
                         @endif
-
                     </div>
                 </div>
                 @endif
@@ -807,10 +858,217 @@
     </div>{{-- end card-body --}}
 </div>{{-- end card --}}
 
+
+{{-- ══ MODAL VERIFIKASI APL-01 ══ --}}
+<div class="modal fade" id="modalVerifikasiApl" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-pen me-2"></i>Verifikasi APL-01</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info small mb-4">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Dengan menandatangani, Anda menyatakan APL-01 ini telah diperiksa dan semua bukti kelengkapan telah diverifikasi.
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Nama Lengkap Admin <span class="text-danger">*</span></label>
+                    <input type="text" id="admin-nama-input" class="form-control form-control-lg"
+                        value="{{ auth()->user()->name }}" readonly>
+                    <div class="form-text">Nama ini akan tercetak di dokumen PDF APL-01.</div>
+                </div>
+                @include('partials._signature_pad', [
+                    'padId'    => 'admin-apl',
+                    'padLabel' => 'Tanda Tangan Admin LSP',
+                    'padHeight' => 180,
+                    'savedSig' => auth()->user()->signature_image,
+                ])
+                <div class="card bg-light border-0 mt-3">
+                    <div class="card-body py-2 small">
+                        <strong>Pemohon:</strong> {{ $asesmen->full_name }} |
+                        <strong>Skema:</strong> {{ $asesmen->skema?->name ?? '-' }}
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-success px-4" id="btn-simpan-verifikasi-apl"
+                    onclick="submitVerifikasiApl()">
+                    <i class="bi bi-check-circle me-1"></i>Verifikasi & Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ══ MODAL REJECT APL-01 ══ --}}
+<div class="modal fade" id="modalRejectApl01" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-x me-2"></i>Kembalikan APL-01</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    <small>APL-01 akan dikembalikan ke status <strong>returned</strong>. Asesi dapat mengedit dan submit ulang.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Alasan Pengembalian <span class="text-danger">*</span></label>
+                    <textarea id="apl01-rejection-notes" class="form-control" rows="4"
+                        placeholder="Jelaskan apa yang perlu diperbaiki..." maxlength="1000"></textarea>
+                    <div class="form-text">Min. 10 karakter.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="btn-confirm-reject-apl01"
+                    onclick="submitRejectApl01()">
+                    <i class="bi bi-send me-1"></i>Kembalikan APL-01
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
+
+    // ── APL-01 Verifikasi ───────────────────────────────────────
+const APL_ID = '{{ $asesmen->aplsatu?->id }}';
+const CSRF   = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+async function updateStatusBuktiInline(buktiId, status, selectEl) {
+    if (!selectEl.dataset.semula) selectEl.dataset.semula = selectEl.value;
+    const semula = selectEl.dataset.semula;
+
+    const { isConfirmed, value: catatan } = await Swal.fire({
+        title: 'Update Status Bukti',
+        html: `<p class="text-start mb-2">Status baru: <span class="badge bg-primary">${status}</span></p>
+               <div class="text-start">
+                   <label class="form-label small">Catatan (opsional):</label>
+                   <textarea class="form-control form-control-sm" id="swal-catatan" rows="2"
+                       placeholder="Tambahkan catatan..."></textarea>
+               </div>`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Update',
+        cancelButtonText: 'Batal',
+        preConfirm: () => document.getElementById('swal-catatan')?.value?.trim() ?? '',
+    });
+
+    if (!isConfirmed) { selectEl.value = semula; return; }
+
+    try {
+        const res  = await fetch(`/admin/apl01-bukti/${buktiId}/status`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF,
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({ status, catatan }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Update border warna card
+            const card = selectEl.closest('.bukti-card');
+            if (card) {
+                card.classList.remove('ok', 'warn');
+                if (status === 'Ada Memenuhi Syarat')       card.classList.add('ok');
+                if (status === 'Ada Tidak Memenuhi Syarat') card.classList.add('warn');
+            }
+            selectEl.dataset.semula = status;
+            Swal.fire({ icon: 'success', title: 'Tersimpan!', timer: 1200, showConfirmButton: false });
+        } else {
+            Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
+            selectEl.value = semula;
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+        selectEl.value = semula;
+    }
+}
+function bukaModalVerifikasiApl() {
+    const modalEl = document.getElementById('modalVerifikasiApl');
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    modalEl.addEventListener('shown.bs.modal', () => {
+        SigPadManager.init('admin-apl', @json(auth()->user()->signature_image));
+    }, { once: true });
+}
+
+async function submitVerifikasiApl() {
+    const namaAdmin = document.getElementById('admin-nama-input')?.value?.trim() ?? '';
+    if (!namaAdmin) { Swal.fire('Perhatian', 'Nama admin diperlukan.', 'warning'); return; }
+    if (SigPadManager.isEmpty('admin-apl')) { Swal.fire('Perhatian', 'Tanda tangan diperlukan.', 'warning'); return; }
+
+    const btn = document.getElementById('btn-simpan-verifikasi-apl');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+    try {
+        const signature = await SigPadManager.prepareAndGet('admin-apl');
+        const res  = await fetch(`/admin/apl01/${APL_ID}/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+            body: JSON.stringify({ signature, nama_admin: namaAdmin }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalVerifikasiApl'))?.hide();
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Verifikasi & Simpan';
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Verifikasi & Simpan';
+    }
+}
+
+function openRejectApl01Modal() {
+    document.getElementById('apl01-rejection-notes').value = '';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalRejectApl01')).show();
+}
+
+async function submitRejectApl01() {
+    const notes = document.getElementById('apl01-rejection-notes').value.trim();
+    if (notes.length < 10) { Swal.fire('Perhatian', 'Catatan minimal 10 karakter.', 'warning'); return; }
+
+    const btn = document.getElementById('btn-confirm-reject-apl01');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+    try {
+        const res  = await fetch(`/admin/apl01/${APL_ID}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+            body: JSON.stringify({ catatan: notes }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalRejectApl01'))?.hide();
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', timer: 1800, showConfirmButton: false });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-send me-1"></i>Kembalikan APL-01';
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send me-1"></i>Kembalikan APL-01';
+    }
+}
 // ── Toggle accordion unit (APL-02 & AK.01) ─────────────────
 function toggleUnit(key) {
     const body  = document.getElementById(`body-${key}`);

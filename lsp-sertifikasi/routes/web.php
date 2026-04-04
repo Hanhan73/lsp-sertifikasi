@@ -48,7 +48,7 @@ use App\Http\Controllers\Direktur\DirekturScheduleController;
 use App\Http\Controllers\Direktur\DirekturDashboardController;
 
 // Manajer Sertifikasi
-use App\Http\Controllers\ManajerSertifikasi\DashboardController;
+use App\Http\Controllers\ManajerSertifikasi\DashboardController as ManajerDashboardController;
 use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
 
 
@@ -573,6 +573,9 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/berita-acara/download-file',[HasilPenilaianController::class, 'downloadFileBeritaAcara'])->name('berita-acara.download-file');
         Route::get('/berita-acara/pdf',          [HasilPenilaianController::class, 'pdfBeritaAcara'])         ->name('berita-acara.pdf');
     });
+
+    Route::post('/jadwal/{schedule}/mulai', [AsesorController::class, 'mulaiAsesmen'])
+        ->name('schedule.mulai');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -601,101 +604,126 @@ Route::prefix('direktur')
     });
 
 
+ // ─── Manajer Sertifikasi (Certification Manager) ───────────────────────────────
 Route::middleware(['auth', 'role:manajer_sertifikasi'])
     ->prefix('manajer-sertifikasi')
     ->name('manajer-sertifikasi.')
     ->group(function () {
- 
+
         // Dashboard
-        Route::get('/', [DashboardController::class, 'index'])->name('index');
-        Route::get('/distribusi', [DashboardController::class, 'distribusi'])->name('distribusi'); 
- 
-        // Detail jadwal — kelola distribusi soal
+        Route::get('/', [ManajerDashboardController::class, 'index'])->name('index');
+        Route::get('/distribusi', [ManajerDashboardController::class, 'distribusi'])->name('distribusi');
+
+        // Schedule Detail & Result Management
         Route::prefix('/jadwal/{schedule}')->name('jadwal.')->group(function () {
-            Route::get('/',        [DistribusiSoalController::class, 'show'])           ->name('show');
-            Route::get('/rekap',   [DistribusiSoalController::class, 'rekapPenilaian']) ->name('rekap');
-            Route::get('/rekap/observasi/{soalObservasi}/download',  [DistribusiSoalController::class, 'downloadHasilObservasi'])->name('rekap.download-observasi');
-            Route::get('/rekap/portofolio/{portofolio}/download',    [DistribusiSoalController::class, 'downloadHasilPortofolio'])->name('rekap.download-portofolio');
-            Route::get('/rekap/berita-acara/download',               [DistribusiSoalController::class, 'downloadFileBeritaAcara'])->name('rekap.download-ba');
+            Route::get('/', [DistribusiSoalController::class, 'show'])->name('show');
+            Route::get('/rekap', [DistribusiSoalController::class, 'rekapPenilaian'])->name('rekap');
+            Route::get('/rekap/observasi/{soalObservasi}/download', [DistribusiSoalController::class, 'downloadHasilObservasi'])->name('rekap.download-observasi');
+            Route::get('/rekap/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadHasilPortofolio'])->name('rekap.download-portofolio');
+            Route::get('/rekap/berita-acara/download', [DistribusiSoalController::class, 'downloadFileBeritaAcara'])->name('rekap.download-ba');
             Route::get('/daftar-hadir', [DistribusiSoalController::class, 'daftarHadir'])->name('daftar-hadir');
 
-                // Form penilaian observasi
-            Route::post('/observasi/{soalObservasi}/form-penilaian',   [DistribusiSoalController::class, 'uploadFormPenilaianObservasi'])   ->name('observasi.form-penilaian.upload');
-            Route::get('/observasi/{soalObservasi}/form-penilaian',    [DistribusiSoalController::class, 'downloadFormPenilaianObservasi'])  ->name('observasi.form-penilaian.download');
-            Route::delete('/observasi/{soalObservasi}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianObservasi'])     ->name('observasi.form-penilaian.hapus');
+            // Form Penilaian (Observasi)
+            Route::post('/observasi/{soalObservasi}/form-penilaian', [DistribusiSoalController::class, 'uploadFormPenilaianObservasi'])->name('observasi.form-penilaian.upload');
+            Route::get('/observasi/{soalObservasi}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianObservasi'])->name('observasi.form-penilaian.download');
+            Route::delete('/observasi/{soalObservasi}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianObservasi'])->name('observasi.form-penilaian.hapus');
+
+            // Form Penilaian (Portofolio)
+            Route::post('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'uploadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.upload');
+            Route::delete('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianPortofolio'])->name('portofolio.form-penilaian.hapus');
+            Route::get('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.download');
         });
- 
+
+        /*
+        |--------------------------------------------------------------------------
+        | RECOMMENDATION: Consolidate Bank Soal Logic
+        |--------------------------------------------------------------------------
+        |
+        | The following sections (`soal-observasi`, `soal-teori`, `portofolio`) and the
+        | `bank-soal` section below contain significant duplicate logic.
+        | The `bank-soal` section essentially re-implements the same CRUD operations
+        | but scoped by a `skema` (certification scheme).
+        |
+        | To improve maintainability and reduce confusion, it is highly recommended to
+        | merge these. The primary `soal-*` groups should be refactored to be
+        | `skema`-scoped from the beginning.
+        |
+        | Example for `soal-observasi`:
+        | - Change prefix from `soal-observasi` to `soal-observasi/{skema}`.
+        | - Update all controller methods to accept the `skema` parameter.
+        | - Remove the entire `bank-soal` route group and its corresponding controller methods.
+        |
+        | This will create a single, consistent source of truth for managing assessment
+        | materials, all properly categorized by their certification scheme.
+        |
+        */
+
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
-        // Setiap observasi punya beberapa paket (A, B, C, D, dst)
         Route::prefix('soal-observasi')->name('soal-observasi.')->group(function () {
-            Route::get('/',       [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');
+            Route::get('/', [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');
             Route::get('/create', [DistribusiSoalController::class, 'createSoalObservasi'])->name('create');
-            Route::post('/',      [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
+            Route::post('/', [DistribusiSoalController::class, 'storeSoalObservasi'])->name('store');
 
-            // Paket
+            // Paket (Package) Management
             Route::get('/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketObservasi'])->name('paket.download');
-            Route::delete('/paket/{paket}',       [DistribusiSoalController::class, 'destroyPaketObservasi'])->name('paket.destroy');
+            Route::delete('/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketObservasi'])->name('paket.destroy');
 
-            // ── DISTRIBUSI HARUS SEBELUM /{soalObservasi} ──
-            Route::post('/distribusi',   [DistribusiSoalController::class, 'distribusiSoalObservasi'])->name('distribusi');
+            // Distribution to Schedules
+            Route::post('/distribusi', [DistribusiSoalController::class, 'distribusiSoalObservasi'])->name('distribusi');
             Route::delete('/distribusi', [DistribusiSoalController::class, 'hapusDistribusiSoalObservasi'])->name('distribusi.hapus');
 
-            // Wildcard ini harus paling bawah
-            Route::get('/{soalObservasi}',    [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
+            // Wildcard route for individual items must be last
+            Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
-
-            // Paket di dalam observasi (scoped ke soalObservasi)
             Route::post('/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
         });
- 
-        // ── Bank Soal 2: Soal Teori PG ───────────────────────────────────
+
+        // ── Bank Soal 2: Soal Teori (Theory Questions) ───────────────────────
         Route::prefix('soal-teori')->name('soal-teori.')->group(function () {
-            Route::get('/',               [DistribusiSoalController::class, 'indexSoalTeori'])->name('index');
-            Route::post('/',              [DistribusiSoalController::class, 'storeSoalTeori'])->name('store');
-            Route::put('/{soalTeori}',    [DistribusiSoalController::class, 'updateSoalTeori'])->name('update');
+            Route::get('/', [DistribusiSoalController::class, 'indexSoalTeori'])->name('index');
+            Route::post('/', [DistribusiSoalController::class, 'storeSoalTeori'])->name('store');
+            Route::put('/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeori'])->name('update');
             Route::delete('/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeori'])->name('destroy');
-            Route::post('/distribusi',    [DistribusiSoalController::class, 'distribusiSoalTeori'])->name('distribusi');
-        });
- 
-        // ── Bank Soal 3: Portofolio ──────────────────────────────────────
-        Route::prefix('portofolio')->name('portofolio.')->group(function () {
-            Route::get('/',                      [DistribusiSoalController::class, 'indexPortofolio'])->name('index');
-            Route::get('/create',                [DistribusiSoalController::class, 'createPortofolio'])->name('create');
-            Route::post('/',                     [DistribusiSoalController::class, 'storePortofolio'])->name('store');
-            Route::get('/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolio'])->name('download');
-            Route::delete('/{portofolio}',       [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
-            Route::post('/distribusi',           [DistribusiSoalController::class, 'distribusiPortofolio'])->name('distribusi');
-            Route::delete('/distribusi',         [DistribusiSoalController::class, 'hapusDistribusiPortofolio'])->name('distribusi.hapus');
+            Route::post('/distribusi', [DistribusiSoalController::class, 'distribusiSoalTeori'])->name('distribusi');
         });
 
+        // ── Bank Soal 3: Portofolio ──────────────────────────────────────
+        Route::prefix('portofolio')->name('portofolio.')->group(function () {
+            Route::get('/', [DistribusiSoalController::class, 'indexPortofolio'])->name('index');
+            Route::get('/create', [DistribusiSoalController::class, 'createPortofolio'])->name('create');
+            Route::post('/', [DistribusiSoalController::class, 'storePortofolio'])->name('store');
+            Route::get('/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolio'])->name('download');
+            Route::delete('/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
+            // Distribution to Schedules
+            Route::post('/distribusi', [DistribusiSoalController::class, 'distribusiPortofolio'])->name('distribusi');
+            Route::delete('/distribusi', [DistribusiSoalController::class, 'hapusDistribusiPortofolio'])->name('distribusi.hapus');
+        });
+
+        // ── DEPRECATED/DUPLICATE: Bank Soal (scoped per skema) ─────────────────────────────────
+        // This section duplicates the logic above. See the recommendation comment for how to consolidate.
         Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
-    
-        // Index: list semua skema
-        Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
-    
-        // Show per skema: 3 tab
-        Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
-    
-        // Soal Observasi
-        Route::post('/{skema}/observasi',           [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
-        Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
-    
-        // Paket dalam observasi
-        Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
-        Route::get('/{skema}/paket/{paket}/download',           [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
-        Route::delete('/{skema}/paket/{paket}',                 [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
-    
-        // Soal Teori
-        Route::post('/{skema}/teori',           [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
-        Route::put('/{skema}/teori/{soalTeori}',[DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
-        Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
-    
-        // Portofolio
-        Route::post('/{skema}/portofolio',              [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
-        Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
-        Route::delete('/{skema}/portofolio/{portofolio}',       [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
+            Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
+            Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
+
+            // Soal Observasi (duplicate)
+            Route::post('/{skema}/observasi', [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
+            Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
+            Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
+            Route::get('/{skema}/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
+            Route::delete('/{skema}/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
+
+            // Soal Teori (duplicate)
+            Route::post('/{skema}/teori', [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
+            Route::put('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
+            Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
+
+            // Portofolio (duplicate)
+            Route::post('/{skema}/portofolio', [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
+            Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
+            Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
+        });
     });
-    });
+
 /*
 |--------------------------------------------------------------------------
 | Debug — hapus di production

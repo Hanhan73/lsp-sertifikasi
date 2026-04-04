@@ -1,0 +1,262 @@
+<?php
+
+namespace App\Services;
+
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+
+class ExcelService
+{
+    // Sheet yang tidak punya kolom Nama sama sekali
+    private array $skipSheets = ['Cover', 'Asesor', 'Berita Acara'];
+
+    // =========================================================================
+    // INJECT NAMA ASESI KE TEMPLATE
+    // =========================================================================
+
+    public function injectNamaAsesi(string $inputPath, string $outputPath, array $names): bool
+    {
+        try {
+            $reader      = $this->createReader($inputPath);
+            $spreadsheet = $reader->load($inputPath);
+
+            $dataSheets = array_values(array_filter(
+                $spreadsheet->getSheetNames(),
+                fn($name) => !in_array($name, $this->skipSheets)
+            ));
+
+            if (empty($dataSheets)) {
+                \Log::warning('[ExcelService] Tidak ada sheet data ditemukan.');
+                return false;
+            }
+
+            $injectedCount = 0;
+
+            foreach ($dataSheets as $sheetName) {
+                $ws = $spreadsheet->getSheetByName($sheetName);
+                if (!$ws) continue;
+
+                // Cari header 'Nama' — scan baris 1-30, kolom 1-30
+                [$headerRow, $namaCol] = $this->findNamaHeader($ws);
+                if (!$headerRow) {
+                    \Log::info("[ExcelService] SKIP [{$sheetName}]: header 'Nama' tidak ditemukan.");
+                    continue;
+                }
+
+                $dataStartRow = $this->detectDataStartRow($ws, $headerRow, $namaCol);
+
+                \Log::info("[ExcelService] [{$sheetName}] headerRow={$headerRow}, namaCol={$namaCol}, dataStart={$dataStartRow}");
+
+                // Unmerge merged cells yang overlap kolom Nama di baris data
+                $this->unmergeNamaColumn($ws, $namaCol, $dataStartRow, count($names));
+
+                // Inject nama
+                foreach ($names as $i => $nama) {
+                    $ws->setCellValueByColumnAndRow($namaCol, $dataStartRow + $i, $nama);
+                }
+
+                \Log::info("[ExcelService] Injected " . count($names) . " nama ke [{$sheetName}]");
+                $injectedCount++;
+            }
+
+            if ($injectedCount === 0) {
+                \Log::warning('[ExcelService] Tidak ada sheet yang berhasil diinjeksi.');
+                return false;
+            }
+
+            $writer = IOFactory::createWriter($spreadsheet, $this->detectFormat($inputPath));
+            $writer->save($outputPath);
+
+            if (!file_exists($outputPath) || filesize($outputPath) < 1000) {
+                \Log::warning('[ExcelService] Output file suspiciously small, possible corruption');
+                return false;
+            }
+
+            return true;
+
+        } catch (\Throwable $e) {
+            \Log::error('[ExcelService] injectNamaAsesi error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return false;
+        }
+    }
+
+    // =========================================================================
+    // PARSE BERITA ACARA
+    // =========================================================================
+
+    public function parseBeritaAcara(string $filePath): ?array
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xlsx', 'xlsm', 'xls'])) {
+            return null;
+        }
+
+        try {
+            $reader      = $this->createReader($filePath);
+            $spreadsheet = $reader->load($filePath);
+        } catch (\Throwable $e) {
+            \Log::error('[ExcelService] Gagal membuka file: ' . $e->getMessage());
+            return ['error' => 'Gagal membuka file: ' . $e->getMessage()];
+        }
+
+        if (!in_array('Berita Acara', $spreadsheet->getSheetNames())) {
+            return ['error' => "Sheet 'Berita Acara' tidak ditemukan di file ini"];
+        }
+
+        $ws = $spreadsheet->getSheetByName('Berita Acara');
+
+        // Cari teks 'Pada tanggal'
+        $tanggalRaw = null;
+        for ($r = 1; $r <= 20; $r++) {
+            $cell = $ws->getCellByColumnAndRow(3, $r)->getValue();
+            if ($cell && str_contains((string) $cell, 'Pada tanggal')) {
+                $tanggalRaw = trim((string) $cell);
+                break;
+            }
+        }
+
+        // Deteksi mode 2-kolom: col K row 18 = 'BK'
+        $row18ColK  = strtoupper(trim((string) ($ws->getCellByColumnAndRow(11, 18)->getValue() ?? '')));
+        $twoColMode = $row18ColK === 'BK';
+
+        $peserta = [];
+        $maxRow  = $ws->getHighestRow();
+
+        for ($r = 19; $r <= $maxRow; $r++) {
+            $noVal   = $ws->getCellByColumnAndRow(3, $r)->getValue();
+            $namaVal = $ws->getCellByColumnAndRow(4, $r)->getValue();
+
+            if (!$noVal || !ctype_digit((string) trim((string) $noVal))) break;
+            $namaStr = trim((string) ($namaVal ?? ''));
+            if (in_array($namaStr, ['', '0', '-'])) break;
+
+            $valJ = strtoupper(trim((string) ($ws->getCellByColumnAndRow(10, $r)->getValue() ?? '')));
+            $valK = strtoupper(trim((string) ($ws->getCellByColumnAndRow(11, $r)->getValue() ?? '')));
+
+            if ($twoColMode) {
+                $checkVals = ['K', 'V', '✓', 'X', '1', 'YA', 'Y'];
+                $rek = in_array($valJ, $checkVals) ? 'K'
+                     : (in_array($valK, $checkVals) ? 'BK' : null);
+            } else {
+                $rek = in_array($valJ, ['K', 'BK']) ? $valJ : null;
+            }
+
+            $peserta[] = ['nama' => $namaStr, 'rekomendasi' => $rek];
+        }
+
+        return [
+            'tanggal_raw' => $tanggalRaw,
+            'peserta'     => $peserta,
+            'total'       => count($peserta),
+            'filled'      => count(array_filter($peserta, fn($p) => $p['rekomendasi'] !== null)),
+        ];
+    }
+
+    // =========================================================================
+    // PRIVATE HELPERS
+    // =========================================================================
+
+    /**
+     * Cari cell header 'Nama' (case-insensitive).
+     * Kembalikan [row, col] atau [null, null].
+     */
+    private function findNamaHeader($ws): array
+    {
+        $maxRow = min($ws->getHighestRow(), 30);
+        $maxCol = min(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(
+            $ws->getHighestColumn()), 30);
+
+        for ($r = 1; $r <= $maxRow; $r++) {
+            for ($c = 1; $c <= $maxCol; $c++) {
+                $cell = $ws->getCellByColumnAndRow($c, $r);
+
+                try {
+                    $val = strtolower(trim((string) $cell->getCalculatedValue()));
+                } catch (\Throwable $e) {
+                    $val = strtolower(trim((string) $cell->getValue()));
+                }
+
+                if (str_contains($val, 'nama')) {
+                    return [$r, $c];
+                }
+            }
+        }
+        return [null, null];
+    }
+
+    /**
+     * Deteksi baris data mulai.
+     */
+    private function detectDataStartRow($ws, int $headerRow, int $namaCol): int
+    {
+        $nextRow  = $headerRow + 1;
+        $nextCell = $ws->getCellByColumnAndRow($namaCol, $nextRow);
+        $nextVal  = $nextCell->getValue();
+
+        if ($nextVal === null || trim((string) $nextVal) === '') {
+            return $headerRow + 2;
+        }
+
+        if (is_numeric($nextVal)) {
+            return $nextRow;
+        }
+
+        $lower = strtolower(trim((string) $nextVal));
+        if (!in_array($lower, ['no', 'nama', 'nomor', 'unit kompetensi'])) {
+            return $nextRow;
+        }
+
+        return $headerRow + 2;
+    }
+
+    /**
+     * Unmerge merged cells yang overlap dengan kolom Nama di baris data.
+     */
+    private function unmergeNamaColumn($ws, int $namaCol, int $dataStartRow, int $count): void
+    {
+        $rowsNeeded = range($dataStartRow, $dataStartRow + $count - 1);
+
+        foreach (array_keys($ws->getMergeCells()) as $rangeStr) {
+            if (!preg_match('/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/i', $rangeStr, $m)) continue;
+
+            $colStart = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($m[1]);
+            $colEnd   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($m[3]);
+            $rowStart = (int) $m[2];
+            $rowEnd   = (int) $m[4];
+
+            if ($colStart > $namaCol || $colEnd < $namaCol) continue;
+
+            $mergeRows = range($rowStart, $rowEnd);
+            if (!array_intersect($mergeRows, $rowsNeeded)) continue;
+
+            $ws->unmergeCells($rangeStr);
+            \Log::info("[ExcelService] Unmerged: {$rangeStr}");
+        }
+    }
+
+    private function detectFormat(string $filePath): string
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        return match($ext) {
+            'xlsm'  => 'Xlsx',
+            'xls'   => 'Xls',
+            'ods'   => 'Ods',
+            default => 'Xlsx',
+        };
+    }
+
+    private function createReader(string $filePath): \PhpOffice\PhpSpreadsheet\Reader\IReader
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+        $readerType = match($ext) {
+            'xlsx', 'xlsm' => 'Xlsx',
+            'xls'          => 'Xls',
+            'ods'          => 'Ods',
+            'csv'          => 'Csv',
+            default        => throw new \RuntimeException("Format file tidak didukung: {$ext}"),
+        };
+
+        return IOFactory::createReader($readerType);
+    }
+}

@@ -26,13 +26,13 @@ class AsesorController extends Controller
             ->get();
 
         $stats = [
-            'upcoming'   => $schedules->filter(fn($s) => $s->assessment_date->isFuture())->count(),
-            'today'      => $schedules->filter(fn($s) => $s->assessment_date->isToday())->count(),
-            'past'       => $schedules->filter(fn($s) => $s->assessment_date->isPast())->count(),
+            'upcoming'    => $schedules->filter(fn($s) => $s->assessment_date->isFuture())->count(),
+            'today'       => $schedules->filter(fn($s) => $s->assessment_date->isToday())->count(),
+            'past'        => $schedules->filter(fn($s) => $s->assessment_date->isPast())->count(),
             'total_asesi' => $schedules->sum(fn($s) => $s->asesmens->count()),
         ];
 
-        $todaySchedules = $schedules->filter(fn($s) => $s->assessment_date->isToday());
+        $todaySchedules    = $schedules->filter(fn($s) => $s->assessment_date->isToday());
         $upcomingSchedules = $schedules->filter(fn($s) => $s->assessment_date->isFuture())->take(5);
 
         return view('asesor.dashboard', compact('stats', 'todaySchedules', 'upcomingSchedules', 'asesor'));
@@ -48,7 +48,6 @@ class AsesorController extends Controller
         $query = Schedule::with(['tuk', 'skema', 'asesmens.aplsatu', 'asesmens.apldua'])
             ->where('asesor_id', $asesor->id);
 
-        // Filter
         $filter = $request->input('filter', 'upcoming');
         if ($filter === 'upcoming') {
             $query->where('assessment_date', '>=', now()->toDateString());
@@ -70,7 +69,7 @@ class AsesorController extends Controller
     {
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
- 
+
         $schedule->load([
             'tuk',
             'skema',
@@ -84,9 +83,9 @@ class AsesorController extends Controller
             'distribusiPortofolio.portofolio',
             'hasilObservasi',
             'hasilPortofolio',
-            'beritaAcara.asesis',   // ← INI yang kurang
+            'beritaAcara.asesis',
         ]);
- 
+
         // Build rekomendasiMap dari beritaAcara yang sudah ada
         $rekomendasiMap = [];
         if ($schedule->beritaAcara) {
@@ -94,8 +93,85 @@ class AsesorController extends Controller
                 $rekomendasiMap[$ba->asesmen_id] = $ba->rekomendasi;
             }
         }
- 
-        return view('asesor.schedule.detail', compact('schedule', 'asesor', 'rekomendasiMap'));
+
+        // Hitung apakah asesmen sudah bisa dimulai (ada asesi yang sudah verified apl02 & frak01)
+        $canStartAsesmen = $this->canStartAsesmen($schedule);
+
+        return view('asesor.schedule.detail', compact('schedule', 'asesor', 'rekomendasiMap', 'canStartAsesmen'));
+    }
+
+    /**
+     * Cek apakah jadwal sudah siap untuk memulai asesmen.
+     * Syarat: setidaknya ada 1 asesi yang frak01 = verified DAN apldua = verified.
+     */
+    private function canStartAsesmen(Schedule $schedule): bool
+    {
+        foreach ($schedule->asesmens as $asesmen) {
+            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
+            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+            if ($frak01Ready && $apl02Ready) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Mulai asesmen — hanya bisa dilakukan pada hari-H jadwal.
+     * Mengubah status asesi yang sudah ready menjadi 'assessed' (atau status berikutnya).
+     * Endpoint: POST /asesor/jadwal/{schedule}/mulai
+     */
+    public function mulaiAsesmen(Request $request, Schedule $schedule)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+
+        // Hanya bisa dilakukan hari-H
+        if (! $schedule->assessment_date->isToday()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Asesmen hanya bisa dimulai pada hari pelaksanaan.',
+            ], 422);
+        }
+
+        $schedule->loadMissing(['asesmens.frak01', 'asesmens.apldua']);
+
+        $started = 0;
+        foreach ($schedule->asesmens as $asesmen) {
+            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
+            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+
+            if ($frak01Ready && $apl02Ready && $asesmen->status !== 'assessed') {
+                $asesmen->update([
+                    'status'      => 'asesmen_started',
+                    'assessed_by' => auth()->id(),
+                    'assessed_at' => now(),
+                ]);
+                $started++;
+            }
+        }
+
+        if ($started > 0) {
+            $schedule->update(['assessment_start' => true]);
+        }
+
+        if ($started === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada asesi yang siap untuk dimulai (FR.AK.01 dan APL-02 harus sudah diverifikasi).',
+            ], 422);
+        }
+
+        Log::info('[ASESMEN-MULAI] Asesor memulai asesmen', [
+            'schedule_id' => $schedule->id,
+            'asesor_id'   => $asesor->id,
+            'started'     => $started,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Asesmen dimulai untuk {$started} asesi.",
+        ]);
     }
 
     /**
@@ -121,7 +197,7 @@ class AsesorController extends Controller
     }
 
     /**
-     * Verifikasi APL-02 — asesor tanda tangan dan beri rekomendasi
+     * Verifikasi APL-02
      */
     public function verifyApl02(Request $request, Schedule $schedule, Asesmen $asesmen)
     {
@@ -130,10 +206,10 @@ class AsesorController extends Controller
         abort_if($asesmen->schedule_id !== $schedule->id, 403);
 
         $request->validate([
-            'rekomendasi'  => 'required|in:lanjut,tidak_lanjut',
-            'catatan'      => 'nullable|string|max:1000',
-            'signature'    => 'required|string',
-            'nama_asesor'  => 'required|string|max:255',
+            'rekomendasi' => 'required|in:lanjut,tidak_lanjut',
+            'catatan'     => 'nullable|string|max:1000',
+            'signature'   => 'required|string',
+            'nama_asesor' => 'required|string|max:255',
         ]);
 
         $apldua = $asesmen->apldua;
@@ -159,10 +235,10 @@ class AsesorController extends Controller
         ]);
 
         Log::info('[APL02-VERIFY] Asesor verified APL-02', [
-            'apldua_id'    => $apldua->id,
-            'asesmen_id'   => $asesmen->id,
-            'asesor_id'    => $asesor->id,
-            'rekomendasi'  => $request->rekomendasi,
+            'apldua_id'   => $apldua->id,
+            'asesmen_id'  => $asesmen->id,
+            'asesor_id'   => $asesor->id,
+            'rekomendasi' => $request->rekomendasi,
         ]);
 
         return response()->json([
@@ -172,7 +248,7 @@ class AsesorController extends Controller
     }
 
     /**
-     * Preview PDF APL-01 (read-only untuk asesor)
+     * Preview PDF APL-01
      */
     public function previewApl01(Schedule $schedule, Asesmen $asesmen)
     {
@@ -193,9 +269,8 @@ class AsesorController extends Controller
         return $pdf->stream('APL-01_' . str_replace(' ', '_', $asesmen->full_name) . '.pdf');
     }
 
-
     /**
-     * Preview PDF APL-02 (asesor — setelah verified)
+     * Preview PDF APL-02
      */
     public function previewApl02(Schedule $schedule, Asesmen $asesmen)
     {
@@ -210,118 +285,140 @@ class AsesorController extends Controller
         $asesmen->load(['skema.unitKompetensis.elemens.kuks', 'schedule.asesor']);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.apldua', [
-            'apldua'      => $apldua,
-            'asesmen'     => $asesmen,
+            'apldua'        => $apldua,
+            'asesmen'       => $asesmen,
             'asesor_no_reg' => $asesor->no_reg_met,
         ])->setPaper('A4', 'portrait');
 
         return $pdf->stream('APL-02_' . str_replace(' ', '_', $asesmen->full_name) . '.pdf');
     }
 
-     /**
-     * Download SK jadwal untuk asesor
+    /**
+     * Download SK jadwal
      */
     public function downloadSk(Schedule $schedule)
     {
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
- 
+
         if (!$schedule->hasSk()) {
             abort(404, 'SK belum tersedia untuk jadwal ini.');
         }
- 
+
         if (!Storage::disk('private')->exists($schedule->sk_path)) {
             abort(404, 'File SK tidak ditemukan.');
         }
- 
+
         $ext      = pathinfo($schedule->sk_path, PATHINFO_EXTENSION);
         $filename = 'SK_' . str_replace('/', '-', $schedule->sk_number) . '.' . $ext;
- 
+
         return response()->streamDownload(function () use ($schedule) {
             echo Storage::disk('private')->get($schedule->sk_path);
         }, $filename, [
             'Content-Type' => $ext === 'pdf' ? 'application/pdf' : 'application/octet-stream',
         ]);
     }
- 
+
     /**
-     * Download paket soal observasi — asesor hanya bisa akses paket
-     * dari skema yang dijadwalkan ke dia.
+     * Download paket soal observasi
      */
     public function downloadPaketObservasi(\App\Models\PaketSoalObservasi $paket)
     {
         $asesor = auth()->user()->asesor;
- 
-        // Verifikasi: paket ini harus dari skema yang ada di jadwal asesor ini
+
         $skemaId = $paket->soalObservasi->skema_id;
         $boleh   = Schedule::where('asesor_id', $asesor->id)
             ->where('skema_id', $skemaId)
             ->exists();
- 
+
         abort_if(!$boleh, 403, 'Akses ditolak.');
         abort_if(!$paket->file_path, 404, 'File tidak tersedia.');
- 
+
         if (!Storage::disk('private')->exists($paket->file_path)) {
             abort(404, 'File paket tidak ditemukan.');
         }
- 
+
         $filename = $paket->file_name ?? 'Paket_' . $paket->kode_paket . '.pdf';
- 
+
         return response()->streamDownload(function () use ($paket) {
             echo Storage::disk('private')->get($paket->file_path);
         }, $filename, [
             'Content-Type' => 'application/pdf',
         ]);
     }
- 
+
     /**
-     * Toggle kehadiran asesi — dipanggil via AJAX dari detail jadwal
+     * Toggle kehadiran asesi — AJAX dari detail jadwal.
+     *
+     * Logika:
+     * - Default asesi = hadir (hadir = true / null).
+     * - Toggle menjadi tidak hadir jika sebelumnya hadir, dan sebaliknya.
+     * - Request body: { hadir: true|false } — nilai yang INGIN diset.
      */
-    public function toggleHadir(Request $request, \App\Models\Asesmen $asesmen)
+    public function toggleHadir(Request $request, Asesmen $asesmen)
     {
         $asesor   = auth()->user()->asesor;
         $schedule = $asesmen->schedule;
- 
+
         abort_if(!$schedule || $schedule->asesor_id !== $asesor->id, 403);
- 
+
         $request->validate(['hadir' => 'required|boolean']);
- 
+
         $asesmen->update(['hadir' => $request->boolean('hadir')]);
- 
-        return response()->json(['success' => true, 'hadir' => $asesmen->hadir]);
+
+        return response()->json([
+            'success' => true,
+            'hadir'   => $asesmen->hadir,
+            'label'   => $asesmen->hadir ? 'Hadir' : 'Tidak Hadir',
+        ]);
     }
 
+    /**
+     * Download / preview daftar hadir PDF.
+     * Hanya bisa diakses jika asesor sudah punya tanda tangan di profil.
+     */
     public function daftarHadir(Request $request, Schedule $schedule)
     {
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
- 
+
+        // Guard: asesor harus sudah TTD
+        if (empty(auth()->user()->signature)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tanda tangan belum ada. Silakan tambahkan tanda tangan terlebih dahulu.',
+                ], 422);
+            }
+            return redirect()->back()->with('error', 'Tanda tangan belum ada. Silakan tambahkan tanda tangan terlebih dahulu.');
+        }
+
         $schedule->load(['tuk', 'skema', 'asesor.user', 'asesmens.user']);
- 
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.daftar-hadir', [
             'schedule' => $schedule,
             'asesor'   => $schedule->asesor,
             'asesmens' => $schedule->asesmens,
         ])->setPaper('A4', 'portrait');
- 
+
         $skemaName = preg_replace('/[\/\\\]/', '-', $schedule->skema->name);
         $skemaName = str_replace(' ', '_', $skemaName);
-        $filename = 'Daftar_Hadir_' . str_replace(' ', '_', $skemaName) . '.pdf';
- 
+        $filename  = 'Daftar_Hadir_' . $skemaName . '.pdf';
+
         if ($request->boolean('preview')) {
             return $pdf->stream($filename);
         }
- 
+
         return $pdf->download($filename);
     }
- 
-        /**
+
+    /**
      * Upload SK Pengangkatan oleh asesor sendiri
      */
     public function uploadSk(Request $request)
     {
         $asesor = auth()->user()->asesor;
- 
+
         $request->validate([
             'sk_number'      => 'required|string|max:100',
             'sk_date'        => 'required|date|before_or_equal:today',
@@ -329,26 +426,25 @@ class AsesorController extends Controller
             'sk_file'        => ($asesor->sk_pengangkatan_path ? 'nullable' : 'required')
                                 . '|file|mimes:pdf|max:5120',
         ], [
-            'sk_file.required' => 'File SK wajib diupload.',
-            'sk_file.mimes'    => 'File harus berformat PDF.',
-            'sk_file.max'      => 'Ukuran file maksimal 5 MB.',
+            'sk_file.required'        => 'File SK wajib diupload.',
+            'sk_file.mimes'           => 'File harus berformat PDF.',
+            'sk_file.max'             => 'Ukuran file maksimal 5 MB.',
             'sk_date.before_or_equal' => 'Tanggal SK tidak boleh di masa depan.',
         ]);
- 
-        // Hapus file lama
+
         if ($asesor->sk_pengangkatan_path) {
             Storage::disk('private')->delete($asesor->sk_pengangkatan_path);
         }
- 
+
         $path     = null;
         $filename = null;
- 
+
         if ($request->hasFile('sk_file')) {
             $file     = $request->file('sk_file');
             $filename = 'SK_' . str_replace(' ', '_', $asesor->nama) . '_' . now()->format('Ymd') . '.pdf';
             $path     = $file->storeAs('asesors/sk', $filename, 'private');
         }
- 
+
         $asesor->update([
             'sk_pengangkatan_number'      => $request->sk_number,
             'sk_pengangkatan_date'        => $request->sk_date,
@@ -356,42 +452,42 @@ class AsesorController extends Controller
             'sk_pengangkatan_path'        => $path ?? $asesor->sk_pengangkatan_path,
             'sk_pengangkatan_filename'    => $filename ?? $asesor->sk_pengangkatan_filename,
         ]);
- 
+
         return redirect()->route('asesor.dokumen.sk')
             ->with('success', 'SK Pengangkatan berhasil ' . ($path ? 'diupload' : 'diperbarui') . '.');
     }
- 
+
     /**
      * Download SK Pengangkatan asesor sendiri
      */
     public function downloadSkPengangkatan()
     {
         $asesor = auth()->user()->asesor;
- 
+
         abort_unless($asesor->sk_pengangkatan_path, 404, 'SK belum tersedia.');
         abort_unless(
             Storage::disk('private')->exists($asesor->sk_pengangkatan_path),
             404, 'File SK tidak ditemukan.'
         );
- 
+
         return response()->streamDownload(function () use ($asesor) {
             echo Storage::disk('private')->get($asesor->sk_pengangkatan_path);
         }, $asesor->sk_pengangkatan_filename ?? 'SK_Pengangkatan.pdf', [
             'Content-Type' => 'application/pdf',
         ]);
     }
- 
+
     /**
      * Hapus SK Pengangkatan
      */
     public function deleteSkPengangkatan()
     {
         $asesor = auth()->user()->asesor;
- 
+
         if ($asesor->sk_pengangkatan_path) {
             Storage::disk('private')->delete($asesor->sk_pengangkatan_path);
         }
- 
+
         $asesor->update([
             'sk_pengangkatan_number'      => null,
             'sk_pengangkatan_date'        => null,
@@ -399,25 +495,25 @@ class AsesorController extends Controller
             'sk_pengangkatan_path'        => null,
             'sk_pengangkatan_filename'    => null,
         ]);
- 
+
         return redirect()->route('asesor.dokumen.sk')
             ->with('success', 'SK Pengangkatan berhasil dihapus.');
     }
- 
+
     /**
-     * Update documentSk — load schedule history
+     * Halaman Dokumen SK
      */
     public function documentSk()
     {
         $asesor = auth()->user()->asesor;
- 
+
         $schedules = Schedule::with(['tuk', 'skema'])
             ->where('asesor_id', $asesor->id)
             ->where('approval_status', 'approved')
             ->withCount('asesmens')
             ->orderBy('assessment_date', 'desc')
             ->get();
- 
+
         return view('asesor.document.sk', compact('asesor', 'schedules'));
     }
 }

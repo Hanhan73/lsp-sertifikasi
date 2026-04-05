@@ -67,31 +67,18 @@
 
                 @endif
 
-                {{-- Daftar Hadir --}}
-                @php $hasSig = !empty(auth()->user()->signature); @endphp
-                @if($hasSig && $schedule->assessment_date->isToday())
+                {{-- Daftar Hadir — tombol header (hanya untuk download setelah dikunci) --}}
+                @if($schedule->isDaftarHadirSigned())
                 <a href="{{ route('asesor.schedule.daftar-hadir', $schedule) }}"
-                   class="btn btn-sm btn-outline-info" target="_blank">
-                    <i class="bi bi-file-person me-1"></i>Daftar Hadir
+                   target="_blank" class="btn btn-sm btn-outline-info">
+                    <i class="bi bi-file-person me-1"></i>Daftar Hadir PDF
                 </a>
-                @elseif(!$hasSig || !$schedule->assessment_date->isToday())
-                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
-                        title="{{ !$hasSig ? 'Tambahkan tanda tangan untuk download daftar hadir' : 'Daftar hadir hanya bisa diunduh pada hari asesmen' }}">
-                    <i class="bi bi-file-person me-1"></i>Daftar Hadir
                 @else
-                <button type="button" class="btn btn-sm btn-outline-info"
-                        onclick="bukaModalTtd('daftar-hadir')"
-                        title="Tambahkan tanda tangan untuk download daftar hadir">
+                <button type="button" class="btn btn-sm btn-outline-secondary" disabled
+                        title="Verifikasi kehadiran di tab Daftar Peserta">
                     <i class="bi bi-file-person me-1"></i>Daftar Hadir
                 </button>
                 @endif
-
-                <button type="button" class="btn btn-sm btn-outline-{{ $hasSig ? 'secondary' : 'warning' }}"
-                        onclick="bukaModalTtd('daftar-hadir')"
-                        title="{{ $hasSig ? 'Ubah tanda tangan' : 'Tambahkan tanda tangan' }}">
-                    <i class="bi bi-pen{{ $hasSig ? '-fill text-success' : '' }} me-1"></i>
-                    {{ $hasSig ? 'Ubah TTD' : 'TTD Saya' }}
-                </button>
 
                 <a href="{{ route('asesor.schedule') }}" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-left me-1"></i>Kembali
@@ -195,13 +182,26 @@
         <div class="tab-pane fade show active" id="tab-peserta" role="tabpanel">
 
             @php
-                $hadirCount = $asesmens->filter(fn($a) => ($a->hadir ?? true) !== false)->count();
+                $hadirCount      = $asesmens->filter(fn($a) => ($a->hadir ?? true) !== false)->count();
+                $daftarHadirLocked = $schedule->isDaftarHadirSigned();
             @endphp
             <div class="px-4 pt-3 pb-2 border-bottom d-flex align-items-center gap-3 flex-wrap">
                 <span class="fw-semibold small"><i class="bi bi-person-check text-success me-1"></i>Daftar Hadir</span>
                 <span class="badge bg-success" id="badge-hadir">{{ $hadirCount }} Hadir</span>
                 <span class="badge bg-secondary" id="badge-tidak-hadir">{{ $totalAsesi - $hadirCount }} Tidak Hadir</span>
-                @include('asesor.schedule._daftar-hadir-btn', ['schedule' => $schedule, 'asesor' => $asesor])
+                @if($daftarHadirLocked)
+                <span class="badge bg-success ms-auto">
+                    <i class="bi bi-lock-fill me-1"></i>Ditandatangani {{ $schedule->daftar_hadir_signed_at->translatedFormat('d M Y H:i') }}
+                </span>
+                <a href="{{ route('asesor.schedule.daftar-hadir', $schedule) }}"
+                   target="_blank" class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-file-pdf me-1"></i>Download PDF
+                </a>
+                @else
+                <button class="btn btn-sm btn-outline-primary ms-auto" onclick="bukaModalVerifikasiHadir()">
+                    <i class="bi bi-clipboard-check me-1"></i>Verifikasi & Tandatangani Daftar Hadir
+                </button>
+                @endif
             </div>
 
             <div class="p-0">
@@ -233,7 +233,17 @@
                         <div class="text-muted small">NIK: {{ $asesmen->nik }}</div>
                     </div>
 
-                    {{-- Toggle Hadir — dinamis: klik ubah status --}}
+                    {{-- Toggle Hadir — dikunci jika daftar hadir sudah ditandatangani --}}
+                    @if($daftarHadirLocked)
+                    <button type="button"
+                            class="btn btn-sm {{ $isHadir ? 'btn-success' : 'btn-outline-danger' }}"
+                            disabled
+                            title="Daftar hadir sudah ditandatangani, tidak dapat diubah">
+                        <i class="bi {{ $isHadir ? 'bi-person-check-fill' : 'bi-person-x-fill' }} me-1"></i>
+                        <span>{{ $isHadir ? 'Hadir' : 'Tidak Hadir' }}</span>
+                        <i class="bi bi-lock-fill ms-1" style="font-size:.65rem;"></i>
+                    </button>
+                    @else
                     <button type="button"
                             class="btn btn-sm hadir-toggle-btn {{ $isHadir ? 'btn-success' : 'btn-outline-danger' }}"
                             id="btn-hadir-{{ $asesmen->id }}"
@@ -244,6 +254,7 @@
                         <i class="bi {{ $isHadir ? 'bi-person-check-fill' : 'bi-person-x-fill' }} me-1"></i>
                         <span class="hadir-label">{{ $isHadir ? 'Hadir' : 'Tidak Hadir' }}</span>
                     </button>
+                    @endif
 
                     <div class="d-flex gap-2 align-items-center flex-wrap">
                         @if($aplsatu)
@@ -668,7 +679,10 @@
 
                 {{-- Berita Acara --}}
                 <div class="col-lg-5">
-                    @php $ba = $schedule->beritaAcara; @endphp
+                    @php
+                        $ba       = $schedule->beritaAcara;
+                        $baLocked = $ba && $ba->isSigned();
+                    @endphp
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
                             <div><i class="bi bi-file-text text-warning me-2"></i>Berita Acara</div>
@@ -683,14 +697,30 @@
                                     <i class="bi bi-download me-1"></i>PDF
                                 </a>
                                 @endif
-                                @if($ba)
-                                <span class="badge bg-success" style="font-size:.65rem;">Tersimpan</span>
+                                @if($baLocked)
+                                <span class="badge bg-success" style="font-size:.65rem;">
+                                    <i class="bi bi-lock-fill me-1"></i>Ditandatangani
+                                </span>
+                                @elseif($ba)
+                                <span class="badge bg-warning text-dark" style="font-size:.65rem;">Tersimpan</span>
                                 @else
                                 <span class="badge bg-secondary" style="font-size:.65rem;">Belum Diisi</span>
                                 @endif
                             </div>
                         </div>
                         <div class="card-body">
+                            {{-- Info locked --}}
+                            @if($baLocked)
+                            <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.82rem;">
+                                <i class="bi bi-lock-fill flex-shrink-0"></i>
+                                <div>
+                                    Berita acara telah ditandatangani oleh asesor pada
+                                    <strong>{{ $ba->signed_at->translatedFormat('d M Y, H:i') }}</strong>.
+                                    Data tidak dapat diubah.
+                                </div>
+                            </div>
+                            @endif
+
                             @if($ba && $ba->asesis->isNotEmpty())
                             @php
                                 $jumlahK  = $ba->asesis->where('rekomendasi', 'K')->count();
@@ -731,6 +761,7 @@
                             </div>
                             @endif
 
+                            @if(!$baLocked)
                             <form method="POST" action="{{ route('asesor.jadwal.berita-acara.simpan', $schedule) }}">
                                 @csrf
                                 <div class="mb-2">
@@ -781,10 +812,138 @@
                                     <i class="bi bi-save me-1"></i>Simpan Berita Acara
                                 </button>
                             </form>
+
+                            {{-- Tombol TTD Berita Acara (hanya tampil jika data sudah ada) --}}
+                            @if($ba && $ba->asesis->isNotEmpty())
+                            <hr class="my-3">
+                            <button type="button"
+                                    class="btn btn-success btn-sm w-100"
+                                    onclick="bukaModalTtdBeritaAcara()">
+                                <i class="bi bi-pen-fill me-1"></i>Tanda Tangan & Kunci Berita Acara
+                            </button>
+                            @endif
+                            @else
+                            {{-- Jika sudah locked: tampilkan read-only --}}
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-muted">Tanggal Pelaksanaan</label>
+                                <div class="form-control form-control-sm bg-light" style="pointer-events:none;">
+                                    {{ $ba->tanggal_pelaksanaan->translatedFormat('d M Y') }}
+                                </div>
+                            </div>
+                            @if($ba->catatan)
+                            <div class="mb-2">
+                                <label class="form-label fw-semibold small text-muted">Catatan</label>
+                                <div class="form-control form-control-sm bg-light" style="pointer-events:none;white-space:pre-wrap;">{{ $ba->catatan }}</div>
+                            </div>
+                            @endif
+                            @endif
                         </div>
                     </div>
                 </div>
 
+            </div>
+        </div>
+
+        {{-- Modal Verifikasi Daftar Hadir --}}
+        <div class="modal fade" id="modalVerifikasiHadir" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-primary text-white">
+                        <h6 class="modal-title fw-bold">
+                            <i class="bi bi-clipboard-check me-2"></i>Verifikasi & Tandatangani Daftar Hadir
+                        </h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        {{-- Rekap kehadiran --}}
+                        <div class="border rounded-3 overflow-hidden mb-4">
+                            <div class="px-3 py-2 bg-light fw-semibold small border-bottom d-flex align-items-center justify-content-between">
+                                <span><i class="bi bi-people me-2 text-primary"></i>Rekap Kehadiran</span>
+                                <div class="d-flex gap-2">
+                                    <span class="badge bg-success">{{ $hadirCount }} Hadir</span>
+                                    <span class="badge bg-secondary">{{ $totalAsesi - $hadirCount }} Tidak Hadir</span>
+                                </div>
+                            </div>
+                            <table class="table table-sm mb-0">
+                                <thead class="table-light">
+                                    <tr style="font-size:.8rem;">
+                                        <th class="ps-3" style="width:40px;">#</th>
+                                        <th>Nama</th>
+                                        <th class="text-center" style="width:110px;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($asesmens as $i => $asesmen)
+                                    @php $isHadir = ($asesmen->hadir ?? true) !== false; @endphp
+                                    <tr style="font-size:.82rem;" class="{{ $isHadir ? '' : 'table-danger' }}">
+                                        <td class="ps-3 text-muted">{{ $i + 1 }}</td>
+                                        <td class="fw-semibold">{{ $asesmen->full_name }}</td>
+                                        <td class="text-center">
+                                            <span class="badge {{ $isHadir ? 'bg-success' : 'bg-danger' }}" style="font-size:.7rem;">
+                                                {{ $isHadir ? 'Hadir' : 'Tidak Hadir' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-4" style="font-size:.82rem;">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                            <div>Setelah ditandatangani, <strong>daftar hadir tidak dapat diubah lagi</strong>. Pastikan data kehadiran sudah benar sebelum melanjutkan.</div>
+                        </div>
+
+                        @include('partials._signature_pad', [
+                            'padId'    => 'daftar-hadir-ttd',
+                            'padLabel' => 'Tanda Tangan Asesor',
+                            'padHeight' => 160,
+                            'savedSig'  => $asesor?->user?->signature_image,
+                        ])
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
+                            Periksa Ulang
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm fw-semibold" id="btn-confirm-ttd-hadir"
+                                onclick="confirmTtdDaftarHadir()">
+                            <i class="bi bi-lock-fill me-1"></i>Tandatangani & Kunci
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Modal TTD Berita Acara --}}
+        <div class="modal fade" id="modalTtdBeritaAcara" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-success text-white">
+                        <h6 class="modal-title fw-bold">
+                            <i class="bi bi-pen-fill me-2"></i>Tanda Tangan Berita Acara
+                        </h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert alert-warning d-flex gap-2 py-2 mb-3" style="font-size:.82rem;">
+                            <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                            <div>Setelah ditandatangani, berita acara <strong>tidak dapat diubah lagi</strong>. Pastikan data sudah benar.</div>
+                        </div>
+                        @include('partials._signature_pad', [
+                            'padId'    => 'ba-asesor-ttd',
+                            'padLabel' => 'Tanda Tangan Asesor',
+                            'padHeight' => 160,
+                            'savedSig'  => $asesor?->user?->signature_image,
+                        ])
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-success btn-sm fw-semibold" id="btn-confirm-ttd-ba"
+                                onclick="confirmTtdBeritaAcara()">
+                            <i class="bi bi-lock-fill me-1"></i>Tanda Tangan & Kunci
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -922,6 +1081,112 @@ async function simpanTtdAsesor() {
         }
     } catch (e) {
         Swal.fire('Error', 'Terjadi kesalahan.', 'error');
+    }
+}
+
+// ── Modal Verifikasi Daftar Hadir ──
+const _ttdHadirUrl = '{{ route("asesor.schedule.daftar-hadir.sign", $schedule) }}';
+
+document.getElementById('modalVerifikasiHadir')?.addEventListener('shown.bs.modal', () => {
+    SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
+});
+
+function bukaModalVerifikasiHadir() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerifikasiHadir')).show();
+}
+
+async function confirmTtdDaftarHadir() {
+    if (SigPadManager.isEmpty('daftar-hadir-ttd')) {
+        Swal.fire({
+            icon: 'warning', title: 'Tanda Tangan Diperlukan',
+            text: 'Silakan tanda tangan terlebih dahulu.',
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+        });
+        return;
+    }
+
+    const btn = document.getElementById('btn-confirm-ttd-hadir');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+
+    try {
+        const dataURL = await SigPadManager.prepareAndGet('daftar-hadir-ttd');
+
+        const res = await fetch(_ttdHadirUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({ signature: dataURL }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.');
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerifikasiHadir')).hide();
+        Swal.fire({
+            icon: 'success', title: 'Daftar hadir ditandatangani!',
+            text: 'Kehadiran telah dikunci dan PDF siap didownload.',
+            timer: 2000, showConfirmButton: false,
+        }).then(() => location.reload());
+
+    } catch (err) {
+        Swal.fire('Gagal', err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Tandatangani & Kunci';
+    }
+}
+
+// ── Modal TTD Berita Acara ──
+const _ttdBaUrl = '{{ route("asesor.jadwal.berita-acara.tanda-tangan", $schedule) }}';
+
+document.getElementById('modalTtdBeritaAcara')?.addEventListener('shown.bs.modal', () => {
+    SigPadManager.init('ba-asesor-ttd', @json($asesor?->user?->signature_image));
+});
+
+function bukaModalTtdBeritaAcara() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdBeritaAcara')).show();
+}
+
+async function confirmTtdBeritaAcara() {
+    if (SigPadManager.isEmpty('ba-asesor-ttd')) {
+        Swal.fire({
+            icon: 'warning', title: 'Tanda Tangan Diperlukan',
+            text: 'Silakan tanda tangan terlebih dahulu.',
+            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
+        });
+        return;
+    }
+
+    const btn = document.getElementById('btn-confirm-ttd-ba');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+
+    try {
+        const dataURL = await SigPadManager.prepareAndGet('ba-asesor-ttd');
+
+        const res  = await fetch(_ttdBaUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({ signature: dataURL }),
+        });
+
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.');
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdBeritaAcara')).hide();
+        Swal.fire({
+            icon: 'success', title: 'Berita acara ditandatangani!',
+            text: 'Data berita acara telah dikunci.',
+            timer: 2000, showConfirmButton: false,
+        }).then(() => location.reload());
+
+    } catch (err) {
+        Swal.fire('Gagal', err.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i>Tanda Tangan & Kunci';
     }
 }
 

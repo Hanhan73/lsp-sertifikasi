@@ -186,17 +186,23 @@
                             'label'  => 'Pelaksanaan Asesmen',
                             'status' => 'asesmen_started',
                             'icon'   => 'bi-person-check',
-                            'sub'    => $asesmen->assessed_at
-                                            ? $asesmen->assessed_at->translatedFormat('d M Y')
-                                            : 'Belum dilakukan',
+                            'sub'    => $asesmen->status === 'asesmen_started' && $asesmen->schedule?->assessment_date?->isPast()
+                                            ? 'Selesai dilaksanakan, menunggu hasil dari asesor'
+                                            : ($asesmen->status === 'asesmen_started'
+                                                ? 'Sedang berjalan'
+                                                : ($asesmen->assessed_at
+                                                    ? $asesmen->assessed_at->translatedFormat('d M Y')
+                                                    : 'Belum dilakukan')),
                         ],
                         [
                             'label'  => 'Hasil Asesmen',
                             'status' => 'assessed',
-                            'icon'   => 'bi-person-check',
-                            'sub'    => $asesmen->assessed_at
-                                            ? $asesmen->assessed_at->translatedFormat('d M Y')
-                                            : 'Belum dilakukan',
+                            'icon'   => 'bi-clipboard-check',
+                            'sub'    => $asesmen->result
+                                            ? ($asesmen->result === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten')
+                                            : ($currentIdx >= array_search('assessed', $statusOrder)
+                                                ? 'Menunggu keputusan asesor'
+                                                : 'Belum dilakukan'),
                         ],
                         [
                             'label'  => 'Penerbitan Sertifikat',
@@ -227,6 +233,11 @@
                         </div>
                         <div class="tl-label">{{ $step['label'] }}</div>
                         <div class="tl-sub">{{ $step['sub'] }}</div>
+                        @if($step['status'] === 'assessed' && $asesmen->result)
+                        <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
+                            {{ strtoupper($asesmen->result) }}
+                        </span>
+                        @endif
                         {{-- Detail tambahan untuk step yang aktif --}}
                         @if($isNow && $asesmen->status === 'scheduled' && $asesmen->schedule)
                         <div class="mt-1 d-flex flex-wrap gap-2">

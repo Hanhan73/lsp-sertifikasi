@@ -18,7 +18,8 @@
 
     // Asesmen sudah dimulai jika status asesi = 'assessed'
     $asesmenDimulai = in_array($asesmen->status, ['asesmen_started']);
-    $asesmenSelesai  = in_array($asesmen->status, ['assessed', 'certified']);
+    $asesmenSelesai = in_array($asesmen->status, ['assessed', 'certified']) 
+               || ($daysLeft < 0 && $asesmenDimulai);
 
     // Hitung status soal teori (hanya relevan jika asesmen sudah dimulai)
     $soalTeori   = $asesmen->soalTeoriAsesi ?? collect();
@@ -109,7 +110,7 @@
                         </span>
                         @endif
 
-                        @if($asesmenDimulai)
+                        @if($asesmenDimulai && !$asesmenSelesai)
                         <span class="badge bg-danger px-3 py-2" style="font-size:.78rem;">
                             <i class="bi bi-play-fill me-1"></i>Asesmen Berjalan
                         </span>
@@ -264,11 +265,33 @@
                 <i class="bi bi-journal-check text-primary"></i>Soal Asesmen
             </div>
 
-            @if(!$asesmenDimulai)
+            @if($asesmenSelesai || ($daysLeft <= 0 && !$asesmenDimulai))
+            {{-- Jadwal sudah lewat / asesmen selesai — soal dikunci --}}
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
+                <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
+                    style="width:64px;height:64px;">
+                    <i class="bi bi-check2-circle text-success" style="font-size:1.6rem;"></i>
+                </div>
+                <p class="fw-semibold mb-1">Asesmen Telah Dilaksanakan</p>
+                <p class="text-muted small mb-0">
+                    Sesi asesmen pada tanggal
+                    <strong>{{ $schedule->assessment_date->translatedFormat('d F Y') }}</strong>
+                    telah selesai dilaksanakan. Silakan tunggu hasil dan keputusan dari asesor.
+                </p>
+                @if($asesmenSelesai && $asesmen->result)
+                <div class="mt-3">
+                    <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} px-3 py-2" style="font-size:.9rem;">
+                        {{ $asesmen->result === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten' }}
+                    </span>
+                </div>
+                @endif
+            </div>
+
+            @elseif(!$asesmenDimulai)
             {{-- Asesmen belum dimulai oleh asesor --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
                 <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mb-3"
-                     style="width:64px;height:64px;">
+                    style="width:64px;height:64px;">
                     <i class="bi bi-lock text-muted" style="font-size:1.6rem;"></i>
                 </div>
                 <p class="fw-semibold mb-1">Soal Belum Tersedia</p>

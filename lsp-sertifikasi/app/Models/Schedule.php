@@ -35,15 +35,24 @@ class Schedule extends Model
         'sk_number',
         'sk_path',
         'assessment_start',
+        // Daftar hadir sign lock
+        'daftar_hadir_signed_at',
+        'daftar_hadir_signed_by',
     ];
 
     protected $casts = [
-        'assessment_date' => 'date',
-        'approved_at'     => 'datetime',
-        'rejected_at'     => 'datetime',
-        'assigned_at'     => 'datetime',
-        'assessment_start' => 'boolean',
+        'assessment_date'         => 'date',
+        'approved_at'             => 'datetime',
+        'rejected_at'             => 'datetime',
+        'assigned_at'             => 'datetime',
+        'assessment_start'        => 'boolean',
+        'daftar_hadir_signed_at'  => 'datetime',
     ];
+
+    public function isDaftarHadirSigned(): bool
+    {
+        return $this->daftar_hadir_signed_at !== null;
+    }
 
     // =========================================================================
     // Relationships

@@ -7,6 +7,7 @@ use App\Models\Portofolio;
 use App\Models\Schedule;
 use App\Models\SoalObservasi;
 use App\Models\SoalTeori;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -42,29 +43,56 @@ class DashboardController extends Controller
         ));
     }
 
-    public function distribusi(): \Illuminate\View\View
+    public function distribusi(Request $request): \Illuminate\View\View
     {
         $jadwalBelumTeori = Schedule::approved()->whereDoesntHave('distribusiSoalTeori')->count();
         $jadwalLengkap    = Schedule::approved()
             ->whereHas('distribusiSoalObservasi')
             ->whereHas('distribusiSoalTeori')
             ->count();
- 
-        $schedules = Schedule::with([
+
+        $query = Schedule::with([
             'skema', 'tuk',
             'distribusiSoalObservasi',
             'distribusiSoalTeori',
             'distribusiPortofolio',
         ])
         ->approved()
-        ->withCount('asesmens')
-        ->latest('assessment_date')
-        ->paginate(15);
- 
+        ->withCount('asesmens');
+
+        // Filter: pencarian skema / tuk
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('skema', fn($s) => $s->where('name', 'like', "%{$search}%"))
+                  ->orWhereHas('tuk', fn($t) => $t->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        // Filter: status jadwal (selesai / mendatang)
+        $filterStatus = $request->input('status');
+        if ($filterStatus === 'selesai') {
+            $query->where('assessment_date', '<', now()->toDateString());
+        } elseif ($filterStatus === 'mendatang') {
+            $query->where('assessment_date', '>=', now()->toDateString());
+        }
+
+        // Sorting
+        $sortBy  = $request->input('sort', 'date_desc');
+        match ($sortBy) {
+            'date_asc'   => $query->orderBy('assessment_date', 'asc'),
+            'skema_asc'  => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'asc'),
+            'skema_desc' => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'desc'),
+            default      => $query->orderBy('assessment_date', 'desc'),
+        };
+
+        $schedules = $query->paginate(15)->withQueryString();
+
         return view('manajer-sertifikasi.distribusi', compact(
             'schedules',
             'jadwalBelumTeori',
             'jadwalLengkap',
+            'filterStatus',
+            'sortBy',
         ));
     }
 }

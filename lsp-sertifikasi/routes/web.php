@@ -505,6 +505,7 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     Route::get('/schedule',          [AsesorController::class, 'schedule'])      ->name('schedule');
     Route::get('/schedule/{schedule}',[AsesorController::class, 'scheduleDetail'])->name('schedule.detail');
     Route::get('/schedule/{schedule}/daftar-hadir', [AsesorController::class, 'daftarHadir'])->name('schedule.daftar-hadir');
+    Route::post('/schedule/{schedule}/daftar-hadir/verifikasi', [AsesorController::class, 'verifikasiDaftarHadir'])->name('schedule.daftar-hadir.verifikasi');
     // SK download untuk asesor
     Route::get('/schedule/{schedule}/sk', [AsesorController::class, 'downloadSk'])->name('schedule.sk.download');
 
@@ -572,10 +573,17 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::post('/berita-acara/upload-file', [HasilPenilaianController::class, 'uploadFileBeritaAcara'])  ->name('berita-acara.upload-file');
         Route::get('/berita-acara/download-file',[HasilPenilaianController::class, 'downloadFileBeritaAcara'])->name('berita-acara.download-file');
         Route::get('/berita-acara/pdf',          [HasilPenilaianController::class, 'pdfBeritaAcara'])         ->name('berita-acara.pdf');
+        Route::post('/berita-acara/tanda-tangan',[HasilPenilaianController::class, 'tandaTanganBeritaAcara']) ->name('berita-acara.tanda-tangan');
     });
 
     Route::post('/jadwal/{schedule}/mulai', [AsesorController::class, 'mulaiAsesmen'])
         ->name('schedule.mulai');
+
+    Route::post('/jadwal/{schedule}/daftar-hadir/sign', [AsesorController::class, 'verifikasiDaftarHadir'])
+        ->name('schedule.daftar-hadir.sign');
+
+    Route::post('/jadwal/{schedule}/berita-acara/sign', [HasilPenilaianController::class, 'signBeritaAcara'])
+        ->name('jadwal.berita-acara.sign');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin

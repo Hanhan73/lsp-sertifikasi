@@ -362,6 +362,14 @@ class AsesorController extends Controller
 
         abort_if(!$schedule || $schedule->asesor_id !== $asesor->id, 403);
 
+        // Daftar hadir sudah ditandatangani — tidak bisa diubah
+        if ($schedule->isDaftarHadirSigned()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Daftar hadir sudah ditandatangani dan tidak dapat diubah.',
+            ], 403);
+        }
+
         $request->validate(['hadir' => 'required|boolean']);
 
         $asesmen->update(['hadir' => $request->boolean('hadir')]);
@@ -371,6 +379,27 @@ class AsesorController extends Controller
             'hadir'   => $asesmen->hadir,
             'label'   => $asesmen->hadir ? 'Hadir' : 'Tidak Hadir',
         ]);
+    }
+
+    /**
+     * Verifikasi daftar hadir — asesor mengkonfirmasi daftar hadir sudah benar
+     * dan menandatanganinya. Dipanggil via AJAX dari modal konfirmasi.
+     */
+    public function verifikasiDaftarHadir(Request $request, Schedule $schedule)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+
+        if ($schedule->isDaftarHadirSigned()) {
+            return response()->json(['success' => true, 'already' => true]);
+        }
+
+        $schedule->update([
+            'daftar_hadir_signed_at' => now(),
+            'daftar_hadir_signed_by' => auth()->id(),
+        ]);
+
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -516,4 +545,5 @@ class AsesorController extends Controller
 
         return view('asesor.document.sk', compact('asesor', 'schedules'));
     }
+
 }

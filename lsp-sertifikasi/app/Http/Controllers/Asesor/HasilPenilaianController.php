@@ -294,10 +294,51 @@ class HasilPenilaianController extends Controller
         ));
     }
 
+    /**
+     * TTD & lock berita acara — POST /asesor/jadwal/{schedule}/berita-acara/sign
+     */
+    public function signBeritaAcara(Request $request, Schedule $schedule)
+    {
+        $this->authorizeSchedule($schedule);
+
+        $ba = $schedule->beritaAcara;
+        abort_if(!$ba, 404, 'Berita acara belum diisi.');
+
+        if ($ba->isSigned()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Berita acara sudah ditandatangani dan dikunci.',
+            ], 400);
+        }
+
+        $request->validate(['signature' => 'required|string']);
+
+        $user = auth()->user();
+        if (empty($user->signature)) {
+            $sig = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
+            $user->update(['signature' => $sig]);
+        }
+
+        $ba->update([
+            'signed_at' => now(),
+            'signed_by' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berita acara berhasil ditandatangani dan dikunci.',
+        ]);
+    }
+
     public function simpanBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
 
+        // Guard: tidak bisa diubah jika sudah TTD
+        $ba = $schedule->beritaAcara;
+        if ($ba && $ba->isSigned()) {
+            return back()->with('error', 'Berita acara sudah ditandatangani dan tidak dapat diubah.');
+        }
         $request->validate([
             'tanggal_pelaksanaan' => 'required|date',
             'catatan'             => 'nullable|string|max:1000',
@@ -340,6 +381,12 @@ class HasilPenilaianController extends Controller
     public function uploadFileBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
+
+        // Berita acara sudah ditandatangani — tidak bisa diupload ulang
+        $existingBa = $schedule->beritaAcara;
+        if ($existingBa && $existingBa->isSigned()) {
+            return back()->with('error', 'Berita acara sudah ditandatangani dan tidak dapat diubah.');
+        }
 
         // Berita acara file upload juga hanya .xlsx
         $request->validate([
@@ -409,6 +456,37 @@ class HasilPenilaianController extends Controller
         return request()->boolean('preview')
             ? $pdf->stream($filename)
             : $pdf->download($filename);
+    }
+
+    /**
+     * Tanda tangani berita acara — mengunci berita acara agar tidak bisa diubah.
+     * Dipanggil via modal konfirmasi dengan signature pad.
+     */
+    public function tandaTanganBeritaAcara(Request $request, Schedule $schedule)
+    {
+        $this->authorizeSchedule($schedule);
+
+        $ba = $schedule->beritaAcara;
+        abort_unless($ba && $ba->asesis->isNotEmpty(), 422, 'Berita acara belum lengkap diisi.');
+
+        if ($ba->isSigned()) {
+            return back()->with('info', 'Berita acara sudah ditandatangani sebelumnya.');
+        }
+
+        // Jika asesor belum punya TTD, simpan dulu
+        if ($request->filled('signature')) {
+            $sig = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
+            auth()->user()->update(['signature' => $sig]);
+        }
+
+        abort_if(empty(auth()->user()->refresh()->signature), 422, 'Tanda tangan diperlukan.');
+
+        $ba->update([
+            'signed_at' => now(),
+            'signed_by' => auth()->id(),
+        ]);
+
+        return back()->with('success', 'Berita acara berhasil ditandatangani dan dikunci.');
     }
 
     // =========================================================================

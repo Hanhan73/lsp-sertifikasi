@@ -17,14 +17,14 @@ class VerifyEmail extends VerifyEmailBase
         $verificationUrl = $this->verificationUrl($notifiable);
 
         return (new MailMessage)
-            ->subject('Verifikasi Alamat Email - ' . config('app.name'))
+            ->subject('Verifikasi Alamat Email - Sikap LSP')
             ->greeting('Halo, ' . $notifiable->name . '!')
-            ->line('Terima kasih telah mendaftar di ' . config('app.name') . ' - Sistem Sertifikasi Kompetensi.')
+            ->line('Terima kasih telah mendaftar di Sikap LSP - Sistem Sertifikasi Kompetensi.')
             ->line('Untuk melanjutkan, silakan verifikasi alamat email Anda dengan mengklik tombol di bawah ini:')
             ->action('Verifikasi Email Saya', $verificationUrl)
             ->line('Link verifikasi ini akan kadaluarsa dalam 60 menit.')
             ->line('Jika Anda tidak mendaftar, abaikan email ini.')
-            ->salutation('Salam hangat, ' . config('app.name'));
+            ->salutation('Salam hangat, Tim Sikap LSP');
     }
 
     /**

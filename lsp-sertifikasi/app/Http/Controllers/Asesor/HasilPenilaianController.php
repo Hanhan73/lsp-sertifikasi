@@ -186,15 +186,8 @@ class HasilPenilaianController extends Controller
         $paket = $soalObservasi->paket->first();
         abort_unless($paket && Storage::disk('private')->exists($paket->file_path), 404, 'File template tidak ditemukan.');
 
-        $inputPath  = Storage::disk('private')->path($paket->file_path);
         $ext        = pathinfo($paket->file_name, PATHINFO_EXTENSION) ?: 'xlsm';
         $outputPath = sys_get_temp_dir() . '/' . uniqid('tpl_obs_') . '.' . $ext;
-        $names      = $schedule->asesmens->pluck('full_name')->all();
-
-        $service = new ExcelService();
-        $ok      = $service->injectNamaAsesi($inputPath, $outputPath, $names);
-
-        abort_unless($ok && file_exists($outputPath), 500, 'Gagal memproses template observasi.');
 
         return response()->download($outputPath, $paket->file_name)->deleteFileAfterSend();
     }

@@ -186,12 +186,10 @@ class HasilPenilaianController extends Controller
         $paket = $soalObservasi->paket->first();
         abort_unless($paket && Storage::disk('private')->exists($paket->file_path), 404, 'File template tidak ditemukan.');
 
-        $ext        = pathinfo($paket->file_name, PATHINFO_EXTENSION) ?: 'xlsm';
-        $outputPath = sys_get_temp_dir() . '/' . uniqid('tpl_obs_') . '.' . $ext;
-
-        return response()->download($outputPath, $paket->file_name)->deleteFileAfterSend();
+        return Storage::disk('private')->download($paket->file_path, $paket->file_name);
     }
 
+    
     public function downloadTemplatePortofolio(Schedule $schedule, Portofolio $portofolio)
     {
         $this->authorizeSchedule($schedule);

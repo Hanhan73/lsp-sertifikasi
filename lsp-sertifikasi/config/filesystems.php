@@ -46,6 +46,13 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'public_html' => [
+            'driver'     => 'local',
+            'root'       => '/home/u781992397/domains/sikaplsp.com/public_html/storage',
+            'url'        => 'https://sikaplsp.com/storage',
+            'visibility' => 'public',
+            'throw'      => false,
+        ],
 
         'private' => [
             'driver'     => 'local',

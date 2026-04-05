@@ -140,9 +140,17 @@ public function storeData(Request $request)
     ]);
  
     // Upload file hanya jika ada file baru yang di-upload
-    $photoPath    = $request->hasFile('photo')    ? $request->file('photo')->store('uploads/photos', 'public')       : $asesmen?->photo_path;
-    $ktpPath      = $request->hasFile('ktp')      ? $request->file('ktp')->store('uploads/ktp', 'public')           : $asesmen?->ktp_path;
-    $documentPath = $request->hasFile('document') ? $request->file('document')->store('uploads/documents', 'public') : $asesmen?->document_path;
+    $photoPath    = $request->hasFile('photo')
+        ? $request->file('photo')->store('uploads/photos', 'public_html')
+        : $asesmen?->photo_path;
+
+    $ktpPath      = $request->hasFile('ktp')
+        ? $request->file('ktp')->store('uploads/ktp', 'public_html')
+        : $asesmen?->ktp_path;
+
+    $documentPath = $request->hasFile('document')
+        ? $request->file('document')->store('uploads/documents', 'public_html')
+        : $asesmen?->document_path;
  
     if ($asesmen && $asesmen->skema_id) {
         $request->merge(['skema_id' => $asesmen->skema_id]);

@@ -129,7 +129,6 @@
                                     </small>
                                 </div>
                                 <div class="d-flex gap-2">
-                                    {{-- Tombol tambah paket trigger collapse --}}
                                     <button class="btn btn-sm btn-outline-primary"
                                             data-bs-toggle="collapse"
                                             data-bs-target="#collapseObs{{ $obs->id }}"
@@ -242,7 +241,6 @@
                     <div class="border rounded-3 p-3 bg-light">
                         <p class="text-muted mb-3" style="font-size:.8rem">
                             Setiap soal observasi bisa punya beberapa paket (A, B, C, D, dst).
-                            Nama akan dibuat otomatis berdasarkan skema.
                         </p>
                         <form method="POST"
                               action="{{ route('manajer-sertifikasi.bank-soal.observasi.store', $skema) }}">
@@ -254,9 +252,7 @@
                                 <input type="text" name="judul" class="form-control form-control-sm"
                                        placeholder="cth: Lembar Observasi Unit 1"
                                        value="{{ old('judul') }}" required>
-                                <div class="form-text">
-                                    Misal: "Observasi Teknis Pemasangan Listrik"
-                                </div>
+                                <div class="form-text">Misal: "Observasi Teknis Pemasangan Listrik"</div>
                             </div>
                             <button type="submit" class="btn btn-primary btn-sm w-100">
                                 <i class="bi bi-plus-lg me-1"></i> Buat Soal Observasi
@@ -303,24 +299,16 @@
                 @foreach($soalTeori as $i => $s)
                 @php $idx = $soalTeori->firstItem() + $i; @endphp
                 <div class="border rounded-3 overflow-hidden soal-card">
-            
-                    {{-- Header baris — klik untuk expand --}}
                     <div class="d-flex align-items-start gap-3 px-3 py-3 bg-white soal-header"
-                        onclick="toggleSoal({{ $s->id }})"
-                        style="cursor:pointer;">
-            
-                        {{-- Nomor --}}
+                        onclick="toggleSoal({{ $s->id }})" style="cursor:pointer;">
                         <div class="fw-bold text-muted flex-shrink-0"
                             style="min-width:28px;font-size:.85rem;padding-top:2px;">
                             {{ $idx }}.
                         </div>
-            
-                        {{-- Pertanyaan (full, tidak terpotong) --}}
                         <div class="flex-grow-1" style="min-width:0;overflow:visible;">
                             <div style="font-size:.875rem;font-weight:500;line-height:1.5;white-space:normal;word-break:break-word;overflow-wrap:anywhere;">
                                 {{ $s->pertanyaan }}
                             </div>
-                            {{-- Preview pilihan saat collapsed --}}
                             <div class="soal-preview-pills d-flex flex-wrap gap-1 mt-2" id="preview-{{ $s->id }}">
                                 @foreach(['a','b','c','d','e'] as $opt)
                                 @if($s->{'pilihan_' . $opt})
@@ -328,16 +316,12 @@
                                     {{ $s->jawaban_benar === $opt ? 'bg-success text-white' : 'bg-light text-dark border' }}"
                                     style="font-size:.72rem;">
                                     {{ strtoupper($opt) }}. {{ Str::limit($s->{'pilihan_' . $opt}, 30) }}
-                                    @if($s->jawaban_benar === $opt)
-                                    <i class="bi bi-check-lg ms-1"></i>
-                                    @endif
+                                    @if($s->jawaban_benar === $opt)<i class="bi bi-check-lg ms-1"></i>@endif
                                 </span>
                                 @endif
                                 @endforeach
                             </div>
                         </div>
-            
-                        {{-- Jawaban badge --}}
                         <div class="flex-shrink-0 d-flex align-items-center gap-2">
                             <span class="badge rounded-circle fw-bold"
                                 style="background:#16a34a;color:white;width:28px;height:28px;line-height:20px;font-size:.85rem;text-align:center;">
@@ -347,8 +331,7 @@
                             style="transition:transform .2s;"></i>
                         </div>
                     </div>
-            
-                    {{-- Detail expand --}}
+
                     <div class="soal-detail border-top bg-light px-3 py-3" id="detail-{{ $s->id }}"
                         style="display:none;">
                         <div class="row g-2 mb-3">
@@ -372,8 +355,6 @@
                             @endif
                             @endforeach
                         </div>
-            
-                        {{-- Aksi --}}
                         <div class="d-flex gap-2 justify-content-end">
                             <button class="btn btn-sm btn-outline-primary"
                                     onclick="event.stopPropagation(); editSoal({{ $s->toJson() }})">
@@ -390,7 +371,6 @@
                             </form>
                         </div>
                     </div>
-            
                 </div>
                 @endforeach
             </div>
@@ -402,61 +382,68 @@
 
         {{-- ================================================================
              TAB 3: PORTOFOLIO
+             Di sini hanya mendaftarkan form penilaian (judul + file).
+             File yang diupload di sini akan didistribusikan ke jadwal dari
+             halaman Distribusi — tidak perlu upload ulang.
         ================================================================ --}}
         <div class="tab-pane fade {{ request('tab') === 'portofolio' ? 'show active' : '' }} p-4"
              id="pane-portofolio">
 
-            <div class="d-flex align-items-center justify-content-between mb-3">
-                <div>
-                    <h6 class="fw-bold mb-0">Form Penilaian Portofolio</h6>
-                    <small class="text-muted">Upload file form penilaian yang akan digunakan asesor</small>
-                </div>
-            </div>
-
             <div class="row g-4">
-                {{-- Kiri: daftar file portofolio --}}
+                {{-- Kiri: daftar form portofolio --}}
                 <div class="col-md-7">
+                    <h6 class="fw-bold mb-2">
+                        <i class="bi bi-collection text-muted me-2"></i>
+                        Daftar Form Penilaian Portofolio
+                        <span class="badge bg-secondary ms-1">{{ $portofolios->count() }}</span>
+                    </h6>
+                    <p class="text-muted mb-3" style="font-size:.8rem">
+                        Form ini yang akan didistribusikan ke jadwal asesmen. Asesor akan mengunduhnya untuk menilai asesi.
+                    </p>
+
                     @if($portofolios->isEmpty())
                     <div class="text-center py-5 border rounded-3 text-muted">
                         <i class="bi bi-file-earmark-text" style="font-size:2.5rem;opacity:.3;display:block;margin-bottom:.75rem"></i>
-                        <p class="fw-semibold mb-1">Belum ada form portofolio</p>
-                        <small>Upload form penilaian portofolio di sebelah kanan</small>
+                        <p class="fw-semibold mb-1">Belum ada form penilaian portofolio</p>
+                        <small>Tambahkan form di sebelah kanan</small>
                     </div>
                     @else
                     <div class="d-flex flex-column gap-2">
                         @foreach($portofolios as $porto)
-                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3 border bg-light">
+                        <div class="d-flex align-items-center justify-content-between p-3 rounded-3 border bg-white">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-3 d-flex align-items-center justify-content-center"
+                                <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
                                      style="width:42px;height:42px;background:#f5f3ff">
-                                    <i class="bi bi-file-earmark-text" style="font-size:1.3rem;color:#7c3aed"></i>
+                                    <i class="bi bi-{{ $porto->hasFile() ? 'file-earmark-excel-fill' : 'file-earmark-text' }}"
+                                       style="font-size:1.3rem;color:#7c3aed"></i>
                                 </div>
                                 <div>
                                     <div class="fw-semibold" style="font-size:.875rem">{{ $porto->judul }}</div>
                                     @if($porto->hasFile())
-                                    <small class="text-muted">
-                                        <i class="bi bi-paperclip me-1"></i>{{ $porto->file_name }}
-                                    </small>
+                                        <small class="text-muted">
+                                            <i class="bi bi-paperclip me-1"></i>{{ $porto->file_name }}
+                                            <span class="badge bg-light text-secondary ms-1" style="font-size:.65rem">
+                                                {{ strtoupper($porto->tipe_file) }}
+                                            </span>
+                                        </small>
                                     @else
-                                    <small class="text-warning">
-                                        <i class="bi bi-exclamation-circle me-1"></i>Belum ada file
-                                    </small>
+                                        <small class="text-muted fst-italic">Tidak ada file lampiran</small>
                                     @endif
                                     @if($porto->deskripsi)
-                                    <br><small class="text-muted">{{ Str::limit($porto->deskripsi, 60) }}</small>
+                                        <br><small class="text-muted">{{ Str::limit($porto->deskripsi, 60) }}</small>
                                     @endif
                                 </div>
                             </div>
-                            <div class="d-flex gap-2">
+                            <div class="d-flex gap-2 flex-shrink-0">
                                 @if($porto->hasFile())
                                 <a href="{{ route('manajer-sertifikasi.bank-soal.portofolio.download', [$skema, $porto]) }}"
-                                   class="btn btn-sm btn-outline-primary" title="Download">
+                                   class="btn btn-sm btn-outline-primary" title="Download file">
                                     <i class="bi bi-download"></i>
                                 </a>
                                 @endif
                                 <form method="POST"
                                       action="{{ route('manajer-sertifikasi.bank-soal.portofolio.destroy', [$skema, $porto]) }}"
-                                      onsubmit="return confirm('Hapus form portofolio ini?')">
+                                      onsubmit="return confirm('Hapus form portofolio ini? Distribusi yang sudah ada juga akan terpengaruh.')">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-trash3"></i>
@@ -469,12 +456,17 @@
                     @endif
                 </div>
 
-                {{-- Kanan: form upload --}}
+                {{-- Kanan: tambah form portofolio baru --}}
                 <div class="col-md-5">
                     <h6 class="fw-bold mb-3">
-                        <i class="bi bi-upload text-primary me-2"></i>Upload Form Portofolio
+                        <i class="bi bi-plus-circle text-primary me-2"></i>Tambah Form Penilaian
                     </h6>
                     <div class="border rounded-3 p-3 bg-light">
+                        <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.8rem">
+                            <i class="bi bi-info-circle-fill me-1"></i>
+                            Daftarkan form penilaian di sini. File opsional — bisa berupa template Excel, Word, atau PDF.
+                            Setelah didaftarkan, distribusikan ke jadwal dari menu <strong>Distribusi</strong>.
+                        </div>
                         <form method="POST"
                               action="{{ route('manajer-sertifikasi.bank-soal.portofolio.store', $skema) }}"
                               enctype="multipart/form-data">
@@ -484,32 +476,37 @@
                                     Judul Form <span class="text-danger">*</span>
                                 </label>
                                 <input type="text" name="judul" class="form-control form-control-sm"
-                                       placeholder="cth: Form Penilaian Portofolio"
+                                       placeholder="cth: Form Penilaian Portofolio Unit 1"
                                        value="{{ old('judul') }}" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold" style="font-size:.875rem">Deskripsi</label>
+                                <label class="form-label fw-semibold" style="font-size:.875rem">
+                                    Deskripsi <span class="text-muted fw-normal">(opsional)</span>
+                                </label>
                                 <textarea name="deskripsi" class="form-control form-control-sm" rows="2"
-                                          placeholder="Opsional...">{{ old('deskripsi') }}</textarea>
+                                          placeholder="Keterangan singkat tentang form ini...">{{ old('deskripsi') }}</textarea>
                             </div>
                             <div class="mb-4">
-                                <label class="form-label fw-semibold" style="font-size:.875rem">File</label>
-                                <div class="border rounded-3 p-3 text-center"
+                                <label class="form-label fw-semibold" style="font-size:.875rem">
+                                    File Template <span class="text-muted fw-normal">(opsional)</span>
+                                </label>
+                                <div class="border rounded-3 p-3 text-center bg-white"
                                      onclick="document.getElementById('filePorto{{ $skema->id }}').click()"
-                                     style="cursor:pointer;border-style:dashed!important;background:#fff">
+                                     style="cursor:pointer;border-style:dashed!important;">
                                     <i class="bi bi-folder2-open text-primary" style="font-size:1.6rem"></i>
                                     <div class="mt-1 fw-semibold" style="font-size:.82rem"
                                          id="labelPorto{{ $skema->id }}">
                                         Klik untuk pilih file
                                     </div>
-                                    <small class="text-muted">PDF, Word, Excel · Maks. 20 MB</small>
+                                    <small class="text-muted">Excel / Word / PDF · Maks. 20 MB</small>
                                     <input type="file" name="file" id="filePorto{{ $skema->id }}" class="d-none"
+                                           accept=".xlsx,.xls,.xlsm,.pdf,.doc,.docx"
                                            onchange="previewPorto('{{ $skema->id }}', this)">
                                 </div>
                                 @error('file')<div class="text-danger mt-1" style="font-size:.8rem">{{ $message }}</div>@enderror
                             </div>
                             <button type="submit" class="btn btn-primary btn-sm w-100">
-                                <i class="bi bi-save me-1"></i> Simpan
+                                <i class="bi bi-save me-1"></i> Simpan Form Portofolio
                             </button>
                         </form>
                     </div>
@@ -583,7 +580,6 @@
 
 @push('scripts')
 <script>
-// ── Pilih kode paket (per observasi) ──────────────────────
 function pilihKode(obsId, kode) {
     document.getElementById('kodeInput' + obsId).value = kode;
     document.querySelectorAll('.kode-btn-' + obsId + ':not(:disabled)').forEach(b => {
@@ -593,8 +589,7 @@ function pilihKode(obsId, kode) {
     event.target.classList.remove('btn-outline-primary');
     event.target.classList.add('btn-primary');
 }
- 
-// ── Preview file portofolio ────────────────────────────────
+
 function previewPorto(skemaId, input) {
     const label = document.getElementById('labelPorto' + skemaId);
     if (input.files && input.files[0]) {
@@ -602,15 +597,14 @@ function previewPorto(skemaId, input) {
         label.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i>${f.name}`;
     }
 }
- 
-// ── Edit soal teori ────────────────────────────────────────
+
 function editSoal(soal) {
     document.getElementById('modalSoalTitle').innerHTML =
         '<i class="bi bi-pencil-square text-warning me-2"></i>Edit Soal Teori';
     document.getElementById('formMethod').value = 'PUT';
     document.getElementById('formSoalTeori').action =
         '{{ url("manajer-sertifikasi/bank-soal/' . $skema->id . '/teori") }}/' + soal.id;
- 
+
     document.getElementById('inputPertanyaan').value = soal.pertanyaan;
     document.getElementById('inputPilihanA').value = soal.pilihan_a;
     document.getElementById('inputPilihanB').value = soal.pilihan_b;
@@ -618,11 +612,10 @@ function editSoal(soal) {
     document.getElementById('inputPilihanD').value = soal.pilihan_d;
     document.getElementById('inputPilihanE').value = soal.pilihan_e ?? '';
     document.getElementById('selectJawaban').value = soal.jawaban_benar;
- 
+
     new bootstrap.Modal(document.getElementById('modalTambahSoal')).show();
 }
- 
-// Reset modal saat ditutup
+
 document.getElementById('modalTambahSoal').addEventListener('hidden.bs.modal', function () {
     document.getElementById('formSoalTeori').reset();
     document.getElementById('formMethod').value = 'POST';
@@ -631,30 +624,24 @@ document.getElementById('modalTambahSoal').addEventListener('hidden.bs.modal', f
     document.getElementById('modalSoalTitle').innerHTML =
         '<i class="bi bi-plus-circle text-primary me-2"></i>Tambah Soal Teori';
 });
- 
-// ── Restore tab — cek query string dulu, baru hash ─────────
+
 document.addEventListener('DOMContentLoaded', function () {
-    // Prioritas 1: ?tab=teori dari query string (dari pagination)
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam  = urlParams.get('tab');
- 
-    // Prioritas 2: hash (#pane-teori)
     const hash = window.location.hash;
- 
     let targetSelector = null;
- 
+
     if (tabParam) {
         targetSelector = `[data-bs-target="#pane-${tabParam}"]`;
     } else if (hash) {
         targetSelector = `[data-bs-target="${hash}"]`;
     }
- 
+
     if (targetSelector) {
         const tabEl = document.querySelector(targetSelector);
         if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
     }
- 
-    // Update hash saat tab berganti (untuk navigasi manual)
+
     document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
         t.addEventListener('shown.bs.tab', e => {
             const target = e.target.getAttribute('data-bs-target');
@@ -662,12 +649,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 });
+
 function toggleSoal(id) {
     const detail  = document.getElementById('detail-'  + id);
     const chevron = document.getElementById('chevron-' + id);
     const preview = document.getElementById('preview-' + id);
     const open    = detail.style.display !== 'none';
- 
+
     detail.style.display  = open ? 'none' : 'block';
     preview.style.display = open ? 'flex' : 'none';
     if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';

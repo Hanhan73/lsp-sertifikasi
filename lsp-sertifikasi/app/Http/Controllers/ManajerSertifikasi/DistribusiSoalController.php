@@ -226,11 +226,11 @@ class DistribusiSoalController extends Controller
         $request->validate([
             'judul'     => 'required|string|max:255',
             'deskripsi' => 'nullable|string',
-            'file'      => 'nullable|file|max:20480',
+            'file'      => 'nullable|file|mimes:xlsx,xlsm,xls,pdf,doc,docx|max:20480',
         ]);
-
+    
         $file = $request->file('file');
-
+    
         Portofolio::create([
             'skema_id'    => $skema->id,
             'judul'       => $request->judul,
@@ -240,12 +240,11 @@ class DistribusiSoalController extends Controller
             'tipe_file'   => $file?->getClientOriginalExtension(),
             'dibuat_oleh' => Auth::id(),
         ]);
-
+    
         return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
-            ->with('success', 'Form portofolio berhasil disimpan.')
+            ->with('success', 'Form penilaian portofolio berhasil disimpan.')
             ->withFragment('pane-portofolio');
     }
-
     /**
      * [FIX #1] Download portofolio dari bank soal (scoped ke skema)
      */
@@ -545,13 +544,15 @@ class DistribusiSoalController extends Controller
             'schedule_id'   => 'required|exists:schedules,id',
             'portofolio_id' => 'required|exists:portofolio,id',
         ]);
-
+    
         DistribusiPortofolio::updateOrCreate(
             ['schedule_id' => $request->schedule_id, 'portofolio_id' => $request->portofolio_id],
             ['didistribusikan_oleh' => Auth::id()]
         );
-
-        return back()->with('success', 'Portofolio berhasil didistribusikan.');
+    
+        $porto = Portofolio::find($request->portofolio_id);
+    
+        return back()->with('success', "Form penilaian '{$porto->judul}' berhasil didistribusikan.");
     }
 
     /**
@@ -563,15 +564,15 @@ class DistribusiSoalController extends Controller
             'schedule_id'   => 'required|exists:schedules,id',
             'portofolio_id' => 'required|exists:portofolio,id',
         ]);
-
+    
         DistribusiPortofolio::where([
             'schedule_id'   => $request->schedule_id,
             'portofolio_id' => $request->portofolio_id,
         ])->delete();
-
+    
         return redirect()
             ->route('manajer-sertifikasi.jadwal.show', $request->schedule_id)
-            ->with('success', 'Distribusi portofolio dihapus.')
+            ->with('success', 'Distribusi portofolio berhasil dihapus.')
             ->withFragment('pane-portofolio');
     }
 

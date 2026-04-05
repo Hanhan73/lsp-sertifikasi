@@ -329,7 +329,7 @@
                         <div class="info-row"><span class="info-label">Nama Lengkap</span><span class="info-value">{{ $asesmen->full_name }}</span></div>
                         <div class="info-row"><span class="info-label">NIK</span><span class="info-value font-monospace">{{ $asesmen->nik }}</span></div>
                         <div class="info-row"><span class="info-label">Tempat Lahir</span><span class="info-value">{{ $asesmen->birth_place }}</span></div>
-                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $asesmen->birth_date->translatedFormat('d F Y') }}</span></div>
+                        <div class="info-row"><span class="info-label">Tanggal Lahir</span><span class="info-value">{{ $asesmen->birth_date ? $asesmen->birth_date->translatedFormat('d F Y') : '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Jenis Kelamin</span><span class="info-value">{{ $asesmen->gender === 'L' ? 'Laki-laki' : 'Perempuan' }}</span></div>
                         <div class="info-row"><span class="info-label">Email</span><span class="info-value">{{ $asesmen->email ?? $asesmen->user->email ?? '-' }}</span></div>
                         <div class="info-row"><span class="info-label">Telepon</span><span class="info-value">{{ $asesmen->phone }}</span></div>

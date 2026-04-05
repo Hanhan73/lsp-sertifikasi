@@ -692,11 +692,11 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/', [DistribusiSoalController::class, 'indexPortofolio'])->name('index');
             Route::get('/create', [DistribusiSoalController::class, 'createPortofolio'])->name('create');
             Route::post('/', [DistribusiSoalController::class, 'storePortofolio'])->name('store');
-            Route::get('/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolio'])->name('download');
-            Route::delete('/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
             // Distribution to Schedules
             Route::post('/distribusi', [DistribusiSoalController::class, 'distribusiPortofolio'])->name('distribusi');
             Route::delete('/distribusi', [DistribusiSoalController::class, 'hapusDistribusiPortofolio'])->name('distribusi.hapus');
+            Route::get('/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolio'])->name('download');
+            Route::delete('/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
         });
 
         // ── DEPRECATED/DUPLICATE: Bank Soal (scoped per skema) ─────────────────────────────────

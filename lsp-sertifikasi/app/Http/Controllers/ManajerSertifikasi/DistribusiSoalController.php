@@ -25,6 +25,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
+
 
 class DistribusiSoalController extends Controller
 {
@@ -216,6 +223,186 @@ class DistribusiSoalController extends Controller
         $soalTeori->delete();
         return back()->with('success', 'Soal teori berhasil dihapus.');
     }
+
+    public function downloadTemplateSoalTeori(Skema $skema)
+{
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('Soal Teori');
+
+    // ── Header row ──
+    $headers = ['No', 'Pertanyaan', 'Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D', 'Pilihan E', 'Jawaban Benar'];
+    foreach ($headers as $col => $header) {
+        $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col + 1) . '1';
+        $sheet->setCellValue($cell, $header);
+    }
+
+    // Style header
+    $sheet->getStyle('A1:H1')->applyFromArray([
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2563EB']],
+        'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+        'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'BFDBFE']]],
+    ]);
+
+    // Column widths
+    $widths = ['A' => 5, 'B' => 60, 'C' => 30, 'D' => 30, 'E' => 30, 'F' => 30, 'G' => 30, 'H' => 15];
+    foreach ($widths as $col => $width) {
+        $sheet->getColumnDimension($col)->setWidth($width);
+    }
+
+    // ── Contoh data (3 baris) ──
+    $examples = [
+        [1, 'Contoh pertanyaan soal teori...', 'Pilihan A', 'Pilihan B', 'Pilihan C', 'Pilihan D', 'Pilihan E (opsional)', 'a'],
+        [2, 'Fungsi VLOOKUP digunakan untuk...', 'Membuat grafik', 'Mencari nilai dalam tabel', 'Menghitung rata-rata', 'Menyortir data', 'Membuat pivot table', 'b'],
+        [3, 'Shortcut menyimpan dokumen adalah...', 'Ctrl+P', 'Ctrl+Z', 'Ctrl+S', 'Ctrl+C', 'Ctrl+V', 'c'],
+    ];
+
+    foreach ($examples as $rowIdx => $row) {
+        $rowNum = $rowIdx + 2;
+        foreach ($row as $colIdx => $val) {
+            $cell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIdx + 1) . $rowNum;
+            $sheet->setCellValue($cell, $val);
+        }
+
+        // Style baris contoh
+        $sheet->getStyle("A{$rowNum}:H{$rowNum}")->applyFromArray([
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EFF6FF']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'BFDBFE']]],
+        ]);
+
+        // Dropdown validasi kolom Jawaban Benar
+        $validation = $sheet->getCell("H{$rowNum}")->getDataValidation();
+        $validation->setType(DataValidation::TYPE_LIST)
+            ->setErrorStyle(DataValidation::STYLE_INFORMATION)
+            ->setAllowBlank(false)
+            ->setShowDropDown(false)
+            ->setFormula1('"a,b,c,d,e"');
+    }
+
+    // ── Sheet petunjuk ──
+    $guide = $spreadsheet->createSheet();
+    $guide->setTitle('Petunjuk');
+    $guide->setCellValue('A1', 'PETUNJUK PENGISIAN TEMPLATE SOAL TEORI');
+    $guide->setCellValue('A3', 'Kolom');
+    $guide->setCellValue('B3', 'Keterangan');
+    $guide->setCellValue('C3', 'Wajib?');
+
+    $guideData = [
+        ['No', 'Nomor urut soal (boleh dikosongkan, sistem akan mengisi otomatis)', 'Tidak'],
+        ['Pertanyaan', 'Teks pertanyaan soal teori', 'Ya'],
+        ['Pilihan A', 'Opsi jawaban A', 'Ya'],
+        ['Pilihan B', 'Opsi jawaban B', 'Ya'],
+        ['Pilihan C', 'Opsi jawaban C', 'Ya'],
+        ['Pilihan D', 'Opsi jawaban D', 'Ya'],
+        ['Pilihan E', 'Opsi jawaban E', 'Ya'],
+        ['Jawaban Benar', 'Isi dengan huruf kecil: a, b, c, d, atau e', 'Ya'],
+    ];
+
+    foreach ($guideData as $i => $row) {
+        $rowNum = $i + 4;
+        $guide->setCellValue("A{$rowNum}", $row[0]);
+        $guide->setCellValue("B{$rowNum}", $row[1]);
+        $guide->setCellValue("C{$rowNum}", $row[2]);
+    }
+
+    $guide->getStyle('A1')->applyFromArray(['font' => ['bold' => true, 'size' => 13, 'color' => ['rgb' => '1E40AF']]]);
+    $guide->getStyle('A3:C3')->applyFromArray(['font' => ['bold' => true], 'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DBEAFE']]]);
+    $guide->getColumnDimension('A')->setWidth(20);
+    $guide->getColumnDimension('B')->setWidth(60);
+    $guide->getColumnDimension('C')->setWidth(10);
+
+    // ── Stream download ──
+    $filename = 'Template_Soal_Teori_' . \Illuminate\Support\Str::slug($skema->name) . '.xlsx';
+
+    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    header("Content-Disposition: attachment; filename=\"{$filename}\"");
+    header('Cache-Control: max-age=0');
+
+    $writer = new Xlsx($spreadsheet);
+    $writer->save('php://output');
+    exit;
+}
+
+public function importSoalTeori(Request $request, Skema $skema): RedirectResponse
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xls|max:10240',
+    ]);
+
+    try {
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($request->file('file')->getPathname());
+        $sheet = $spreadsheet->getSheetByName('Soal Teori') ?? $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray(null, true, true, false);
+
+        // Skip baris header (baris pertama)
+        $dataRows = array_slice($rows, 1);
+
+        $imported = 0;
+        $errors = [];
+        $skipped = 0;
+
+        foreach ($dataRows as $index => $row) {
+            $rowNum = $index + 2; // baris Excel (1-indexed + header)
+
+            // Skip baris kosong
+            $pertanyaan = trim($row[1] ?? '');
+            if (empty($pertanyaan)) {
+                $skipped++;
+                continue;
+            }
+
+            $pilihanA = trim($row[2] ?? '');
+            $pilihanB = trim($row[3] ?? '');
+            $pilihanC = trim($row[4] ?? '');
+            $pilihanD = trim($row[5] ?? '');
+            $pilihanE = trim($row[6] ?? '') ?: null;
+            $jawaban  = strtolower(trim($row[7] ?? ''));
+
+            // Validasi kolom wajib
+            if (empty($pilihanA) || empty($pilihanB) || empty($pilihanC) || empty($pilihanD)) {
+                $errors[] = "Baris {$rowNum}: Pilihan A–D wajib diisi.";
+                continue;
+            }
+
+            if (!in_array($jawaban, ['a', 'b', 'c', 'd', 'e'])) {
+                $errors[] = "Baris {$rowNum}: Jawaban benar harus a, b, c, d, atau e (ditemukan: '{$jawaban}').";
+                continue;
+            }
+
+            if ($jawaban === 'e' && empty($pilihanE)) {
+                $errors[] = "Baris {$rowNum}: Jawaban 'e' dipilih tapi Pilihan E kosong.";
+                continue;
+            }
+
+            SoalTeori::create([
+                'skema_id'      => $skema->id,
+                'pertanyaan'    => $pertanyaan,
+                'pilihan_a'     => $pilihanA,
+                'pilihan_b'     => $pilihanB,
+                'pilihan_c'     => $pilihanC,
+                'pilihan_d'     => $pilihanD,
+                'pilihan_e'     => $pilihanE,
+                'jawaban_benar' => $jawaban,
+                'dibuat_oleh'   => Auth::id(),
+            ]);
+
+            $imported++;
+        }
+
+        $message = "{$imported} soal berhasil diimport.";
+        if ($skipped > 0) $message .= " {$skipped} baris kosong dilewati.";
+
+        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+            ->with('success', $message)
+            ->with('import_errors', $errors)
+            ->withFragment('pane-teori');
+
+    } catch (\Exception $e) {
+        \Illuminate\Support\Facades\Log::error('[SOAL_TEORI][import] ' . $e->getMessage());
+        return back()->with('error', 'Gagal membaca file: ' . $e->getMessage());
+    }
+}
 
     // =========================================================================
     // BANK SOAL — PORTOFOLIO (scoped ke skema)

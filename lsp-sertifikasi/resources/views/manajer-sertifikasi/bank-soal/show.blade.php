@@ -274,9 +274,18 @@
                     <h6 class="fw-bold mb-0">Bank Soal Teori</h6>
                     <small class="text-muted">Pool: {{ $jumlahTeori }} soal · distribusi ke asesi: ±30 soal acak</small>
                 </div>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahSoal">
-                    <i class="bi bi-plus-lg me-1"></i> Tambah Soal
-                </button>
+                <div class="d-flex gap-2">
+                    <a href="{{ route('manajer-sertifikasi.bank-soal.teori.template', $skema) }}"
+                    class="btn btn-outline-success btn-sm">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Download Template
+                    </a>
+                    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportSoal">
+                        <i class="bi bi-upload me-1"></i> Import Excel
+                    </button>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahSoal">
+                        <i class="bi bi-plus-lg me-1"></i> Tambah Soal
+                    </button>
+                </div>
             </div>
 
             @if($jumlahTeori < 30)
@@ -575,7 +584,71 @@
         </div>
     </div>
 </div>
+{{-- Modal Import Soal Teori --}}
+<div class="modal fade" id="modalImportSoal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-file-earmark-excel me-2"></i>Import Soal Teori dari Excel
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('manajer-sertifikasi.bank-soal.teori.import', $skema) }}"
+                  method="POST" enctype="multipart/form-data">
+                @csrf
+                <div class="modal-body">
 
+                    {{-- Alert error import --}}
+                    @if(session('import_errors') && count(session('import_errors')))
+                    <div class="alert alert-warning alert-dismissible fade show">
+                        <strong><i class="bi bi-exclamation-triangle-fill me-1"></i>Beberapa baris dilewati:</strong>
+                        <ul class="mb-0 mt-2">
+                            @foreach(session('import_errors') as $err)
+                                <li><small>{{ $err }}</small></li>
+                            @endforeach
+                        </ul>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    @endif
+
+                    <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.85rem">
+                        <i class="bi bi-info-circle me-1"></i>
+                        <strong>Format kolom:</strong>
+                        No · Pertanyaan · Pilihan A · Pilihan B · Pilihan C · Pilihan D · Pilihan E (opsional) · Jawaban Benar (a/b/c/d/e)
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-body text-center py-3">
+                            <p class="text-muted small mb-2">Belum punya template? Download dulu:</p>
+                            <a href="{{ route('manajer-sertifikasi.bank-soal.teori.template', $skema) }}"
+                               class="btn btn-outline-success btn-sm">
+                                <i class="bi bi-file-earmark-excel me-1"></i>Download Template Excel
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">File Excel <span class="text-danger">*</span></label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.xls" required>
+                        <div class="form-text">Format: .xlsx / .xls · Maks. 10 MB</div>
+                    </div>
+
+                    <div class="alert alert-warning py-2 px-3" style="font-size:.8rem">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Soal yang diimport akan <strong>ditambahkan</strong> ke bank soal yang sudah ada (tidak mengganti).
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-upload me-1"></i>Import Sekarang
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')

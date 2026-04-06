@@ -604,6 +604,32 @@ class AsesmenController extends Controller
         $asesmen->update(['status' => 'certified']);
     }
 
+public function updateEmail(Request $request, Asesmen $asesmen)
+{
+    $request->validate([
+        'email' => 'required|email|max:255|unique:users,email,' . $asesmen->user_id,
+    ], [
+        'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+    ]);
 
+    $oldEmail = $asesmen->user->email;
+
+    $asesmen->user->update([
+        'email'             => $request->email,
+        'email_verified_at' => null, // reset verifikasi karena email berubah
+    ]);
+
+    Log::info('[ADMIN] Email asesi diubah', [
+        'asesmen_id' => $asesmen->id,
+        'old_email'  => $oldEmail,
+        'new_email'  => $request->email,
+        'by_admin'   => auth()->id(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Email berhasil diubah. Asesi perlu verifikasi ulang.',
+    ]);
+}
 
 }

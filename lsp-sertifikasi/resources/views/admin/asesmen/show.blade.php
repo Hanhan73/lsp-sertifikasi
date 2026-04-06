@@ -115,9 +115,40 @@
                         <div><i class="bi bi-telephone me-1"></i>{{ $asesmen->phone ?? '-' }}</div>
                         <div><i class="bi bi-envelope me-1"></i>{{ $asesmen->user->email ?? '-' }}</div>
                     </div>
+                    <div class="card border-warning mt-3">
+                        <div class="card-header bg-warning bg-opacity-10 py-2">
+                            <h6 class="mb-0 fw-semibold">
+                                <i class="bi bi-envelope-at me-1"></i> Ganti Email Login
+                            </h6>
+                        </div>
+                        <div class="card-body py-3">
+                            <p class="text-muted small mb-3">
+                                Email saat ini: <strong>{{ $asesmen->user->email }}</strong>
+                                @if(!$asesmen->user->email_verified_at)
+                                    <span class="badge bg-warning text-dark ms-1">Belum Terverifikasi</span>
+                                @else
+                                    <span class="badge bg-success ms-1">Terverifikasi</span>
+                                @endif
+                            </p>
+                            <div class="input-group">
+                                <input type="email" id="inputEmailBaru" class="form-control form-control-sm"
+                                    placeholder="Email baru asesi..."
+                                    value="{{ $asesmen->user->email }}">
+                                <button class="btn btn-warning btn-sm" onclick="gantiEmailAsesi({{ $asesmen->id }})">
+                                    <i class="bi bi-check-lg me-1"></i>Simpan
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Setelah diganti, status verifikasi email akan direset dan asesi perlu verifikasi ulang.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        
     </div>
 
     {{-- Info Asesmen --}}

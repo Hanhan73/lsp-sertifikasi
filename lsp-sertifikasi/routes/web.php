@@ -335,8 +335,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{asesmen}/verify-biodata',  [AdminRejectController::class, 'verifyBiodata']) ->name('verify-biodata');
         Route::post('/{asesmen}/reject-biodata',  [AdminRejectController::class, 'rejectBiodata']) ->name('reject-biodata');
         Route::post('/{asesmen}/approve-biodata', [AdminRejectController::class, 'approveBiodata'])->name('approve-biodata');
- 
 
+        Route::post('/{asesmen}/update-email', [AsesmenController::class, 'updateEmail'])->name('update-email');
     });
     Route::get('/asesi', [AsesmenController::class, 'index'])->name('asesi'); // alias lama
     

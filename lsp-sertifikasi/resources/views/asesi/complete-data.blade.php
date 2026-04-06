@@ -97,16 +97,9 @@
                     </div>
                 </div>
                 @else
-                <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
-                    <i class="bi bi-info-circle-fill fs-5 flex-shrink-0 mt-1"></i>
-                    <div>
-                        <strong>Data sudah berhasil disubmit</strong><br>
-                        <span class="small">
-                            Status saat ini: <span class="fw-semibold">{{ $asesmen->status_label }}</span>.
-                            Tidak ada data yang perlu dilengkapi — silakan kembali ke 
-                            <a href="{{ route('asesi.dashboard') }}">Dashboard</a> untuk memantau perkembangan proses Anda.
-                        </span>
-                    </div>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Data Anda sudah disubmit dan sedang dalam proses verifikasi.
                 </div>
                 @endif
 
@@ -614,35 +607,25 @@ function updateModalConfirmation() {
     }
 }
 
-// Ganti fungsi ini di @push('scripts') complete-data.blade.php
 function submitAsesiForm() {
     // Validasi file sebelum submit untuk cegah ERR_UPLOAD_FILE_CHANGED
     const fileInputs = document.querySelectorAll('input[type="file"]');
-    const brokenFiles = [];
-
     for (const input of fileInputs) {
-        if (input.files && input.files.length > 0) {
-            const file = input.files[0];
-            // Cek apakah file masih bisa dibaca (size 0 = file sudah tidak bisa diakses)
-            if (file.size === 0) {
-                brokenFiles.push(input.name);
-            }
+        if (input.files && input.files.length > 0 && input.files[0].size === 0) {
+            bootstrap.Modal.getInstance(document.getElementById('confirmSubmitModal'))?.hide();
+            Swal.fire({
+                icon: 'error',
+                title: 'File Tidak Dapat Dibaca',
+                html: `File yang Anda pilih tidak dapat diakses lagi oleh browser.<br><br>
+                       <strong>Solusi:</strong> Pilih ulang file dokumen Anda, lalu submit kembali.`,
+                confirmButtonText: 'OK, Pilih Ulang',
+            });
+            return;
         }
     }
 
-    if (brokenFiles.length > 0) {
-        bootstrap.Modal.getInstance(document.getElementById('confirmSubmitModal'))?.hide();
-        Swal.fire({
-            icon: 'error',
-            title: 'File Tidak Dapat Dibaca',
-            html: `File yang Anda pilih tidak dapat diakses lagi oleh browser.<br><br>
-                   <strong>Solusi:</strong> Pilih ulang file dokumen Anda, lalu submit kembali.`,
-            confirmButtonText: 'OK, Pilih Ulang',
-        });
-        return;
-    }
-
-    document.querySelector('form[action="{{ route('asesi.store-data') }}"]').submit();
+    const form = document.querySelector('form[action="{{ route('asesi.store-data') }}"]');
+    if (form) form.submit(); // ← null check, aman di view-only mode
 }
 
 document.addEventListener('DOMContentLoaded', function () {

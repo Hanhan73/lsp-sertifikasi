@@ -50,6 +50,15 @@
                         @enderror
                     </div>
 
+                    <div class="mb-3">
+                        <label class="form-label">No. Telp <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control @error('phone') is-invalid @enderror" name="phone"
+                            value="{{ old('phone') }}" placeholder="Contoh: 021-12345678" required>
+                        @error('phone')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
                     <div class="row">
                         <!-- Manager -->
                         <div class="col-md-6 mb-3">

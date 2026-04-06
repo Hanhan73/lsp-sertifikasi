@@ -47,8 +47,8 @@ class SkGeneratorService
         $pdf->getDomPDF()->set_option('isHtml5ParserEnabled', true);
         $pdf->getDomPDF()->set_option('isRemoteEnabled', false);
 
-        $filename = 'sk_' . $schedule->id . '_' . now()->timestamp . '.pdf';
-        $path     = 'sk/' . $filename;
+        $filename = 'st_' . $schedule->id . '_' . now()->timestamp . '.pdf';
+        $path     = 'st/' . $filename;
 
         Storage::disk('private')->put($path, $pdf->output());
 
@@ -57,8 +57,8 @@ class SkGeneratorService
 
     private function saveAsHtml(Schedule $schedule, string $html): string
     {
-        $filename = 'sk_' . $schedule->id . '_' . now()->timestamp . '.html';
-        $path     = 'sk/' . $filename;
+        $filename = 'st_' . $schedule->id . '_' . now()->timestamp . '.html';
+        $path     = 'st/' . $filename;
         Storage::disk('private')->put($path, $html);
         return $path;
     }

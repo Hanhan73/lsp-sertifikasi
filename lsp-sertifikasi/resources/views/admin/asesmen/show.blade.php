@@ -113,7 +113,6 @@
                     <div class="small text-muted">
                         <div><i class="bi bi-credit-card me-1"></i><span class="font-monospace">{{ $asesmen->nik ?? '-' }}</span></div>
                         <div><i class="bi bi-telephone me-1"></i>{{ $asesmen->phone ?? '-' }}</div>
-                        <div><i class="bi bi-envelope me-1"></i>{{ $asesmen->user->email ?? '-' }}</div>
                     </div>
                     <div class="card border-warning mt-3">
                         <div class="card-header bg-warning bg-opacity-10 py-2">
@@ -1118,5 +1117,53 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
     }
 });
+
+
+async function gantiEmailAsesi(asesmenId) {
+    const email = document.getElementById('inputEmailBaru').value.trim();
+    if (!email) return;
+
+    const result = await Swal.fire({
+        title: 'Ganti Email?',
+        html: `Email akan diganti ke <strong>${email}</strong>.<br>
+               <small class="text-muted">Status verifikasi akan direset.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Ganti',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#f59e0b',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/admin/asesi/${asesmenId}/update-email`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ email }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    }
+}
 </script>
 @endpush

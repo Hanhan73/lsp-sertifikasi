@@ -606,8 +606,15 @@ class AsesmenController extends Controller
 
 public function updateEmail(Request $request, Asesmen $asesmen)
 {
+    $asesmen->loadMissing('user');
+
     $request->validate([
-        'email' => 'required|email|max:255|unique:users,email,' . $asesmen->user_id,
+        'email' => [
+            'required',
+            'email',
+            'max:255',
+            \Illuminate\Validation\Rule::unique('users', 'email')->ignore($asesmen->user_id),
+        ],
     ], [
         'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
     ]);
@@ -616,8 +623,17 @@ public function updateEmail(Request $request, Asesmen $asesmen)
 
     $asesmen->user->update([
         'email'             => $request->email,
-        'email_verified_at' => null, // reset verifikasi karena email berubah
+        'email_verified_at' => null,
     ]);
+
+    // Invalidate semua session asesi supaya mereka login ulang
+    // Ini penting agar verifikasi email berjalan dengan user yang benar
+    \Illuminate\Support\Facades\DB::table('sessions')
+        ->where('user_id', $asesmen->user_id)
+        ->delete();
+
+    // Kirim verifikasi ke email baru
+    $asesmen->user->sendEmailVerificationNotification();
 
     Log::info('[ADMIN] Email asesi diubah', [
         'asesmen_id' => $asesmen->id,
@@ -628,7 +644,7 @@ public function updateEmail(Request $request, Asesmen $asesmen)
 
     return response()->json([
         'success' => true,
-        'message' => 'Email berhasil diubah. Asesi perlu verifikasi ulang.',
+        'message' => 'Email berhasil diubah. Asesi akan diminta login ulang dan verifikasi email baru.',
     ]);
 }
 

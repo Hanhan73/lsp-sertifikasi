@@ -81,6 +81,7 @@ class AsesorController extends Controller
             'distribusiSoalTeori',
             'distribusiSoalObservasi.soalObservasi.paket',
             'distribusiPortofolio.portofolio',
+            'distribusiSoalObservasi.paketSoalObservasi',
             'hasilObservasi',
             'hasilPortofolio',
             'beritaAcara.asesis',
@@ -545,5 +546,28 @@ class AsesorController extends Controller
 
         return view('asesor.document.sk', compact('asesor', 'schedules'));
     }
+
+
+    public function downloadLampiranObservasi(\App\Models\PaketSoalObservasi $paket)
+{
+    $asesor  = auth()->user()->asesor;
+    $skemaId = $paket->soalObservasi->skema_id;
+
+    $boleh = Schedule::where('asesor_id', $asesor->id)
+        ->where('skema_id', $skemaId)
+        ->exists();
+
+    abort_if(!$boleh, 403, 'Akses ditolak.');
+    abort_unless(
+        $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
+        404, 'File lampiran tidak tersedia.'
+    );
+
+    return response()->streamDownload(function () use ($paket) {
+        echo Storage::disk('private')->get($paket->lampiran_path);
+    }, $paket->lampiran_name, [
+        'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+}
 
 }

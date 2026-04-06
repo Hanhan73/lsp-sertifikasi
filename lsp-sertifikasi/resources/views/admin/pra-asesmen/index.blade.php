@@ -7,7 +7,6 @@
 
 @push('styles')
 <style>
-/* ── Stats ── */
 .stat-chip {
     display: flex;
     align-items: center;
@@ -40,7 +39,6 @@
     color: #64748b;
 }
 
-/* ── Batch accordion ── */
 .batch-card {
     border: 1px solid #e2e8f0;
     border-radius: 12px;
@@ -76,7 +74,6 @@
     transform: rotate(90deg);
 }
 
-/* ── Asesi row dalam batch ── */
 .asesi-row {
     cursor: pointer;
     transition: background .15s;
@@ -86,7 +83,6 @@
     background: #f0f7ff !important;
 }
 
-/* ── Doc badge ── */
 .dbadge {
     display: inline-flex;
     align-items: center;
@@ -98,7 +94,6 @@
     white-space: nowrap;
 }
 
-/* ── Status pill ── */
 .spill {
     display: inline-flex;
     align-items: center;
@@ -124,38 +119,6 @@
     color: #166534;
 }
 
-.spill-default {
-    background: #f1f5f9;
-    color: #64748b;
-}
-
-/* ── Progress mini ── */
-.prog-wrap {
-    display: flex;
-    gap: 3px;
-    align-items: center;
-}
-
-.prog-wrap .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #e2e8f0;
-}
-
-.prog-wrap .dot.done {
-    background: #22c55e;
-}
-
-.prog-wrap .dot.partial {
-    background: #f59e0b;
-}
-
-.prog-wrap .dot.pending {
-    background: #38bdf8;
-}
-
-/* ── Empty ── */
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -170,17 +133,15 @@
 <div class="row g-3 mb-4">
     @php
     $allAsesmens = $batches->flatten()->merge($mandiri);
-    $statWaiting = $allAsesmens->where('status','data_completed')->count();
-    $statStarted =
-    $allAsesmens->whereIn('status',['pra_asesmen_started','scheduled','pre_assessment_completed'])->count();
+    $statWaiting = $allAsesmens->whereIn('status', ['data_completed','payment_pending'])->count();
+    $statStarted = $allAsesmens->whereIn('status',
+    ['pra_asesmen_started','scheduled','pre_assessment_completed'])->count();
     $statAssessed = $allAsesmens->where('status','assessed')->count();
     $totalBatches = $batches->count();
     @endphp
     <div class="col-6 col-md-3">
         <div class="stat-chip">
-            <div class="icon-wrap bg-warning bg-opacity-10">
-                <i class="bi bi-hourglass-split text-warning"></i>
-            </div>
+            <div class="icon-wrap bg-warning bg-opacity-10"><i class="bi bi-hourglass-split text-warning"></i></div>
             <div>
                 <div class="val">{{ $statWaiting }}</div>
                 <div class="lbl">Menunggu Dimulai</div>
@@ -189,9 +150,7 @@
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-chip">
-            <div class="icon-wrap bg-primary bg-opacity-10">
-                <i class="bi bi-play-circle text-primary"></i>
-            </div>
+            <div class="icon-wrap bg-primary bg-opacity-10"><i class="bi bi-play-circle text-primary"></i></div>
             <div>
                 <div class="val">{{ $statStarted }}</div>
                 <div class="lbl">Sedang Berjalan</div>
@@ -200,9 +159,7 @@
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-chip">
-            <div class="icon-wrap bg-success bg-opacity-10">
-                <i class="bi bi-check2-circle text-success"></i>
-            </div>
+            <div class="icon-wrap bg-success bg-opacity-10"><i class="bi bi-check2-circle text-success"></i></div>
             <div>
                 <div class="val">{{ $statAssessed }}</div>
                 <div class="lbl">Sudah Diases</div>
@@ -211,9 +168,7 @@
     </div>
     <div class="col-6 col-md-3">
         <div class="stat-chip">
-            <div class="icon-wrap bg-info bg-opacity-10">
-                <i class="bi bi-people text-info"></i>
-            </div>
+            <div class="icon-wrap bg-info bg-opacity-10"><i class="bi bi-people text-info"></i></div>
             <div>
                 <div class="val">{{ $totalBatches }}</div>
                 <div class="lbl">Total Batch</div>
@@ -245,7 +200,7 @@
         <div class="tab-content">
 
             {{-- ════════════════════════════════
-                 TAB KOLEKTIF
+                 TAB KOLEKTIF — tidak berubah
             ════════════════════════════════ --}}
             <div class="tab-pane fade show active" id="tab-kolektif">
                 @if($batches->isEmpty())
@@ -255,7 +210,6 @@
                 </div>
                 @else
 
-                {{-- Filter bar --}}
                 <div class="d-flex gap-2 mb-3 flex-wrap">
                     <input type="text" id="batch-search" class="form-control form-control-sm"
                         placeholder="Cari nama asesi atau batch ID…" style="max-width:260px;">
@@ -273,26 +227,18 @@
                     @php
                     $first = $members->first();
                     $total = $members->count();
-
-                    // Hitung status breakdown per batch
                     $countWaiting = $members->where('status','data_completed')->count();
                     $countStarted = $members->whereIn('status',['pra_asesmen_started','scheduled'])->count();
                     $countAssessed = $members->where('status','assessed')->count();
-
-                    // Overall batch status untuk filter
                     $batchStatusKey = $countAssessed === $total ? 'assessed'
                     : ($countWaiting === $total ? 'data_completed'
                     : ($countStarted > 0 ? 'pra_asesmen_started' : 'scheduled'));
-
-                    // Doc progress: berapa asesi sudah submit APL-01
                     $apl01Done = $members->filter(fn($m) => in_array($m->aplsatu?->status,
                     ['submitted','verified','approved']))->count();
                     $apl02Done = $members->filter(fn($m) => in_array($m->apldua?->status,
                     ['submitted','verified','approved']))->count();
                     $ak01Done = $members->filter(fn($m) => in_array($m->frak01?->status,
                     ['submitted','verified','approved']))->count();
-
-                    // Alert: ada dokumen perlu diverifikasi?
                     $needsAction = $members->filter(fn($m) =>
                     $m->aplsatu?->status === 'submitted' ||
                     $m->apldua?->status === 'submitted' ||
@@ -304,15 +250,11 @@
                         data-batch-status="{{ $batchStatusKey }}"
                         data-batch-text="{{ strtolower($batchId . ' ' . $members->pluck('full_name')->join(' ')) }}">
 
-                        {{-- Batch Header --}}
                         <div class="batch-header" onclick="toggleBatch(this)">
                             <i class="bi bi-chevron-right chevron fs-6"></i>
-
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <span class="fw-bold">{{ $batchId }}</span>
-
-                                    {{-- Status pill --}}
                                     @if($countWaiting === $total)
                                     <span class="spill spill-waiting"><i class="bi bi-hourglass-split"></i> Menunggu
                                         Dimulai</span>
@@ -323,14 +265,12 @@
                                     <span class="spill spill-started"><i class="bi bi-play-circle"></i> Berjalan</span>
                                     @endif
 
-                                    {{-- Needs action badge --}}
                                     @if($needsAction > 0)
                                     <span class="badge bg-warning text-dark" style="animation:pulse 2s infinite;">
                                         <i class="bi bi-exclamation-circle me-1"></i>{{ $needsAction }} perlu verifikasi
                                     </span>
                                     @endif
 
-                                    {{-- Tombol Mulai (hanya jika semua masih data_completed) --}}
                                     @if($countWaiting === $total)
                                     <span onclick="event.stopPropagation()">
                                         <button class="btn btn-sm btn-primary ms-1"
@@ -345,17 +285,13 @@
                                         </button>
                                     </span>
                                     @endif
-
                                 </div>
-
                                 <div class="d-flex gap-3 mt-1 flex-wrap" style="font-size:.78rem; color:#64748b;">
                                     <span><i class="bi bi-building me-1"></i>{{ $first->tuk?->name ?? '-' }}</span>
                                     <span><i class="bi bi-award me-1"></i>{{ $first->skema?->name ?? '-' }}</span>
                                     <span><i class="bi bi-people me-1"></i>{{ $total }} peserta</span>
                                     <span><i
                                             class="bi bi-calendar me-1"></i>{{ $first->registration_date->translatedFormat('d M Y') }}</span>
-
-                                    {{-- Progress dokumen mini --}}
                                     <span class="ms-2">
                                         APL-01: <strong>{{ $apl01Done }}/{{ $total }}</strong>
                                         &bull; APL-02: <strong>{{ $apl02Done }}/{{ $total }}</strong>
@@ -365,7 +301,6 @@
                             </div>
                         </div>
 
-                        {{-- Batch Body — Tabel Asesi --}}
                         <div class="batch-body" style="display:none;">
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle mb-0" style="font-size:.83rem;">
@@ -400,69 +335,37 @@
                                                 </span>
                                                 @endif
                                             </td>
-                                            <td>
-                                                <span
+                                            <td><span
                                                     class="badge bg-{{ $asesi->status_badge }}">{{ $asesi->status_label }}</span>
                                             </td>
-
-                                            {{-- APL-01 --}}
                                             <td class="text-center" onclick="event.stopPropagation()">
-                                                @php $s = $asesi->aplsatu?->status; @endphp
-                                                @if($s)
+                                                @if($asesi->aplsatu)
                                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=apl01"
-                                                    class="dbadge bg-{{ $asesi->aplsatu->status_badge }} text-white">
-                                                    {{ $asesi->aplsatu->status_label }}
-                                                </a>
-                                                @else
-                                                <span class="dbadge bg-light text-muted border">-</span>
-                                                @endif
+                                                    class="dbadge bg-{{ $asesi->aplsatu->status_badge }} text-white">{{ $asesi->aplsatu->status_label }}</a>
+                                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                                             </td>
-
-                                            {{-- APL-02 --}}
                                             <td class="text-center" onclick="event.stopPropagation()">
-                                                @php $s = $asesi->apldua?->status; @endphp
-                                                @if($s)
+                                                @if($asesi->apldua)
                                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=apl02"
-                                                    class="dbadge bg-{{ $asesi->apldua->status_badge }} text-white">
-                                                    {{ $asesi->apldua->status_label }}
-                                                </a>
-                                                @else
-                                                <span class="dbadge bg-light text-muted border">-</span>
-                                                @endif
+                                                    class="dbadge bg-{{ $asesi->apldua->status_badge }} text-white">{{ $asesi->apldua->status_label }}</a>
+                                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                                             </td>
-
-                                            {{-- FR.AK.01 --}}
                                             <td class="text-center" onclick="event.stopPropagation()">
-                                                @php $s = $asesi->frak01?->status; @endphp
-                                                @if($s)
+                                                @if($asesi->frak01)
                                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=frak01"
-                                                    class="dbadge bg-{{ $asesi->frak01->status_badge }} text-white">
-                                                    {{ $asesi->frak01->status_label }}
-                                                </a>
-                                                @else
-                                                <span class="dbadge bg-light text-muted border">-</span>
-                                                @endif
+                                                    class="dbadge bg-{{ $asesi->frak01->status_badge }} text-white">{{ $asesi->frak01->status_label }}</a>
+                                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                                             </td>
-
-                                            {{-- FR.AK.04 --}}
                                             <td class="text-center" onclick="event.stopPropagation()">
-                                                @php $s = $asesi->frak04?->status; @endphp
-                                                @if($s === 'submitted')
+                                                @if($asesi->frak04?->status === 'submitted')
                                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=frak04"
-                                                    class="dbadge bg-warning text-dark">
-                                                    <i class="bi bi-megaphone"></i> Banding
-                                                </a>
-                                                @else
-                                                <span class="dbadge bg-light text-muted border">-</span>
-                                                @endif
+                                                    class="dbadge bg-warning text-dark"><i class="bi bi-megaphone"></i>
+                                                    Banding</a>
+                                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                                             </td>
-
-                                            {{-- Aksi --}}
                                             <td class="text-center" onclick="event.stopPropagation()">
                                                 <a href="{{ route('admin.asesi.show', $asesi) }}"
-                                                    class="btn btn-sm btn-outline-primary">
-                                                    <i class="bi bi-eye"></i>
-                                                </a>
+                                                    class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i></a>
                                             </td>
                                         </tr>
                                         @endforeach
@@ -470,7 +373,6 @@
                                 </table>
                             </div>
 
-                            {{-- Footer batch: tombol mulai jika ada yang belum dimulai --}}
                             @if($countWaiting > 0 && $countWaiting < $total) <div
                                 class="px-3 py-2 bg-light border-top d-flex align-items-center gap-2"
                                 style="font-size:.82rem;">
@@ -485,12 +387,12 @@
                     </div>
                 </div>
                 @endforeach
-            </div>{{-- #batch-list --}}
+            </div>
             @endif
         </div>
 
         {{-- ════════════════════════════════
-                 TAB MANDIRI
+                 TAB MANDIRI — dengan kolom pembayaran + guard tombol Mulai
             ════════════════════════════════ --}}
         <div class="tab-pane fade" id="tab-mandiri">
             @if($mandiri->isEmpty())
@@ -507,6 +409,7 @@
                             <th>Nama</th>
                             <th>Skema</th>
                             <th>Status</th>
+                            <th class="text-center">Pembayaran</th>
                             <th class="text-center">APL-01</th>
                             <th class="text-center">APL-02</th>
                             <th class="text-center">AK.01</th>
@@ -517,79 +420,129 @@
                     <tbody>
                         @foreach($mandiri as $i => $asesi)
                         @php
+                        $payment = $asesi->payment;
+                        $payVerified = $payment && $payment->status === 'verified';
+                        $payPending = $payment && $payment->status === 'pending';
+                        $payRejected = $payment && $payment->status === 'rejected';
+                        $canStart = $payVerified; // mandiri wajib bayar dulu
+
                         $hasUrgent = $asesi->aplsatu?->status === 'submitted'
                         || $asesi->apldua?->status === 'submitted'
                         || $asesi->frak04?->status === 'submitted';
                         @endphp
                         <tr class="asesi-row {{ $hasUrgent ? 'table-warning' : '' }}"
                             onclick="window.location='{{ route('admin.asesi.show', $asesi) }}'">
+
                             <td class="ps-3 text-muted">{{ $i+1 }}</td>
+
+                            {{-- Nama --}}
                             <td>
                                 <div class="fw-semibold">{{ $asesi->full_name }}</div>
                                 <div class="text-muted small">{{ $asesi->user->email ?? '-' }}</div>
-                                @if($hasUrgent)
+                                @if(!$payVerified && in_array($asesi->status, ['data_completed','payment_pending']))
+                                <span style="font-size:.65rem;" class="text-danger">
+                                    <i class="bi bi-cash-coin"></i>
+                                    @if($payPending) Menunggu verifikasi bendahara
+                                    @elseif($payRejected) Bukti ditolak — upload ulang
+                                    @else Belum upload bukti
+                                    @endif
+                                </span>
+                                @elseif($hasUrgent)
                                 <span style="font-size:.65rem;" class="text-warning fw-bold">
                                     <i class="bi bi-exclamation-circle"></i> Perlu tindakan
                                 </span>
                                 @endif
                             </td>
+
+                            {{-- Skema --}}
                             <td class="small">{{ $asesi->skema?->name ?? '-' }}</td>
+
+                            {{-- Status --}}
                             <td>
                                 <span class="badge bg-{{ $asesi->status_badge }}">{{ $asesi->status_label }}</span>
-                                @if($asesi->status === 'data_completed')
-                                <br>
-                                <button class="btn btn-xs btn-primary mt-1" style="font-size:.72rem;padding:2px 8px;"
-                                    onclick="event.stopPropagation(); confirmStartSingle({{ $asesi->id }}, '{{ addslashes($asesi->full_name) }}')">
-                                    <i class="bi bi-play-circle me-1"></i>Mulai
-                                </button>
+                            </td>
+
+                            {{-- Pembayaran --}}
+                            <td class="text-center" onclick="event.stopPropagation()">
+                                @if($payVerified)
+                                <span class="dbadge bg-success text-white"
+                                    title="Diverifikasi {{ $payment->verified_at?->translatedFormat('d M Y') }}">
+                                    <i class="bi bi-check-circle-fill"></i> Lunas
+                                </span>
+                                @elseif($payPending)
+                                <span class="dbadge bg-warning text-dark" title="Menunggu verifikasi bendahara">
+                                    <i class="bi bi-hourglass-split"></i> Review
+                                </span>
+                                @elseif($payRejected)
+                                <span class="dbadge bg-danger text-white" title="{{ $payment->rejection_notes }}">
+                                    <i class="bi bi-x-circle-fill"></i> Ditolak
+                                </span>
+                                @else
+                                <span class="dbadge bg-light text-muted border">
+                                    <i class="bi bi-dash"></i> Belum
+                                </span>
                                 @endif
                             </td>
+
+                            {{-- APL-01 --}}
                             <td class="text-center" onclick="event.stopPropagation()">
                                 @if($asesi->aplsatu)
                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=apl01"
                                     class="dbadge bg-{{ $asesi->aplsatu->status_badge }} text-white">
                                     {{ $asesi->aplsatu->status_label }}
                                 </a>
-                                @else
-                                <span class="dbadge bg-light text-muted border">-</span>
-                                @endif
+                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                             </td>
+                            {{-- APL-02 --}}
                             <td class="text-center" onclick="event.stopPropagation()">
                                 @if($asesi->apldua)
                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=apl02"
                                     class="dbadge bg-{{ $asesi->apldua->status_badge }} text-white">
                                     {{ $asesi->apldua->status_label }}
                                 </a>
-                                @else
-                                <span class="dbadge bg-light text-muted border">-</span>
-                                @endif
+                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                             </td>
+                            {{-- FR.AK.01 --}}
                             <td class="text-center" onclick="event.stopPropagation()">
                                 @if($asesi->frak01)
                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=frak01"
                                     class="dbadge bg-{{ $asesi->frak01->status_badge }} text-white">
                                     {{ $asesi->frak01->status_label }}
                                 </a>
-                                @else
-                                <span class="dbadge bg-light text-muted border">-</span>
-                                @endif
+                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                             </td>
+                            {{-- FR.AK.04 --}}
                             <td class="text-center" onclick="event.stopPropagation()">
                                 @if($asesi->frak04?->status === 'submitted')
                                 <a href="{{ route('admin.asesi.show', $asesi) }}?tab=frak04"
                                     class="dbadge bg-warning text-dark">
                                     <i class="bi bi-megaphone"></i> Banding
                                 </a>
-                                @else
-                                <span class="dbadge bg-light text-muted border">-</span>
-                                @endif
+                                @else<span class="dbadge bg-light text-muted border">-</span>@endif
                             </td>
+
+                            {{-- Aksi --}}
                             <td class="text-center" onclick="event.stopPropagation()">
+                                @if(in_array($asesi->status, ['data_completed','payment_pending']))
+                                @if($canStart)
+                                <button class="btn btn-sm btn-success"
+                                    onclick="confirmStartSingle({{ $asesi->id }}, '{{ addslashes($asesi->full_name) }}')">
+                                    <i class="bi bi-play-fill me-1"></i>Mulai
+                                </button>
+                                @else
+                                <button class="btn btn-sm btn-secondary" disabled
+                                    title="{{ $payPending ? 'Menunggu verifikasi bendahara' : ($payRejected ? 'Bukti ditolak, asesi upload ulang' : 'Asesi belum upload bukti') }}">
+                                    <i class="bi bi-lock me-1"></i>Tunggu Bayar
+                                </button>
+                                @endif
+                                @else
                                 <a href="{{ route('admin.asesi.show', $asesi) }}"
                                     class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @endif
                             </td>
+
                         </tr>
                         @endforeach
                     </tbody>
@@ -602,16 +555,12 @@
 </div>
 </div>
 
-{{-- Hidden form untuk start single --}}
-<form id="form-start-single" method="POST" style="display:none;">
-    @csrf
-</form>
+<form id="form-start-single" method="POST" style="display:none;">@csrf</form>
 
 @endsection
 
 @push('scripts')
 <script>
-// ── Toggle batch accordion ──────────────────────────────────
 function toggleBatch(headerEl) {
     const body = headerEl.closest('.batch-card').querySelector('.batch-body');
     const chev = headerEl.querySelector('.chevron');
@@ -620,7 +569,6 @@ function toggleBatch(headerEl) {
     chev.classList.toggle('open', !isOpen);
 }
 
-// ── Auto-buka batch yang perlu tindakan ────────────────────
 document.querySelectorAll('.batch-card').forEach(card => {
     const hasWarn = card.querySelector('.table-warning');
     const hasUrgentBadge = card.querySelector('.badge.bg-warning');
@@ -630,29 +578,22 @@ document.querySelectorAll('.batch-card').forEach(card => {
     }
 });
 
-// ── Filter & search ────────────────────────────────────────
 function applyBatchFilter() {
     const search = document.getElementById('batch-search')?.value?.toLowerCase() ?? '';
     const status = document.getElementById('batch-status-filter')?.value ?? '';
-
     document.querySelectorAll('.batch-item').forEach(card => {
         const okSearch = !search || card.dataset.batchText.includes(search);
         const okStatus = !status || card.dataset.batchStatus === status;
         card.style.display = (okSearch && okStatus) ? '' : 'none';
     });
 }
+document.getElementById('batch-search')?.addEventListener('input', applyBatchFilter);
+document.getElementById('batch-status-filter')?.addEventListener('change', applyBatchFilter);
 
-document.getElementById('batch-search')
-    ?.addEventListener('input', applyBatchFilter);
-document.getElementById('batch-status-filter')
-    ?.addEventListener('change', applyBatchFilter);
-
-// ── Start batch ────────────────────────────────────────────
 function confirmStartBatch(batchId, count) {
     Swal.fire({
         title: 'Mulai Pra-Asesmen Batch?',
-        html: `Memulai pra-asesmen untuk <strong>${count} peserta</strong> dalam batch <code>${batchId}</code>.<br>
-               <small class="text-muted">Asesi akan dapat mengisi APL-01, APL-02, dan FR.AK.01.</small>`,
+        html: `Memulai pra-asesmen untuk <strong>${count} peserta</strong> dalam batch <code>${batchId}</code>.<br><small class="text-muted">Asesi akan dapat mengisi APL-01, APL-02, dan FR.AK.01.</small>`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: '<i class="bi bi-play-circle me-1"></i> Mulai',
@@ -669,10 +610,9 @@ function confirmStartBatch(batchId, count) {
     });
 }
 
-// ── Start single (mandiri) ─────────────────────────────────
 function confirmStartSingle(asesmenId, nama) {
     Swal.fire({
-        title: 'Mulai Asesmen?',
+        title: 'Mulai Pra-Asesmen?',
         html: `Memulai pra-asesmen untuk <strong>${nama}</strong>.`,
         icon: 'question',
         showCancelButton: true,

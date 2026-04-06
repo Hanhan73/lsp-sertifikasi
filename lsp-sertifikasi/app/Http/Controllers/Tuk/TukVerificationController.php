@@ -65,34 +65,37 @@ class TukVerificationController extends Controller
      * - Mandiri  → verified  (Admin LSP yang set biaya, lalu asesi bayar)
      * - Kolektif → verified  (biaya di-set Admin LSP, pembayaran manual oleh TUK — terpisah dari flow asesi)
      */
-    public function process(Request $request, Asesmen $asesmen)
+     public function process(Request $request, Asesmen $asesmen)
     {
         $tuk = auth()->user()->tuk;
-
+ 
         if ($asesmen->tuk_id != $tuk->id) {
             abort(403, 'Anda tidak memiliki akses ke data ini.');
         }
-
+ 
         $request->validate([
             'notes' => 'nullable|string|max:1000',
         ]);
-
+ 
         $updateData = [
-            'tuk_verified_by'         => auth()->id(),
-            'tuk_verified_at'         => now(),
-            'tuk_verification_notes'  => $request->notes,
-            'status'                  => 'verified',
+            'tuk_verified_by'        => auth()->id(),
+            'tuk_verified_at'        => now(),
+            'tuk_verification_notes' => $request->notes,
+            // Kolektif: tetap pakai flow yang ada (verified → scheduled langsung)
+            // Mandiri: tidak melewati TUK verification, jadi ini seharusnya
+            // tidak pernah dipanggil untuk mandiri. Tapi defensive tetap data_completed.
+            'status' => $asesmen->is_collective ? 'verified' : 'data_completed',
         ];
-
-        // Untuk mandiri: set fee dari skema
-        if (!$asesmen->is_collective) {
+ 
+        // Untuk mandiri: set fee dari skema jika belum di-set admin
+        if (!$asesmen->is_collective && !$asesmen->fee_amount) {
             $updateData['fee_amount'] = $asesmen->skema->fee;
         }
-
+ 
         $asesmen->update($updateData);
-
-        Log::info("TUK Verification for Asesmen #{$asesmen->id} by TUK {$tuk->name}. Notes: {$request->notes}");
-
+ 
+        Log::info("TUK Verification for Asesmen #{$asesmen->id} by TUK {$tuk->name}.");
+ 
         return redirect()->route('tuk.verifications.index')
             ->with('success', 'Data asesi berhasil diverifikasi!');
     }

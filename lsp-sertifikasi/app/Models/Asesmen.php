@@ -370,6 +370,7 @@ class Asesmen extends Model
         return [
             'registered'               => 'Terdaftar',
             'data_completed'           => 'Data Lengkap',
+            'payment_pending'          => 'Menunggu Verifikasi Pembayaran',
             'pra_asesmen_started'      => 'Pra-Asesmen', // ← baru, gantikan 'verified'
             'scheduled'                => 'Terjadwal',
             'pra_asesmen_completed' => 'Pra-Asesmen Selesai',
@@ -387,13 +388,13 @@ class Asesmen extends Model
         return [
             'registered'               => 'secondary',
             'data_completed'           => 'info',
+            'payment_pending'          => 'warning',
             'pra_asesmen_started'      => 'primary',
             'scheduled'                => 'warning',
             'pra_asesmen_completed' => 'info',
             'asesmen_started'       => 'primary',
             'assessed'                 => 'primary',
             'certified'                => 'success',
-            
             'verified'                 => 'primary',
             'paid'                     => 'success',
         ][$this->status] ?? 'secondary';
@@ -404,6 +405,7 @@ class Asesmen extends Model
         return match ($this->status) {
             'registered'               => 'Lengkapi data pribadi',
             'data_completed'           => 'Menunggu Admin memulai proses asesmen',
+            'payment_pending'          => 'Menunggu verifikasi pembayaran',
             'pra_asesmen_started'      => 'Isi APL-01, APL-02, dan FR.AK.01',
             'scheduled'                => 'Siapkan dokumen untuk hari asesmen',
             'pra_asesmen_completed' => 'Menunggu proses asesmen',

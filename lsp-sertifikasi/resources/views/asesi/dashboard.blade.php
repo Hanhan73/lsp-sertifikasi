@@ -7,23 +7,74 @@
 
 @push('styles')
 <style>
-.tl { position:relative; padding:4px 0; }
-.tl::before { content:''; position:absolute; left:15px; top:0; bottom:0; width:2px; background:#e2e8f0; }
-.tl-item { position:relative; padding-left:44px; padding-bottom:20px; }
-.tl-item:last-child { padding-bottom:0; }
-.tl-dot {
-    position:absolute; left:6px; top:2px;
-    width:20px; height:20px; border-radius:50%;
-    background:#fff; border:2px solid #cbd5e1;
-    display:flex; align-items:center; justify-content:center;
-    font-size:.65rem; color:#94a3b8;
-    z-index:1;
+.tl {
+    position: relative;
+    padding: 4px 0;
 }
-.tl-item.done .tl-dot { background:#22c55e; border-color:#22c55e; color:#fff; }
-.tl-item.now  .tl-dot { background:#3b82f6; border-color:#3b82f6; color:#fff; }
-.tl-item.now  .tl-label { font-weight:700; color:#1e40af; }
-.tl-label { font-size:.875rem; margin-bottom:1px; }
-.tl-sub   { font-size:.78rem; color:#64748b; }
+
+.tl::before {
+    content: '';
+    position: absolute;
+    left: 15px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: #e2e8f0;
+}
+
+.tl-item {
+    position: relative;
+    padding-left: 44px;
+    padding-bottom: 20px;
+}
+
+.tl-item:last-child {
+    padding-bottom: 0;
+}
+
+.tl-dot {
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #cbd5e1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .65rem;
+    color: #94a3b8;
+    z-index: 1;
+}
+
+.tl-item.done .tl-dot {
+    background: #22c55e;
+    border-color: #22c55e;
+    color: #fff;
+}
+
+.tl-item.now .tl-dot {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+
+.tl-item.now .tl-label {
+    font-weight: 700;
+    color: #1e40af;
+}
+
+.tl-label {
+    font-size: .875rem;
+    margin-bottom: 1px;
+}
+
+.tl-sub {
+    font-size: .78rem;
+    color: #64748b;
+}
 </style>
 @endpush
 
@@ -53,20 +104,22 @@
 @else
 
 @php
-    $statusOrder = ['registered','data_completed','pra_asesmen_started','scheduled','pre_assessment_completed','assessed','certified'];
-    $currentIdx  = array_search($asesmen->status, $statusOrder) ?: 0;
+$statusOrder =
+['registered','data_completed','payment_pending','pra_asesmen_started','scheduled','pre_assessment_completed','assessed','certified'];
+$currentIdx = array_search($asesmen->status, $statusOrder) ?: 0;
 
-    $progress = match($asesmen->status) {
-            'registered' => 10,
-            'data_completed' => 25,
-            'pra_asesmen_started' => 40,
-            'scheduled' => 55,
-            'pre_assessment_completed' => 70,
-            'asesmen_started' => 75,
-            'assessed' => 85,
-            'certified' => 100,
-            default => 0,
-    };
+$progress = match($asesmen->status) {
+'registered' => 10,
+'data_completed' => 25,
+'payment_pending' => 30,
+'pra_asesmen_started' => 40,
+'scheduled' => 55,
+'pre_assessment_completed' => 70,
+'asesmen_started' => 75,
+'assessed' => 85,
+'certified' => 100,
+default => 0,
+};
 @endphp
 
 {{-- ── HEADER STRIP ── --}}
@@ -75,7 +128,7 @@
         <div class="d-flex flex-wrap">
             {{-- Warna status --}}
             <div class="d-flex flex-column justify-content-center px-4 py-4 text-white flex-shrink-0"
-                 style="min-width:140px; background:{{ $asesmen->status === 'certified' ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">
+                style="min-width:140px; background:{{ $asesmen->status === 'certified' ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">
                 <div style="font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;">Status</div>
                 <div class="fw-bold" style="font-size:1rem;line-height:1.3;">{{ $asesmen->status_label }}</div>
                 <div class="mt-2" style="font-size:.75rem;opacity:.8;">{{ $progress }}% selesai</div>
@@ -111,9 +164,13 @@
                     <a href="{{ route('asesi.complete-data') }}" class="btn btn-primary btn-sm flex-shrink-0">
                         <i class="bi bi-pencil me-1"></i>Lengkapi Data
                     </a>
-                    @elseif($asesmen->status === 'verified' && !$asesmen->is_collective)
-                    <a href="{{ route('asesi.payment') }}" class="btn btn-success btn-sm flex-shrink-0">
-                        <i class="bi bi-credit-card me-1"></i>Bayar Sekarang
+                    @elseif($asesmen->status === 'data_completed' && !$asesmen->is_collective)
+                    <a href="{{ route('asesi.payment') }}" class="btn btn-warning btn-sm flex-shrink-0">
+                        <i class="bi bi-upload me-1"></i>Upload Bukti Bayar
+                    </a>
+                    @elseif($asesmen->status === 'payment_pending')
+                    <a href="{{ route('asesi.payment.status') }}" class="btn btn-warning btn-sm flex-shrink-0">
+                        <i class="bi bi-hourglass-split me-1"></i>Cek Status Bayar
                     </a>
                     @elseif($asesmen->status === 'pra_asesmen_started')
                     <a href="{{ route('asesi.apl01') }}" class="btn btn-primary btn-sm flex-shrink-0">
@@ -147,83 +204,98 @@
 
                     @php
                     $steps = [
-                        [
-                            'label'  => 'Pendaftaran',
-                            'status' => 'registered',
-                            'icon'   => 'bi-person-plus',
-                            'sub'    => $asesmen->registration_date->translatedFormat('d M Y'),
-                        ],
-                        [
-                            'label'  => 'Kelengkapan Data',
-                            'status' => 'data_completed',
-                            'icon'   => 'bi-clipboard-check',
-                            'sub'    => $currentIdx > 1 ? 'Selesai' : 'Belum dilengkapi',
-                        ],
-                        [
-                            'label'  => 'Proses Dimulai Admin',
-                            'status' => 'pra_asesmen_started',
-                            'icon'   => 'bi-play-circle',
-                            'sub'    => $asesmen->admin_started_at
-                                            ? $asesmen->admin_started_at->translatedFormat('d M Y')
-                                            : 'Menunggu Admin LSP',
-                        ],
-                        [
-                            'label'  => 'Pengisian Dokumen',
-                            'status' => 'pra_asesmen_started',
-                            'icon'   => 'bi-file-earmark-text',
-                            'sub'    => $currentIdx > 2 ? 'Selesai' : ($asesmen->status === 'pra_asesmen_started' ? 'Sedang diisi' : 'Menunggu'),
-                            'indent' => true,
-                        ],
-                        [
-                            'label'  => 'Penjadwalan Asesmen',
-                            'status' => 'scheduled',
-                            'icon'   => 'bi-calendar-event',
-                            'sub'    => $asesmen->schedule
-                                            ? $asesmen->schedule->assessment_date->translatedFormat('l, d F Y')
-                                            : 'Belum dijadwalkan',
-                        ],
-                        [
-                            'label'  => 'Pelaksanaan Asesmen',
-                            'status' => 'asesmen_started',
-                            'icon'   => 'bi-person-check',
-                            'sub'    => $asesmen->status === 'asesmen_started' && $asesmen->schedule?->assessment_date?->isPast()
-                                            ? 'Selesai dilaksanakan, menunggu hasil dari asesor'
-                                            : ($asesmen->status === 'asesmen_started'
-                                                ? 'Sedang berjalan'
-                                                : ($asesmen->assessed_at
-                                                    ? $asesmen->assessed_at->translatedFormat('d M Y')
-                                                    : 'Belum dilakukan')),
-                        ],
-                        [
-                            'label'  => 'Hasil Asesmen',
-                            'status' => 'assessed',
-                            'icon'   => 'bi-clipboard-check',
-                            'sub'    => $asesmen->result
-                                            ? ($asesmen->result === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten')
-                                            : ($currentIdx >= array_search('assessed', $statusOrder)
-                                                ? 'Menunggu keputusan asesor'
-                                                : 'Belum dilakukan'),
-                        ],
-                        [
-                            'label'  => 'Penerbitan Sertifikat',
-                            'status' => 'certified',
-                            'icon'   => 'bi-award',
-                            'sub'    => $asesmen->certificate
-                                            ? 'No. ' . $asesmen->certificate->certificate_number
-                                            : 'Belum terbit',
-                        ],
+                    [
+                    'label' => 'Pendaftaran',
+                    'status' => 'registered',
+                    'icon' => 'bi-person-plus',
+                    'sub' => $asesmen->registration_date->translatedFormat('d M Y'),
+                    ],
+                    [
+                    'label' => 'Kelengkapan Data',
+                    'status' => 'data_completed',
+                    'icon' => 'bi-clipboard-check',
+                    'sub' => $currentIdx > 1 ? 'Selesai' : 'Belum dilengkapi',
+                    ],
                     ];
+
+                    // Step pembayaran hanya untuk mandiri
+                    if (!$asesmen->is_collective) {
+                    $steps[] = [
+                    'label' => 'Verifikasi Pembayaran',
+                    'status' => 'payment_pending',
+                    'icon' => 'bi-cash-coin',
+                    'sub' => match($asesmen->payment?->status) {
+                    'verified' => 'Terverifikasi ✓',
+                    'pending' => 'Menunggu verifikasi bendahara',
+                    'rejected' => 'Ditolak — upload ulang bukti',
+                    default => in_array($asesmen->status, ['data_completed','payment_pending'])
+                    ? 'Belum upload bukti'
+                    : 'Selesai',
+                    },
+                    ];
+                    }
+
+                    $steps = array_merge($steps, [
+                    [
+                    'label' => 'Proses Dimulai Admin',
+                    'status' => 'pra_asesmen_started',
+                    'icon' => 'bi-play-circle',
+                    'sub' => $asesmen->admin_started_at
+                    ? $asesmen->admin_started_at->translatedFormat('d M Y')
+                    : 'Menunggu Admin LSP',
+                    ],
+                    [
+                    'label' => 'Pengisian Dokumen',
+                    'status' => 'pra_asesmen_started',
+                    'icon' => 'bi-file-earmark-text',
+                    'sub' => $currentIdx > 3 ? 'Selesai' : ($asesmen->status === 'pra_asesmen_started' ? 'Sedang diisi'
+                    : 'Menunggu'),
+                    'indent' => true,
+                    ],
+                    [
+                    'label' => 'Penjadwalan Asesmen',
+                    'status' => 'scheduled',
+                    'icon' => 'bi-calendar-event',
+                    'sub' => $asesmen->schedule
+                    ? $asesmen->schedule->assessment_date->translatedFormat('l, d F Y')
+                    : 'Belum dijadwalkan',
+                    ],
+                    [
+                    'label' => 'Pelaksanaan Asesmen',
+                    'status' => 'asesmen_started',
+                    'icon' => 'bi-person-check',
+                    'sub' => $asesmen->assessed_at
+                    ? $asesmen->assessed_at->translatedFormat('d M Y')
+                    : 'Belum dilakukan',
+                    ],
+                    [
+                    'label' => 'Hasil Asesmen',
+                    'status' => 'assessed',
+                    'icon' => 'bi-clipboard-check',
+                    'sub' => $asesmen->result
+                    ? ($asesmen->result === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten')
+                    : 'Belum dilakukan',
+                    ],
+                    [
+                    'label' => 'Penerbitan Sertifikat',
+                    'status' => 'certified',
+                    'icon' => 'bi-award',
+                    'sub' => $asesmen->certificate
+                    ? 'No. ' . $asesmen->certificate->certificate_number
+                    : 'Belum terbit',
+                    ],
+                    ]);
                     @endphp
 
                     @foreach($steps as $step)
                     @php
-                        $idx       = array_search($step['status'], $statusOrder);
-                        $isDone    = $idx !== false && $currentIdx > $idx;
-                        $isNow     = $asesmen->status === $step['status'] && !($step['indent'] ?? false && $currentIdx > 2);
-                        $indent    = $step['indent'] ?? false;
+                    $idx = array_search($step['status'], $statusOrder);
+                    $isDone = $idx !== false && $currentIdx > $idx;
+                    $isNow = $asesmen->status === $step['status'] && !($step['indent'] ?? false && $currentIdx > 2);
+                    $indent = $step['indent'] ?? false;
                     @endphp
                     <div class="tl-item {{ $isDone ? 'done' : ($isNow ? 'now' : '') }}"
-                         style="{{ $indent ? 'padding-left:64px;' : '' }}">
+                        style="{{ $indent ? 'padding-left:64px;' : '' }}">
                         <div class="tl-dot" style="{{ $indent ? 'left:26px;width:16px;height:16px;' : '' }}">
                             @if($isDone)
                             <i class="bi bi-check"></i>
@@ -242,7 +314,8 @@
                         @if($isNow && $asesmen->status === 'scheduled' && $asesmen->schedule)
                         <div class="mt-1 d-flex flex-wrap gap-2">
                             <span class="badge bg-light text-dark border" style="font-size:.72rem;">
-                                <i class="bi bi-clock me-1"></i>{{ $asesmen->schedule->start_time }} – {{ $asesmen->schedule->end_time }}
+                                <i class="bi bi-clock me-1"></i>{{ $asesmen->schedule->start_time }} –
+                                {{ $asesmen->schedule->end_time }}
                             </span>
                             @if($asesmen->schedule->location)
                             <span class="badge bg-light text-dark border" style="font-size:.72rem;">
@@ -314,41 +387,84 @@
         </div>
 
         {{-- Pembayaran (mandiri) --}}
-        @if(!$asesmen->is_collective && $asesmen->payment)
+        @if(!$asesmen->is_collective)
+        @php $payment = $asesmen->payment; @endphp
+
+        @if($payment || in_array($asesmen->status, ['data_completed','payment_pending']))
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white fw-semibold">
                 <i class="bi bi-receipt text-primary me-2"></i>Pembayaran
             </div>
             <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
+                @if(!$payment)
+                {{-- Belum upload sama sekali --}}
+                @if($asesmen->admin_verified_at)
+                {{-- Admin sudah verifikasi biodata + tetapkan biaya --}}
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <i class="bi bi-cash-coin text-warning fs-4"></i>
+                    <div>
+                        <div class="fw-semibold">Tagihan Ditetapkan</div>
+                        <div class="fs-5 fw-bold text-success">Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
+                        </div>
+                    </div>
+                </div>
+                <a href="{{ route('asesi.payment') }}" class="btn btn-warning w-100">
+                    <i class="bi bi-upload me-1"></i>Upload Bukti Pembayaran
+                </a>
+                @else
+                <div class="text-muted small text-center py-2">
+                    <i class="bi bi-hourglass-split d-block fs-4 mb-1 text-muted"></i>
+                    Menunggu verifikasi biodata oleh Admin LSP
+                </div>
+                @endif
+
+                @elseif($payment->status === 'verified')
+                <div class="d-flex align-items-center justify-content-between mb-2">
                     <div>
                         <div class="small text-muted">Jumlah</div>
-                        <div class="fw-bold">Rp {{ number_format($asesmen->payment->amount, 0, ',', '.') }}</div>
+                        <div class="fw-bold">Rp {{ number_format($payment->amount, 0, ',', '.') }}</div>
                     </div>
-                    <span class="badge bg-{{ $asesmen->payment->status_badge }} px-3 py-2">
-                        {{ $asesmen->payment->status_label }}
-                    </span>
+                    <span class="badge bg-success px-3 py-2">Terverifikasi</span>
                 </div>
-                @if($asesmen->payment->status === 'verified')
-                <a href="{{ route('asesi.payment.invoice') }}" class="btn btn-sm btn-outline-success w-100 mt-3">
-                    <i class="bi bi-download me-1"></i>Download Invoice
+                <div class="small text-muted">
+                    <i class="bi bi-calendar me-1"></i>{{ $payment->verified_at?->translatedFormat('d M Y') }}
+                </div>
+
+                @elseif($payment->status === 'pending')
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <div>
+                        <div class="small text-muted">Jumlah</div>
+                        <div class="fw-bold">Rp {{ number_format($payment->amount, 0, ',', '.') }}</div>
+                    </div>
+                    <span class="badge bg-warning text-dark px-3 py-2">Menunggu Verifikasi</span>
+                </div>
+                <a href="{{ route('asesi.payment.status') }}" class="btn btn-sm btn-outline-warning w-100">
+                    <i class="bi bi-clock me-1"></i>Cek Status
                 </a>
-                @elseif($asesmen->payment->status === 'pending')
-                <a href="{{ route('asesi.payment') }}" class="btn btn-sm btn-warning w-100 mt-3">
-                    <i class="bi bi-credit-card me-1"></i>Selesaikan Pembayaran
+
+                @elseif($payment->status === 'rejected')
+                <div class="alert alert-danger py-2 mb-3">
+                    <i class="bi bi-x-circle me-1"></i>
+                    <strong>Bukti Ditolak</strong><br>
+                    <small>{{ $payment->rejection_notes }}</small>
+                </div>
+                <a href="{{ route('asesi.payment') }}" class="btn btn-danger w-100">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Upload Ulang
                 </a>
                 @endif
             </div>
         </div>
         @endif
+        @endif {{-- end !is_collective --}}
 
         {{-- Hasil asesmen --}}
         @if($asesmen->result)
         <div class="card border-0 shadow-sm mb-4
             {{ $asesmen->result === 'kompeten' ? 'border-success' : 'border-danger' }}"
-             style="border-left:4px solid {{ $asesmen->result === 'kompeten' ? '#22c55e' : '#ef4444' }} !important;">
+            style="border-left:4px solid {{ $asesmen->result === 'kompeten' ? '#22c55e' : '#ef4444' }} !important;">
             <div class="card-body d-flex align-items-center gap-3">
-                <i class="bi {{ $asesmen->result === 'kompeten' ? 'bi-award-fill text-success' : 'bi-x-circle-fill text-danger' }} fs-3"></i>
+                <i
+                    class="bi {{ $asesmen->result === 'kompeten' ? 'bi-award-fill text-success' : 'bi-x-circle-fill text-danger' }} fs-3"></i>
                 <div>
                     <div class="fw-bold">Hasil Asesmen</div>
                     <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
@@ -372,12 +488,12 @@
             </div>
             <div class="card-body d-grid gap-2">
                 @php
-                    $aplStatus    = $asesmen->aplsatu?->status;
-                    $apldStatus   = $asesmen->apldua?->status;
-                    $frak01Status = $asesmen->frak01?->status;
+                $aplStatus = $asesmen->aplsatu?->status;
+                $apldStatus = $asesmen->apldua?->status;
+                $frak01Status = $asesmen->frak01?->status;
                 @endphp
                 <a href="{{ route('asesi.apl01') }}"
-                   class="btn btn-sm {{ in_array($aplStatus, ['verified','approved']) ? 'btn-outline-success' : 'btn-primary' }}">
+                    class="btn btn-sm {{ in_array($aplStatus, ['verified','approved']) ? 'btn-outline-success' : 'btn-primary' }}">
                     <i class="bi bi-file-earmark-text me-1"></i>APL-01
                     @if(in_array($aplStatus, ['verified','approved']))
                     <i class="bi bi-check-circle ms-1"></i>
@@ -386,14 +502,14 @@
                     @endif
                 </a>
                 <a href="{{ route('asesi.apldua') }}"
-                   class="btn btn-sm {{ in_array($apldStatus, ['verified','approved']) ? 'btn-outline-success' : 'btn-outline-primary' }}">
+                    class="btn btn-sm {{ in_array($apldStatus, ['verified','approved']) ? 'btn-outline-success' : 'btn-outline-primary' }}">
                     <i class="bi bi-file-earmark-check me-1"></i>APL-02
                     @if(in_array($apldStatus, ['verified','approved']))
                     <i class="bi bi-check-circle ms-1"></i>
                     @endif
                 </a>
                 <a href="{{ route('asesi.frak01') }}"
-                   class="btn btn-sm {{ in_array($frak01Status, ['verified','approved']) ? 'btn-outline-success' : 'btn-outline-primary' }}">
+                    class="btn btn-sm {{ in_array($frak01Status, ['verified','approved']) ? 'btn-outline-success' : 'btn-outline-primary' }}">
                     <i class="bi bi-journal-text me-1"></i>FR.AK.01
                     @if(in_array($frak01Status, ['verified','approved']))
                     <i class="bi bi-check-circle ms-1"></i>

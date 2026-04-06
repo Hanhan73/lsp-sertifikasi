@@ -34,115 +34,118 @@
 </div>
 
 @forelse($distribusiObservasi as $dist)
-@php $obs = $dist->soalObservasi; @endphp
+@php
+    $obs    = $dist->soalObservasi;
+    $paket  = $dist->paketSoalObservasi; 
+    $jawaban = $paket ? ($jawabanMap[$paket->id] ?? null) : null;
+    $hasLink = $jawaban?->hasLink();
+@endphp
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header d-flex align-items-center gap-2" style="background:#f0f9ff;border-bottom:1px solid #bae6fd">
         <i class="bi bi-eye text-primary"></i>
         <h6 class="fw-bold mb-0">{{ $obs->judul }}</h6>
+        @if($paket)
         <span class="badge bg-primary-subtle text-primary ms-auto" style="font-size:.7rem">
-            {{ $obs->paket->count() }} paket
+            Paket {{ $paket->kode_paket }}
         </span>
+        @endif
     </div>
+
     <div class="card-body p-0">
-        @if($obs->paket->isEmpty())
+        @if(!$paket)
         <div class="text-center py-4 text-muted" style="font-size:.875rem">
-            <i class="bi bi-file-earmark-pdf" style="font-size:2rem;opacity:.3;display:block"></i>
-            Belum ada paket dalam soal observasi ini.
+            <i class="bi bi-exclamation-circle" style="font-size:2rem;opacity:.3;display:block"></i>
+            Paket soal belum dipilih oleh Manajer Sertifikasi.
         </div>
         @else
-        <div class="d-flex flex-column gap-0">
-            @foreach($obs->paket as $paket)
-            @php
-                $jawaban = $jawabanMap[$paket->id] ?? null;
-                $hasLink = $jawaban?->hasLink();
-            @endphp
-            <div class="d-flex align-items-center gap-4 px-4 py-3 border-bottom flex-wrap
-                         {{ $hasLink ? 'bg-success-subtle' : '' }}">
+        <div class="d-flex align-items-center gap-4 px-4 py-3 flex-wrap {{ $hasLink ? 'bg-success-subtle' : '' }}">
 
-                {{-- Kode Paket --}}
-                <div class="d-flex align-items-center gap-3 flex-shrink-0" style="min-width:200px">
-                    <span class="badge rounded-circle fw-bold d-flex align-items-center justify-content-center"
-                          style="width:36px;height:36px;font-size:.9rem;background:#2563eb;color:white;flex-shrink:0">
-                        {{ $paket->kode_paket }}
-                    </span>
-                    <div>
-                        <div class="fw-semibold" style="font-size:.875rem">Paket {{ $paket->kode_paket }}</div>
-                        <div class="d-flex align-items-center gap-1 text-muted" style="font-size:.78rem">
-                            <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
-                            <a href="{{ route('asesi.soal.observasi.download', $paket) }}"
-                               class="text-decoration-none text-muted" target="_blank">
-                                {{ $paket->file_name }}
-                            </a>
-                            @if($paket->lampiran_path)
-                            <div class="d-flex align-items-center gap-1 text-muted mt-1" style="font-size:.78rem">
-                                <i class="bi bi-file-earmark-word-fill text-primary"></i>
-                                <a href="{{ route('asesi.soal.observasi.download-lampiran', $paket) }}"
-                                class="text-decoration-none text-muted" target="_blank">
-                                    {{ $paket->lampiran_name }}
-                                </a>
-                            </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Status --}}
-                <div class="flex-shrink-0" style="min-width:100px">
-                    @if($hasLink)
-                    <span class="badge bg-success" style="font-size:.72rem">
-                        <i class="bi bi-check-circle me-1"></i>Sudah Upload
-                    </span>
-                    @else
-                    <span class="badge bg-warning text-dark" style="font-size:.72rem">
-                        <i class="bi bi-clock me-1"></i>Belum Upload
-                    </span>
-                    @endif
-                </div>
-
-                {{-- Input GDrive --}}
-                <div class="flex-grow-1">
-                    <div class="input-group input-group-sm">
-                        <span class="input-group-text bg-white">
-                            <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png"
-                                 style="width:16px;height:16px" alt="GDrive">
-                        </span>
-                        <input type="url"
-                               class="form-control gdrive-input"
-                               data-dist-id="{{ $dist->id }}"
-                               data-paket-id="{{ $paket->id }}"
-                               placeholder="Paste link Google Drive..."
-                               value="{{ $jawaban?->gdrive_link ?? '' }}"
-                               style="font-size:.82rem">
-                        <button type="button" class="btn btn-primary btn-sm save-link-btn"
-                                data-dist-id="{{ $dist->id }}"
-                                data-paket-id="{{ $paket->id }}">
-                            <i class="bi bi-save me-1"></i>Simpan
-                        </button>
-                        @if($hasLink)
-                        <a href="{{ $jawaban->gdrive_link }}" target="_blank"
-                           class="btn btn-outline-secondary btn-sm" title="Buka di GDrive">
-                            <i class="bi bi-box-arrow-up-right"></i>
+            {{-- Kode Paket --}}
+            <div class="d-flex align-items-center gap-3 flex-shrink-0" style="min-width:200px">
+                <span class="badge rounded-circle fw-bold d-flex align-items-center justify-content-center"
+                      style="width:36px;height:36px;font-size:.9rem;background:#2563eb;color:white;flex-shrink:0">
+                    {{ $paket->kode_paket }}
+                </span>
+                <div>
+                    <div class="fw-semibold" style="font-size:.875rem">Paket {{ $paket->kode_paket }}</div>
+                    {{-- Download soal PDF --}}
+                    <div class="d-flex align-items-center gap-1 text-muted" style="font-size:.78rem">
+                        <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
+                        <a href="{{ route('asesi.soal.observasi.download', $paket) }}"
+                           class="text-decoration-none text-muted" target="_blank">
+                            {{ $paket->file_name }}
                         </a>
-                        @endif
                     </div>
-                    @if($hasLink)
-                    <small class="text-success mt-1 d-block">
-                        <i class="bi bi-check-circle me-1"></i>
-                        Disimpan {{ $jawaban->uploaded_at?->diffForHumans() ?? '-' }}
-                    </small>
-                    @else
-                    <small class="text-muted mt-1 d-block">
-                        Format: https://drive.google.com/...
-                    </small>
+                    {{-- Download lampiran/panduan jika ada --}}
+                    @if($paket->lampiran_path)
+                    <div class="d-flex align-items-center gap-1 text-muted mt-1" style="font-size:.78rem">
+                        <i class="bi bi-file-earmark-word-fill text-primary"></i>
+                        <a href="{{ route('asesi.soal.observasi.download-lampiran', $paket) }}"
+                           class="text-decoration-none text-primary" target="_blank">
+                            {{ $paket->lampiran_name }}
+                        </a>
+                    </div>
                     @endif
                 </div>
             </div>
-            @endforeach
+
+            {{-- Status --}}
+            <div class="flex-shrink-0" style="min-width:100px">
+                @if($hasLink)
+                <span class="badge bg-success" style="font-size:.72rem">
+                    <i class="bi bi-check-circle me-1"></i>Sudah Upload
+                </span>
+                @else
+                <span class="badge bg-warning text-dark" style="font-size:.72rem">
+                    <i class="bi bi-clock me-1"></i>Belum Upload
+                </span>
+                @endif
+            </div>
+
+            {{-- Input GDrive --}}
+            <div class="flex-grow-1">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-white">
+                        <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png"
+                             style="width:16px;height:16px" alt="GDrive">
+                    </span>
+                    <input type="url"
+                           class="form-control gdrive-input"
+                           data-dist-id="{{ $dist->id }}"
+                           data-paket-id="{{ $paket->id }}"
+                           placeholder="Paste link Google Drive..."
+                           value="{{ $jawaban?->gdrive_link ?? '' }}"
+                           style="font-size:.82rem">
+                    <button type="button" class="btn btn-primary btn-sm save-link-btn"
+                            data-dist-id="{{ $dist->id }}"
+                            data-paket-id="{{ $paket->id }}">
+                        <i class="bi bi-save me-1"></i>Simpan
+                    </button>
+                    @if($hasLink)
+                    <a href="{{ $jawaban->gdrive_link }}" target="_blank"
+                       class="btn btn-outline-secondary btn-sm" title="Buka di GDrive">
+                        <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                    @endif
+                </div>
+                @if($hasLink)
+                <small class="text-success mt-1 d-block">
+                    <i class="bi bi-check-circle me-1"></i>
+                    Disimpan {{ $jawaban->uploaded_at?->diffForHumans() ?? '-' }}
+                </small>
+                @else
+                <small class="text-muted mt-1 d-block">
+                    Format: https://drive.google.com/...
+                </small>
+                @endif
+            </div>
+
         </div>
         @endif
     </div>
 </div>
+
 @empty
 <div class="card border-0 shadow-sm">
     <div class="card-body text-center py-5 text-muted">
@@ -160,9 +163,6 @@
 const SAVE_LINK_URL = "{{ route('asesi.soal.observasi.save') }}";
 const CSRF          = "{{ csrf_token() }}";
 
-// Download paket observasi
-// (route dihandle terpisah via controller — link langsung)
-
 document.querySelectorAll('.save-link-btn').forEach(btn => {
     btn.addEventListener('click', async function () {
         const distId  = this.dataset.distId;
@@ -170,7 +170,6 @@ document.querySelectorAll('.save-link-btn').forEach(btn => {
         const input   = document.querySelector(`.gdrive-input[data-paket-id="${paketId}"]`);
         const link    = input.value.trim();
 
-        // Validasi ringan client-side
         if (link && !link.match(/^https?:\/\/(drive|docs)\.google\.com\//i)) {
             input.classList.add('is-invalid');
             showToast('Link harus berupa URL Google Drive yang valid.', 'danger');

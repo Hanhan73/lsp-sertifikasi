@@ -429,38 +429,39 @@
                         </div>
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0 table-bordered" style="font-size:.82rem;">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="min-width:160px;">Asesi</th>
-                                        @foreach($obs->paket as $paket)
-                                        <th class="text-center">Paket {{ $paket->kode_paket }}</th>
-                                        @endforeach
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($asesmens as $asesmen)
-                                    <tr>
-                                        <td><div class="fw-semibold">{{ $asesmen->full_name }}</div></td>
-                                        @foreach($obs->paket as $paket)
-                                        @php
-                                            $jawaban = $asesmen->jawabanObservasi
-                                                ->where('paket_soal_observasi_id', $paket->id)
-                                                ->first();
-                                        @endphp
-                                        <td class="text-center">
-                                            @if($jawaban?->hasLink())
-                                            <a href="{{ $jawaban->gdrive_link }}" target="_blank"
-                                               class="badge bg-success text-decoration-none" style="font-size:.7rem;">
-                                                <i class="bi bi-check-circle me-1"></i>Upload
-                                            </a>
-                                            @else
-                                            <span class="badge bg-light text-muted border" style="font-size:.7rem;">—</span>
-                                            @endif
-                                        </td>
-                                        @endforeach
-                                    </tr>
-                                    @endforeach
-                                </tbody>
+                            @php $paketDist = $dist->paketSoalObservasi; @endphp
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="min-width:160px;">Asesi</th>
+                                    @if($paketDist)
+                                    <th class="text-center">Paket {{ $paketDist->kode_paket }}</th>
+                                    @endif
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($asesmens as $asesmen)
+                                <tr>
+                                    <td><div class="fw-semibold">{{ $asesmen->full_name }}</div></td>
+                                    @if($paketDist)
+                                    @php
+                                        $jawaban = $asesmen->jawabanObservasi
+                                            ->where('paket_soal_observasi_id', $paketDist->id)
+                                            ->first();
+                                    @endphp
+                                    <td class="text-center">
+                                        @if($jawaban?->hasLink())
+                                        <a href="{{ $jawaban->gdrive_link }}" target="_blank"
+                                        class="badge bg-success text-decoration-none" style="font-size:.7rem;">
+                                            <i class="bi bi-check-circle me-1"></i>Upload
+                                        </a>
+                                        @else
+                                        <span class="badge bg-light text-muted border" style="font-size:.7rem;">—</span>
+                                        @endif
+                                    </td>
+                                    @endif
+                                </tr>
+                                @endforeach
+                            </tbody>
                             </table>
                         </div>
                     </div>
@@ -531,6 +532,15 @@
                                         <a href="{{ route('asesor.jadwal.template.observasi', [$schedule, $obs]) }}"
                                            class="btn btn-sm btn-outline-secondary" title="Download soal observasi">
                                             <i class="bi bi-file-earmark-pdf me-1"></i>Soal
+                                        </a>
+                                        @endif
+                                        @php $paketAktif = $dist->paketSoalObservasi; 
+                                        @endphp
+                                        @if($paketAktif?->lampiran_path)
+                                        
+                                        <a href="{{ route('asesor.observasi.download-lampiran', $paketAktif) }}"
+                                        class="btn btn-sm btn-outline-info" title="Download panduan soal">
+                                            <i class="bi bi-book me-1"></i>Panduan
                                         </a>
                                         @endif
                                         @php

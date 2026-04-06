@@ -1,6 +1,5 @@
 @extends('layouts.app')
-
-@section('title', 'Pembayaran')
+@section('title', 'Pembayaran Sertifikasi')
 @section('page-title', 'Pembayaran Sertifikasi')
 
 @section('sidebar')
@@ -9,385 +8,192 @@
 
 @section('content')
 <div class="row justify-content-center">
-    <div class="col-lg-8">
-        <!-- Payment Info Card -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Informasi Pembayaran</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <table class="table table-borderless">
-                            <tr>
-                                <td width="150"><strong>No. Registrasi</strong></td>
-                                <td>: #{{ $asesmen->id }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Nama</strong></td>
-                                <td>: {{ $asesmen->full_name }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Email</strong></td>
-                                <td>: {{ $asesmen->email }}</td>
-                            </tr>
-                        </table>
-                    </div>
-                    <div class="col-md-6">
-                        <table class="table table-borderless">
-                            <tr>
-                                <td width="150"><strong>Skema</strong></td>
-                                <td>: {{ $asesmen->skema->name }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>TUK</strong></td>
-                                <td>: {{ $asesmen->tuk->name }}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Status</strong></td>
-                                <td>: <span
-                                        class="badge bg-{{ $asesmen->status_badge }}">{{ $asesmen->status_label }}</span>
-                                </td>
-                            </tr>
-                        </table>
+<div class="col-lg-8">
+
+    {{-- Info Tagihan --}}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Tagihan Pembayaran</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-borderless table-sm mb-0">
+                        <tr><td class="text-muted" width="130">Nama</td><td>: <strong>{{ $asesmen->full_name }}</strong></td></tr>
+                        <tr><td class="text-muted">No. Registrasi</td><td>: #{{ $asesmen->id }}</td></tr>
+                        <tr><td class="text-muted">Skema</td><td>: {{ $asesmen->skema->name ?? '-' }}</td></tr>
+                        <tr><td class="text-muted">TUK</td><td>: {{ $asesmen->tuk->name ?? '-' }}</td></tr>
+                    </table>
+                </div>
+                <div class="col-md-6 d-flex align-items-center justify-content-center">
+                    <div class="text-center">
+                        <div class="text-muted small mb-1">Total yang harus dibayar</div>
+                        <div class="fw-bold text-success" style="font-size:2rem;">
+                            Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
+                        </div>
+                        @if($asesmen->training_flag)
+                        <div class="text-muted small">(termasuk biaya pelatihan Rp 1.500.000)</div>
+                        @endif
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <hr>
+    {{-- Status jika sudah pernah upload --}}
+    @if($payment)
+    <div class="card border-0 shadow-sm mb-4"
+        style="border-left: 4px solid {{ $payment->status === 'verified' ? '#22c55e' : ($payment->status === 'rejected' ? '#ef4444' : '#f59e0b') }} !important;">
+        <div class="card-body">
+            @if($payment->status === 'verified')
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                <div>
+                    <div class="fw-bold text-success">Pembayaran Terverifikasi</div>
+                    <div class="small text-muted">{{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}</div>
+                </div>
+            </div>
+            <a href="{{ route('asesi.dashboard') }}" class="btn btn-success mt-3">
+                <i class="bi bi-house me-1"></i>Kembali ke Dashboard
+            </a>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="alert alert-success text-center">
-                            <h4 class="mb-0">
-                                <i class="bi bi-cash-coin"></i>
-                                Total Biaya Sertifikasi
-                            </h4>
-                            <h2 class="mt-2 mb-0">
-                                Rp {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
-                            </h2>
+            @elseif($payment->status === 'rejected')
+            <div class="d-flex align-items-start gap-3 mb-3">
+                <i class="bi bi-x-circle-fill text-danger fs-3 flex-shrink-0 mt-1"></i>
+                <div>
+                    <div class="fw-bold text-danger">Bukti Pembayaran Ditolak</div>
+                    <div class="bg-light border border-danger rounded p-2 mt-2 small">
+                        <strong>Alasan:</strong> {{ $payment->rejection_notes }}
+                    </div>
+                    <div class="small text-muted mt-1">Silakan upload ulang bukti yang sesuai.</div>
+                </div>
+            </div>
+
+            @else
+            {{-- pending --}}
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-hourglass-split text-warning fs-3"></i>
+                <div>
+                    <div class="fw-bold">Menunggu Verifikasi Bendahara</div>
+                    <div class="small text-muted">Diupload {{ $payment->created_at->translatedFormat('d F Y, H:i') }}</div>
+                </div>
+            </div>
+            <a href="{{ route('payment.download-bukti', $payment) }}" class="btn btn-sm btn-outline-secondary mt-3">
+                <i class="bi bi-download me-1"></i>Lihat Bukti yang Diupload
+            </a>
+            @endif
+        </div>
+    </div>
+    @endif
+
+    {{-- Form upload — tampil jika belum ada atau ditolak --}}
+    @if(!$payment || $payment->status === 'rejected')
+
+    {{-- Info rekening --}}
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-bank me-2 text-primary"></i>Informasi Rekening / QRIS LSP-KAP
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="border rounded-3 p-3 h-100">
+                        <div class="fw-semibold mb-2"><i class="bi bi-bank2 text-primary me-2"></i>Transfer Bank</div>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr><td class="text-muted" width="90">Bank</td><td>: <strong>BCA</strong></td></tr>
+                            <tr><td class="text-muted">No. Rek</td><td>: <strong class="text-primary fs-5">1234567890</strong></td></tr>
+                            <tr><td class="text-muted">A/N</td><td>: LSP Kompetensi AP</td></tr>
+                        </table>
+                        <button class="btn btn-sm btn-outline-primary mt-2" onclick="copyNoRek()">
+                            <i class="bi bi-copy me-1"></i>Salin No. Rekening
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded-3 p-3 h-100 text-center">
+                        <div class="fw-semibold mb-2"><i class="bi bi-qr-code text-success me-2"></i>QRIS</div>
+                        <div class="bg-light rounded p-3 d-inline-block">
+                            <i class="bi bi-qr-code-scan" style="font-size:4rem;color:#6c757d;"></i>
+                        </div>
+                        <div class="small text-muted mt-2">Scan dengan e-wallet / m-banking apapun</div>
+                    </div>
+                </div>
+            </div>
+            <div class="alert alert-warning mt-3 mb-0 py-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                <small>Pastikan nominal sesuai tagihan. Cantumkan <strong>nama dan No. Reg (#{{ $asesmen->id }})</strong> pada keterangan transfer.</small>
+            </div>
+        </div>
+    </div>
+
+    {{-- Form upload bukti --}}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-upload me-2 text-primary"></i>Upload Bukti Pembayaran
+        </div>
+        <div class="card-body">
+            {{-- ACTION tanpa parameter --}}
+            <form method="POST" action="{{ route('asesi.payment.upload-bukti') }}" enctype="multipart/form-data">
+                @csrf
+
+                <div class="mb-3">
+                    <label class="form-label">Metode Pembayaran <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="method" id="method-transfer"
+                                value="transfer" {{ old('method','transfer') === 'transfer' ? 'checked' : '' }} required>
+                            <label class="form-check-label" for="method-transfer">
+                                <i class="bi bi-bank2 me-1"></i>Transfer Bank
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="method" id="method-qris"
+                                value="qris" {{ old('method') === 'qris' ? 'checked' : '' }}>
+                            <label class="form-check-label" for="method-qris">
+                                <i class="bi bi-qr-code me-1"></i>QRIS
+                            </label>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Payment Already Verified -->
-        @if($asesmen->payment && $asesmen->payment->status === 'verified')
-        <div class="card">
-            <div class="card-body">
-                <div class="alert alert-success">
-                    <i class="bi bi-check-circle-fill"></i>
-                    <strong>Pembayaran Berhasil Terverifikasi!</strong>
-                    <p class="mb-0 mt-2">Pembayaran Anda telah berhasil dan terverifikasi otomatis oleh sistem.</p>
-                    @if($asesmen->payment->transaction_id)
-                    <small class="d-block mt-2">
-                        <strong>Transaction ID:</strong> {{ $asesmen->payment->transaction_id }}<br>
-                        <strong>Verified at:</strong> {{ $asesmen->payment->verified_at->translatedFormat('d/m/Y H:i') }}
-                    </small>
-                    @endif
-                </div>
-                <a href="{{ route('asesi.dashboard') }}" class="btn btn-primary w-100">
-                    <i class="bi bi-arrow-left"></i> Kembali ke Dashboard
-                </a>
-            </div>
-        </div>
-        @elseif($asesmen->payment && $asesmen->payment->status === 'pending')
-        <!-- Payment Pending -->
-        <div class="card mb-4">
-            <div class="card-body">
-                <div class="alert alert-warning">
-                    <i class="bi bi-clock"></i>
-                    <strong>Pembayaran Sedang Diproses</strong>
-                    <p class="mb-0 mt-2">Anda memiliki transaksi pembayaran yang sedang menunggu konfirmasi. Silakan
-                        selesaikan pembayaran atau cek status terbaru.</p>
-                    @if($asesmen->payment->order_id)
-                    <small class="d-block mt-2">
-                        <strong>Order ID:</strong> {{ $asesmen->payment->order_id }}
-                    </small>
-                    @endif
-                </div>
-                <button id="check-status-btn" class="btn btn-info w-100 mb-2">
-                    <i class="bi bi-arrow-clockwise"></i> Cek Status Pembayaran
-                </button>
-                
-                @if(!config('midtrans.is_production'))
-                <div class="alert alert-info mt-3">
-                    <strong>Mode Testing:</strong> Gunakan tombol di bawah untuk simulasi pembayaran berhasil
-                </div>
-                <button id="test-verify-btn" class="btn btn-warning w-100">
-                    <i class="bi bi-lightning-fill"></i> Test: Verifikasi Otomatis (Dev Only)
-                </button>
-                @endif
-            </div>
-        </div>
-        @else
-        <!-- Payment Button -->
-        <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="bi bi-credit-card-2-front"></i> Metode Pembayaran</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i>
-                    Kami menggunakan <strong>Midtrans</strong> sebagai payment gateway yang aman dan terpercaya.
-                    <br><br>
-                    <strong>Metode pembayaran yang tersedia:</strong>
-                    <ul class="mb-0 mt-2">
-                        <li>Transfer Bank (BCA, Mandiri, BNI, BRI, Permata, dll)</li>
-                        <li>Virtual Account</li>
-                        <li>QRIS</li>
-                        <li>GoPay, ShopeePay, OVO</li>
-                        <li>Kartu Kredit/Debit</li>
-                        <li>Alfamart, Indomaret</li>
-                    </ul>
+                    @error('method')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
                 </div>
 
-                <button id="pay-button" class="btn btn-success btn-lg w-100">
-                    <i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp
-                    {{ number_format($asesmen->fee_amount, 0, ',', '.') }}
-                </button>
-
-                <div class="text-center mt-3">
-                    <small class="text-muted">
-                        <i class="bi bi-shield-check"></i>
-                        Transaksi dijamin aman dengan teknologi enkripsi
-                    </small>
+                <div class="mb-3">
+                    <label class="form-label">Bukti Pembayaran <span class="text-danger">*</span></label>
+                    <input type="file" class="form-control @error('proof') is-invalid @enderror"
+                        name="proof" accept="image/jpeg,image/png,application/pdf" required>
+                    <div class="form-text">Screenshot/foto struk atau notifikasi. Format: JPG, PNG, PDF. Maks 5 MB.</div>
+                    @error('proof')<div class="invalid-feedback">{{ $message }}</div>@enderror
                 </div>
-            </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Catatan (opsional)</label>
+                    <input type="text" class="form-control" name="notes"
+                        placeholder="Misal: transfer BCA mobile, tgl 06 April 2026"
+                        value="{{ old('notes') }}" maxlength="500">
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload me-1"></i>Upload & Kirim ke Bendahara
+                    </button>
+                    <a href="{{ route('asesi.dashboard') }}" class="btn btn-outline-secondary">Batal</a>
+                </div>
+            </form>
         </div>
-        @endif
     </div>
+
+    @endif
+
+</div>
 </div>
 @endsection
 
 @push('scripts')
-<!-- Midtrans Snap JS -->
-<script type="text/javascript"
-    src="https://app{{ config('midtrans.is_production') ? '' : '.sandbox' }}.midtrans.com/snap/snap.js"
-    data-client-key="{{ config('midtrans.client_key') }}">
-</script>
-
 <script>
-$(document).ready(function() {
-    const asesmenId = {{ $asesmen->id }};
-
-    // Pay Button Click
-    $('#pay-button').click(function() {
-        $(this).prop('disabled', true);
-        $(this).html('<i class="bi bi-hourglass-split"></i> Memproses...');
-
-        // Get Snap Token from server
-        $.ajax({
-            url: '/payment/create-snap-token/' + asesmenId,
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    // Open Midtrans Snap
-                    snap.pay(response.snap_token, {
-                        onSuccess: function(result) {
-                            console.log('Payment success:', result);
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Pembayaran Berhasil!',
-                                text: 'Pembayaran Anda sedang diverifikasi otomatis. Halaman akan di-refresh.',
-                                timer: 3000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        },
-                        onPending: function(result) {
-                            console.log('Payment pending:', result);
-                            Swal.fire({
-                                icon: 'info',
-                                title: 'Pembayaran Menunggu',
-                                text: 'Silakan selesaikan pembayaran Anda. Status akan diperbarui otomatis setelah pembayaran berhasil.',
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        },
-                        onError: function(result) {
-                            console.log('Payment error:', result);
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Pembayaran Gagal',
-                                text: 'Terjadi kesalahan. Silakan coba lagi.',
-                                confirmButtonText: 'OK'
-                            });
-                            $('#pay-button').prop('disabled', false);
-                            $('#pay-button').html(
-                                '<i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($asesmen->fee_amount, 0, ",", ".") }}'
-                            );
-                        },
-                        onClose: function() {
-                            console.log('Payment popup closed');
-                            $('#pay-button').prop('disabled', false);
-                            $('#pay-button').html(
-                                '<i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($asesmen->fee_amount, 0, ",", ".") }}'
-                            );
-                        }
-                    });
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: response.message || 'Gagal membuat token pembayaran',
-                        confirmButtonText: 'OK'
-                    });
-                    $('#pay-button').prop('disabled', false);
-                    $('#pay-button').html(
-                        '<i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($asesmen->fee_amount, 0, ",", ".") }}'
-                    );
-                }
-            },
-            error: function(xhr) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Terjadi kesalahan pada server. Silakan coba lagi.',
-                    confirmButtonText: 'OK'
-                });
-                $('#pay-button').prop('disabled', false);
-                $('#pay-button').html(
-                    '<i class="bi bi-cash-coin"></i> Bayar Sekarang - Rp {{ number_format($asesmen->fee_amount, 0, ",", ".") }}'
-                );
-            }
-        });
+function copyNoRek() {
+    navigator.clipboard.writeText('1234567890').then(() => {
+        Swal.fire({ icon: 'success', title: 'Tersalin!', text: 'No. rekening berhasil disalin.', timer: 1500, showConfirmButton: false });
     });
-
-    // Check Status Button
-    $('#check-status-btn').click(function() {
-        const $btn = $(this);
-        $btn.html('<i class="bi bi-hourglass-split"></i> Mengecek...');
-        $btn.prop('disabled', true);
-
-        $.ajax({
-            url: '/payment/check-status/' + asesmenId,
-            method: 'GET',
-            success: function(response) {
-                if (response.success) {
-                    if (response.status === 'verified' || response.asesmen_status === 'paid') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Pembayaran Berhasil!',
-                            html: 'Pembayaran Anda telah terverifikasi otomatis.<br><small>Transaction ID: ' + (response.payment_details.transaction_id || '-') + '</small>',
-                            confirmButtonText: 'OK'
-                        }).then(() => {
-                            window.location.reload();
-                        });
-                    } else if (response.status === 'pending') {
-                        Swal.fire({
-                            icon: 'info',
-                            title: 'Status: Menunggu Pembayaran',
-                            text: 'Pembayaran masih dalam proses. Silakan selesaikan pembayaran Anda.',
-                            confirmButtonText: 'OK'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Status: ' + response.status,
-                            text: 'Status pembayaran: ' + response.status,
-                            confirmButtonText: 'OK'
-                        });
-                    }
-                }
-                $btn.html('<i class="bi bi-arrow-clockwise"></i> Cek Status Pembayaran');
-                $btn.prop('disabled', false);
-            },
-            error: function() {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Gagal mengecek status',
-                    confirmButtonText: 'OK'
-                });
-                $btn.html('<i class="bi bi-arrow-clockwise"></i> Cek Status Pembayaran');
-                $btn.prop('disabled', false);
-            }
-        });
-    });
-
-    // Test Verify Button (Dev Only)
-    $('#test-verify-btn').click(function() {
-        const $btn = $(this);
-        
-        Swal.fire({
-            title: 'Simulasi Verifikasi Otomatis?',
-            text: 'Ini akan mensimulasikan pembayaran berhasil dan verifikasi otomatis oleh sistem.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, Simulasi!',
-            cancelButtonText: 'Batal'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                $btn.html('<i class="bi bi-hourglass-split"></i> Memverifikasi...');
-                $btn.prop('disabled', true);
-
-                $.ajax({
-                    url: '/payment/test-verify/' + asesmenId,
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            Swal.fire({
-                                icon: 'success',
-                                title: 'Verifikasi Berhasil!',
-                                html: '<strong>TEST MODE:</strong> Pembayaran telah terverifikasi otomatis.<br>Status: ' + response.status,
-                                confirmButtonText: 'OK'
-                            }).then(() => {
-                                window.location.reload();
-                            });
-                        }
-                    },
-                    error: function(xhr) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: xhr.responseJSON?.message || 'Gagal verifikasi test',
-                            confirmButtonText: 'OK'
-                        });
-                        $btn.html('<i class="bi bi-lightning-fill"></i> Test: Verifikasi Otomatis (Dev Only)');
-                        $btn.prop('disabled', false);
-                    }
-                });
-            }
-        });
-    });
-
-    // Auto check status every 10 seconds if pending
-    @if($asesmen->payment && $asesmen->payment->status === 'pending')
-    let checkInterval = setInterval(function() {
-        $.ajax({
-            url: '/payment/check-status/' + asesmenId,
-            method: 'GET',
-            success: function(response) {
-                if (response.success && (response.status === 'verified' || response.asesmen_status === 'paid')) {
-                    clearInterval(checkInterval);
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Pembayaran Berhasil!',
-                        text: 'Pembayaran telah terverifikasi otomatis.',
-                        timer: 3000,
-                        showConfirmButton: false
-                    }).then(() => {
-                        window.location.reload();
-                    });
-                }
-            }
-        });
-    }, 10000); // Check every 10 seconds
-
-    // Stop checking after 5 minutes
-    setTimeout(function() {
-        clearInterval(checkInterval);
-    }, 300000);
-    @endif
-});
+}
 </script>
 @endpush

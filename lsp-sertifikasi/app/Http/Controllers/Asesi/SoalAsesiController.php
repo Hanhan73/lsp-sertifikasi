@@ -211,9 +211,9 @@ class SoalAsesiController extends Controller
                 ->with('info', 'Belum ada jadwal asesmen.');
         }
 
-        // Distribusi soal observasi untuk jadwal asesi ini
         $distribusiObservasi = DistribusiSoalObservasi::with([
-            'soalObservasi.paket',
+            'soalObservasi',
+            'paketSoalObservasi', // ← hanya paket yang dipilih manajer
         ])
         ->where('schedule_id', $asesmen->schedule_id)
         ->get();
@@ -223,7 +223,6 @@ class SoalAsesiController extends Controller
                 ->with('info', 'Soal observasi belum didistribusikan.');
         }
 
-        // Map jawaban (gdrive link) asesi ini per paket
         $jawabanMap = JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
             ->get()
             ->keyBy('paket_soal_observasi_id');
@@ -290,4 +289,23 @@ class SoalAsesiController extends Controller
         return \Illuminate\Support\Facades\Storage::disk('private')
             ->download($paket->file_path, $paket->file_name);
     }
+
+
+    public function downloadLampiran(\App\Models\PaketSoalObservasi $paket): \Symfony\Component\HttpFoundation\StreamedResponse
+{
+    $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
+
+    $valid = DistribusiSoalObservasi::where('schedule_id', $asesmen->schedule_id)
+        ->where('soal_observasi_id', $paket->soal_observasi_id)
+        ->exists();
+
+    abort_unless($valid, 403, 'Akses ditolak.');
+    abort_unless(
+        $paket->lampiran_path && \Illuminate\Support\Facades\Storage::disk('private')->exists($paket->lampiran_path),
+        404, 'Lampiran tidak tersedia.'
+    );
+
+    return \Illuminate\Support\Facades\Storage::disk('private')
+        ->download($paket->lampiran_path, $paket->lampiran_name);
+}
 }

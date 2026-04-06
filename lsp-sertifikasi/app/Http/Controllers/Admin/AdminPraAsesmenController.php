@@ -17,11 +17,12 @@ class AdminPraAsesmenController extends Controller
     public function index()
     {
         // Mandiri — semua status relevan (bukan hanya data_completed)
-        $mandiri = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04'])
+        $mandiri = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04', 'payment']) // ← tambah 'payment'
             ->where('is_collective', false)
-            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered']) // sembunyikan yang sudah selesai atau belum mulai
+            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered'])
             ->orderBy('created_at')
             ->get();
+            
 
         // Kolektif — grouped by batch, semua status
         $batches = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04'])
@@ -46,31 +47,35 @@ class AdminPraAsesmenController extends Controller
         return view('admin.pra-asesmen.show', compact('asesmen'));
     }
 
-    /**
-     * Process - Single verification (backup only) - UPDATED
-     */
     public function process(Request $request, Asesmen $asesmen)
     {
-        // Status bisa data_completed (baru daftar) — tidak perlu abort
-        // Cukup cek sudah pernah distart atau belum
         if ($asesmen->admin_started_at) {
-            return redirect()->route('admin.pra-asesmen.index')
+            return redirect()->route('admin.praasesmen.index')
                 ->with('warning', "Asesmen {$asesmen->full_name} sudah pernah dimulai sebelumnya.");
         }
-
+ 
+        // ── Guard: asesi mandiri harus sudah bayar dan diverifikasi bendahara ──
+        if (!$asesmen->is_collective) {
+            $paymentVerified = $asesmen->payment && $asesmen->payment->status === 'verified';
+            if (!$paymentVerified) {
+                return redirect()->route('admin.praasesmen.index')
+                    ->with('error', "Asesmen {$asesmen->full_name} belum melakukan pembayaran atau pembayaran belum diverifikasi oleh bendahara.");
+            }
+        }
+ 
         $request->validate([
             'notes' => 'nullable|string|max:1000',
         ]);
-
+ 
         $asesmen->update([
             'status'           => 'pra_asesmen_started',
             'admin_started_by' => auth()->id(),
             'admin_started_at' => now(),
         ]);
-
+ 
         Log::info("Admin #" . auth()->id() . " memulai asesmen untuk Asesmen #{$asesmen->id}");
-
-        return redirect()->route('admin.pra-asesmen.index')
+ 
+        return redirect()->route('admin.praasesmen.index')
             ->with('success', "Asesmen untuk {$asesmen->full_name} berhasil dimulai!");
     }
     

@@ -434,6 +434,8 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         // Download paket observasi (PDF) — asesi hanya bisa download dari jadwal mereka
         Route::get('/observasi/paket/{paket}/download', [SoalAsesiController::class, 'downloadPaket'])
             ->name('observasi.download');
+        Route::get('/observasi/paket/{paket}/download-lampiran', [SoalAsesiController::class, 'downloadLampiran'])
+            ->name('observasi.download-lampiran');
     });
 
     });
@@ -512,6 +514,7 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 
     // Download paket observasi
     Route::get('/observasi/paket/{paket}/download', [AsesorController::class, 'downloadPaketObservasi'])->name('observasi.download-paket');
+    Route::get('/observasi/paket/{paket}/download-lampiran', [AsesorController::class, 'downloadLampiranObservasi'])->name('observasi.download-lampiran');
 
     // Daftar hadir AJAX
     Route::post('/asesmen/{asesmen}/hadir', [AsesorController::class, 'toggleHadir'])->name('asesmen.hadir');
@@ -641,31 +644,12 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::post('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'uploadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.upload');
             Route::delete('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianPortofolio'])->name('portofolio.form-penilaian.hapus');
             Route::get('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.download');
+
+            Route::get('/hasil', [DistribusiSoalController::class, 'hasilAsesmen'])->name('hasil');
+            Route::get('/berita-acara/pdf', [DistribusiSoalController::class, 'pdfBeritaAcara'])->name('berita-acara.pdf');
+
         });
 
-        /*
-        |--------------------------------------------------------------------------
-        | RECOMMENDATION: Consolidate Bank Soal Logic
-        |--------------------------------------------------------------------------
-        |
-        | The following sections (`soal-observasi`, `soal-teori`, `portofolio`) and the
-        | `bank-soal` section below contain significant duplicate logic.
-        | The `bank-soal` section essentially re-implements the same CRUD operations
-        | but scoped by a `skema` (certification scheme).
-        |
-        | To improve maintainability and reduce confusion, it is highly recommended to
-        | merge these. The primary `soal-*` groups should be refactored to be
-        | `skema`-scoped from the beginning.
-        |
-        | Example for `soal-observasi`:
-        | - Change prefix from `soal-observasi` to `soal-observasi/{skema}`.
-        | - Update all controller methods to accept the `skema` parameter.
-        | - Remove the entire `bank-soal` route group and its corresponding controller methods.
-        |
-        | This will create a single, consistent source of truth for managing assessment
-        | materials, all properly categorized by their certification scheme.
-        |
-        */
 
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
         Route::prefix('soal-observasi')->name('soal-observasi.')->group(function () {

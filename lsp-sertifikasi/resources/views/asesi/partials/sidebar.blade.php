@@ -34,23 +34,33 @@ $asesmen = auth()->user()->asesmen;
 @endif
 
 {{-- ── Pembayaran ── --}}
-@if(!$asesmen->is_collective && $asesmen->status === 'verified')
-<a href="{{ route('asesi.payment') }}" class="nav-link {{ $currentRoute == 'asesi.payment' ? 'active' : '' }}">
+@if(!$asesmen->is_collective)
+
+@if(in_array($asesmen->status, ['data_completed', 'payment_pending']))
+<a href="{{ route('asesi.payment') }}" class="nav-link {{ $currentRoute === 'asesi.payment' ? 'active' : '' }}">
     <i class="bi bi-credit-card"></i> Pembayaran
+    @if(!$asesmen->payment || $asesmen->payment->status === 'rejected')
     <span class="badge bg-danger ms-1">!</span>
+    @elseif($asesmen->payment->status === 'pending')
+    <span class="badge bg-warning text-dark ms-1">Review</span>
+    @endif
 </a>
 @endif
 
-@if(!$asesmen->is_collective && $asesmen->payment)
+@if($asesmen->payment)
 <a href="{{ route('asesi.payment.status') }}"
-    class="nav-link {{ $currentRoute == 'asesi.payment.status' ? 'active' : '' }}">
+    class="nav-link {{ $currentRoute === 'asesi.payment.status' ? 'active' : '' }}">
     <i class="bi bi-receipt"></i> Status Pembayaran
     @if($asesmen->payment->status === 'pending')
-    <span class="badge bg-warning text-dark ms-1">Pending</span>
+    <span class="badge bg-warning text-dark ms-1">Menunggu</span>
     @elseif($asesmen->payment->status === 'verified')
     <span class="badge bg-success ms-1">✓</span>
+    @elseif($asesmen->payment->status === 'rejected')
+    <span class="badge bg-danger ms-1">Ditolak</span>
     @endif
 </a>
+@endif
+
 @endif
 
 <hr class="my-2 mx-3" style="border-color: rgba(255,255,255,0.2);">

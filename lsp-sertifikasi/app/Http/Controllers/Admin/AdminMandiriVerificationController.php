@@ -56,25 +56,26 @@ class AdminMandiriVerificationController extends Controller
             return redirect()->route('admin.mandiri.verifications')
                 ->with('error', 'Asesi kolektif tidak bisa diproses di sini.');
         }
-
+ 
         $request->validate([
             'fee_amount' => 'required|numeric|min:0',
-            'notes' => 'nullable|string',
+            'notes'      => 'nullable|string',
         ]);
-
+ 
+        // Verifikasi biodata + tetapkan biaya → status TETAP data_completed
+        // (bukan 'verified' — itu flow lama Midtrans)
+        // Asesi selanjutnya upload bukti bayar, bendahara verifikasi
         $asesmen->update([
-            'fee_amount' => $request->fee_amount,
+            'fee_amount'        => $request->fee_amount,
             'admin_verified_by' => auth()->id(),
             'admin_verified_at' => now(),
-            'status' => 'verified',
+            'status'            => 'data_completed', // ← FIX: bukan 'verified'
         ]);
-
-        if ($request->notes) {
-            Log::info("Admin verified mandiri Asesmen #{$asesmen->id}: Rp {$request->fee_amount}. Notes: {$request->notes}");
-        }
-
+ 
+        Log::info("Admin verified biodata mandiri Asesmen #{$asesmen->id}: Rp {$request->fee_amount}");
+ 
         return redirect()->route('admin.mandiri.verifications')
-            ->with('success', 'Asesi berhasil diverifikasi! Biaya: Rp ' . number_format($request->fee_amount, 0, ',', '.') . '. Selanjutnya assign ke TUK.');
+            ->with('success', 'Biodata asesi terverifikasi! Biaya Rp ' . number_format($request->fee_amount, 0, ',', '.') . ' ditetapkan. Asesi sekarang bisa upload bukti pembayaran.');
     }
 
     /**

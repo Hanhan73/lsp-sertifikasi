@@ -51,6 +51,9 @@ use App\Http\Controllers\Direktur\DirekturDashboardController;
 use App\Http\Controllers\ManajerSertifikasi\DashboardController as ManajerDashboardController;
 use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
 
+// Bendahara
+use App\Http\Controllers\Bendahara\BendaharaController;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -171,13 +174,11 @@ Route::middleware('auth')->group(function () {
 Route::post('/payment/notification', [PaymentController::class, 'handleNotification'])
     ->name('payment.notification');
 
-Route::middleware('auth')->group(function () {
-    Route::post('/payment/create-snap-token/{asesmen}', [PaymentController::class, 'createSnapToken'])->name('payment.create-snap-token');
-    Route::get('/payment/finish/{asesmen}',             [PaymentController::class, 'finish'])          ->name('payment.finish');
-    Route::get('/payment/check-status/{asesmen}',       [PaymentController::class, 'checkStatus'])     ->name('payment.check-status');
-
-    // TEST ONLY — hapus di production
-    Route::post('/payment/test-verify/{asesmen}', [PaymentController::class, 'testVerify'])->name('payment.test-verify');
+Route::middleware('auth')->prefix('payment')->name('payment.')->group(function () {
+    Route::get('/{asesmen}',             [\App\Http\Controllers\PaymentController::class, 'show'])         ->name('show');
+    Route::post('/{asesmen}/upload-bukti',[\App\Http\Controllers\PaymentController::class, 'uploadBukti'])->name('upload-bukti');
+    Route::get('/status',                [\App\Http\Controllers\PaymentController::class, 'status'])       ->name('status');
+    Route::get('/bukti/{payment}/download',[\App\Http\Controllers\PaymentController::class, 'downloadBukti'])->name('download-bukti');
 });
 
 /*
@@ -380,9 +381,9 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::post('/complete-data', [AsesiController::class, 'storeData'])   ->name('store-data');
 
         // Payment
-        Route::get('/payment',         [AsesiController::class, 'payment'])       ->name('payment');
-        Route::get('/payment/status',  [AsesiController::class, 'paymentStatus']) ->name('payment.status');
-        Route::get('/payment/invoice', [AsesiController::class, 'downloadInvoice'])->name('payment.invoice');
+        Route::get('/payment',          [PaymentController::class, 'show'])         ->name('payment');
+        Route::post('/payment/upload',  [PaymentController::class, 'uploadBukti'])  ->name('payment.upload-bukti');
+        Route::get('/payment/status',   [PaymentController::class, 'status'])       ->name('payment.status');
 
         // Pre-assessment
         Route::get('/pre-assessment',  [AsesiController::class, 'preAssessment'])      ->name('pre-assessment');
@@ -684,6 +685,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
             Route::post('/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
+
+Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranObservasi'])->name('paket.download-lampiran');
+
         });
 
         // ── Bank Soal 2: Soal Teori (Theory Questions) ───────────────────────
@@ -693,6 +697,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::put('/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeori'])->name('update');
             Route::delete('/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeori'])->name('destroy');
             Route::post('/distribusi', [DistribusiSoalController::class, 'distribusiSoalTeori'])->name('distribusi');
+            Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
+            Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
+            
         });
 
         // ── Bank Soal 3: Portofolio ──────────────────────────────────────
@@ -719,17 +726,34 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
             Route::get('/{skema}/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
             Route::delete('/{skema}/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
+            Route::get('/{skema}/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranBySkema'])->name('paket.download-lampiran');
+
 
             // Soal Teori (duplicate)
             Route::post('/{skema}/teori', [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
             Route::put('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
             Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
+            Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
+            Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
 
             // Portofolio (duplicate)
             Route::post('/{skema}/portofolio', [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
             Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
             Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
         });
+    });
+
+
+Route::middleware(['auth', 'role:bendahara'])
+    ->prefix('bendahara')
+    ->name('bendahara.')
+    ->group(function () {
+        Route::get('/',                               [BendaharaController::class, 'dashboard'])      ->name('dashboard');
+        Route::get('/payments',                       [BendaharaController::class, 'index'])          ->name('payments.index');
+        Route::get('/payments/{payment}',             [BendaharaController::class, 'show'])           ->name('payments.show');
+        Route::post('/payments/{payment}/verify',     [BendaharaController::class, 'verify'])         ->name('payments.verify');
+        Route::post('/payments/{payment}/reject',     [BendaharaController::class, 'reject'])         ->name('payments.reject');
+        Route::get('/payments/{payment}/download-bukti', [BendaharaController::class, 'downloadBukti'])->name('payments.download-bukti');
     });
 
 /*

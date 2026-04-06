@@ -160,9 +160,17 @@
                                         <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
                                         <span class="text-muted">{{ $p->file_name }}</span>
                                         <a href="{{ route('manajer-sertifikasi.bank-soal.paket.download', [$skema, $p]) }}"
-                                           class="btn btn-link btn-sm p-0 ms-1 text-primary" title="Download">
+                                        class="btn btn-link btn-sm p-0 ms-1 text-primary" title="Download Soal">
                                             <i class="bi bi-download"></i>
                                         </a>
+
+                                        {{-- Tambahkan ini ↓ --}}
+                                        @if($p->lampiran_path)
+                                        <a href="{{ route('manajer-sertifikasi.bank-soal.paket.download-lampiran', [$skema, $p]) }}"
+                                        class="btn btn-link btn-sm p-0 ms-1 text-secondary" title="Download Panduan/Lampiran">
+                                            <i class="bi bi-file-earmark-word"></i>
+                                        </a>
+                                        @endif
                                         <form method="POST"
                                               action="{{ route('manajer-sertifikasi.bank-soal.paket.destroy', [$skema, $p]) }}"
                                               class="d-inline"

@@ -686,7 +686,7 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
             Route::post('/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
 
-Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranObservasi'])->name('paket.download-lampiran');
+            Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranObservasi'])->name('paket.download-lampiran');
 
         });
 
@@ -718,8 +718,11 @@ Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class,
         // This section duplicates the logic above. See the recommendation comment for how to consolidate.
         Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
             Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
+            
+            Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
+            Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
+            
             Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
-
             // Soal Observasi (duplicate)
             Route::post('/{skema}/observasi', [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
             Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
@@ -733,8 +736,6 @@ Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class,
             Route::post('/{skema}/teori', [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
             Route::put('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
             Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
-            Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
-            Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
 
             // Portofolio (duplicate)
             Route::post('/{skema}/portofolio', [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');

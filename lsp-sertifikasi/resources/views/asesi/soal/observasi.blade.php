@@ -74,6 +74,15 @@
                                class="text-decoration-none text-muted" target="_blank">
                                 {{ $paket->file_name }}
                             </a>
+                            @if($paket->lampiran_path)
+                            <div class="d-flex align-items-center gap-1 text-muted mt-1" style="font-size:.78rem">
+                                <i class="bi bi-file-earmark-word-fill text-primary"></i>
+                                <a href="{{ route('asesi.soal.observasi.download-lampiran', $paket) }}"
+                                class="text-decoration-none text-muted" target="_blank">
+                                    {{ $paket->lampiran_name }}
+                                </a>
+                            </div>
+                            @endif
                         </div>
                     </div>
                 </div>

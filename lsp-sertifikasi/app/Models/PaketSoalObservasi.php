@@ -20,6 +20,8 @@ class PaketSoalObservasi extends Model
         'file_path',
         'file_name',
         'dibuat_oleh',
+        'lampiran_path',
+        'lampiran_name',
     ];
 
     public function soalObservasi(): BelongsTo

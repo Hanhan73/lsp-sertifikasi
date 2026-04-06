@@ -113,33 +113,36 @@ class DistribusiSoalController extends Controller
     // BANK SOAL — PAKET OBSERVASI (scoped ke skema)
     // =========================================================================
 
-    public function storePaketBySkema(Request $request, Skema $skema, SoalObservasi $soalObservasi): RedirectResponse
-    {
-        $request->validate([
-            'kode_paket' => 'required|string|max:10',
-            'file'       => 'required|file|mimes:pdf|max:10240',
-        ]);
+public function storePaketBySkema(Request $request, Skema $skema, SoalObservasi $soalObservasi): RedirectResponse
+{
+    $request->validate([
+        'kode_paket' => 'required|string|max:10',
+        'file'       => 'required|file|mimes:pdf|max:10240',
+        'lampiran'   => 'nullable|file|mimes:doc,docx|max:20480',
+    ]);
 
-        $kode = strtoupper(trim($request->kode_paket));
+    $kode = strtoupper(trim($request->kode_paket));
 
-        if ($soalObservasi->paket()->where('kode_paket', $kode)->exists()) {
-            return back()->withErrors(['kode_paket' => "Paket {$kode} sudah ada."]);
-        }
-
-        $file = $request->file('file');
-
-        PaketSoalObservasi::create([
-            'soal_observasi_id' => $soalObservasi->id,
-            'kode_paket'        => $kode,
-            'judul'             => "Paket {$kode}",
-            'file_path'         => $file->store('soal/observasi/paket', 'private'),
-            'file_name'         => $file->getClientOriginalName(),
-            'dibuat_oleh'       => Auth::id(),
-        ]);
-
-        return back()->with('success', "Paket {$kode} berhasil diupload.");
+    if ($soalObservasi->paket()->where('kode_paket', $kode)->exists()) {
+        return back()->withErrors(['kode_paket' => "Paket {$kode} sudah ada."]);
     }
 
+    $file     = $request->file('file');
+    $lampiran = $request->file('lampiran');
+
+    PaketSoalObservasi::create([
+        'soal_observasi_id' => $soalObservasi->id,
+        'kode_paket'        => $kode,
+        'judul'             => "Paket {$kode}",
+        'file_path'         => $file->store('soal/observasi/paket', 'private'),
+        'file_name'         => $file->getClientOriginalName(),
+        'lampiran_path'     => $lampiran ? $lampiran->store('soal/observasi/lampiran', 'private') : null,
+        'lampiran_name'     => $lampiran?->getClientOriginalName(),
+        'dibuat_oleh'       => Auth::id(),
+    ]);
+
+    return back()->with('success', "Paket {$kode} berhasil diupload.");
+}
     /**
      * [FIX #1] Download paket observasi dari bank soal (scoped ke skema)
      * Pastikan disk 'private' dikonfigurasi di config/filesystems.php
@@ -548,34 +551,35 @@ public function importSoalTeori(Request $request, Skema $skema): RedirectRespons
 
     // ── Paket di dalam Observasi ──────────────────────────────────────────
 
-    public function storePaketObservasi(Request $request, SoalObservasi $soalObservasi): RedirectResponse
-    {
-        $request->validate([
-            'kode_paket' => 'required|string|max:10',
-            'judul'      => 'required|string|max:255',
-            'file'       => 'required|file|mimes:pdf|max:10240',
-        ]);
+public function storePaketObservasi(Request $request, SoalObservasi $soalObservasi): RedirectResponse
+{
+    $request->validate([
+        'kode_paket' => 'required|string|max:10',
+        'judul'      => 'required|string|max:255',
+        'file'       => 'required|file|mimes:pdf|max:10240',
+        'lampiran'   => 'nullable|file|mimes:doc,docx|max:20480',
+    ]);
 
-        $sudahAda = $soalObservasi->paket()->where('kode_paket', strtoupper($request->kode_paket))->exists();
-        if ($sudahAda) {
-            return back()->withErrors([
-                'kode_paket' => "Paket {$request->kode_paket} sudah ada di observasi ini.",
-            ]);
-        }
-
-        $file = $request->file('file');
-
-        PaketSoalObservasi::create([
-            'soal_observasi_id' => $soalObservasi->id,
-            'kode_paket'        => strtoupper($request->kode_paket),
-            'judul'             => $request->judul,
-            'file_path'         => $file->store('soal/observasi/paket', 'private'),
-            'file_name'         => $file->getClientOriginalName(),
-            'dibuat_oleh'       => Auth::id(),
-        ]);
-
-        return back()->with('success', "Paket {$request->kode_paket} berhasil diupload.");
+    if ($soalObservasi->paket()->where('kode_paket', strtoupper($request->kode_paket))->exists()) {
+        return back()->withErrors(['kode_paket' => "Paket {$request->kode_paket} sudah ada."]);
     }
+
+    $file     = $request->file('file');
+    $lampiran = $request->file('lampiran');
+
+    PaketSoalObservasi::create([
+        'soal_observasi_id' => $soalObservasi->id,
+        'kode_paket'        => strtoupper($request->kode_paket),
+        'judul'             => $request->judul,
+        'file_path'         => $file->store('soal/observasi/paket', 'private'),
+        'file_name'         => $file->getClientOriginalName(),
+        'lampiran_path'     => $lampiran ? $lampiran->store('soal/observasi/lampiran', 'private') : null,
+        'lampiran_name'     => $lampiran?->getClientOriginalName(),
+        'dibuat_oleh'       => Auth::id(),
+    ]);
+
+    return back()->with('success', "Paket {$request->kode_paket} berhasil diupload.");
+}
 
     /**
      * [FIX #1] Download paket observasi — tambah cek exists()
@@ -599,6 +603,27 @@ public function importSoalTeori(Request $request, Skema $skema): RedirectRespons
         $paket->delete();
         return back()->with('success', 'Paket berhasil dihapus.');
     }
+
+    // Tambah method download lampiran
+public function downloadLampiranBySkema(Skema $skema, PaketSoalObservasi $paket)
+{
+    abort_unless(
+        $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
+        404,
+        'File lampiran tidak ditemukan.'
+    );
+    return Storage::disk('private')->download($paket->lampiran_path, $paket->lampiran_name);
+}
+
+public function downloadLampiranObservasi(PaketSoalObservasi $paket)
+{
+    abort_unless(
+        $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
+        404,
+        'File lampiran tidak ditemukan.'
+    );
+    return Storage::disk('private')->download($paket->lampiran_path, $paket->lampiran_name);
+}
 
     // ── Distribusi Observasi ke Jadwal ────────────────────────────────────
 

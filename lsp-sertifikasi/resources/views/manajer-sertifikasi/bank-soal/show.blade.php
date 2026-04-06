@@ -213,10 +213,20 @@
                                                        value="" required style="max-width:120px">
                                             </div>
                                             <div class="col">
-                                                <label class="form-label fw-semibold mb-1" style="font-size:.8rem">File PDF <span class="text-danger">*</span></label>
+                                                <label class="form-label fw-semibold mb-1" style="font-size:.8rem">
+                                                    File PDF Soal <span class="text-danger">*</span>
+                                                </label>
                                                 <input type="file" name="file" class="form-control form-control-sm"
-                                                       accept=".pdf" required>
+                                                    accept=".pdf" required>
                                                 <div class="form-text">PDF · Maks. 10 MB</div>
+                                            </div>
+                                            <div class="col">
+                                                <label class="form-label fw-semibold mb-1" style="font-size:.8rem">
+                                                    Lampiran Soal <span class="text-muted fw-normal">(opsional)</span>
+                                                </label>
+                                                <input type="file" name="lampiran" class="form-control form-control-sm"
+                                                    accept=".doc,.docx">
+                                                <div class="form-text">DOC/DOCX · Maks. 20 MB</div>
                                             </div>
                                             <div class="col-auto">
                                                 <button type="submit" class="btn btn-sm btn-primary">

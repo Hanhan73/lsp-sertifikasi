@@ -236,7 +236,7 @@
                                                            value="{{ $p->id }}"
                                                            class="d-none paket-radio"
                                                            {{ $paketAktif?->id === $p->id ? 'checked' : '' }}
-                                                           required>
+                                                           >
                                                     <div class="border rounded-3 px-3 py-2 d-flex align-items-center gap-2 paket-card
                                                                 {{ $paketAktif?->id === $p->id ? 'border-primary bg-primary bg-opacity-10' : 'bg-light' }}"
                                                          onclick="pilihanPaket(this, '{{ $p->id }}')"
@@ -691,6 +691,12 @@
 
 @push('scripts')
 <script>
+
+    const paketPicked = document.querySelector('.paket-radio:checked');
+if (!paketPicked) {
+    Swal.fire('Perhatian', 'Pilih paket soal observasi terlebih dahulu.', 'warning');
+    return;
+}
 function konfirmasiTeori() {
     const jumlah = document.querySelector('input[name="jumlah_soal"]').value;
     const durasi = document.querySelector('input[name="durasi_menit"]').value;

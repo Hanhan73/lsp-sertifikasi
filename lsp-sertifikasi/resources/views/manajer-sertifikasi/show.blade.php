@@ -692,11 +692,6 @@
 @push('scripts')
 <script>
 
-    const paketPicked = document.querySelector('.paket-radio:checked');
-if (!paketPicked) {
-    Swal.fire('Perhatian', 'Pilih paket soal observasi terlebih dahulu.', 'warning');
-    return;
-}
 function konfirmasiTeori() {
     const jumlah = document.querySelector('input[name="jumlah_soal"]').value;
     const durasi = document.querySelector('input[name="durasi_menit"]').value;

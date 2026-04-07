@@ -108,8 +108,8 @@ class AsesorController extends Controller
     private function canStartAsesmen(Schedule $schedule): bool
     {
         foreach ($schedule->asesmens as $asesmen) {
-            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
-            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
+            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
             if ($frak01Ready && $apl02Ready) {
                 return true;
             }
@@ -139,8 +139,8 @@ class AsesorController extends Controller
 
         $started = 0;
         foreach ($schedule->asesmens as $asesmen) {
-            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
-            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+            $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
+            $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
 
             if ($frak01Ready && $apl02Ready && $asesmen->status !== 'assessed') {
                 $asesmen->update([

@@ -310,6 +310,7 @@ const SigPadManager = (() => {
 
         // ── Konfirmasi pakai TTD tersimpan ──
         _useSaved(padId) {
+            if (!state[padId]) return;
             const uid = _uid(padId);
             state[padId].usingSaved = true;
             state[padId].dataURL    = state[padId].savedDataURL;
@@ -331,6 +332,7 @@ const SigPadManager = (() => {
 
         // ── Beralih ke input TTD baru ──
         _switchToNew(padId) {
+            if (!state[padId]) return;
             const uid = _uid(padId);
             state[padId].usingSaved = false;
             state[padId].dataURL    = null;

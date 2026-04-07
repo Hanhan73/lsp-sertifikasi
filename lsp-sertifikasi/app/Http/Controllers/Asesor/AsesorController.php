@@ -78,6 +78,8 @@ class AsesorController extends Controller
             'asesmens.apldua.jawabans',
             'asesmens.soalTeoriAsesi.soalTeori',
             'asesmens.jawabanObservasi',
+            'asesmens.apldua',
+            'asesmens.frak01',
             'distribusiSoalTeori',
             'distribusiSoalObservasi.soalObservasi.paket',
             'distribusiPortofolio.portofolio',
@@ -97,8 +99,12 @@ class AsesorController extends Controller
 
         // Hitung apakah asesmen sudah bisa dimulai (ada asesi yang sudah verified apl02 & frak01)
         $canStartAsesmen = $this->canStartAsesmen($schedule);
+        $apl02Ak01Ready = $schedule->asesmens->contains(function ($a) {
+            return $a->apldua && in_array($a->apldua->status, ['verified', 'approved'])
+                && $a->frak01 && in_array($a->frak01->status, ['verified', 'approved', 'submitted']);
+        });
 
-        return view('asesor.schedule.detail', compact('schedule', 'asesor', 'rekomendasiMap', 'canStartAsesmen'));
+        return view('asesor.schedule.detail', compact('schedule', 'asesor', 'rekomendasiMap', 'canStartAsesmen', 'apl02Ak01Ready'));
     }
 
     /**

@@ -1109,6 +1109,20 @@ document.addEventListener('DOMContentLoaded', function () {
     SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
     SigPadManager.init('ba-asesor-ttd',    @json($asesor?->user?->signature_image));
     SigPadManager.init('asesor-ttd',       @json($asesor?->user?->signature_image));
+
+        // Patch guard untuk _useSaved & _switchToNew
+    const _origUseSaved    = SigPadManager._useSaved.bind(SigPadManager);
+    const _origSwitchToNew = SigPadManager._switchToNew.bind(SigPadManager);
+
+    SigPadManager._useSaved = function(padId) {
+        if (!SigPadManager._stateHas(padId)) SigPadManager.init(padId, null);
+        _origUseSaved(padId);
+    };
+
+    SigPadManager._switchToNew = function(padId) {
+        if (!SigPadManager._stateHas(padId)) SigPadManager.init(padId, null);
+        _origSwitchToNew(padId);
+    };
 });
 
 // ── Toggle Hadir (tombol dinamis) ──

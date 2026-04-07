@@ -38,6 +38,11 @@ class Schedule extends Model
         // Daftar hadir sign lock
         'daftar_hadir_signed_at',
         'daftar_hadir_signed_by',
+        // Dokumentasi foto
+        'foto_dokumentasi_1',
+        'foto_dokumentasi_2',
+        'foto_uploaded_by',
+        'foto_uploaded_at',
     ];
 
     protected $casts = [
@@ -301,6 +306,11 @@ class Schedule extends Model
     public function distribusiPortofolio()
     {
         return $this->hasMany(\App\Models\DistribusiPortofolio::class);
+    }
+
+    public function hasFotoDokumentasi(): bool
+    {
+        return $this->foto_dokumentasi_1 && $this->foto_dokumentasi_2;
     }
  
 }

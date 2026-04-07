@@ -519,7 +519,6 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     // Daftar hadir AJAX
     Route::post('/asesmen/{asesmen}/hadir', [AsesorController::class, 'toggleHadir'])->name('asesmen.hadir');
 
-
     // Asesi di dalam jadwal
     Route::prefix('schedule/{schedule}/asesi/{asesmen}')->name('asesi.')->group(function () {
         Route::get('/',               [AsesorController::class, 'asesiDetail']) ->name('detail');
@@ -588,6 +587,13 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 
     Route::post('/jadwal/{schedule}/berita-acara/sign', [HasilPenilaianController::class, 'signBeritaAcara'])
         ->name('jadwal.berita-acara.sign');
+
+    Route::post('/jadwal/{schedule}/foto-dokumentasi', [AsesorController::class, 'uploadFotoDokumentasi'])
+        ->name('schedule.foto-dokumentasi.upload');
+    Route::delete('/jadwal/{schedule}/foto-dokumentasi/{slot}', [AsesorController::class, 'hapusFotoDokumentasi'])
+        ->name('schedule.foto-dokumentasi.hapus');
+    Route::get('/jadwal/{schedule}/foto-dokumentasi/{slot}', [AsesorController::class, 'previewFotoDokumentasi'])
+        ->name('schedule.foto-dokumentasi.preview');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin

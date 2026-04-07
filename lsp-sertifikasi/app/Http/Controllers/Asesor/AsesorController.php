@@ -391,6 +391,19 @@ class AsesorController extends Controller
         $asesor = auth()->user()->asesor;
         abort_if($schedule->asesor_id !== $asesor->id, 403);
 
+        // Guard
+        $schedule->loadMissing(['asesmens.apldua', 'asesmens.frak01']);
+        $ready = $schedule->asesmens->contains(function ($a) {
+            return $a->apldua && in_array($a->apldua->status, ['verified', 'approved'])
+                && $a->frak01 && in_array($a->frak01->status, ['verified', 'approved', 'submitted']);
+        });
+        if (!$ready) {
+            return response()->json([
+                'success' => false,
+                'message' => 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi.',
+            ], 422);
+        }
+
         if ($schedule->isDaftarHadirSigned()) {
             return response()->json(['success' => true, 'already' => true]);
         }
@@ -546,28 +559,94 @@ class AsesorController extends Controller
 
         return view('asesor.document.sk', compact('asesor', 'schedules'));
     }
-
-
     public function downloadLampiranObservasi(\App\Models\PaketSoalObservasi $paket)
+    {
+        $asesor  = auth()->user()->asesor;
+        $skemaId = $paket->soalObservasi->skema_id;
+
+        $boleh = Schedule::where('asesor_id', $asesor->id)
+            ->where('skema_id', $skemaId)
+            ->exists();
+
+        abort_if(!$boleh, 403, 'Akses ditolak.');
+        abort_unless(
+            $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
+            404, 'File lampiran tidak tersedia.'
+        );
+
+        return response()->streamDownload(function () use ($paket) {
+            echo Storage::disk('private')->get($paket->lampiran_path);
+        }, $paket->lampiran_name, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ]);
+    }
+public function uploadFotoDokumentasi(Request $request, Schedule $schedule)
 {
-    $asesor  = auth()->user()->asesor;
-    $skemaId = $paket->soalObservasi->skema_id;
+    $asesor = auth()->user()->asesor;
+    abort_if($schedule->asesor_id !== $asesor->id, 403);
 
-    $boleh = Schedule::where('asesor_id', $asesor->id)
-        ->where('skema_id', $skemaId)
-        ->exists();
-
-    abort_if(!$boleh, 403, 'Akses ditolak.');
-    abort_unless(
-        $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
-        404, 'File lampiran tidak tersedia.'
-    );
-
-    return response()->streamDownload(function () use ($paket) {
-        echo Storage::disk('private')->get($paket->lampiran_path);
-    }, $paket->lampiran_name, [
-        'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    $request->validate([
+        'foto_1' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+        'foto_2' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+    ], [
+        'foto_1.image' => 'File harus berupa gambar.',
+        'foto_1.max'   => 'Ukuran foto maksimal 5 MB.',
+        'foto_2.image' => 'File harus berupa gambar.',
+        'foto_2.max'   => 'Ukuran foto maksimal 5 MB.',
     ]);
+
+    $data = [];
+
+    foreach (['foto_1', 'foto_2'] as $slot) {
+        if ($request->hasFile($slot)) {
+            $col = 'foto_dokumentasi_' . substr($slot, -1);
+            // Hapus file lama
+            if ($schedule->$col) {
+                Storage::disk('private')->delete($schedule->$col);
+            }
+            $data[$col] = $request->file($slot)->store("dokumentasi/{$schedule->id}", 'private');
+        }
+    }
+
+    if (empty($data)) {
+        return back()->with('error', 'Tidak ada foto yang diupload.');
+    }
+
+    $data['foto_uploaded_by'] = auth()->id();
+    $data['foto_uploaded_at'] = now();
+    $schedule->update($data);
+
+    return back()->with('success', 'Foto dokumentasi berhasil diupload.');
 }
 
+public function hapusFotoDokumentasi(Schedule $schedule, int $slot)
+{
+    $asesor = auth()->user()->asesor;
+    abort_if($schedule->asesor_id !== $asesor->id, 403);
+    abort_if(!in_array($slot, [1, 2]), 404);
+
+    $col = "foto_dokumentasi_{$slot}";
+    if ($schedule->$col) {
+        Storage::disk('private')->delete($schedule->$col);
+        $schedule->update([$col => null]);
+    }
+
+    return back()->with('success', "Foto dokumentasi {$slot} berhasil dihapus.");
+
+}
+
+public function previewFotoDokumentasi(Schedule $schedule, int $slot)
+{
+    $asesor = auth()->user()->asesor;
+    abort_if($schedule->asesor_id !== $asesor->id, 403);
+    abort_if(!in_array($slot, [1, 2]), 404);
+
+    $col  = "foto_dokumentasi_{$slot}";
+    $path = $schedule->$col;
+    abort_unless($path && Storage::disk('private')->exists($path), 404);
+
+    return response(Storage::disk('private')->get($path), 200, [
+        'Content-Type' => Storage::disk('private')->mimeType($path),
+    ]);
+}
 }

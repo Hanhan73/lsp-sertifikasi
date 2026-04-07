@@ -32,7 +32,9 @@ class HasilPenilaianController extends Controller
     public function uploadObservasi(Request $request, Schedule $schedule, SoalObservasi $soalObservasi)
     {
         $this->authorizeSchedule($schedule);
-
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         $request->validate([
             'file'    => 'required|file|mimes:xlsx|max:20480',
             'catatan' => 'nullable|string|max:500',
@@ -79,6 +81,9 @@ class HasilPenilaianController extends Controller
     {
         $this->authorizeSchedule($schedule);
 
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         $request->validate([
             'file'    => 'required|file|mimes:xlsx|max:20480',
             'catatan' => 'nullable|string|max:500',
@@ -291,7 +296,9 @@ class HasilPenilaianController extends Controller
     public function signBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
-
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         $ba = $schedule->beritaAcara;
         abort_if(!$ba, 404, 'Berita acara belum diisi.');
 
@@ -324,7 +331,9 @@ class HasilPenilaianController extends Controller
     public function simpanBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
-
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         // Guard: tidak bisa diubah jika sudah TTD
         $ba = $schedule->beritaAcara;
         if ($ba && $ba->isSigned()) {
@@ -372,7 +381,9 @@ class HasilPenilaianController extends Controller
     public function uploadFileBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
-
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         // Berita acara sudah ditandatangani — tidak bisa diupload ulang
         $existingBa = $schedule->beritaAcara;
         if ($existingBa && $existingBa->isSigned()) {
@@ -456,7 +467,9 @@ class HasilPenilaianController extends Controller
     public function tandaTanganBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
-
+        if (!$this->isApl02Ak01Ready($schedule)) {
+            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+        }
         $ba = $schedule->beritaAcara;
         abort_unless($ba && $ba->asesis->isNotEmpty(), 422, 'Berita acara belum lengkap diisi.');
 
@@ -555,4 +568,15 @@ class HasilPenilaianController extends Controller
 
         return "Berita Acara otomatis terbaca: {$matched}/" . count($data['peserta']) . " peserta berhasil dicocokkan.";
     }
+
+    private function isApl02Ak01Ready(Schedule $schedule): bool
+{
+    $schedule->loadMissing(['asesmens.apldua', 'asesmens.frak01']);
+    foreach ($schedule->asesmens as $asesmen) {
+        $apl02 = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+        $ak01  = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
+        if ($apl02 && $ak01) return true;
+    }
+    return false;
+}
 }

@@ -197,6 +197,10 @@
                    target="_blank" class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-file-pdf me-1"></i>Download PDF
                 </a>
+                @elseif(!$apl02Ak01Ready)
+                <span class="btn btn-sm btn-outline-secondary ms-auto disabled">
+                    <i class="bi bi-lock me-1"></i>Verifikasi APL-02 & FR.AK.01 dulu
+                </span>
                 @else
                 <button class="btn btn-sm btn-outline-primary ms-auto" onclick="bukaModalVerifikasiHadir()">
                     <i class="bi bi-clipboard-check me-1"></i>Verifikasi & Tandatangani Daftar Hadir
@@ -476,7 +480,17 @@
         ═══════════════════════════════════════════════════ --}}
         <div class="tab-pane fade" id="tab-penilaian">
             <div class="row g-4 p-3">
-
+                @if(!$apl02Ak01Ready)
+                <div class="col-12">
+                    <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-0">
+                        <i class="bi bi-lock-fill flex-shrink-0"></i>
+                        <div class="small">
+                            <strong>Upload hasil & berita acara belum tersedia.</strong>
+                            Minimal 1 asesi harus memiliki APL-02 dan FR.AK.01 yang sudah diverifikasi.
+                        </div>
+                    </div>
+                </div>
+                @endif
                 <div class="col-lg-7">
 
                     <div class="card border-0 shadow-sm mb-4">
@@ -577,24 +591,25 @@
                                 </div>
                                 <div class="collapse" id="uploadObs{{ $obs->id }}">
                                     <div class="px-3 py-3 border-top bg-light">
+                                        @if(!$apl02Ak01Ready)
+                                        <div class="alert alert-warning py-2 small mb-0">
+                                            <i class="bi bi-lock me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
+                                        </div>
+                                        @else
                                         <form method="POST"
-                                              action="{{ route('asesor.jadwal.observasi.upload', [$schedule, $obs]) }}"
-                                              enctype="multipart/form-data">
+                                            action="{{ route('asesor.jadwal.observasi.upload', [$schedule, $obs]) }}"
+                                            enctype="multipart/form-data">
                                             @csrf
                                             <div class="d-flex gap-2 align-items-end">
                                                 <div class="flex-grow-1">
-                                                    <input type="file" name="file" class="form-control form-control-sm"
-                                                           accept=".xlsx" required>
-                                                    {{-- Hanya .xlsx --}}
+                                                    <input type="file" name="file" class="form-control form-control-sm" accept=".xlsx" required>
                                                     <div class="form-text"><i class="bi bi-info-circle me-1"></i>Hanya file <strong>.xlsx</strong> · Maks. 20 MB</div>
                                                 </div>
-                                                <input type="text" name="catatan" class="form-control form-control-sm"
-                                                       placeholder="Catatan" style="width:130px;">
-                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
-                                                    <i class="bi bi-upload"></i>
-                                                </button>
+                                                <input type="text" name="catatan" class="form-control form-control-sm" placeholder="Catatan" style="width:130px;">
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0"><i class="bi bi-upload"></i></button>
                                             </div>
                                         </form>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -656,21 +671,24 @@
                                 </div>
                                 <div class="collapse" id="uploadPorto{{ $porto->id }}">
                                     <div class="px-3 py-3 border-top bg-light">
+                                        @if(!$apl02Ak01Ready)
+                                        <div class="alert alert-warning py-2 small mb-0">
+                                            <i class="bi bi-lock me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
+                                        </div>
+                                        @else
                                         <form method="POST"
-                                              action="{{ route('asesor.jadwal.portofolio.upload', [$schedule, $porto]) }}"
-                                              enctype="multipart/form-data">
+                                            action="{{ route('asesor.jadwal.portofolio.upload', [$schedule, $porto]) }}"
+                                            enctype="multipart/form-data">
                                             @csrf
                                             <div class="d-flex gap-2 align-items-end">
                                                 <div class="flex-grow-1">
-                                                    <input type="file" name="file" class="form-control form-control-sm"
-                                                           accept=".xlsx" required>
+                                                    <input type="file" name="file" class="form-control form-control-sm" accept=".xlsx" required>
                                                     <div class="form-text"><i class="bi bi-info-circle me-1"></i>Hanya file <strong>.xlsx</strong> · Maks. 20 MB</div>
                                                 </div>
-                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
-                                                    <i class="bi bi-upload"></i>
-                                                </button>
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0"><i class="bi bi-upload"></i></button>
                                             </div>
                                         </form>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -678,7 +696,82 @@
                         </div>
                     </div>
                     @endif
+                    {{-- Foto Dokumentasi --}}
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+                            <div><i class="bi bi-camera text-info me-2"></i>Foto Dokumentasi</div>
+                            @if($schedule->hasFotoDokumentasi())
+                            <span class="badge bg-success" style="font-size:.65rem;"><i class="bi bi-check-circle me-1"></i>Lengkap</span>
+                            @elseif($schedule->foto_dokumentasi_1 || $schedule->foto_dokumentasi_2)
+                            <span class="badge bg-warning text-dark" style="font-size:.65rem;">Sebagian</span>
+                            @else
+                            <span class="badge bg-secondary" style="font-size:.65rem;">Belum diupload</span>
+                            @endif
+                        </div>
+                        <div class="card-body">
+                            @if(!$apl02Ak01Ready)
+                            <div class="alert alert-warning py-2 small mb-0">
+                                <i class="bi bi-lock me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
+                            </div>
+                            @else
+                            <div class="row g-3 mb-3">
+                                @foreach([1, 2] as $slot)
+                                @php $col = "foto_dokumentasi_{$slot}"; $ada = $schedule->$col; @endphp
+                                <div class="col-6">
+                                    <div class="border rounded-3 overflow-hidden {{ $ada ? 'border-success' : '' }}" style="min-height:140px;">
+                                        @if($ada)
+                                        <img src="{{ route('asesor.schedule.foto-dokumentasi.preview', [$schedule, $slot]) }}"
+                                            class="w-100" style="max-height:180px;object-fit:cover;" alt="Foto {{ $slot }}">
+                                        <div class="d-flex justify-content-between align-items-center px-2 py-1 bg-success-subtle">
+                                            <small class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Foto {{ $slot }}</small>
+                                            <form method="POST" action="{{ route('asesor.schedule.foto-dokumentasi.hapus', [$schedule, $slot]) }}"
+                                                onsubmit="return confirm('Hapus foto ini?')">
+                                                @csrf @method('DELETE')
+                                                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:.75rem;">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                        @else
+                                        <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted flex-column"
+                                            style="min-height:140px;">
+                                            <i class="bi bi-image" style="font-size:2rem;opacity:.3;"></i>
+                                            <small class="mt-1">Foto {{ $slot }} belum diupload</small>
+                                        </div>
+                                        @endif
+                                    </div>
+                                </div>
+                                @endforeach
+                            </div>
 
+                            <form method="POST"
+                                action="{{ route('asesor.schedule.foto-dokumentasi.upload', $schedule) }}"
+                                enctype="multipart/form-data">
+                                @csrf
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small">
+                                            Foto 1 {{ $schedule->foto_dokumentasi_1 ? '(Ganti)' : '' }}
+                                        </label>
+                                        <input type="file" name="foto_1" class="form-control form-control-sm" accept="image/jpeg,image/png">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label fw-semibold small">
+                                            Foto 2 {{ $schedule->foto_dokumentasi_2 ? '(Ganti)' : '' }}
+                                        </label>
+                                        <input type="file" name="foto_2" class="form-control form-control-sm" accept="image/jpeg,image/png">
+                                    </div>
+                                    <div class="col-12">
+                                        <div class="form-text mb-2"><i class="bi bi-info-circle me-1"></i>JPG/PNG · Maks. 5 MB per foto</div>
+                                        <button type="submit" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-upload me-1"></i>Upload Foto
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                            @endif
+                        </div>
+                    </div>
                     @if($distribusiObs->isEmpty() && $distribusiPorto->isEmpty())
                     <div class="text-center py-5 text-muted border rounded-3">
                         <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
@@ -818,9 +911,15 @@
                                     <textarea name="catatan" class="form-control form-control-sm" rows="2"
                                               placeholder="Opsional...">{{ $ba?->catatan }}</textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-sm w-100">
+                                <button type="submit" class="btn btn-primary btn-sm w-100" {{ !$apl02Ak01Ready ? 'disabled' : '' }}>
                                     <i class="bi bi-save me-1"></i>Simpan Berita Acara
+                                    @if(!$apl02Ak01Ready)<i class="bi bi-lock ms-1"></i>@endif
                                 </button>
+                                @if(!$apl02Ak01Ready)
+                                <div class="text-muted small mt-1 text-center">
+                                    <i class="bi bi-info-circle me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
+                                </div>
+                                @endif
                             </form>
 
                             {{-- Tombol TTD Berita Acara (hanya tampil jika data sudah ada) --}}

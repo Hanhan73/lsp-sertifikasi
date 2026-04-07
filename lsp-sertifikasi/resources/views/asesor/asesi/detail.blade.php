@@ -725,15 +725,14 @@ const SIGN_URL   = '{{ route("asesor.frak01.sign", [$schedule, $asesmen]) }}';
 const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
 
 // Init sig pads saat tab aktif
-document.querySelector('[data-bs-target="#tab-frak01"]')?.addEventListener('shown.bs.tab', () => {
-    @if($frak01 && $frak01->status === 'submitted')
-    SigPadManager.init('asesor-frak01', @json(auth()->user()->signature_image));
-    @endif
-});
-
-document.querySelector('[data-bs-target="#tab-apl02"]')?.addEventListener('shown.bs.tab', () => {
+document.addEventListener('DOMContentLoaded', () => {
+    // Init semua pad sekaligus tanpa menunggu tab dibuka
     @if(isset($apldua) && $apldua->status === 'submitted')
     SigPadManager.init('asesor-apl02', @json(auth()->user()->signature_image));
+    @endif
+
+    @if($frak01 && $frak01->status === 'submitted')
+    SigPadManager.init('asesor-frak01', @json(auth()->user()->signature_image));
     @endif
 });
 

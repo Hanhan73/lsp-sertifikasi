@@ -267,15 +267,18 @@ class SkGeneratorService
             : (array) $peserta;
         $count = count($pesertaList);
 
-        $rows  = '';
-        $no    = $startNo;
-        $i     = 0;
+        $rows = '';
+        $no   = $startNo;
+        $i    = 0;
         foreach ($pesertaList as $p) {
-            $evenClass = ($i % 2 === 1) ? ' class="even"' : '';
+            $evenClass  = ($i % 2 === 1) ? ' class="even"' : '';
+            $asesorCell = ($i === 0)
+                ? '<td style="width:130pt;vertical-align:top;" rowspan="' . $count . '">' . htmlspecialchars($asesorNama) . '</td>'
+                : '';
             $rows .= '<tr' . $evenClass . '>
                 <td style="text-align:center;width:30pt;">' . $no++ . '.</td>
                 <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
-                <td style="width:130pt;">' . htmlspecialchars($asesorNama) . '</td>
+                ' . $asesorCell . '
             </tr>';
             $i++;
         }

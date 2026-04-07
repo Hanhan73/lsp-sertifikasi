@@ -540,7 +540,7 @@
                                         
                                         <a href="{{ route('asesor.observasi.download-lampiran', $paketAktif) }}"
                                         class="btn btn-sm btn-outline-info" title="Download panduan soal">
-                                            <i class="bi bi-book me-1"></i>Panduan
+                                            <i class="bi bi-book me-1"></i> Lampiran Format Formulir
                                         </a>
                                         @endif
                                         @php

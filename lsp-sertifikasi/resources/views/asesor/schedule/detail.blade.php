@@ -1092,8 +1092,8 @@
 const CSRF         = document.querySelector('meta[name="csrf-token"]')?.content;
 const TOTAL_ASESI  = {{ $totalAsesi }};
 
-// ── Restore active tab from URL hash ──
 document.addEventListener('DOMContentLoaded', function () {
+    // ── Restore active tab from URL hash ──
     const hash = window.location.hash;
     if (hash) {
         const tab = document.querySelector(`[data-bs-target="${hash}"]`);
@@ -1104,13 +1104,18 @@ document.addEventListener('DOMContentLoaded', function () {
             history.replaceState(null, null, e.target.dataset.bsTarget);
         });
     });
+
+    // ── Init semua signature pad sekaligus ──
+    SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
+    SigPadManager.init('ba-asesor-ttd',    @json($asesor?->user?->signature_image));
+    SigPadManager.init('asesor-ttd',       @json($asesor?->user?->signature_image));
 });
 
 // ── Toggle Hadir (tombol dinamis) ──
 async function toggleHadirBtn(btn) {
-    const asesmenId  = btn.dataset.id;
-    const isHadir    = btn.dataset.hadir === '1';   // status saat ini
-    const newHadir   = !isHadir;                    // status baru
+    const asesmenId = btn.dataset.id;
+    const isHadir   = btn.dataset.hadir === '1';
+    const newHadir  = !isHadir;
 
     btn.disabled = true;
 
@@ -1135,10 +1140,9 @@ async function toggleHadirBtn(btn) {
                 btn.querySelector('i').className = 'bi bi-person-x-fill me-1';
             }
 
-            // Update badge counts
             const hadirCount = document.querySelectorAll('.hadir-toggle-btn[data-hadir="1"]').length;
-            document.getElementById('badge-hadir').textContent        = hadirCount + ' Hadir';
-            document.getElementById('badge-tidak-hadir').textContent  = (TOTAL_ASESI - hadirCount) + ' Tidak Hadir';
+            document.getElementById('badge-hadir').textContent       = hadirCount + ' Hadir';
+            document.getElementById('badge-tidak-hadir').textContent = (TOTAL_ASESI - hadirCount) + ' Tidak Hadir';
         } else {
             Swal.fire({ icon: 'error', title: 'Gagal', text: data.message ?? 'Gagal mengubah kehadiran.', toast: true, position: 'top-end', timer: 2000, showConfirmButton: false });
         }
@@ -1149,11 +1153,7 @@ async function toggleHadirBtn(btn) {
     }
 }
 
-// ── Init sig pad saat modal dibuka ──
-document.getElementById('modalTtdAsesor').addEventListener('shown.bs.modal', () => {
-    SigPadManager.init('asesor-ttd', @json($asesor?->user?->signature_image));
-});
-
+// ── Modal TTD Universal ──
 function bukaModalTtd(konteks) {
     const titles = {
         'daftar-hadir': 'Tanda Tangan untuk Daftar Hadir',
@@ -1195,10 +1195,6 @@ async function simpanTtdAsesor() {
 
 // ── Modal Verifikasi Daftar Hadir ──
 const _ttdHadirUrl = '{{ route("asesor.schedule.daftar-hadir.sign", $schedule) }}';
-
-document.getElementById('modalVerifikasiHadir')?.addEventListener('shown.bs.modal', () => {
-    SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
-});
 
 function bukaModalVerifikasiHadir() {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerifikasiHadir')).show();
@@ -1249,10 +1245,6 @@ async function confirmTtdDaftarHadir() {
 // ── Modal TTD Berita Acara ──
 const _ttdBaUrl = '{{ route("asesor.jadwal.berita-acara.tanda-tangan", $schedule) }}';
 
-document.getElementById('modalTtdBeritaAcara')?.addEventListener('shown.bs.modal', () => {
-    SigPadManager.init('ba-asesor-ttd', @json($asesor?->user?->signature_image));
-});
-
 function bukaModalTtdBeritaAcara() {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdBeritaAcara')).show();
 }
@@ -1274,7 +1266,7 @@ async function confirmTtdBeritaAcara() {
     try {
         const dataURL = await SigPadManager.prepareAndGet('ba-asesor-ttd');
 
-        const res  = await fetch(_ttdBaUrl, {
+        const res = await fetch(_ttdBaUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
             body: JSON.stringify({ signature: dataURL }),

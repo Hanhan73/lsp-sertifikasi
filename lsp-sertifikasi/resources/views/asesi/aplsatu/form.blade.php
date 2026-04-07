@@ -71,7 +71,7 @@
 @endif
 
 {{-- ── Progress Steps ── --}}
-@if(!$aplsatu || $aplsatu->status === 'draft')
+@if(!$aplsatu || $aplsatu->status === 'draft' || $aplsatu->status === 'returned')
 <div class="progress-steps mb-4">
     @foreach(['Data Pribadi','Data Pekerjaan','Data Sertifikasi','Bukti Dokumen','Review & TTD'] as $i => $label)
     <div class="step {{ $i===0 ? 'active' : '' }}" data-step="{{ $i+1 }}">
@@ -1051,7 +1051,7 @@ async function submitForm() {
 </script>
 
 {{-- Hidden inputs untuk semua bukti ID agar bisa dikirim saat saveBuktiAndNext --}}
-@if(!$aplsatu || $aplsatu->status === 'draft')
+@if(!$aplsatu || $aplsatu->status === 'draft' || $aplsatu->status === 'returned')
 <div id="bukti-id-store" style="display:none;">
     @foreach($aplsatu->buktiKelengkapan as $bukti)
     <input type="hidden" name="bukti_id[]" value="{{ $bukti->id }}">

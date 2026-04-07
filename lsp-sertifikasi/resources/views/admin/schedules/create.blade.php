@@ -136,20 +136,28 @@
             <div class="ms-auto"><span class="small text-muted"><strong id="total-available">{{ $availableAsesmens->count() }}</strong> tersedia</span></div>
         </div>
         <div class="card-body p-0">
-            <div class="p-3 border-bottom d-flex gap-2">
-                <div class="input-group input-group-sm flex-grow-1">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
-                    <input type="text" class="form-control border-start-0 ps-0" id="search-asesi" placeholder="Cari nama, NIK, email, atau skema...">
-                </div>
-                <select class="form-select form-select-sm" id="filter-tuk" style="max-width:180px;">
-                    <option value="">Semua TUK</option>
-                    @foreach($tuks as $tuk)<option value="{{ $tuk->id }}">{{ $tuk->name }}</option>@endforeach
-                </select>
-                <select class="form-select form-select-sm" id="filter-skema" style="max-width:200px;">
-                    <option value="">Semua Skema</option>
-                    @foreach($skemas as $skema)<option value="{{ $skema->id }}">{{ $skema->name }}</option>@endforeach
-                </select>
-            </div>
+<div class="p-3 border-bottom d-flex gap-2">
+        <div class="input-group input-group-sm flex-grow-1">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" id="search-asesi" placeholder="Cari nama, NIK, email, atau skema...">
+        </div>
+        <select class="form-select form-select-sm" id="filter-tuk" style="max-width:160px;">
+            <option value="">Semua TUK</option>
+            @foreach($tuks as $tuk)<option value="{{ $tuk->id }}">{{ $tuk->name }}</option>@endforeach
+        </select>
+        <select class="form-select form-select-sm" id="filter-skema" style="max-width:180px;">
+            <option value="">Semua Skema</option>
+            @foreach($skemas as $skema)<option value="{{ $skema->id }}">{{ $skema->name }}</option>@endforeach
+        </select>
+        {{-- Filter batch --}}
+        <select class="form-select form-select-sm" id="filter-batch" style="max-width:180px;">
+            <option value="">Semua Batch</option>
+            <option value="__mandiri__">Mandiri (non-batch)</option>
+            @foreach($batches as $batch)
+            <option value="{{ $batch }}">Batch: {{ $batch }}</option>
+            @endforeach
+        </select>
+    </div>
 
             <div class="alert alert-warning alert-dismissible d-none mx-3 mt-3 mb-0 py-2" id="alert-skema">
                 <i class="bi bi-exclamation-triangle-fill me-2"></i>
@@ -183,6 +191,7 @@
                             data-skema-name="{{ $asesmen->skema->name ?? '' }}"
                             data-tuk="{{ $asesmen->tuk_id }}"
                             data-tuk-name="{{ $asesmen->tuk->name ?? '' }}"
+                            data-batch="{{ $asesmen->collective_batch_id ?? '' }}"
                             data-name="{{ $asesmen->full_name }}"
                             data-search="{{ strtolower($asesmen->full_name . ' ' . ($asesmen->nik ?? '') . ' ' . ($asesmen->user->email ?? '') . ' ' . ($asesmen->skema->name ?? '')) }}"
                             onclick="toggleRow(this)">
@@ -701,17 +710,27 @@ function detectPlatformIcon(url) {
 
 // ── Search & filter ───────────────────────────────────────────
 function filterTable() {
-    const q     = document.getElementById('search-asesi').value.toLowerCase();
-    const tukF  = document.getElementById('filter-tuk').value;
-    const skemaF= document.getElementById('filter-skema').value;
-    let visible = 0;
+    const q      = document.getElementById('search-asesi').value.toLowerCase();
+    const tukF   = document.getElementById('filter-tuk').value;
+    const skemaF = document.getElementById('filter-skema').value;
+    const batchF = document.getElementById('filter-batch').value;
+    let visible  = 0;
+
     document.querySelectorAll('#asesi-tbody tr.asesi-row').forEach(tr => {
-        const show = (!q || tr.dataset.search.includes(q)) && (!tukF || tr.dataset.tuk === tukF) && (!skemaF || tr.dataset.skema === skemaF);
+        const matchSearch = !q || tr.dataset.search.includes(q);
+        const matchTuk    = !tukF || tr.dataset.tuk === tukF;
+        const matchSkema  = !skemaF || tr.dataset.skema === skemaF;
+        const matchBatch  = !batchF
+            || (batchF === '__mandiri__' && !tr.dataset.batch)
+            || (batchF !== '__mandiri__' && tr.dataset.batch === batchF);
+
+        const show = matchSearch && matchTuk && matchSkema && matchBatch;
         tr.style.display = show ? '' : 'none';
         if (show) visible++;
     });
     document.getElementById('no-result-row')?.classList.toggle('d-none', visible > 0);
 }
+document.getElementById('filter-batch')?.addEventListener('change', filterTable);
 
 document.getElementById('search-asesor')?.addEventListener('input', function() {
     const q = this.value.toLowerCase();

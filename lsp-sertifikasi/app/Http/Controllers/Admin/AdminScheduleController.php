@@ -88,27 +88,36 @@ class AdminScheduleController extends Controller
     /**
      * Form buat jadwal baru.
      */
-    public function create(Request $request)
-    {
-        $selectedIds = $request->input('asesmen_ids', []);
-        $selectedAsesmens = $selectedIds
-            ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
-            : collect();
+public function create(Request $request)
+{
+    $selectedIds = $request->input('asesmen_ids', []);
+    $selectedAsesmens = $selectedIds
+        ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
+        : collect();
 
-        $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
-        $skemas = Skema::where('is_active', true)->orderBy('name')->get();
+    $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
+    $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-        $availableAsesmens = $this->readyToScheduleQuery()
-            ->orderBy('full_name')
-            ->get();
+    $availableAsesmens = $this->readyToScheduleQuery()
+        ->orderBy('full_name')
+        ->get();
 
-        return view('admin.schedules.create', compact(
-            'selectedAsesmens',
-            'availableAsesmens',
-            'tuks',
-            'skemas'
-        ));
-    }
+    // Ambil semua batch ID yang ada di available asesmens (kolektif saja)
+    $batches = $availableAsesmens
+        ->whereNotNull('collective_batch_id')
+        ->pluck('collective_batch_id')
+        ->unique()
+        ->sort()
+        ->values();
+
+    return view('admin.schedules.create', compact(
+        'selectedAsesmens',
+        'availableAsesmens',
+        'tuks',
+        'skemas',
+        'batches',
+    ));
+}
 
     /**
      * Simpan jadwal baru.

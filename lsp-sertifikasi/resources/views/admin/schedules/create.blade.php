@@ -180,6 +180,7 @@
                             </th>
                             <th>Asesi</th>
                             <th>Skema</th>
+                            <th>Batch</th>
                             <th class="text-end pe-3">TUK</th>
                         </tr>
                     </thead>
@@ -221,6 +222,7 @@
                                 </div>
                             </td>
                             <td><span class="badge bg-light text-dark border small">{{ $asesmen->skema->name ?? '-' }}</span></td>
+                            <td><span class="badge bg-light text-dark border small">{{ $asesmen->collective_batch_id ?? 'Mandiri' }}</span></td>
                             <td class="text-end pe-3"><span class="small text-muted">{{ $asesmen->tuk->name ?? '-' }}</span></td>
                         </tr>
                         @endforeach

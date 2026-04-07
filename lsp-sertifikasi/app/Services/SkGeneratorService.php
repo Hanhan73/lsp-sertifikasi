@@ -73,7 +73,7 @@ class SkGeneratorService
         $html .= $this->buildSuratTugasPage($schedule);
 
         $asesmens = $schedule->asesmens->values();
-        $pageSize = 30;
+        $pageSize = 20;
         $pages    = (int) ceil($asesmens->count() / $pageSize);
 
         for ($p = 0; $p < $pages; $p++) {
@@ -269,24 +269,14 @@ class SkGeneratorService
 
         $rows  = '';
         $no    = $startNo;
-        $first = true;
         $i     = 0;
         foreach ($pesertaList as $p) {
             $evenClass = ($i % 2 === 1) ? ' class="even"' : '';
-            if ($first) {
-                $rows .= '<tr' . $evenClass . '>
-                    <td style="text-align:center;width:30pt;">' . $no++ . '.</td>
-                    <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
-                    <td rowspan="' . $count . '" style="vertical-align:top;padding:5pt;width:130pt;">'
-                        . htmlspecialchars($asesorNama) . '</td>
-                </tr>';
-                $first = false;
-            } else {
-                $rows .= '<tr' . $evenClass . '>
-                    <td style="text-align:center;">' . $no++ . '.</td>
-                    <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
-                </tr>';
-            }
+            $rows .= '<tr' . $evenClass . '>
+                <td style="text-align:center;width:30pt;">' . $no++ . '.</td>
+                <td>' . htmlspecialchars($p->full_name ?? '-') . '</td>
+                <td style="width:130pt;">' . htmlspecialchars($asesorNama) . '</td>
+            </tr>';
             $i++;
         }
 

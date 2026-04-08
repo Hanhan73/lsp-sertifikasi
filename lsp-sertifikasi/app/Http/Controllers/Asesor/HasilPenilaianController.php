@@ -8,6 +8,7 @@ use App\Models\BeritaAcara;
 use App\Models\BeritaAcaraAsesi;
 use App\Models\HasilObservasi;
 use App\Models\HasilPortofolio;
+use App\Models\SoalTeoriAsesi;
 use App\Models\Schedule;
 use App\Models\SoalObservasi;
 use App\Models\Portofolio;

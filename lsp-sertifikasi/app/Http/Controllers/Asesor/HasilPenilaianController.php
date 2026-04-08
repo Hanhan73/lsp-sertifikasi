@@ -569,14 +569,17 @@ class HasilPenilaianController extends Controller
         return "Berita Acara otomatis terbaca: {$matched}/" . count($data['peserta']) . " peserta berhasil dicocokkan.";
     }
 
-    private function isApl02Ak01Ready(Schedule $schedule): bool
+private function isApl02Ak01Ready(Schedule $schedule): bool
 {
     $schedule->loadMissing(['asesmens.apldua', 'asesmens.frak01']);
+
+    if ($schedule->asesmens->isEmpty()) return false;
+
     foreach ($schedule->asesmens as $asesmen) {
-        $apl02 = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+        $apl02 = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
         $ak01  = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
-        if ($apl02 && $ak01) return true;
+        if (!$apl02 || !$ak01) return false;  // ← 1 saja belum ready → false
     }
-    return false;
+    return true;
 }
 }

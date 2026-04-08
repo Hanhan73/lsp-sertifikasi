@@ -171,22 +171,6 @@
 
                 {{-- Status badge --}}
                 <div id="modalStatusInfo" class="mb-3"></div>
-
-                <p class="text-muted small mb-1">File CSV berisi kolom:</p>
-                <ul class="small text-muted mb-3 ps-3">
-                    <li>Nama Peserta</li>
-                    <li>Asal Lembaga</li>
-                    <li>Tanggal Pelaksanaan</li>
-                    <li>Skor Nilai (0–100)</li>
-                    <li>Jawaban Benar (n/total)</li>
-                    <li>Waktu Submit</li>
-                    <li>Skema</li>
-                </ul>
-
-                <div class="alert alert-info py-2 px-3 small mb-0">
-                    <i class="bi bi-info-circle me-1"></i>
-                    Asesi yang belum submit akan muncul dengan keterangan <strong>"Belum Submit"</strong> di kolom skor.
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>

@@ -577,7 +577,11 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/berita-acara/download-file',[HasilPenilaianController::class, 'downloadFileBeritaAcara'])->name('berita-acara.download-file');
         Route::get('/berita-acara/pdf',          [HasilPenilaianController::class, 'pdfBeritaAcara'])         ->name('berita-acara.pdf');
         Route::post('/berita-acara/tanda-tangan',[HasilPenilaianController::class, 'tandaTanganBeritaAcara']) ->name('berita-acara.tanda-tangan');
-    });
+    
+        Route::post('/asesi/{asesmen}/reset-submit-teori', [HasilPenilaianController::class, 'resetSubmitTeori'])
+            ->name('asesi.reset-submit-teori');
+    
+        });
 
     Route::post('/jadwal/{schedule}/mulai', [AsesorController::class, 'mulaiAsesmen'])
         ->name('schedule.mulai');

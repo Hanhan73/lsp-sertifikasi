@@ -582,4 +582,37 @@ private function isApl02Ak01Ready(Schedule $schedule): bool
     }
     return true;
 }
+
+public function resetSubmitTeori(Schedule $schedule, Asesmen $asesmen)
+{
+    $this->authorizeSchedule($schedule);
+
+    // Pastikan asesi ini memang ada di jadwal ini
+    abort_unless(
+        $schedule->asesmens->contains($asesmen),
+        403, 'Asesi tidak ada di jadwal ini.'
+    );
+
+    $updated = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
+        ->whereNotNull('submitted_at')
+        ->update(['submitted_at' => null]);  // jawaban tetap, hanya submitted_at di-null
+
+    if ($updated === 0) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Ujian belum disubmit atau sudah direset sebelumnya.',
+        ], 400);
+    }
+
+    \Log::info('[RESET-SUBMIT-TEORI] Asesor reset submit', [
+        'schedule_id' => $schedule->id,
+        'asesmen_id'  => $asesmen->id,
+        'by'          => auth()->id(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => "Submit ujian {$asesmen->full_name} berhasil direset. Asesi bisa submit ulang.",
+    ]);
+}
 }

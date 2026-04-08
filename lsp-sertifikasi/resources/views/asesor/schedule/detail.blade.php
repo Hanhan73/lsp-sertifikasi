@@ -341,6 +341,7 @@
                                     <th class="text-center">Mulai</th>
                                     <th class="text-center">Submit</th>
                                     <th class="text-center">Skor</th>
+                                    <th class="text-center" style="width:120px;">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -408,6 +409,18 @@
                                         <div class="text-muted" style="font-size:.7rem;">{{ $pctBenar }}%</div>
                                         @else
                                         <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">
+                                        @if($submitted)
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-warning"
+                                                onclick="resetSubmitTeori({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name) }}')"
+                                                title="Reset submit — jawaban tetap tersimpan, asesi bisa submit ulang">
+                                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Submit
+                                        </button>
+                                        @else
+                                        <span class="text-muted small">—</span>
                                         @endif
                                     </td>
                                 </tr>
@@ -1124,6 +1137,42 @@ document.addEventListener('DOMContentLoaded', function () {
         _origSwitchToNew(padId);
     };
 });
+
+async function resetSubmitTeori(asesmenId, namaAsesi) {
+    const result = await Swal.fire({
+        title: 'Reset Submit Ujian?',
+        html: `Jawaban <strong>${namaAsesi}</strong> akan tetap tersimpan, tapi status submit akan direset sehingga asesi bisa submit ulang.<br><br><span class="text-muted small">Gunakan jika terjadi kesalahan teknis.</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-arrow-counterclockwise me-1"></i>Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#f59e0b',
+        reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const url = `{{ url('asesor/jadwal/' . $schedule->id . '/asesi') }}/${asesmenId}/reset-submit-teori`;
+        const res  = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            Swal.fire({
+                icon: 'success', title: 'Berhasil!',
+                text: data.message,
+                timer: 2500, showConfirmButton: false,
+            }).then(() => location.reload());
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan.', 'error');
+    }
+}
 
 // ── Toggle Hadir (tombol dinamis) ──
 async function toggleHadirBtn(btn) {

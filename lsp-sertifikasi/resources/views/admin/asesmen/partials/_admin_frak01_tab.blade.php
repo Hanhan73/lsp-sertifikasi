@@ -32,14 +32,6 @@
     @endif
  
     <div class="ms-auto d-flex gap-2 flex-wrap">
-        {{-- Tombol Return — hanya saat submitted --}}
-        @if($ak01->status === 'submitted')
-        <button type="button" class="btn btn-sm btn-danger"
-                onclick="showReturnFrak01({{ $ak01->id }})">
-            <i class="bi bi-file-earmark-x me-1"></i>Kembalikan
-        </button>
-        @endif
- 
         @if(in_array($ak01->status, ['verified','approved']))
         <a href="{{ route('admin.frak01.pdf', [$ak01, 'preview' => 1]) }}" target="_blank"
            class="btn btn-sm btn-outline-secondary">
@@ -124,95 +116,9 @@
 </div>
  
 @endif
- 
-{{-- ── Modal Return FR.AK.01 ── --}}
-<div class="modal fade" id="modalReturnFrak01" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-warning text-dark">
-                <h6 class="modal-title fw-bold">
-                    <i class="bi bi-arrow-return-left me-2"></i>Kembalikan FR.AK.01
-                </h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-warning border-0 small py-2 mb-3">
-                    <i class="bi bi-info-circle me-1"></i>
-                    TTD asesi akan direset. Asesi harus mengisi ulang dan tanda tangan kembali.
-                </div>
-                <label class="form-label fw-semibold small">
-                    Catatan untuk Asesi <span class="text-danger">*</span>
-                </label>
-                <textarea id="frak01-rejection-notes" class="form-control" rows="3"
-                          placeholder="Jelaskan apa yang perlu diperbaiki..."></textarea>
-                <div id="frak01-return-error" class="text-danger small mt-1" style="display:none;"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-warning btn-sm" id="btn-do-return"
-                        onclick="doReturnFrak01()">
-                    <i class="bi bi-arrow-return-left me-1"></i>Kembalikan
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
  
 @push('scripts')
 <script>
-let _returnFrak01Id = null;
- 
-function showReturnFrak01(id) {
-    _returnFrak01Id = id;
-    document.getElementById('frak01-rejection-notes').value = '';
-    document.getElementById('frak01-return-error').style.display = 'none';
-    new bootstrap.Modal(document.getElementById('modalReturnFrak01')).show();
-}
- 
-async function doReturnFrak01() {
-    const notes = document.getElementById('frak01-rejection-notes').value.trim();
-    const errEl = document.getElementById('frak01-return-error');
- 
-    if (notes.length < 5) {
-        errEl.textContent = 'Catatan minimal 5 karakter.';
-        errEl.style.display = 'block';
-        return;
-    }
-    errEl.style.display = 'none';
- 
-    const btn = document.getElementById('btn-do-return');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
- 
-    try {
-        const res  = await fetch(`/admin/frak01/${_returnFrak01Id}/return`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-            },
-            body: JSON.stringify({ rejection_notes: notes }),
-        });
-        const data = await res.json();
- 
-        if (data.success) {
-            bootstrap.Modal.getInstance(document.getElementById('modalReturnFrak01')).hide();
-            Swal.fire({
-                icon: 'success', title: 'Berhasil',
-                text: data.message,
-                showConfirmButton: false, timer: 1800,
-            }).then(() => location.reload());
-        } else {
-            errEl.textContent = data.message;
-            errEl.style.display = 'block';
-        }
-    } catch {
-        errEl.textContent = 'Terjadi kesalahan sistem.';
-        errEl.style.display = 'block';
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-arrow-return-left me-1"></i>Kembalikan';
-    }
-}
 </script>
 @endpush

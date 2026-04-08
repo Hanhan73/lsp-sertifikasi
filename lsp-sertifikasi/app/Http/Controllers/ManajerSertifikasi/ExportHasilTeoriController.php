@@ -132,7 +132,7 @@ class ExportHasilTeoriController extends Controller
         $FONT       = 'Calibri';
 
         // ── ROW 1: JUDUL
-        $ws->mergeCells('A1:E1');
+        $ws->mergeCells('A1:F1');
         $ws->setCellValue('A1', $judul);
         $ws->getStyle('A1')->applyFromArray([
             'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => $NAVY], 'name' => $FONT],
@@ -141,7 +141,7 @@ class ExportHasilTeoriController extends Controller
         $ws->getRowDimension(1)->setRowHeight(34);
 
         // ── ROW 2: SUBTITLE
-        $ws->mergeCells('A2:E2');
+        $ws->mergeCells('A2:F2');
         $ws->setCellValue('A2', 'Dicetak: ' . now()->translatedFormat('d F Y, H:i'));
         $ws->getStyle('A2')->applyFromArray([
             'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => '64748B'], 'name' => $FONT],
@@ -152,14 +152,16 @@ class ExportHasilTeoriController extends Controller
         // ── ROW 3: spacer
         $ws->getRowDimension(3)->setRowHeight(6);
 
-        // ── ROW 4: HEADER (5 kolom: No | Nama | Lembaga | Tanggal | Jawaban)
+        // ── ROW 1 & 2 merge fix — sesuaikan ke F
+        // ── ROW 4: HEADER (6 kolom: No | Nama | Lembaga | Tanggal | Jawaban | Skor)
         $ws->setCellValue('A4', 'No');
         $ws->setCellValue('B4', 'Nama Peserta');
         $ws->setCellValue('C4', 'Asal Lembaga / Institusi');
         $ws->setCellValue('D4', 'Tanggal Pelaksanaan');
         $ws->setCellValue('E4', 'Jawaban Benar / Soal');
+        $ws->setCellValue('F4', 'Skor');
 
-        $ws->getStyle('A4:E4')->applyFromArray([
+        $ws->getStyle('A4:F4')->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['rgb' => $WHITE], 'size' => 10, 'name' => $FONT],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $BLUE]],
             'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
@@ -183,14 +185,18 @@ class ExportHasilTeoriController extends Controller
                 }
             }
 
+            // Skor: benar/total (bukan persen), misal "24 / 30"
+            $skor = $submitted ? "{$benar} / {$total}" : '-';
+
             $ws->setCellValue("A{$r}", $i + 1);
             $ws->setCellValue("B{$r}", $a->full_name);
             $ws->setCellValue("C{$r}", $a->institution ?? '-');
             $ws->setCellValue("D{$r}", $a->schedule?->assessment_date?->translatedFormat('d F Y') ?? '-');
             $ws->setCellValue("E{$r}", $submitted ? "{$benar} / {$total}" : '-');
+            $ws->setCellValue("F{$r}", $skor);
 
             $bg = $i % 2 === 0 ? $WHITE : $GRAY;
-            $ws->getStyle("A{$r}:E{$r}")->applyFromArray([
+            $ws->getStyle("A{$r}:F{$r}")->applyFromArray([
                 'font'      => ['name' => $FONT, 'size' => 10],
                 'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
                 'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
@@ -200,6 +206,7 @@ class ExportHasilTeoriController extends Controller
             $ws->getStyle("A{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $ws->getStyle("D{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $ws->getStyle("E{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $ws->getStyle("F{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
             $ws->getRowDimension($r)->setRowHeight(20);
             $r++;
@@ -211,9 +218,9 @@ class ExportHasilTeoriController extends Controller
             fn($a) => $a->soalTeoriAsesi->whereNotNull('submitted_at')->count() > 0
         )->count();
 
-        $ws->mergeCells("A{$r}:E{$r}");
+        $ws->mergeCells("A{$r}:F{$r}");
         $ws->setCellValue("A{$r}", "Total: {$totalAsesi} peserta  |  Sudah Submit: {$sudahSubmit}  |  Belum Submit: " . ($totalAsesi - $sudahSubmit));
-        $ws->getStyle("A{$r}:E{$r}")->applyFromArray([
+        $ws->getStyle("A{$r}:F{$r}")->applyFromArray([
             'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => $NAVY], 'name' => $FONT],
             'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $LIGHT_BLUE]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
@@ -226,10 +233,11 @@ class ExportHasilTeoriController extends Controller
         $ws->getColumnDimension('C')->setWidth(30);
         $ws->getColumnDimension('D')->setWidth(24);
         $ws->getColumnDimension('E')->setWidth(22);
+        $ws->getColumnDimension('F')->setWidth(14);
 
         // ── FREEZE + AUTOFILTER
         $ws->freezePane('A5');
-        $ws->setAutoFilter('A4:E4');
+        $ws->setAutoFilter('A4:F4');
 
         // ── STREAM
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -97,6 +97,53 @@ class FrAk01Controller extends Controller
     }
 
     /**
+     * Asesor mengembalikan FR.AK.01 ke asesi untuk diperbaiki.
+     */
+    public function returnFrak01(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $request->validate([
+            'rejection_notes' => 'required|string|min:5|max:1000',
+        ], [
+            'rejection_notes.required' => 'Catatan pengembalian wajib diisi.',
+            'rejection_notes.min'      => 'Catatan minimal 5 karakter.',
+        ]);
+
+        $frak01 = $asesmen->frak01;
+
+        if (!$frak01 || $frak01->status !== 'submitted') {
+            return response()->json([
+                'success' => false,
+                'message' => 'FR.AK.01 tidak dalam status submitted.',
+            ], 400);
+        }
+
+        $frak01->update([
+            'status'            => 'returned',
+            'rejection_notes'   => $request->rejection_notes,
+            'returned_at'       => now(),
+            'returned_by'       => auth()->id(),
+            'ttd_asesi'         => null,
+            'nama_ttd_asesi'    => null,
+            'tanggal_ttd_asesi' => null,
+            'submitted_at'      => null,
+        ]);
+
+        Log::info('[FRAK01][return] Asesor returned FR.AK.01 #' . $frak01->id, [
+            'by'    => auth()->id(),
+            'notes' => $request->rejection_notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'FR.AK.01 dikembalikan ke asesi untuk diperbaiki.',
+        ]);
+    }
+
+    /**
      * Preview / download PDF FR.AK.01.
      */
     public function previewPdf(Schedule $schedule, Asesmen $asesmen)

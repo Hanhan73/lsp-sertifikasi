@@ -149,6 +149,11 @@
             <div class="flex-grow-1">
                 <strong>Menunggu Tanda Tangan Anda</strong> — Asesi sudah menandatangani. Silakan review dan berikan tanda tangan.
             </div>
+            {{-- Tambah tombol kembalikan --}}
+            <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0"
+                    onclick="showReturnFrak01()">
+                <i class="bi bi-arrow-return-left me-1"></i>Kembalikan
+            </button>
         </div>
         @else
         <div class="alert alert-secondary border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
@@ -717,12 +722,97 @@
 
 </div>{{-- end tab-content --}}
 
+{{-- Modal Return FR.AK.01 --}}
+<div class="modal fade" id="modalReturnFrak01" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-return-left me-2"></i>Kembalikan FR.AK.01</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">
+                    FR.AK.01 akan dikembalikan ke asesi. Tanda tangan asesi akan direset dan asesi harus mengisi ulang serta tanda tangan kembali.
+                </p>
+                <label class="form-label fw-semibold small">
+                    Catatan untuk Asesi <span class="text-danger">*</span>
+                </label>
+                <textarea id="frak01-rejection-notes" class="form-control" rows="3"
+                          placeholder="Jelaskan apa yang perlu diperbaiki..."></textarea>
+                <div id="frak01-return-error" class="text-danger small mt-1" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-warning btn-sm" id="btn-do-return"
+                        onclick="doReturnFrak01()">
+                    <i class="bi bi-arrow-return-left me-1"></i>Kembalikan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 <script>
 const CSRF       = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 const SIGN_URL   = '{{ route("asesor.frak01.sign", [$schedule, $asesmen]) }}';
 const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
+
+const RETURN_FRAK01_URL = '{{ route("asesor.frak01.return", [$schedule, $asesmen]) }}';
+
+function showReturnFrak01() {
+    document.getElementById('frak01-rejection-notes').value = '';
+    document.getElementById('frak01-return-error').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalReturnFrak01')).show();
+}
+
+async function doReturnFrak01() {
+    const notes = document.getElementById('frak01-rejection-notes').value.trim();
+    const errEl = document.getElementById('frak01-return-error');
+
+    if (notes.length < 5) {
+        errEl.textContent = 'Catatan minimal 5 karakter.';
+        errEl.style.display = 'block';
+        return;
+    }
+    errEl.style.display = 'none';
+
+    const btn = document.getElementById('btn-do-return');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...';
+
+    try {
+        const res  = await fetch(RETURN_FRAK01_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ rejection_notes: notes }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalReturnFrak01')).hide();
+            Swal.fire({
+                icon: 'success', title: 'Berhasil',
+                text: data.message,
+                showConfirmButton: false, timer: 1800,
+            }).then(() => location.reload());
+        } else {
+            errEl.textContent = data.message;
+            errEl.style.display = 'block';
+        }
+    } catch {
+        errEl.textContent = 'Terjadi kesalahan sistem.';
+        errEl.style.display = 'block';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-return-left me-1"></i>Kembalikan';
+    }
+}
+
 
 // Init sig pads saat tab aktif
 document.addEventListener('DOMContentLoaded', () => {

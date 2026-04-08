@@ -405,6 +405,7 @@
                                         @php $pctBenar = round($benar / $total * 100); @endphp
                                         <span class="fw-bold {{ $pctBenar >= 70 ? 'text-success' : 'text-danger' }}" style="font-size:.875rem;">
                                             {{ $benar }}/{{ $total }}
+                                            <muted class="text-muted" style="font-size:.75rem;">({{ $pctBenar }})</muted>
                                         </span>
                                         @else
                                         <span class="text-muted">—</span>

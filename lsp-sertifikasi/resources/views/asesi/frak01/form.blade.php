@@ -24,11 +24,11 @@
 <div class="alert alert-danger border-0 shadow-sm d-flex align-items-start gap-3 mb-4">
     <i class="bi bi-exclamation-triangle-fill fs-3 flex-shrink-0 mt-1"></i>
     <div class="flex-grow-1">
-        <h6 class="fw-bold mb-1">FR.AK.01 Dikembalikan oleh Admin</h6>
+        <h6 class="fw-bold mb-1">FR.AK.01 Dikembalikan oleh Asesor</h6>
         <p class="small mb-2">Admin meminta Anda memperbaiki FR.AK.01. Bacalah catatan berikut, perbaiki isian, lalu tanda tangan ulang.</p>
         @if($frak01->rejection_notes)
         <div class="bg-white border border-danger rounded p-2 mb-3 small">
-            <strong>Catatan Admin:</strong><br>
+            <strong>Catatan Asesor:</strong><br>
             {{ $frak01->rejection_notes }}
         </div>
         @endif

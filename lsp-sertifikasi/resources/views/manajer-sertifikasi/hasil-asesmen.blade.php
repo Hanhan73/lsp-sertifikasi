@@ -165,7 +165,7 @@
                                     <div class="progress-bar {{ $nilaiPct >= 60 ? 'bg-success' : 'bg-danger' }}"
                                          style="width:{{ $nilaiPct }}%"></div>
                                 </div>
-                                <div style="font-size:.68rem;color:#6b7280;">{{ $nilaiPct }}%</div>
+                                <div style="font-size:.68rem;color:#6b7280;">{{ $nilaiPct }}</div>
                             @endif
                         </td>
 

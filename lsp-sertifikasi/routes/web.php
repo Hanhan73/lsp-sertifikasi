@@ -314,7 +314,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // FR.AK.01
     Route::prefix('frak01')->name('frak01.')->group(function () {
         Route::get('/{frak01}/pdf',    [FrAk01AdminController::class, 'adminPdf'])      ->name('pdf');
-        Route::post('/{frak01}/return',[FrAk01AdminController::class, 'returnFrak01'])  ->name('return');
     });
 
     // FR.AK.04
@@ -533,6 +532,8 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         // DIHAPUS: Route::post('/bukti', ...) — asesor tidak isi checklist lagi di sini
         Route::post('/sign', [FrAk01Controller::class, 'signAsesor']) ->name('sign');
         Route::get('/pdf',   [FrAk01Controller::class, 'previewPdf']) ->name('pdf');
+        Route::post('/return', [FrAk01Controller::class, 'returnFrak01']) ->name('return'); // ← TAMBAH
+
     });
 
     // Perhatian: route lama pakai name asesor.apl02.verify — tambahkan alias agar tidak break

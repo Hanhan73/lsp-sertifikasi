@@ -329,7 +329,6 @@
                                             <div class="progress-bar {{ $pct >= 60 ? 'bg-success' : 'bg-danger' }}"
                                                  style="width:{{ $pct }}%"></div>
                                         </div>
-                                        <small class="{{ $pct >= 60 ? 'text-success' : 'text-danger' }}">{{ $pct }}%</small>
                                     </div>
                                     @else
                                         <span class="text-muted">—</span>

@@ -25,3 +25,8 @@
     <span class="badge bg-warning text-dark ms-auto">{{ $jadwalBelum }}</span>
     @endif
 </a>
+
+<a href="{{ route('manajer-sertifikasi.export-hasil-teori.index') }}"
+   class="nav-link {{ request()->routeIs('manajer-sertifikasi.export-hasil-teori.*') ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-arrow-down me-2"></i>Export Hasil Teori
+</a>

@@ -406,7 +406,6 @@
                                         <span class="fw-bold {{ $pctBenar >= 70 ? 'text-success' : 'text-danger' }}" style="font-size:.875rem;">
                                             {{ $benar }}/{{ $total }}
                                         </span>
-                                        <div class="text-muted" style="font-size:.7rem;">{{ $pctBenar }}%</div>
                                         @else
                                         <span class="text-muted">—</span>
                                         @endif

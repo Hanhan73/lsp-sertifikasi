@@ -177,8 +177,7 @@ class SoalAsesiController extends Controller
             return response()->json(['success' => false, 'message' => 'Ujian sudah disubmit sebelumnya.'], 400);
         }
 
-        $now = now();
-        SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->update(['submitted_at' => $now]);
+        SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->update(['submitted_at' => now()]);
 
         $total    = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->count();
         $answered = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->whereNotNull('jawaban')->count();
@@ -188,11 +187,9 @@ class SoalAsesiController extends Controller
             'message'  => 'Ujian berhasil disubmit.',
             'answered' => $answered,
             'total'    => $total,
-        ])->redirect()->route('asesi.soal.teori.intro');
-
-
-
+        ]);
     }
+    
 
     // =========================================================================
     // SOAL OBSERVASI — Lihat paket dan upload GDrive

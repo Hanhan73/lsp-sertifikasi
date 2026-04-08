@@ -50,9 +50,12 @@ class ExcelService
                 // Unmerge merged cells yang overlap kolom Nama di baris data
                 $this->unmergeNamaColumn($ws, $namaCol, $dataStartRow, count($names));
 
-                // Inject nama
+                // Inject nama + formula per sheet
                 foreach ($names as $i => $nama) {
-                    $ws->setCellValueByColumnAndRow($namaCol, $dataStartRow + $i, $nama);
+                    $row = $dataStartRow + $i;
+                    $ws->setCellValueByColumnAndRow($namaCol, $row, $nama);
+
+                    $this->injectRowFormulas($sheetName, $ws, $row, $i + 1, $namaCol);
                 }
 
                 \Log::info("[ExcelService] Injected " . count($names) . " nama ke [{$sheetName}]");
@@ -63,6 +66,9 @@ class ExcelService
                 \Log::warning('[ExcelService] Tidak ada sheet yang berhasil diinjeksi.');
                 return false;
             }
+
+            // Inject Berita Acara secara terpisah
+            $this->injectBeritaAcara($spreadsheet, $names);
 
             $writer = IOFactory::createWriter($spreadsheet, $this->detectFormat($inputPath));
             $writer->save($outputPath);
@@ -78,6 +84,98 @@ class ExcelService
             \Log::error('[ExcelService] injectNamaAsesi error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             return false;
         }
+    }
+
+    // =========================================================================
+    // INJECT FORMULA PER BARIS SESUAI SHEET
+    // =========================================================================
+
+    /**
+     * Inject nomor urut dan formula yang relevan untuk baris yang baru diisi nama.
+     *
+     * - Pencapaian  : col A = nomor, col N = formula Pencapaian (K/BK)
+     * - Hasil Asesmen: col C = nomor, col E-O = formula UK per UK, col P = Keputusan Asesmen
+     */
+    private function injectRowFormulas(string $sheetName, $ws, int $row, int $no, int $namaCol): void
+    {
+        switch ($sheetName) {
+
+            case 'Pencapaian':
+                // Col A = No urut
+                $ws->setCellValueByColumnAndRow(1, $row, $no);
+
+                // Col N (14) = formula Pencapaian K/BK berdasarkan UK 01-11 (C-M)
+                $ws->setCellValueByColumnAndRow(14, $row,
+                    "=IF(AND(C{$row}>70,D{$row}>70,E{$row}>70,F{$row}>70,G{$row}>70,"
+                    . "H{$row}>70,I{$row}>70,J{$row}>70,K{$row}>70,L{$row}>70,M{$row}>70)=TRUE,\"K\",\"BK\")"
+                );
+                break;
+
+            case 'Hasil Asesmen':
+                // Col C (3) = No urut
+                $ws->setCellValueByColumnAndRow(3, $row, $no);
+
+                // Col E-O (5-15) = formula K/BK per UK, referensi ke Pencapaian C-M
+                $pencapaianCols = ['C','D','E','F','G','H','I','J','K','L','M'];
+                foreach ($pencapaianCols as $i => $pc) {
+                    $col = 5 + $i; // E=5, F=6, ..., O=15
+                    $ws->setCellValueByColumnAndRow($col, $row,
+                        "=IF(Pencapaian!{$pc}{$row}>70,\"K\",\"BK\")"
+                    );
+                }
+
+                // Col P (16) = Keputusan Asesmen (K hanya jika semua UK = K)
+                $ws->setCellValueByColumnAndRow(16, $row,
+                    "=IF(AND(E{$row}=\"K\",F{$row}=\"K\",G{$row}=\"K\",H{$row}=\"K\","
+                    . "I{$row}=\"K\",J{$row}=\"K\",K{$row}=\"K\",L{$row}=\"K\","
+                    . "M{$row}=\"K\",N{$row}=\"K\",O{$row}=\"K\")=TRUE,\"K\",\"BK\")"
+                );
+                break;
+        }
+    }
+
+    // =========================================================================
+    // INJECT BERITA ACARA
+    // =========================================================================
+
+    /**
+     * Inject data peserta ke sheet Berita Acara.
+     *
+     * Struktur per baris (mulai row 19):
+     *   C = No urut
+     *   D = =Pencapaian!B{pencapaian_row}   (nama dari sheet Pencapaian, mulai B4)
+     *   J = ='Hasil Asesmen'!P{ha_row}       (keputusan dari sheet Hasil Asesmen, mulai P4)
+     *
+     * Row offset: Pencapaian/Hasil Asesmen data mulai row 4,
+     *             Berita Acara data mulai row 19 → pencapaian_row = ba_row - 15
+     */
+    private function injectBeritaAcara($spreadsheet, array $names): void
+    {
+        if (!in_array('Berita Acara', $spreadsheet->getSheetNames())) {
+            \Log::warning('[ExcelService] Sheet Berita Acara tidak ditemukan, skip.');
+            return;
+        }
+
+        $ws = $spreadsheet->getSheetByName('Berita Acara');
+
+        $baStartRow   = 19;  // baris pertama data di Berita Acara
+        $srcStartRow  = 4;   // baris pertama data di Pencapaian & Hasil Asesmen
+
+        foreach ($names as $i => $nama) {
+            $baRow  = $baStartRow + $i;
+            $srcRow = $srcStartRow + $i;  // row di Pencapaian & Hasil Asesmen
+
+            // C = No urut
+            $ws->setCellValueByColumnAndRow(3, $baRow, $i + 1);
+
+            // D = nama dari Pencapaian (agar konsisten dengan sheet lain)
+            $ws->setCellValueByColumnAndRow(4, $baRow, "=Pencapaian!B{$srcRow}");
+
+            // J (col 10) = Keputusan dari Hasil Asesmen kolom P
+            $ws->setCellValueByColumnAndRow(10, $baRow, "='Hasil Asesmen'!P{$srcRow}");
+        }
+
+        \Log::info('[ExcelService] Berita Acara injected for ' . count($names) . ' peserta.');
     }
 
     // =========================================================================
@@ -130,8 +228,8 @@ class ExcelService
             $namaStr = trim((string) ($namaVal ?? ''));
             if (in_array($namaStr, ['', '0', '-'])) break;
 
-            $valJ = strtoupper(trim((string) ($ws->getCellByColumnAndRow(10, $r)->getValue() ?? '')));
-            $valK = strtoupper(trim((string) ($ws->getCellByColumnAndRow(11, $r)->getValue() ?? '')));
+            $valJ = strtoupper(trim((string) ($ws->getCellByColumnAndRow(10, $r)->getCalculatedValue() ?? '')));
+            $valK = strtoupper(trim((string) ($ws->getCellByColumnAndRow(11, $r)->getCalculatedValue() ?? '')));
 
             if ($twoColMode) {
                 $checkVals = ['K', 'V', '✓', 'X', '1', 'YA', 'Y'];

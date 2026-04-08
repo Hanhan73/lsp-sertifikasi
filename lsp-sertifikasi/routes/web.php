@@ -658,14 +658,15 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/hasil', [DistribusiSoalController::class, 'hasilAsesmen'])->name('hasil');
             Route::get('/berita-acara/pdf', [DistribusiSoalController::class, 'pdfBeritaAcara'])->name('berita-acara.pdf');
 
-            Route::prefix('export-hasil-teori')->name('export-hasil-teori.')->group(function () {
-                Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'index'])->name('index');
-                Route::get('/batch/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBatch'])->name('batch');
-                Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportJadwal'])->name('jadwal');
-            });
+
         });
 
-
+        Route::prefix('export-hasil-teori')->name('export-hasil-teori.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'index'])->name('index');
+            Route::get('/batch/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBatch'])->name('batch');
+            Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportJadwal'])->name('jadwal');
+        });
+        
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────
         Route::prefix('soal-observasi')->name('soal-observasi.')->group(function () {
             Route::get('/', [DistribusiSoalController::class, 'indexSoalObservasi'])->name('index');

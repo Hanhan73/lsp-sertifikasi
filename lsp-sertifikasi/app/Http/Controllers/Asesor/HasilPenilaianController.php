@@ -596,7 +596,10 @@ public function resetSubmitTeori(Schedule $schedule, Asesmen $asesmen)
 
     $updated = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
         ->whereNotNull('submitted_at')
-        ->update(['submitted_at' => null]);  // jawaban tetap, hanya submitted_at di-null
+        ->update([
+            'submitted_at' => null,
+            'started_at' => null
+        ]);  // jawaban tetap, hanya submitted_at di-null
 
     if ($updated === 0) {
         return response()->json([

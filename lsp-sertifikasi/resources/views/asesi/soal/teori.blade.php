@@ -122,7 +122,7 @@
 const DURASI_DETIK   = {{ $durasi * 60 }};
 const STARTED_AT = @json($startedAt ? (is_string($startedAt) ? $startedAt : $startedAt->toISOString()) : null);const SAVE_URL       = "{{ route('asesi.soal.teori.save') }}";
 const SUBMIT_URL     = "{{ route('asesi.soal.teori.submit') }}";
-const REDIRECT_AFTER = "{{ route('asesi.schedule') }}";
+const REDIRECT_AFTER = "{{ route('asesi.soal.teori.intro') }}";
 const CSRF           = "{{ csrf_token() }}";
 
 let currentIndex = 0;

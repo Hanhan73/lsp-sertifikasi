@@ -188,7 +188,7 @@ class SoalAsesiController extends Controller
             'message'  => 'Ujian berhasil disubmit.',
             'answered' => $answered,
             'total'    => $total,
-        ])->redirect()->route('asesi.soal.teori.index');
+        ])->redirect()->route('asesi.soal.teori.intro');
 
 
 

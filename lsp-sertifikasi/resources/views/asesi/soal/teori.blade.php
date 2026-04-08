@@ -226,14 +226,27 @@ function startTimer() {
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 async function submitUjian(forced = false) {
+    const unanswered = totalSoal - answered;
+
+    // Blok hard jika masih ada yang kosong (kecuali forced oleh timer)
+    if (!forced && unanswered > 0) {
+        await Swal.fire({
+            title: 'Belum Bisa Submit',
+            html: `Masih ada <span class="text-danger fw-bold">${unanswered} soal</span> yang belum dijawab.<br>
+                   <small class="text-muted">Semua ${totalSoal} soal harus diisi sebelum submit.</small>`,
+            icon: 'warning',
+            confirmButtonText: 'Kembali Mengerjakan',
+            confirmButtonColor: '#1e3a5f',
+        });
+        return;
+    }
+
+    // Konfirmasi jika forced (timer habis) atau semua sudah dijawab
     if (!forced) {
-        const unanswered = totalSoal - answered;
         const result = await Swal.fire({
             title: 'Submit Ujian?',
-            html: unanswered > 0
-                ? `<span class="text-warning fw-bold">${unanswered} soal</span> belum dijawab.<br>Jawaban yang belum diisi dihitung kosong.`
-                : `Semua ${totalSoal} soal sudah dijawab.<br>Yakin ingin mengakhiri ujian?`,
-            icon: unanswered > 0 ? 'warning' : 'question',
+            html: `Semua ${totalSoal} soal sudah dijawab.<br>Yakin ingin mengakhiri ujian?`,
+            icon: 'question',
             showCancelButton: true,
             confirmButtonText: '<i class="bi bi-send me-1"></i> Ya, Submit',
             cancelButtonText: 'Kembali',
@@ -268,9 +281,18 @@ async function submitUjian(forced = false) {
             });
             window.location.href = REDIRECT_AFTER;
         } else {
+            // Re-enable jika gagal (misal dari server)
+            document.querySelectorAll('.pilihan-item, .nav-bubble, button').forEach(el => {
+                el.style.pointerEvents = '';
+                el.style.opacity = '';
+            });
             Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
         }
     } catch(e) {
+        document.querySelectorAll('.pilihan-item, .nav-bubble, button').forEach(el => {
+            el.style.pointerEvents = '';
+            el.style.opacity = '';
+        });
         Swal.fire('Error', 'Koneksi bermasalah. Coba lagi.', 'error');
     }
 }

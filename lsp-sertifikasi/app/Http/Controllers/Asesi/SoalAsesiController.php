@@ -165,30 +165,39 @@ class SoalAsesiController extends Controller
     /**
      * Submit ujian soal teori.
      */
-    public function teoriSubmit(Request $request): JsonResponse
-    {
-        $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
+public function teoriSubmit(Request $request): JsonResponse
+{
+    $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
 
-        $soalAsesi = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
-            ->whereNull('submitted_at')
-            ->get();
+    $soalAsesi = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
+        ->whereNull('submitted_at')
+        ->get();
 
-        if ($soalAsesi->isEmpty()) {
-            return response()->json(['success' => false, 'message' => 'Ujian sudah disubmit sebelumnya.'], 400);
-        }
-
-        SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->update(['submitted_at' => now()]);
-
-        $total    = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->count();
-        $answered = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->whereNotNull('jawaban')->count();
-
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Ujian berhasil disubmit.',
-            'answered' => $answered,
-            'total'    => $total,
-        ]);
+    if ($soalAsesi->isEmpty()) {
+        return response()->json(['success' => false, 'message' => 'Ujian sudah disubmit sebelumnya.'], 400);
     }
+
+    // Cek semua soal harus sudah dijawab
+    $belumDijawab = $soalAsesi->whereNull('jawaban')->count();
+    if ($belumDijawab > 0) {
+        return response()->json([
+            'success' => false,
+            'message' => "Masih ada {$belumDijawab} soal yang belum dijawab. Semua soal harus diisi sebelum submit.",
+        ], 422);
+    }
+
+    SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->update(['submitted_at' => now()]);
+
+    $total    = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->count();
+    $answered = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)->whereNotNull('jawaban')->count();
+
+    return response()->json([
+        'success'  => true,
+        'message'  => 'Ujian berhasil disubmit.',
+        'answered' => $answered,
+        'total'    => $total,
+    ]);
+}
     
 
     // =========================================================================

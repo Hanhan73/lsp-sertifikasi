@@ -144,6 +144,43 @@ class FrAk01Controller extends Controller
     }
 
     /**
+     * Asesor reset FR.AK.01 dari verified → submitted (TTD asesor dihapus).
+     */
+    public function resetVerified(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $frak01 = $asesmen->frak01;
+
+        if (!$frak01 || $frak01->status !== 'verified') {
+            return response()->json([
+                'success' => false,
+                'message' => 'FR.AK.01 tidak dalam status verified.',
+            ], 400);
+        }
+
+        $frak01->update([
+            'status'             => 'submitted',
+            'ttd_asesor'         => null,
+            'nama_ttd_asesor'    => null,
+            'tanggal_ttd_asesor' => null,
+            'verified_by'        => null,
+            'verified_at'        => null,
+        ]);
+
+        Log::info('[FRAK01][reset-verified] Asesor reset TTD FR.AK.01 #' . $frak01->id, [
+            'by' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Tanda tangan asesor berhasil direset. FR.AK.01 kembali ke status submitted.',
+        ]);
+    }
+
+    /**
      * Preview / download PDF FR.AK.01.
      */
     public function previewPdf(Schedule $schedule, Asesmen $asesmen)

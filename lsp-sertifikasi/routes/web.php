@@ -533,6 +533,7 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::post('/sign', [FrAk01Controller::class, 'signAsesor']) ->name('sign');
         Route::get('/pdf',   [FrAk01Controller::class, 'previewPdf']) ->name('pdf');
         Route::post('/return', [FrAk01Controller::class, 'returnFrak01']) ->name('return'); // ← TAMBAH
+        Route::post('/reset-verified', [FrAk01Controller::class, 'resetVerified']) ->name('reset-verified');
 
     });
 

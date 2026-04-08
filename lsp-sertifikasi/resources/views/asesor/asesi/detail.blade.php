@@ -139,9 +139,14 @@
                 <strong>FR.AK.01 Selesai</strong> — Kedua pihak telah menandatangani.
             </div>
             <a href="{{ route('asesor.frak01.pdf', [$schedule, $asesmen]) }}" target="_blank"
-               class="btn btn-sm btn-success flex-shrink-0">
+            class="btn btn-sm btn-success flex-shrink-0">
                 <i class="bi bi-file-pdf me-1"></i>Lihat PDF
             </a>
+            {{-- Tombol reset TTD asesor --}}
+            <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                    onclick="resetVerifiedFrak01()">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset TTD
+            </button>
         </div>
         @elseif($frak01->status === 'submitted')
         <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-3 mb-4">
@@ -760,6 +765,7 @@ const SIGN_URL   = '{{ route("asesor.frak01.sign", [$schedule, $asesmen]) }}';
 const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
 
 const RETURN_FRAK01_URL = '{{ route("asesor.frak01.return", [$schedule, $asesmen]) }}';
+const RESET_VERIFIED_URL = '{{ route("asesor.frak01.reset-verified", [$schedule, $asesmen]) }}';
 
 function showReturnFrak01() {
     document.getElementById('frak01-rejection-notes').value = '';
@@ -813,6 +819,39 @@ async function doReturnFrak01() {
     }
 }
 
+async function resetVerifiedFrak01() {
+    const result = await Swal.fire({
+        title: 'Reset Tanda Tangan?',
+        text: 'TTD asesor akan dihapus dan FR.AK.01 kembali ke status submitted. Anda perlu tanda tangan ulang.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#6c757d',
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        const res  = await fetch(RESET_VERIFIED_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF,
+            },
+            body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message,
+                showConfirmButton: false, timer: 1800 })
+                .then(() => location.reload());
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan sistem.', 'error');
+    }
+}
 
 // Init sig pads saat tab aktif
 document.addEventListener('DOMContentLoaded', () => {

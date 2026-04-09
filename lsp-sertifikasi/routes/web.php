@@ -46,10 +46,12 @@ use App\Http\Controllers\Asesor\HasilPenilaianController;
 // Direktur
 use App\Http\Controllers\Direktur\DirekturScheduleController;
 use App\Http\Controllers\Direktur\DirekturDashboardController;
+use App\Http\Controllers\Direktur\DirekturSkUjikomController;
 
 // Manajer Sertifikasi
 use App\Http\Controllers\ManajerSertifikasi\DashboardController as ManajerDashboardController;
 use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
+use App\Http\Controllers\ManajerSertifikasi\SkUjikomController;
 
 // Bendahara
 use App\Http\Controllers\Bendahara\BendaharaController;
@@ -625,6 +627,21 @@ Route::prefix('direktur')
             Route::get('/{schedule}/sk',       [DirekturScheduleController::class, 'downloadSk'])->name('sk.download');
             Route::post('/{schedule}/sk/regenerate', [DirekturScheduleController::class, 'regenerateSk'])->name('sk.regenerate');
         });
+        Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
+            Route::get('/',                          [DirekturSkUjikomController::class, 'index'])   ->name('index');
+            Route::get('/{skUjikom}',                [DirekturSkUjikomController::class, 'show'])    ->name('show');
+            Route::post('/{skUjikom}/approve',       [DirekturSkUjikomController::class, 'approve']) ->name('approve');
+            Route::post('/{skUjikom}/reject',        [DirekturSkUjikomController::class, 'reject'])  ->name('reject');
+            Route::get('/{skUjikom}/download',       [DirekturSkUjikomController::class, 'download'])->name('download');
+            Route::post('/{skUjikom}/regenerate',     [DirekturSkUjikomController::class, 'regenerate'])->name('regenerate');
+
+        });
+
+        Route::get('/jadwal/{schedule}/berita-acara/pdf', [DirekturSkUjikomController::class, 'pdfBeritaAcara'])
+            ->name('jadwal.berita-acara.pdf');
+        
+        Route::get('/jadwal/{schedule}/berita-acara/download', [DirekturSkUjikomController::class, 'downloadFileBeritaAcara'])
+            ->name('jadwal.berita-acara.download-file');
     });
 
 
@@ -637,6 +654,15 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
         // Dashboard
         Route::get('/', [ManajerDashboardController::class, 'index'])->name('index');
         Route::get('/distribusi', [ManajerDashboardController::class, 'distribusi'])->name('distribusi');
+
+        Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
+            Route::get('/',                    [SkUjikomController::class, 'index'])    ->name('index');
+            Route::get('/buat/{batchId}',      [SkUjikomController::class, 'create'])   ->name('create');
+            Route::post('/',                   [SkUjikomController::class, 'store'])    ->name('store');
+            Route::get('/{skUjikom}',          [SkUjikomController::class, 'show'])     ->name('show');
+            Route::get('/{skUjikom}/download', [SkUjikomController::class, 'download']) ->name('download');
+
+        });
 
         // Schedule Detail & Result Management
         Route::prefix('/jadwal/{schedule}')->name('jadwal.')->group(function () {

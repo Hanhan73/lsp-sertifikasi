@@ -74,7 +74,7 @@
         <div class="fw-bold">Jadwal Telah Disetujui</div>
         <div class="small text-muted">
             Disetujui oleh {{ $schedule->approvedBy?->name ?? '-' }} pada {{ $schedule->approved_at?->translatedFormat('d M Y H:i') }}.
-            Nomor SK: <strong class="font-monospace">{{ $schedule->sk_number }}</strong>
+            Nomor Surat Tugas: <strong class="font-monospace">{{ $schedule->sk_number }}</strong>
         </div>
         @if($schedule->approval_notes)
         <div class="small mt-1 text-muted"><i class="bi bi-sticky me-1"></i>{{ $schedule->approval_notes }}</div>
@@ -83,7 +83,7 @@
     @if($schedule->hasSk())
     <div class="ms-auto">
         <a href="{{ route('direktur.schedules.sk.download', $schedule) }}" class="btn btn-sm btn-success">
-            <i class="bi bi-download me-1"></i>Unduh SK
+            <i class="bi bi-download me-1"></i>Unduh Surat Tugas
         </a>
         <form action="{{ route('direktur.schedules.sk.regenerate', $schedule) }}" method="POST" class="d-inline ms-1">
             @csrf

@@ -16,6 +16,16 @@
     @endif
 </a>
 
+<a href="{{ route('direktur.sk-ujikom.index') }}"
+   class="nav-link {{ request()->routeIs('direktur.sk-ujikom.*') ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-ruled"></i>
+    SK Hasil Ujikom
+    @php $pendingSkDir = \App\Models\SkHasilUjikom::where('status', 'submitted')->count(); @endphp
+    @if($pendingSkDir > 0)
+    <span class="badge bg-warning text-dark">{{ $pendingSkDir }}</span>
+    @endif
+</a>
+
 <a href="{{ route('profile.show') }}"
    class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
     <i class="bi bi-person-circle"></i>

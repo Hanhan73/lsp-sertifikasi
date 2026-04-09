@@ -100,7 +100,7 @@
         @if($schedule->isApproved() && $schedule->hasSk())
         <a href="{{ route('direktur.schedules.sk.download', $schedule) }}"
            class="btn btn-sm btn-outline-secondary ms-auto">
-            <i class="bi bi-download me-1"></i>Unduh SK
+            <i class="bi bi-download me-1"></i>Unduh Surat Tugas
         </a>
         @endif
     </div>

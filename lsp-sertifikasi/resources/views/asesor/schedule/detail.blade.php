@@ -480,7 +480,7 @@
                                             @if($jawaban?->hasLink())
                                             <a href="{{ $jawaban->gdrive_link }}" target="_blank"
                                             class="badge bg-success text-decoration-none" style="font-size:.7rem;">
-                                                <i class="bi bi-check-circle me-1"></i>Upload
+                                                <i class="bi bi-check-circle me-1"></i>Link GDrive
                                             </a>
                                             @else
                                             <span class="badge bg-light text-muted border" style="font-size:.7rem;">—</span>

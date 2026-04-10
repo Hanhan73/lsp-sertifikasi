@@ -442,7 +442,6 @@
                     @php
                         $obs      = $dist->soalObservasi;
                         $paketDist = $dist->paketSoalObservasi;
-                        {{-- Jika paket di distribusi null, fallback ke semua paket di soalObservasi --}}
                         $paketList = $paketDist ? collect([$paketDist]) : $obs->paket;
                     @endphp
                     <div class="border-bottom px-4 py-3">

@@ -20,21 +20,25 @@
                 {{ $first?->skema?->name ?? '-' }}
             </p>
         </div>
-        @if($skUjikom->isApproved() && $skUjikom->hasSk())
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            {{-- Preview selalu tersedia --}}
+            <a href="{{ route('direktur.sk-ujikom.preview', $skUjikom) }}" target="_blank"
+                class="btn btn-outline-secondary">
+                <i class="bi bi-eye me-1"></i>Preview SK (Draft)
+            </a>
+            @if($skUjikom->isApproved() && $skUjikom->hasSk())
             <form action="{{ route('direktur.sk-ujikom.regenerate', $skUjikom) }}" method="POST"
-                  onsubmit="return confirm('Re-generate ulang PDF SK? File lama akan ditimpa.')">
+                onsubmit="return confirm('Re-generate ulang PDF SK? File lama akan ditimpa.')">
                 @csrf
                 <button type="submit" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-clockwise me-1"></i>Re-generate
                 </button>
             </form>
-            <a href="{{ route('direktur.sk-ujikom.download', $skUjikom) }}"
-               class="btn btn-success">
+            <a href="{{ route('direktur.sk-ujikom.download', $skUjikom) }}" class="btn btn-success">
                 <i class="bi bi-download me-2"></i>Unduh SK PDF
             </a>
+            @endif
         </div>
-        @endif
     </div>
 </div>
 
@@ -55,7 +59,8 @@
     <i class="bi bi-check-circle-fill fs-4"></i>
     <div>
         <div class="fw-semibold">Sudah Disetujui</div>
-        <div class="small">{{ $skUjikom->approved_at?->translatedFormat('d F Y H:i') }} &nbsp;·&nbsp; Dokumen SK telah digenerate</div>
+        <div class="small">{{ $skUjikom->approved_at?->translatedFormat('d F Y H:i') }} &nbsp;·&nbsp; Dokumen SK telah
+            digenerate</div>
     </div>
 </div>
 @elseif($skUjikom->isRejected())
@@ -111,23 +116,22 @@
             <div class="card-body p-0">
                 @foreach($schedules as $s)
                 @php $ba = $s->beritaAcara; @endphp
-                <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style="font-size:.83rem;">
+                <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between"
+                    style="font-size:.83rem;">
                     <div>
                         <div class="fw-semibold">{{ $s->assessment_date->translatedFormat('d M Y') }}</div>
-                        <div class="text-muted">{{ $s->tuk?->name ?? '-' }} &nbsp;·&nbsp; {{ $s->asesor?->nama ?? '-' }}</div>
+                        <div class="text-muted">{{ $s->tuk?->name ?? '-' }} &nbsp;·&nbsp; {{ $s->asesor?->nama ?? '-' }}
+                        </div>
                     </div>
                     @if($ba)
                     <div class="d-flex gap-1">
-                        <a href="{{ route('direktur.jadwal.berita-acara.pdf', $s) }}?preview=1"
-                           target="_blank"
-                           class="btn btn-outline-danger btn-sm py-0 px-2"
-                           title="Lihat PDF BA">
+                        <a href="{{ route('direktur.jadwal.berita-acara.pdf', $s) }}?preview=1" target="_blank"
+                            class="btn btn-outline-danger btn-sm py-0 px-2" title="Lihat PDF BA">
                             <i class="bi bi-file-pdf" style="font-size:.8rem;"></i>
                         </a>
                         @if($ba->file_path)
                         <a href="{{ route('direktur.jadwal.berita-acara.download-file', $s) }}"
-                           class="btn btn-outline-secondary btn-sm py-0 px-2"
-                           title="Download Excel BA">
+                            class="btn btn-outline-secondary btn-sm py-0 px-2" title="Download Excel BA">
                             <i class="bi bi-file-earmark-spreadsheet" style="font-size:.8rem;"></i>
                         </a>
                         @endif
@@ -158,8 +162,8 @@
                 </button>
 
                 {{-- Form Approve (hidden) --}}
-                <form id="formApprove" action="{{ route('direktur.sk-ujikom.approve', $skUjikom) }}"
-                      method="POST" class="d-none">
+                <form id="formApprove" action="{{ route('direktur.sk-ujikom.approve', $skUjikom) }}" method="POST"
+                    class="d-none">
                     @csrf
                     <input type="hidden" name="catatan" id="catatanApprove">
                 </form>
@@ -169,9 +173,12 @@
                     <form action="{{ route('direktur.sk-ujikom.reject', $skUjikom) }}" method="POST">
                         @csrf
                         <div class="mb-2">
-                            <label class="form-label small fw-semibold">Alasan Penolakan <span class="text-danger">*</span></label>
-                            <textarea name="catatan_direktur" class="form-control form-control-sm @error('catatan_direktur') is-invalid @enderror"
-                                      rows="3" placeholder="Jelaskan alasan penolakan...">{{ old('catatan_direktur') }}</textarea>
+                            <label class="form-label small fw-semibold">Alasan Penolakan <span
+                                    class="text-danger">*</span></label>
+                            <textarea name="catatan_direktur"
+                                class="form-control form-control-sm @error('catatan_direktur') is-invalid @enderror"
+                                rows="3"
+                                placeholder="Jelaskan alasan penolakan...">{{ old('catatan_direktur') }}</textarea>
                             @error('catatan_direktur')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror

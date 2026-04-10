@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Direktur;
 use App\Http\Controllers\Controller;
 use App\Models\Asesmen;
 use App\Models\BeritaAcaraAsesi;
-use App\Models\BeritaAcara;
 use App\Models\Schedule;
 use App\Models\SkHasilUjikom;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -62,6 +61,42 @@ class DirekturSkUjikomController extends Controller
         return view('direktur.sk-ujikom.show', compact(
             'skUjikom', 'schedules', 'pesertaKompeten', 'first'
         ));
+    }
+
+    /**
+     * Preview PDF SK tanpa TTD (untuk review direktur sebelum approve).
+     */
+    public function preview(SkHasilUjikom $skUjikom)
+    {
+        $schedules = Schedule::with(['tuk', 'skema', 'asesor.user', 'beritaAcara'])
+            ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $skUjikom->collective_batch_id))
+            ->get();
+
+        $scheduleIds = $schedules->pluck('id');
+
+        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->where('rekomendasi', 'K')
+            ->get()
+            ->map(fn($baa) => $baa->asesmen)
+            ->filter();
+
+        $first = Asesmen::with(['tuk', 'skema'])
+            ->where('collective_batch_id', $skUjikom->collective_batch_id)
+            ->first();
+
+        $pdf = Pdf::loadView('pdf.sk-hasil-ujikom', [
+            'skUjikom'        => $skUjikom,
+            'pesertaKompeten' => $pesertaKompeten,
+            'schedules'       => $schedules,
+            'first'           => $first,
+            'direktur'        => auth()->user(),
+            'preview'         => true,   // ← tidak load TTD
+        ])->setPaper('A4', 'portrait');
+
+        $filename = 'DRAFT_SK_' . $skUjikom->collective_batch_id . '.pdf';
+
+        return $pdf->stream($filename);
     }
 
     /**
@@ -216,47 +251,5 @@ class DirekturSkUjikomController extends Controller
         Storage::disk('private')->put($path, $pdf->output());
 
         return $path;
-    }
-
-    public function pdfBeritaAcara(Schedule $schedule)
-    {
-        $ba = $schedule->beritaAcara;
-        abort_unless($ba, 404, 'Berita acara belum tersedia.');
-    
-        $schedule->load([
-            'skema', 'tuk', 'asesor.user',
-            'asesmens',
-            'beritaAcara.asesis.asesmen',
-        ]);
-    
-        $rekMap = $ba->asesis->pluck('rekomendasi', 'asesmen_id');
-    
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.berita-acara', [
-            'schedule'    => $schedule,
-            'beritaAcara' => $ba,
-            'rekMap'      => $rekMap,
-            'asesor'      => $schedule->asesor,
-        ])->setPaper('A4', 'portrait');
-    
-        $skemaName = str_replace([' ', '/', '\\'], ['_', '-', '-'], $schedule->skema->name);
-        $filename  = 'Berita_Acara_' . $skemaName . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
-    
-        return request()->boolean('preview')
-            ? $pdf->stream($filename)
-            : $pdf->download($filename);
-    }
-    
-    public function downloadFileBeritaAcara(Schedule $schedule)
-    {
-        $ba = $schedule->beritaAcara;
-        abort_unless($ba && $ba->file_path, 404, 'File tidak tersedia.');
-        abort_unless(
-            \Illuminate\Support\Facades\Storage::disk('private')->exists($ba->file_path),
-            404,
-            'File tidak ditemukan di storage.'
-        );
-    
-        return \Illuminate\Support\Facades\Storage::disk('private')
-            ->download($ba->file_path, $ba->file_name);
     }
 }

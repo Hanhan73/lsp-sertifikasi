@@ -275,11 +275,21 @@
 
     {{-- ══ TTD ══ --}}
     @php
+    $isPreview = $preview ?? false;
     $sigPath = storage_path('app/private/direktur/ttd_sk.png');
-    $stampPath = storage_path('app/private/direktur/stamp.png');
-    $sigSrc = file_exists($sigPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath)) : '';
-    $stampSrc = file_exists($stampPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($stampPath)) : '';
+    $sigSrc = (!$isPreview && file_exists($sigPath))
+    ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
+    : '';
     @endphp
+
+    {{-- Watermark DRAFT — hanya saat preview --}}
+    @if($isPreview)
+    <div style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%) rotate(-30deg);
+                font-size:80pt; font-weight:bold; color:rgba(180,0,0,0.07);
+                letter-spacing:6pt; white-space:nowrap;">
+        DRAFT
+    </div>
+    @endif
 
     <table style="width:100%; border:none; border-collapse:collapse;">
         <tr>

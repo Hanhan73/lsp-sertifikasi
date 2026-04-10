@@ -439,48 +439,61 @@
                     </div>
                     @else
                     @foreach($distribusiObservasi as $dist)
-                    @php $obs = $dist->soalObservasi; @endphp
+                    @php
+                        $obs      = $dist->soalObservasi;
+                        $paketDist = $dist->paketSoalObservasi;
+                        {{-- Jika paket di distribusi null, fallback ke semua paket di soalObservasi --}}
+                        $paketList = $paketDist ? collect([$paketDist]) : $obs->paket;
+                    @endphp
                     <div class="border-bottom px-4 py-3">
                         <div class="fw-semibold mb-2" style="font-size:.875rem;">
                             <i class="bi bi-file-earmark-pdf text-danger me-2"></i>{{ $obs->judul }}
+                            @if(!$paketDist)
+                            <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Paket belum dipilih di distribusi
+                            </span>
+                            @endif
                         </div>
+                        @if($paketList->isEmpty())
+                        <div class="text-muted small"><i class="bi bi-info-circle me-1"></i>Belum ada paket untuk observasi ini.</div>
+                        @else
                         <div class="table-responsive">
                             <table class="table table-sm align-middle mb-0 table-bordered" style="font-size:.82rem;">
-                            @php $paketDist = $dist->paketSoalObservasi; @endphp
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="min-width:160px;">Asesi</th>
-                                    @if($paketDist)
-                                    <th class="text-center">Paket {{ $paketDist->kode_paket }}</th>
-                                    @endif
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($asesmens as $asesmen)
-                                <tr>
-                                    <td><div class="fw-semibold">{{ $asesmen->full_name }}</div></td>
-                                    @if($paketDist)
-                                    @php
-                                        $jawaban = $asesmen->jawabanObservasi
-                                            ->where('paket_soal_observasi_id', $paketDist->id)
-                                            ->first();
-                                    @endphp
-                                    <td class="text-center">
-                                        @if($jawaban?->hasLink())
-                                        <a href="{{ $jawaban->gdrive_link }}" target="_blank"
-                                        class="badge bg-success text-decoration-none" style="font-size:.7rem;">
-                                            <i class="bi bi-check-circle me-1"></i>Upload
-                                        </a>
-                                        @else
-                                        <span class="badge bg-light text-muted border" style="font-size:.7rem;">—</span>
-                                        @endif
-                                    </td>
-                                    @endif
-                                </tr>
-                                @endforeach
-                            </tbody>
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="min-width:160px;">Asesi</th>
+                                        @foreach($paketList as $paket)
+                                        <th class="text-center">Paket {{ $paket->kode_paket }}</th>
+                                        @endforeach
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($asesmens as $asesmen)
+                                    <tr>
+                                        <td><div class="fw-semibold">{{ $asesmen->full_name }}</div></td>
+                                        @foreach($paketList as $paket)
+                                        @php
+                                            $jawaban = $asesmen->jawabanObservasi
+                                                ->where('paket_soal_observasi_id', $paket->id)
+                                                ->first();
+                                        @endphp
+                                        <td class="text-center">
+                                            @if($jawaban?->hasLink())
+                                            <a href="{{ $jawaban->gdrive_link }}" target="_blank"
+                                            class="badge bg-success text-decoration-none" style="font-size:.7rem;">
+                                                <i class="bi bi-check-circle me-1"></i>Upload
+                                            </a>
+                                            @else
+                                            <span class="badge bg-light text-muted border" style="font-size:.7rem;">—</span>
+                                            @endif
+                                        </td>
+                                        @endforeach
+                                    </tr>
+                                    @endforeach
+                                </tbody>
                             </table>
                         </div>
+                        @endif
                     </div>
                     @endforeach
                     @endif
@@ -1106,7 +1119,6 @@ const CSRF         = document.querySelector('meta[name="csrf-token"]')?.content;
 const TOTAL_ASESI  = {{ $totalAsesi }};
 
 document.addEventListener('DOMContentLoaded', function () {
-    // ── Restore active tab from URL hash ──
     const hash = window.location.hash;
     if (hash) {
         const tab = document.querySelector(`[data-bs-target="${hash}"]`);
@@ -1118,25 +1130,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // ── Init semua signature pad sekaligus ──
     SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
     SigPadManager.init('ba-asesor-ttd',    @json($asesor?->user?->signature_image));
     SigPadManager.init('asesor-ttd',       @json($asesor?->user?->signature_image));
-
-        // Patch guard untuk _useSaved & _switchToNew
-    const _origUseSaved    = SigPadManager._useSaved.bind(SigPadManager);
-    const _origSwitchToNew = SigPadManager._switchToNew.bind(SigPadManager);
-
-    SigPadManager._useSaved = function(padId) {
-        if (!SigPadManager._stateHas(padId)) SigPadManager.init(padId, null);
-        _origUseSaved(padId);
-    };
-
-    SigPadManager._switchToNew = function(padId) {
-        if (!SigPadManager._stateHas(padId)) SigPadManager.init(padId, null);
-        _origSwitchToNew(padId);
-    };
 });
+
 
 async function resetSubmitTeori(asesmenId, namaAsesi) {
     const result = await Swal.fire({

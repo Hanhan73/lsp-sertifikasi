@@ -20,12 +20,17 @@
                 {{ $first?->skema?->name ?? '-' }}
             </p>
         </div>
-        @if($skUjikom->isApproved() && $skUjikom->hasSk())
-        <a href="{{ route('manajer-sertifikasi.sk-ujikom.download', $skUjikom) }}"
-           class="btn btn-success">
-            <i class="bi bi-download me-2"></i>Unduh SK PDF
-        </a>
-        @endif
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('manajer-sertifikasi.sk-ujikom.preview', $skUjikom) }}" target="_blank"
+                class="btn btn-outline-secondary">
+                <i class="bi bi-eye me-1"></i>Preview SK (Draft)
+            </a>
+            @if($skUjikom->isApproved() && $skUjikom->hasSk())
+            <a href="{{ route('manajer-sertifikasi.sk-ujikom.download', $skUjikom) }}" class="btn btn-success">
+                <i class="bi bi-download me-2"></i>Unduh SK PDF
+            </a>
+            @endif
+        </div>
     </div>
 </div>
 
@@ -38,13 +43,15 @@
 {{-- Status Banner --}}
 <div class="alert border-0 shadow-sm mb-4 d-flex align-items-center gap-3
     {{ $skUjikom->isApproved() ? 'alert-success' : ($skUjikom->isRejected() ? 'alert-danger' : 'alert-warning') }}">
-    <i class="bi bi-{{ $skUjikom->isApproved() ? 'check-circle-fill' : ($skUjikom->isRejected() ? 'x-circle-fill' : 'hourglass-split') }} fs-4"></i>
+    <i
+        class="bi bi-{{ $skUjikom->isApproved() ? 'check-circle-fill' : ($skUjikom->isRejected() ? 'x-circle-fill' : 'hourglass-split') }} fs-4"></i>
     <div>
         <div class="fw-semibold">{{ $skUjikom->status_label }}</div>
         @if($skUjikom->isSubmitted())
         <div class="small">Dikirim {{ $skUjikom->submitted_at?->translatedFormat('d M Y H:i') }}</div>
         @elseif($skUjikom->isApproved())
-        <div class="small">Disetujui oleh {{ $skUjikom->approvedBy?->name ?? '-' }} pada {{ $skUjikom->approved_at?->translatedFormat('d M Y H:i') }}</div>
+        <div class="small">Disetujui oleh {{ $skUjikom->approvedBy?->name ?? '-' }} pada
+            {{ $skUjikom->approved_at?->translatedFormat('d M Y H:i') }}</div>
         @elseif($skUjikom->isRejected())
         <div class="small mt-1"><strong>Alasan:</strong> {{ $skUjikom->catatan_direktur }}</div>
         @endif
@@ -75,7 +82,8 @@
                     </tr>
                     <tr>
                         <td class="text-muted">Status</td>
-                        <td><span class="badge bg-{{ $skUjikom->status_badge }}">{{ $skUjikom->status_label }}</span></td>
+                        <td><span class="badge bg-{{ $skUjikom->status_badge }}">{{ $skUjikom->status_label }}</span>
+                        </td>
                     </tr>
                     <tr>
                         <td class="text-muted">Diajukan</td>
@@ -93,7 +101,8 @@
             <div class="card-body p-0">
                 @foreach($schedules as $s)
                 @php $ba = $s->beritaAcara; @endphp
-                <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between" style="font-size:.83rem;">
+                <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between"
+                    style="font-size:.83rem;">
                     <div>
                         <div class="fw-semibold">{{ $s->assessment_date->translatedFormat('d M Y') }}</div>
                         <div class="text-muted">{{ $s->asesor?->nama ?? '-' }}</div>
@@ -101,15 +110,12 @@
                     @if($ba)
                     <div class="d-flex gap-1">
                         <a href="{{ route('manajer-sertifikasi.jadwal.berita-acara.pdf', $s) }}?preview=1"
-                           target="_blank"
-                           class="btn btn-outline-danger btn-sm py-0 px-2"
-                           title="Lihat PDF BA">
+                            target="_blank" class="btn btn-outline-danger btn-sm py-0 px-2" title="Lihat PDF BA">
                             <i class="bi bi-file-pdf" style="font-size:.8rem;"></i>
                         </a>
                         @if($ba->file_path)
                         <a href="{{ route('manajer-sertifikasi.jadwal.rekap.download-ba', $s) }}"
-                           class="btn btn-outline-secondary btn-sm py-0 px-2"
-                           title="Download Excel BA">
+                            class="btn btn-outline-secondary btn-sm py-0 px-2" title="Download Excel BA">
                             <i class="bi bi-file-earmark-spreadsheet" style="font-size:.8rem;"></i>
                         </a>
                         @endif

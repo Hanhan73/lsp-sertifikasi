@@ -627,14 +627,15 @@ Route::prefix('direktur')
             Route::get('/{schedule}/sk',       [DirekturScheduleController::class, 'downloadSk'])->name('sk.download');
             Route::post('/{schedule}/sk/regenerate', [DirekturScheduleController::class, 'regenerateSk'])->name('sk.regenerate');
         });
+
         Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
             Route::get('/',                          [DirekturSkUjikomController::class, 'index'])   ->name('index');
             Route::get('/{skUjikom}',                [DirekturSkUjikomController::class, 'show'])    ->name('show');
+            Route::get('/{skUjikom}/preview',        [DirekturSkUjikomController::class, 'preview']) ->name('preview');
             Route::post('/{skUjikom}/approve',       [DirekturSkUjikomController::class, 'approve']) ->name('approve');
             Route::post('/{skUjikom}/reject',        [DirekturSkUjikomController::class, 'reject'])  ->name('reject');
             Route::get('/{skUjikom}/download',       [DirekturSkUjikomController::class, 'download'])->name('download');
             Route::post('/{skUjikom}/regenerate',     [DirekturSkUjikomController::class, 'regenerate'])->name('regenerate');
-
         });
 
         Route::get('/jadwal/{schedule}/berita-acara/pdf', [DirekturSkUjikomController::class, 'pdfBeritaAcara'])
@@ -659,9 +660,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/',                    [SkUjikomController::class, 'index'])    ->name('index');
             Route::get('/buat/{batchId}',      [SkUjikomController::class, 'create'])   ->name('create');
             Route::post('/',                   [SkUjikomController::class, 'store'])    ->name('store');
+            Route::get('/{skUjikom}/preview',    [SkUjikomController::class, 'preview'])  ->name('preview');
             Route::get('/{skUjikom}',          [SkUjikomController::class, 'show'])     ->name('show');
             Route::get('/{skUjikom}/download', [SkUjikomController::class, 'download']) ->name('download');
-
         });
 
         // Schedule Detail & Result Management

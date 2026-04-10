@@ -111,34 +111,37 @@ class SkUjikomController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'collective_batch_id' => 'required|string',
-            'tanggal_pleno'       => 'required|date',
-            'tempat_dikeluarkan'  => 'required|string|max:100',
+            'collective_batch_id'  => 'required|string',
+            'nomor_sk'             => 'required|string|max:100',
+            'tanggal_pleno'        => 'required|date',
+            'tempat_dikeluarkan'   => 'required|string|max:100',
         ], [
+            'nomor_sk.required'           => 'Nomor SK wajib diisi.',
             'tanggal_pleno.required'      => 'Tanggal pleno wajib diisi.',
             'tempat_dikeluarkan.required' => 'Tempat dikeluarkan wajib diisi.',
         ]);
- 
+
         $batchId = $request->collective_batch_id;
- 
+
+        // Guard: jangan duplikat
         abort_if(
             SkHasilUjikom::where('collective_batch_id', $batchId)->exists(),
             422,
             'SK untuk batch ini sudah diajukan.'
         );
- 
+
         $sk = SkHasilUjikom::create([
             'collective_batch_id' => $batchId,
-            'nomor_sk'            => SkHasilUjikom::generateNomorSk(),   // ← otomatis
+            'nomor_sk'            => $request->nomor_sk,
             'tanggal_pleno'       => $request->tanggal_pleno,
             'tempat_dikeluarkan'  => $request->tempat_dikeluarkan,
             'status'              => 'submitted',
             'submitted_at'        => now(),
             'created_by'          => Auth::id(),
         ]);
- 
+
         return redirect()->route('manajer-sertifikasi.sk-ujikom.show', $sk)
-            ->with('success', 'Pengajuan SK berhasil dikirim ke Direktur. Nomor SK: ' . $sk->nomor_sk);
+            ->with('success', 'Pengajuan SK berhasil dikirim ke Direktur.');
     }
 
     /**
@@ -166,6 +169,40 @@ class SkUjikomController extends Controller
         return view('manajer-sertifikasi.sk-ujikom.show', compact(
             'skUjikom', 'schedules', 'pesertaKompeten', 'first'
         ));
+    }
+
+    /**
+     * Preview PDF SK tanpa TTD (draft sebelum approved).
+     */
+    public function preview(SkHasilUjikom $skUjikom)
+    {
+        $schedules = Schedule::with(['tuk', 'skema', 'asesor.user', 'beritaAcara'])
+            ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $skUjikom->collective_batch_id))
+            ->get();
+
+        $scheduleIds = $schedules->pluck('id');
+
+        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->where('rekomendasi', 'K')
+            ->get()
+            ->map(fn($baa) => $baa->asesmen)
+            ->filter();
+
+        $first = Asesmen::with(['tuk', 'skema'])
+            ->where('collective_batch_id', $skUjikom->collective_batch_id)
+            ->first();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sk-hasil-ujikom', [
+            'skUjikom'        => $skUjikom,
+            'pesertaKompeten' => $pesertaKompeten,
+            'schedules'       => $schedules,
+            'first'           => $first,
+            'direktur'        => Auth::user(),
+            'preview'         => true,
+        ])->setPaper('A4', 'portrait');
+
+        return $pdf->stream('DRAFT_SK_' . $skUjikom->collective_batch_id . '.pdf');
     }
 
     /**

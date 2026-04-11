@@ -33,7 +33,7 @@ class AdminMandiriVerificationController extends Controller
             ->keyBy(fn($a) => $a->user->email ?? '');
 
         $asesmens->each(function ($a) use ($kolektifEmails) {
-            $email = $a->user->email ?? '';
+            $email = $a->asesmens->email ?? '';
             $a->_kolektif_batch = $kolektifEmails->get($email)?->collective_batch_id ?? null;
         });
 

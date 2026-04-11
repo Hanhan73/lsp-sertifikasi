@@ -38,9 +38,8 @@
         </div>
         @else
 
-        {{-- Hitung yang duplikat --}}
         @php
-            $dupCount = $asesmens->filter(fn($a) => $a->_kolektif_batch ?? null)->count();
+            $dupCount = $asesmens->filter(fn($a) => !empty($a->_kolektif_batch))->count();
         @endphp
 
         @if($dupCount > 0)
@@ -49,8 +48,9 @@
             <div>
                 <strong>{{ $dupCount }} asesi diduga sudah terdaftar secara kolektif!</strong>
                 <p class="mb-0 small mt-1">
-                    Email mereka ditemukan di pendaftaran batch kolektif. Kemungkinan mereka mendaftar ulang mandiri karena tidak tahu sudah didaftarkan oleh TUK.
-                    Tandai dengan <span class="badge bg-danger">Duplikat Kolektif</span> — periksa dahulu sebelum memverifikasi.
+                    Nama mereka ditemukan di pendaftaran batch kolektif. Kemungkinan mereka mendaftar ulang secara
+                    mandiri karena tidak tahu sudah didaftarkan oleh TUK. Baris yang bermasalah ditandai
+                    <span class="badge bg-danger">Duplikat Kolektif</span> — periksa dahulu sebelum memverifikasi.
                     Pertimbangkan untuk menghapus akun mandiri tersebut.
                 </p>
             </div>
@@ -58,8 +58,8 @@
         @endif
 
         <div class="table-responsive">
-            <table class="table table-hover data-table">
-                <thead>
+            <table class="table table-hover data-table align-middle">
+                <thead class="table-light">
                     <tr>
                         <th>No Reg</th>
                         <th>Nama</th>
@@ -75,29 +75,28 @@
                     @foreach($asesmens as $asesmen)
                     @php
                         $kolektifBatch = $asesmen->_kolektif_batch ?? null;
+                        $kolektifTuk   = $asesmen->_kolektif_tuk   ?? null;
                         $isDuplikat    = !empty($kolektifBatch);
                         $estimatedFee  = $asesmen->skema->fee + ($asesmen->training_flag ? 1500000 : 0);
                     @endphp
                     <tr class="{{ $isDuplikat ? 'table-danger' : '' }}" data-asesmen-id="{{ $asesmen->id }}">
                         <td><strong>#{{ $asesmen->id }}</strong></td>
                         <td>
-                            {{ $asesmen->full_name }}
+                            <div class="fw-semibold">{{ $asesmen->full_name }}</div>
                             @if($isDuplikat)
-                            <br>
-                            <span class="badge bg-danger mt-1">
-                                <i class="bi bi-exclamation-triangle me-1"></i>Duplikat Kolektif
-                            </span>
-                            <br>
-                            <small class="text-muted">
-                                Sudah di batch: <code>{{ $kolektifBatch }}</code>
-                            </small>
+                                <span class="badge bg-danger mt-1">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Duplikat Kolektif
+                                </span>
+                                <div class="small text-muted mt-1">
+                                    Batch: <code>{{ $kolektifBatch }}</code>
+                                    @if($kolektifTuk)
+                                        — {{ $kolektifTuk }}
+                                    @endif
+                                </div>
                             @endif
                         </td>
                         <td>
-                            {{ $asesmen->user->email }}
-                            @if($isDuplikat)
-                            <br><small class="text-danger"><i class="bi bi-link-45deg"></i> Email ada di kolektif</small>
-                            @endif
+                            <small>{{ $asesmen->user->email ?? '-' }}</small>
                         </td>
                         <td>
                             <span class="badge bg-primary">{{ $asesmen->skema->name }}</span>
@@ -117,9 +116,11 @@
                             <br><small class="text-muted">+ Pelatihan</small>
                             @endif
                         </td>
-                        <td>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                         <td>
-                            <div class="d-flex flex-column gap-1">
+                            <small>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex flex-column gap-1" style="min-width: 110px;">
                                 <a href="{{ route('admin.mandiri.verify', $asesmen) }}"
                                     class="btn btn-sm btn-success"
                                     data-bs-toggle="tooltip" title="Verifikasi & Tetapkan Biaya">
@@ -144,12 +145,18 @@
 
 @push('scripts')
 <script>
-$(document).ready(function() {
+$(document).ready(function () {
     $('.data-table').DataTable({
         language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' },
         order: [[6, 'asc']],
         pageLength: 25,
-        columnDefs: [{ orderable: false, targets: 7 }]
+        columnDefs: [{ orderable: false, targets: 7 }],
+        // Duplikat naik ke atas — sort merah dulu
+        rowCallback: function (row, data) {
+            if ($(row).hasClass('table-danger')) {
+                $(row).prependTo($(row).closest('tbody'));
+            }
+        }
     });
 
     $('[data-bs-toggle="tooltip"]').tooltip();
@@ -188,11 +195,9 @@ async function hapusMandiri(asesmenId, nama) {
                 showConfirmButton: false,
             });
 
-            // Hapus row dari tabel
             const row = document.querySelector(`tr[data-asesmen-id="${asesmenId}"]`);
             if (row) {
-                const dt = $('.data-table').DataTable();
-                dt.row(row).remove().draw();
+                $('.data-table').DataTable().row(row).remove().draw();
             } else {
                 location.reload();
             }

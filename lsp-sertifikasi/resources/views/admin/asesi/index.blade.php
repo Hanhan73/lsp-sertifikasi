@@ -188,7 +188,8 @@
                             <tr data-status="{{ $asesmen->status }}"
                                 data-type="{{ $asesmen->is_collective ? 'collective' : 'mandiri' }}"
                                 data-tuk="{{ $asesmen->tuk_id }}"
-                                data-skema="{{ $asesmen->skema_id }}">
+                                data-skema="{{ $asesmen->skema_id }}"
+                                data-asesmen-id="{{ $asesmen->id }}">
                                 <td><strong>#{{ $asesmen->id }}</strong></td>
                                 <td>
                                     {{ $asesmen->full_name ?? $asesmen->user->name ?? '-' }}
@@ -244,6 +245,13 @@
                                         class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Lihat Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
+                                    @if(!$asesmen->is_collective && !in_array($asesmen->status, ['certified', 'assessed', 'asesmen_started']))
+                                    <button class="btn btn-sm btn-danger ms-1"
+                                        onclick="hapusMandiri({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name ?? $asesmen->user->name) }}')"
+                                        data-bs-toggle="tooltip" title="Hapus Akun Mandiri">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    @endif
                                 </td>
                             </tr>
                             @empty
@@ -268,7 +276,6 @@
         <div class="row g-3">
             @forelse($tuks as $tuk)
             @php
-                // Ambil semua batch unik milik TUK ini
                 $tukBatches = $asesmens
                     ->where('tuk_id', $tuk->id)
                     ->whereNotNull('collective_batch_id')
@@ -299,7 +306,6 @@
                     </div>
                     <div class="card-body p-0">
 
-                        {{-- Mandiri summary jika ada --}}
                         @if($mandiriCount > 0)
                         <div class="px-3 py-2 border-bottom bg-light">
                             <small class="text-muted fw-semibold">MANDIRI</small>
@@ -314,7 +320,6 @@
                         </div>
                         @endif
 
-                        {{-- Daftar batch kolektif --}}
                         @if($tukBatches->isEmpty())
                             <div class="text-center text-muted py-3">
                                 <small>Tidak ada batch kolektif</small>
@@ -325,13 +330,10 @@
                                 @php
                                     $first       = $members->first();
                                     $count       = $members->count();
-                                    $statuses    = $members->pluck('status')->unique()->values();
                                     $allComplete = $members->every(fn($m) => $m->status === 'data_completed');
                                     $anyStarted  = $members->contains(
                                         fn($m) => !in_array($m->status, ['registered','data_completed'])
                                     );
-
-                                    // Badge warna batch
                                     $batchBadge = $anyStarted ? 'success' : ($allComplete ? 'warning' : 'secondary');
                                     $batchLabel = $anyStarted ? 'Berjalan' : ($allComplete ? 'Siap Mulai' : 'Dalam Proses');
                                 @endphp
@@ -379,7 +381,7 @@
 
 </div>
 
-{{-- Detail Modal (untuk tombol AJAX jika masih dipakai) --}}
+{{-- Detail Modal --}}
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
@@ -403,6 +405,8 @@
 
 @push('scripts')
 <script>
+let dtTable = null;
+
 $(document).ready(function () {
 
     $('[data-bs-toggle="tooltip"]').tooltip();
@@ -411,7 +415,7 @@ $(document).ready(function () {
         $('#asesi-table').DataTable().destroy();
     }
 
-    const table = $('#asesi-table').DataTable({
+    dtTable = $('#asesi-table').DataTable({
         language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
         order: [[10, 'desc']],
         pageLength: 25,
@@ -425,7 +429,7 @@ $(document).ready(function () {
         const tuk    = $('#filter-tuk').val();
         const skema  = $('#filter-skema').val();
 
-        const row      = table.row(dataIndex).node();
+        const row       = dtTable.row(dataIndex).node();
         const rowStatus = $(row).data('status');
         const rowType   = $(row).data('type');
         const rowTuk    = $(row).data('tuk');
@@ -440,7 +444,7 @@ $(document).ready(function () {
     });
 
     $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function () {
-        table.draw();
+        dtTable.draw();
         updateFilteredExportLink();
     });
 
@@ -455,14 +459,13 @@ $(document).ready(function () {
     }
 });
 
-// Update link "Export sesuai filter aktif" berdasarkan filter yang dipilih
 function updateFilteredExportLink() {
     const baseUrl = '{{ route("admin.asesi.export") }}';
     const params  = new URLSearchParams();
 
-    const status = $('#filter-status').val();
-    const type   = $('#filter-type').val();
-    const tukId  = $('#filter-tuk').val();
+    const status  = $('#filter-status').val();
+    const type    = $('#filter-type').val();
+    const tukId   = $('#filter-tuk').val();
     const skemaId = $('#filter-skema').val();
 
     if (status)  params.set('status',   status);
@@ -470,16 +473,64 @@ function updateFilteredExportLink() {
     if (tukId)   params.set('tuk_id',  tukId);
     if (skemaId) params.set('skema_id', skemaId);
 
-    const qs = params.toString();
+    const qs  = params.toString();
     const url = qs ? baseUrl + '?' + qs : baseUrl;
 
     $('#export-filtered-link').attr('href', url);
 
-    // Highlight jika ada filter aktif
     if (qs) {
         $('#export-filtered-link').removeClass('text-muted').addClass('text-primary fw-semibold');
     } else {
         $('#export-filtered-link').addClass('text-muted').removeClass('text-primary fw-semibold');
+    }
+}
+
+// ── Hapus Akun Mandiri ──────────────────────────────────────
+async function hapusMandiri(asesmenId, nama) {
+    const result = await Swal.fire({
+        title: 'Hapus Akun Mandiri?',
+        html: `Akun <strong>${nama}</strong> (Mandiri) akan dihapus permanen beserta seluruh datanya.<br>
+               <span class="text-danger small fw-semibold">Tindakan ini tidak bisa dibatalkan!</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus Permanen',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc3545',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/admin/asesi/${asesmenId}/hapus-mandiri`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Dihapus!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            // Hapus row dari DataTable tanpa reload
+            const row = document.querySelector(`tr[data-asesmen-id="${asesmenId}"]`);
+            if (row && dtTable) {
+                dtTable.row(row).remove().draw();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
     }
 }
 </script>

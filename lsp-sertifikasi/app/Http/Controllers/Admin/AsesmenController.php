@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 /**
  * AsesmenController
@@ -646,6 +647,50 @@ public function updateEmail(Request $request, Asesmen $asesmen)
         'success' => true,
         'message' => 'Email berhasil diubah. Asesi akan diminta login ulang dan verifikasi email baru.',
     ]);
+}
+
+
+public function destroyMandiri(Asesmen $asesmen)
+{
+    // Guard: hanya boleh hapus mandiri
+    if ($asesmen->is_collective) {
+        return response()->json(['success' => false, 'message' => 'Asesi kolektif tidak bisa dihapus lewat sini.'], 422);
+    }
+
+    // Guard: jangan hapus yang sudah certified atau sedang asesmen
+    if (in_array($asesmen->status, ['certified', 'assessed', 'asesmen_started'])) {
+        return response()->json(['success' => false, 'message' => 'Asesi dengan status ' . $asesmen->status_label . ' tidak bisa dihapus.'], 422);
+    }
+
+    DB::beginTransaction();
+    try {
+        $nama = $asesmen->full_name ?? $asesmen->user->name;
+
+        // Hapus file storage
+        foreach (['photo_path', 'ktp_path', 'document_path', 'pre_assessment_file'] as $col) {
+            if ($asesmen->$col) {
+                Storage::disk('public')->delete($asesmen->$col);
+            }
+        }
+
+        // Hapus user-nya juga (cascade akan hapus asesmen via FK, atau manual)
+        $user = $asesmen->user;
+        $asesmen->delete();
+        if ($user) {
+            $user->delete();
+        }
+
+        DB::commit();
+
+        Log::info("[ADMIN] Hapus akun mandiri: {$nama} (Asesmen #{$asesmen->id}) oleh Admin #" . auth()->id());
+
+        return response()->json(['success' => true, 'message' => "Akun mandiri {$nama} berhasil dihapus."]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error destroyMandiri: ' . $e->getMessage());
+        return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+    }
 }
 
 }

@@ -24,6 +24,19 @@ class AdminMandiriVerificationController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
+        // Cek tiap asesi mandiri apakah emailnya ada di kolektif
+        $kolektifEmails = Asesmen::where('is_collective', true)
+            ->whereNotNull('collective_batch_id')
+            ->whereIn('user_id', $asesmens->pluck('user_id'))
+            ->with('user')
+            ->get()
+            ->keyBy(fn($a) => $a->user->email ?? '');
+
+        $asesmens->each(function ($a) use ($kolektifEmails) {
+            $email = $a->user->email ?? '';
+            $a->_kolektif_batch = $kolektifEmails->get($email)?->collective_batch_id ?? null;
+        });
+
         return view('admin.mandiri.index', compact('asesmens'));
     }
 

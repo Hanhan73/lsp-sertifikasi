@@ -37,6 +37,26 @@
             <p class="text-muted">Tidak ada data asesi mandiri yang menunggu verifikasi saat ini.</p>
         </div>
         @else
+
+        {{-- Hitung yang duplikat --}}
+        @php
+            $dupCount = $asesmens->filter(fn($a) => $a->_kolektif_batch ?? null)->count();
+        @endphp
+
+        @if($dupCount > 0)
+        <div class="alert alert-warning d-flex gap-3 align-items-start mb-4">
+            <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
+            <div>
+                <strong>{{ $dupCount }} asesi diduga sudah terdaftar secara kolektif!</strong>
+                <p class="mb-0 small mt-1">
+                    Email mereka ditemukan di pendaftaran batch kolektif. Kemungkinan mereka mendaftar ulang mandiri karena tidak tahu sudah didaftarkan oleh TUK.
+                    Tandai dengan <span class="badge bg-danger">Duplikat Kolektif</span> — periksa dahulu sebelum memverifikasi.
+                    Pertimbangkan untuk menghapus akun mandiri tersebut.
+                </p>
+            </div>
+        </div>
+        @endif
+
         <div class="table-responsive">
             <table class="table table-hover data-table">
                 <thead>
@@ -53,10 +73,32 @@
                 </thead>
                 <tbody>
                     @foreach($asesmens as $asesmen)
-                    <tr>
+                    @php
+                        $kolektifBatch = $asesmen->_kolektif_batch ?? null;
+                        $isDuplikat    = !empty($kolektifBatch);
+                        $estimatedFee  = $asesmen->skema->fee + ($asesmen->training_flag ? 1500000 : 0);
+                    @endphp
+                    <tr class="{{ $isDuplikat ? 'table-danger' : '' }}" data-asesmen-id="{{ $asesmen->id }}">
                         <td><strong>#{{ $asesmen->id }}</strong></td>
-                        <td>{{ $asesmen->full_name }}</td>
-                        <td>{{ $asesmen->user->email }}</td>
+                        <td>
+                            {{ $asesmen->full_name }}
+                            @if($isDuplikat)
+                            <br>
+                            <span class="badge bg-danger mt-1">
+                                <i class="bi bi-exclamation-triangle me-1"></i>Duplikat Kolektif
+                            </span>
+                            <br>
+                            <small class="text-muted">
+                                Sudah di batch: <code>{{ $kolektifBatch }}</code>
+                            </small>
+                            @endif
+                        </td>
+                        <td>
+                            {{ $asesmen->user->email }}
+                            @if($isDuplikat)
+                            <br><small class="text-danger"><i class="bi bi-link-45deg"></i> Email ada di kolektif</small>
+                            @endif
+                        </td>
                         <td>
                             <span class="badge bg-primary">{{ $asesmen->skema->name }}</span>
                         </td>
@@ -70,9 +112,6 @@
                             @endif
                         </td>
                         <td>
-                            @php
-                            $estimatedFee = $asesmen->skema->fee + ($asesmen->training_flag ? 1500000 : 0);
-                            @endphp
                             <strong>Rp {{ number_format($estimatedFee, 0, ',', '.') }}</strong>
                             @if($asesmen->training_flag)
                             <br><small class="text-muted">+ Pelatihan</small>
@@ -80,10 +119,18 @@
                         </td>
                         <td>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</td>
                         <td>
-                            <a href="{{ route('admin.mandiri.verify', $asesmen) }}" class="btn btn-sm btn-success"
-                                data-bs-toggle="tooltip" title="Verifikasi & Tetapkan Biaya">
-                                <i class="bi bi-check-circle"></i> Verifikasi
-                            </a>
+                            <div class="d-flex flex-column gap-1">
+                                <a href="{{ route('admin.mandiri.verify', $asesmen) }}"
+                                    class="btn btn-sm btn-success"
+                                    data-bs-toggle="tooltip" title="Verifikasi & Tetapkan Biaya">
+                                    <i class="bi bi-check-circle"></i> Verifikasi
+                                </a>
+                                <button class="btn btn-sm btn-danger"
+                                    onclick="hapusMandiri({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name) }}')"
+                                    data-bs-toggle="tooltip" title="Hapus akun mandiri ini">
+                                    <i class="bi bi-trash"></i> Hapus
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     @endforeach
@@ -99,16 +146,62 @@
 <script>
 $(document).ready(function() {
     $('.data-table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json'
-        },
-        order: [
-            [6, 'asc']
-        ], // Sort by registration date
-        pageLength: 25
+        language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' },
+        order: [[6, 'asc']],
+        pageLength: 25,
+        columnDefs: [{ orderable: false, targets: 7 }]
     });
 
     $('[data-bs-toggle="tooltip"]').tooltip();
 });
+
+async function hapusMandiri(asesmenId, nama) {
+    const result = await Swal.fire({
+        title: 'Hapus Akun Mandiri?',
+        html: `Akun <strong>${nama}</strong> akan dihapus permanen beserta seluruh datanya.<br>
+               <span class="text-danger small fw-semibold">Tindakan ini tidak bisa dibatalkan!</span>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus Permanen',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc3545',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/admin/asesi/${asesmenId}/hapus-mandiri`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({
+                icon: 'success',
+                title: 'Dihapus!',
+                text: data.message,
+                timer: 2000,
+                showConfirmButton: false,
+            });
+
+            // Hapus row dari tabel
+            const row = document.querySelector(`tr[data-asesmen-id="${asesmenId}"]`);
+            if (row) {
+                const dt = $('.data-table').DataTable();
+                dt.row(row).remove().draw();
+            } else {
+                location.reload();
+            }
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    }
+}
 </script>
 @endpush

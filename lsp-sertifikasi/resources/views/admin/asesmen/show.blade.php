@@ -141,6 +141,12 @@
                                 <i class="bi bi-info-circle me-1"></i>
                                 Setelah diganti, status verifikasi email akan direset dan asesi perlu verifikasi ulang.
                             </div>
+
+                            <hr class="my-2">
+                            <button class="btn btn-outline-danger btn-sm w-100"
+                                onclick="resetPasswordAsesi({{ $asesmen->id }})">
+                                <i class="bi bi-key me-1"></i>Reset Password ke "password123"
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1158,6 +1164,42 @@ async function gantiEmailAsesi(asesmenId) {
                 showConfirmButton: false,
             });
             location.reload();
+        } else {
+            Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    }
+}
+
+async function resetPasswordAsesi(asesmenId) {
+    const result = await Swal.fire({
+        title: 'Reset Password?',
+        html: `Password asesi akan direset ke <code>password123</code>.<br>
+               <small class="text-muted">Asesi akan diminta ganti password saat login berikutnya.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc3545',
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`/admin/asesi/${asesmenId}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 2500, showConfirmButton: false });
         } else {
             Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
         }

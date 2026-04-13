@@ -919,20 +919,40 @@ async function saveProgress() {
 
 // ── SAVE BUKTI (hanya link GDrive, tanpa status) ───────────
 async function saveBuktiAndNext() {
+    const gdriveLink = document.getElementById('gdrive-link-global')?.value?.trim() || '';
+
+    // ── Validasi wajib ──
+    if (!gdriveLink) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Link Google Drive Diperlukan',
+            text: 'Mohon isi link folder Google Drive sebelum melanjutkan.',
+        });
+        document.getElementById('gdrive-link-global')?.focus();
+        return;
+    }
+
+    const isGDrive = gdriveLink.startsWith('https://drive.google.com/') || gdriveLink.startsWith('https://docs.google.com/');
+    if (!isGDrive) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Link Tidak Valid',
+            text: 'Link harus berasal dari Google Drive (https://drive.google.com/...).',
+        });
+        document.getElementById('gdrive-link-global')?.focus();
+        return;
+    }
+
     const btn = document.getElementById('btn-next-bukti');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...'; }
 
-    const gdriveLink = document.getElementById('gdrive-link-global')?.value?.trim() || '';
-    log('saveBuktiAndNext — gdrive:', gdriveLink || '(empty)');
+    log('saveBuktiAndNext — gdrive:', gdriveLink);
 
-    // Build rows: kirim semua bukti dengan link yang sama, status tetap 'Tidak Ada' (admin yang update status)
     const rows = [];
     document.querySelectorAll('.bukti-id-ref').forEach(el => {
         rows.push({ id: el.dataset.buktiId, status: 'Tidak Ada', link: gdriveLink });
     });
 
-    // Kalau tidak ada bukti-id-ref di DOM (section baru tidak punya select), build dari PHP data
-    // Gunakan hidden inputs yang kita generate di bawah
     const hiddenBuktis = document.querySelectorAll('[name="bukti_id[]"]');
     if (hiddenBuktis.length > 0 && rows.length === 0) {
         hiddenBuktis.forEach(inp => {

@@ -693,4 +693,30 @@ public function destroyMandiri(Asesmen $asesmen)
     }
 }
 
+
+public function resetPasswordAsesi(Asesmen $asesmen)
+{
+    $asesmen->loadMissing('user');
+
+    $defaultPassword = 'password123';
+
+    $asesmen->user->update([
+        'password'            => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+    ]);
+
+    // Kick active sessions
+    DB::table('sessions')
+        ->where('user_id', $asesmen->user_id)
+        ->delete();
+
+    Log::info('[ADMIN] Reset password asesi', [
+        'asesmen_id' => $asesmen->id,
+        'by_admin'   => auth()->id(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Password berhasil direset ke "password123". Asesi akan diminta ganti password saat login berikutnya.',
+    ]);
+}
 }

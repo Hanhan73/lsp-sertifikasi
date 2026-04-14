@@ -821,33 +821,27 @@ public function aplsatuBuktiSave(Request $request)
     {
         $user    = auth()->user();
         $asesmen = $user->asesmens()
-            ->with([
-                'skema.unitKompetensis.elemens.kuks',
-            ])
+            ->with(['skema.unitKompetensis.elemens.kuks'])
             ->latest()
             ->firstOrFail();
 
-        // Cari atau buat APL-02
         $apldua = $asesmen->apldua ?? \App\Models\AplDua::create([
             'asesmen_id' => $asesmen->id,
             'status'     => 'draft',
         ]);
 
-        // Pastikan semua elemen sudah punya row jawaban (inisialisasi)
-        if ($apldua->jawabans->isEmpty()) {
-            $units = $asesmen->skema->unitKompetensis->load('elemens');
-            foreach ($units as $unit) {
-                foreach ($unit->elemens as $elemen) {
-                    \App\Models\AplDuaJawaban::firstOrCreate([
-                        'apl_02_id' => $apldua->id,
-                        'elemen_id' => $elemen->id,
-                    ]);
-                }
+        // ✅ Selalu pastikan SEMUA elemen punya row — bukan hanya kalau kosong
+        $units = $asesmen->skema->unitKompetensis->load('elemens');
+        foreach ($units as $unit) {
+            foreach ($unit->elemens as $elemen) {
+                \App\Models\AplDuaJawaban::firstOrCreate([
+                    'apl_02_id' => $apldua->id,
+                    'elemen_id' => $elemen->id,
+                ]);
             }
-            $apldua->load('jawabans');
         }
+        $apldua->load('jawabans');
 
-        // Index jawaban by elemen_id untuk kemudahan di view
         $jawabanMap = $apldua->jawabans->keyBy('elemen_id');
 
         return view('asesi.apldua.form', compact('asesmen', 'apldua', 'jawabanMap'));

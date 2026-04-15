@@ -1181,52 +1181,6 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
         return back()->with('success', 'Form penilaian portofolio berhasil dihapus.');
     }
 
-      public function hasilAsesmen(Schedule $schedule): \Illuminate\View\View
-    {
-        $schedule->load([
-            'skema', 'tuk', 'asesor.user',
-            'asesmens',
-            'distribusiSoalObservasi.soalObservasi',
-            'distribusiSoalObservasi.paketSoalObservasi',
-            'distribusiPortofolio.portofolio',
-            'beritaAcara.asesis',
-        ]);
- 
-        // Distribusi soal teori beserta jawaban tiap asesi
-        $distribusiTeori = $schedule->distribusiSoalTeori()->with([
-            'soalAsesi.soalTeori',
-        ])->first();
- 
-        $hasilObservasi  = HasilObservasi::where('schedule_id', $schedule->id)->get();
-        $hasilPortofolio = HasilPortofolio::where('schedule_id', $schedule->id)->get();
-        $beritaAcara     = $schedule->beritaAcara;
- 
-        // Map rekomendasi dari berita acara
-        $rekomendasiMap = [];
-        if ($beritaAcara) {
-            foreach ($beritaAcara->asesis as $ba) {
-                $rekomendasiMap[$ba->asesmen_id] = $ba->rekomendasi;
-            }
-        }
- 
-        // Jawaban observasi asesi (link GDrive)
-        $jawabanObservasi = \App\Models\JawabanObservasiAsesi::whereIn(
-            'distribusi_soal_observasi_id',
-            $schedule->distribusiSoalObservasi->pluck('id')
-        )->get();
- 
-        return view('manajer-sertifikasi.hasil-asesmen', [
-            'schedule'         => $schedule,
-            'distribusiTeori'  => $distribusiTeori,
-            'hasilObservasi'   => $hasilObservasi,
-            'hasilPortofolio'  => $hasilPortofolio,
-            'beritaAcara'      => $beritaAcara,
-            'rekomendasiMap'   => $rekomendasiMap,
-            'jawabanObservasi' => $jawabanObservasi,
-            'totalObservasi'   => $schedule->distribusiSoalObservasi->count(),
-            'totalPortofolio'  => $schedule->distribusiPortofolio->count(),
-        ]);
-    }
 public function pdfBeritaAcara(Schedule $schedule): \Illuminate\Http\Response
 {
     $schedule->load([

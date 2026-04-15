@@ -186,7 +186,7 @@ class ExportHasilTeoriController extends Controller
             }
 
             // Skor: benar/total (bukan persen), misal "24 / 30"
-            $skor = $submitted ? "{$benar} / {$total}" : '-';
+            $skor = $submitted && $total > 0 ? round($benar / $total * 100) : '-';
 
             $ws->setCellValue("A{$r}", $i + 1);
             $ws->setCellValue("B{$r}", $a->full_name);

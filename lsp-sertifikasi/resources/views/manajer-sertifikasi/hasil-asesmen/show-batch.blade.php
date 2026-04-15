@@ -105,51 +105,69 @@ $collapseId = 'jadwal-collapse-' . $schedule->id;
 @endphp
 
 <div class="card border-0 shadow-sm mb-3">
-    {{-- Header Jadwal — klikable untuk toggle --}}
-    <div class="card-header bg-white py-3 pe-3" style="border-left:4px solid #2563eb;cursor:pointer;"
-        data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}" aria-expanded="false"
-        aria-controls="{{ $collapseId }}">
+    {{-- Header Jadwal --}}
+    <div class="card-header bg-white py-3 pe-3" style="border-left:4px solid #2563eb;">
+
         <div class="d-flex align-items-center justify-content-between">
-            <div>
+
+            <div style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#{{ $collapseId }}"
+                aria-expanded="false" aria-controls="{{ $collapseId }}">
+
                 <div class="fw-bold">
                     <i class="bi bi-calendar3 text-primary me-2"></i>
                     {{ $schedule->assessment_date->translatedFormat('d F Y') }}
-                    <span class="text-muted fw-normal small ms-2">{{ $schedule->start_time }} –
-                        {{ $schedule->end_time }}</span>
+                    <span class="text-muted fw-normal small ms-2">
+                        {{ $schedule->start_time }} – {{ $schedule->end_time }}
+                    </span>
                 </div>
+
                 <div class="text-muted small mt-1">
                     <i class="bi bi-building me-1"></i>{{ $schedule->tuk->name ?? '-' }}
+
                     @if($schedule->asesor)
                     · <i class="bi bi-person-badge me-1"></i>{{ $schedule->asesor->user->name ?? '-' }}
                     @endif
+
                     · <i class="bi bi-people me-1"></i>{{ $semua }} asesi ({{ $hadir }} hadir)
+
                     @if($adaFoto)
                     · <i class="bi bi-camera text-info me-1"></i>
-                    <span class="text-info">{{ $schedule->hasFotoDokumentasi() ? '2' : '1' }} foto</span>
+                    <span class="text-info">
+                        {{ $schedule->hasFotoDokumentasi() ? '2' : '1' }} foto
+                    </span>
                     @endif
                 </div>
             </div>
+
             <div class="d-flex gap-2 align-items-center flex-shrink-0">
+
                 @if($beritaAcara)
-                <span class="badge bg-success-subtle text-success border border-success-subtle px-2"
-                    onclick="event.stopPropagation()">
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2">
                     <i class="bi bi-check-circle me-1"></i>BA Ada
                 </span>
+
                 <a href="{{ route('manajer-sertifikasi.jadwal.berita-acara.pdf', $schedule) }}" target="_blank"
-                    class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation()">
+                    class="btn btn-sm btn-outline-danger">
                     <i class="bi bi-file-pdf"></i>
                 </a>
                 @else
-                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2"
-                    onclick="event.stopPropagation()">Belum ada BA</span>
+                <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-2">
+                    Belum ada BA
+                </span>
                 @endif
+
                 <a href="{{ route('manajer-sertifikasi.hasil-asesmen.jadwal', $schedule) }}"
-                    class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation()">
+                    class="btn btn-sm btn-outline-primary">
                     <i class="bi bi-box-arrow-up-right me-1"></i>Detail
                 </a>
+
                 <i class="bi bi-chevron-down text-muted collapse-chevron"
-                    style="font-size:.85rem;transition:transform .2s;"></i>
+                    style="font-size:.85rem;transition:transform .2s;" data-bs-toggle="collapse"
+                    data-bs-target="#{{ $collapseId }}">
+                </i>
+
             </div>
+
         </div>
     </div>
 

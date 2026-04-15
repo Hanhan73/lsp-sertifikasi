@@ -24,7 +24,7 @@
 @endif
 
 {{-- ══ PERINGATAN: ada paket belum diisi ══ --}}
-@if($belumIsi > 0)
+@if($belumIsi > 0 && $isReopenActive)
 <div class="alert d-flex gap-2 py-2 px-3 mb-3 border
             {{ $isReopenActive ? 'alert-warning' : 'alert-danger' }}"
      style="font-size:.82rem">

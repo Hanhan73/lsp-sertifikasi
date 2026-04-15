@@ -325,78 +325,80 @@
             {{-- Asesmen sudah dimulai — tampilkan soal --}}
             <div class="card-body d-flex flex-column gap-3 p-4">
 
-                {{-- Soal Teori --}}
-                @php $distribusiTeori = $asesmen->schedule?->distribusiSoalTeori ?? null; @endphp
-                <div class="border rounded-3 p-3 d-flex align-items-center gap-3
-                    {{ $teoriSubmit ? 'border-success bg-success bg-opacity-5' : ($totalTeori > 0 ? 'border-primary bg-primary bg-opacity-5' : '') }}">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
-                        {{ $teoriSubmit ? 'bg-success' : ($totalTeori > 0 ? 'bg-primary' : 'bg-secondary') }} text-white"
-                         style="width:44px;height:44px;">
-                        <i class="bi {{ $teoriSubmit ? 'bi-check-lg' : 'bi-journal-text' }}"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold" style="color: #ffffff;">Soal Teori (Pilihan Ganda)</div>
-                        @if($totalTeori > 0)
-                        <div class="small" style="color:#ffffff">{{ $distribusiTeori->jumlah_soal ?? $totalTeori }} soal
-                            @if($teoriSubmit) · <span class="text-success fw-semibold">Selesai</span>
-                            @elseif($teoriMulai) · <span class="text-warning fw-semibold">Sedang dikerjakan</span>
-                            @else · Belum dimulai
-                            @endif
-                        </div>
-                        @if(!$teoriSubmit)
-                        @php $answered = $soalTeori->whereNotNull('jawaban')->count(); @endphp
-                        <div class="progress mt-2" style="height:5px;">
-                            <div class="progress-bar bg-primary"
-                                 style="width:{{ round($answered / $totalTeori * 100) }}%"></div>
-                        </div>
-                        @endif
-                        @else
-                        <div class="small text-muted">Soal belum tersedia</div>
+            {{-- Soal Teori --}}
+            @php $distribusiTeori = $asesmen->schedule?->distribusiSoalTeori ?? null; @endphp
+            <div class="border rounded-3 p-3 d-flex align-items-center gap-3
+                {{ $teoriSubmit ? 'border-success' : ($totalTeori > 0 ? 'border-primary' : 'border-secondary') }}"
+                style="background:#f8fafc;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                    {{ $teoriSubmit ? 'bg-success' : ($totalTeori > 0 ? 'bg-primary' : 'bg-secondary') }} text-white"
+                    style="width:44px;height:44px;">
+                    <i class="bi {{ $teoriSubmit ? 'bi-check-lg' : 'bi-journal-text' }}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold text-dark">Soal Teori (Pilihan Ganda)</div>
+                    @if($totalTeori > 0)
+                    <div class="small text-muted">{{ $distribusiTeori->jumlah_soal ?? $totalTeori }} soal
+                        @if($teoriSubmit) · <span class="text-success fw-semibold">Selesai</span>
+                        @elseif($teoriMulai) · <span class="text-warning fw-semibold">Sedang dikerjakan</span>
+                        @else · <span class="text-muted">Belum dimulai</span>
                         @endif
                     </div>
-                    @if($totalTeori > 0 && !$teoriSubmit)
-                    <a href="{{ route('asesi.soal.teori.intro') }}"
-                       class="btn btn-sm {{ $teoriMulai ? 'btn-warning' : 'btn-light' }} flex-shrink-0" style="color: #000000;">
-                        {{ $teoriMulai ? 'Lanjutkan' : 'Mulai' }}
-                    </a>
-                    @elseif($teoriSubmit)
-                    <span class="badge bg-success flex-shrink-0">
-                        <i class="bi bi-check-circle me-1"></i>Submit
-                    </span>
+                    @if(!$teoriSubmit)
+                    @php $answered = $soalTeori->whereNotNull('jawaban')->count(); @endphp
+                    <div class="progress mt-2" style="height:5px;">
+                        <div class="progress-bar bg-primary"
+                            style="width:{{ round($answered / $totalTeori * 100) }}%"></div>
+                    </div>
+                    @endif
                     @else
-                    <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
+                    <div class="small text-muted">Soal belum tersedia</div>
                     @endif
                 </div>
+                @if($totalTeori > 0 && !$teoriSubmit)
+                <a href="{{ route('asesi.soal.teori.intro') }}"
+                class="btn btn-sm {{ $teoriMulai ? 'btn-warning' : 'btn-primary' }} flex-shrink-0">
+                    {{ $teoriMulai ? 'Lanjutkan' : 'Mulai' }}
+                </a>
+                @elseif($teoriSubmit)
+                <span class="badge bg-success flex-shrink-0 px-2 py-2">
+                    <i class="bi bi-check-circle me-1"></i>Selesai
+                </span>
+                @else
+                <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
+                @endif
+            </div>
 
-                {{-- Soal Observasi --}}
-                <div class="border rounded-3 p-3 d-flex align-items-center gap-3
-                    {{ $obsUpload > 0 && $obsUpload === $obsTotal ? 'border-success bg-success bg-opacity-5' : '' }}">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
-                        {{ $obsUpload === $obsTotal && $obsTotal > 0 ? 'bg-success' : ($obsTotal > 0 ? 'bg-info' : 'bg-secondary') }} text-white"
-                         style="width:44px;height:44px;">
-                        <i class="bi bi-eye"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Soal Observasi</div>
-                        @if($obsTotal > 0)
-                        <div class="small text-muted">{{ $obsUpload }}/{{ $obsTotal }} paket diupload</div>
-                        <div class="progress mt-2" style="height:5px;">
-                            <div class="progress-bar bg-info"
-                                 style="width:{{ round($obsUpload / $obsTotal * 100) }}%"></div>
-                        </div>
-                        @else
-                        <div class="small text-muted">Soal belum tersedia</div>
-                        @endif
-                    </div>
+            {{-- Soal Observasi --}}
+            <div class="border rounded-3 p-3 d-flex align-items-center gap-3
+                {{ $obsUpload > 0 && $obsUpload === $obsTotal ? 'border-success' : 'border-secondary' }}"
+                style="background:#f8fafc;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                    {{ $obsUpload === $obsTotal && $obsTotal > 0 ? 'bg-success' : ($obsTotal > 0 ? 'bg-info' : 'bg-secondary') }} text-white"
+                    style="width:44px;height:44px;">
+                    <i class="bi bi-eye"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold text-dark">Soal Observasi</div>
                     @if($obsTotal > 0)
-                    <a href="{{ route('asesi.soal.observasi.index') }}"
-                       class="btn btn-sm btn-outline-info flex-shrink-0">
-                        <i class="bi bi-upload me-1"></i>Upload
-                    </a>
+                    <div class="small text-muted">{{ $obsUpload }}/{{ $obsTotal }} paket diupload</div>
+                    <div class="progress mt-2" style="height:5px;">
+                        <div class="progress-bar bg-info"
+                            style="width:{{ round($obsUpload / $obsTotal * 100) }}%"></div>
+                    </div>
                     @else
-                    <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
+                    <div class="small text-muted">Soal belum tersedia</div>
                     @endif
                 </div>
+                @if($obsTotal > 0)
+                <a href="{{ route('asesi.soal.observasi.index') }}"
+                class="btn btn-sm {{ $obsUpload === $obsTotal ? 'btn-outline-success' : 'btn-outline-info' }} flex-shrink-0">
+                    <i class="bi bi-upload me-1"></i>{{ $obsUpload === $obsTotal ? 'Lihat' : 'Upload' }}
+                </a>
+                @else
+                <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
+                @endif
+            </div>
 
             </div>
             @endif

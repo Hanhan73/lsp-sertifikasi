@@ -246,13 +246,10 @@
 
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
-                            <input type="date"
-                                class="form-control @error('birth_date') is-invalid @enderror"
-                                name="birth_date"
-                                value="{{ old('birth_date', $asesmen->birth_date ? \Carbon\Carbon::parse($asesmen->birth_date)->translatedFormat('Y-m-d') : '') }}"
-                                max="{{ $maxBirthDate }}"
-                                min="{{ $minBirthDate }}"
-                                required>
+                            <input type="text" class="form-control @error('birth_date') is-invalid @enderror"
+                                name="birth_date" id="input-birth-date"
+                                value="{{ old('birth_date', $asesmen->birth_date ? \Carbon\Carbon::parse($asesmen->birth_date)->format('Y-m-d') : '') }}"
+                                placeholder="Pilih tanggal lahir" readonly required>
                             @error('birth_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
 
@@ -388,10 +385,10 @@
                         @if(!$isCollective)
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Tanggal Sertifikasi yang Dipilih <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control @error('preferred_date') is-invalid @enderror"
-                                name="preferred_date"
-                                value="{{ old('preferred_date', $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->translatedFormat('Y-m-d') : '') }}"
-                                min="{{ now()->addDays(3)->translatedFormat('Y-m-d') }}" required>
+                            <input type="text" class="form-control @error('preferred_date') is-invalid @enderror"
+                                name="preferred_date" id="input-preferred-date"
+                                value="{{ old('preferred_date', $asesmen->preferred_date ? \Carbon\Carbon::parse($asesmen->preferred_date)->format('Y-m-d') : '') }}"
+                                placeholder="Pilih tanggal" readonly required>
                             @error('preferred_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                         @else
@@ -673,6 +670,40 @@ document.addEventListener('DOMContentLoaded', function () {
     if (trainingYes) trainingYes.addEventListener('change', () => selectTraining(true));
     if (trainingNo)  trainingNo.addEventListener('change',  () => selectTraining(false));
 });
+
+// Flatpickr locale Indonesia
+const fpLocale = {
+    months: {
+        shorthand: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'],
+        longhand:  ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],
+    },
+    weekdays: {
+        shorthand: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'],
+        longhand:  ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],
+    },
+    firstDayOfWeek: 1,
+};
+
+// Tanggal lahir
+flatpickr('#input-birth-date', {
+    dateFormat: 'Y-m-d',
+    altInput: true,
+    altFormat: 'd F Y',
+    locale: fpLocale,
+    maxDate: 'today',
+});
+
+// Preferred date (hanya untuk mandiri)
+const prefEl = document.getElementById('input-preferred-date');
+if (prefEl) {
+    flatpickr('#input-preferred-date', {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'd F Y',
+        locale: fpLocale,
+        minDate: new Date().fp_incr(3),
+    });
+}
 </script>
 @endpush
 @endsection

@@ -194,8 +194,10 @@
 
                     <div class="col-md-3">
                         <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
-                        <input type="date" name="tanggal_lahir" id="f-tgl" class="form-control"
+                        <input type="text" name="tanggal_lahir" id="f-tgl" class="form-control"
                             value="{{ $aplsatu->tanggal_lahir?->translatedFormat('Y-m-d') }}" required
+                            placeholder="Pilih tanggal lahir"
+                            readonly
                             oninput="validateTanggalLahir(this)">
                     </div>
 
@@ -1052,6 +1054,28 @@ async function submitForm() {
         if (btn) btn.disabled = false;
     }
 }
+
+// Flatpickr — datepicker bahasa Indonesia
+flatpickr('#f-tgl', {
+    dateFormat: 'Y-m-d',       // format yang dikirim ke server tetap Y-m-d
+    altInput: true,
+    altFormat: 'd F Y',        // tampilan ke user: 18 April 2009
+    locale: {
+        months: {
+            shorthand: ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agt','Sep','Okt','Nov','Des'],
+            longhand:  ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'],
+        },
+        weekdays: {
+            shorthand: ['Min','Sen','Sel','Rab','Kam','Jum','Sab'],
+            longhand:  ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],
+        },
+        firstDayOfWeek: 1,
+    },
+    maxDate: 'today',
+    onChange: function(selectedDates, dateStr) {
+        validateTanggalLahir(document.getElementById('f-tgl'));
+    },
+});
 </script>
 
 {{-- Hidden inputs untuk semua bukti ID agar bisa dikirim saat saveBuktiAndNext --}}

@@ -527,7 +527,7 @@
                                                     <i class="bi bi-x-circle me-1"></i>Tutup
                                                 </button>
                                             </div>
-                                            @else
+                                            @elseif($belumIsiCount > 0)
                                             <button type="button"
                                                     class="btn btn-outline-primary btn-sm py-0 px-2"
                                                     style="font-size:.7rem;"
@@ -536,6 +536,8 @@
                                                     onclick="showReopenModal(this)">
                                                 <i class="bi bi-arrow-counterclockwise me-1"></i>Buka Kembali
                                             </button>
+                                            @else
+                                            <span class="text-muted small">—</span>
                                             @endif
                                         </td>
                                     </tr>

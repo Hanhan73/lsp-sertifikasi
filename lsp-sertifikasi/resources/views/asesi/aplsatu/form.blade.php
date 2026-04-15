@@ -196,7 +196,6 @@
                         <label class="form-label">Tanggal Lahir <span class="text-danger">*</span></label>
                         <input type="date" name="tanggal_lahir" id="f-tgl" class="form-control"
                             value="{{ $aplsatu->tanggal_lahir?->translatedFormat('Y-m-d') }}" required
-                            max="{{ now()->subYears(12)->translatedFormat('Y-m-d') }}"
                             oninput="validateTanggalLahir(this)">
                     </div>
 
@@ -625,24 +624,9 @@ function validateTanggalLahir(input) {
         setHint('hint-tgl', 'Tanggal lahir wajib diisi.', 'error');
         return;
     }
-    const dob = new Date(input.value);
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-
-    if (age < 17) {
-        setInputState(input, false);
-        setHint('hint-tgl', `❌ Usia Anda ${age} tahun. Harus minimal 17 tahun.`, 'error');
-    } else if (age > 90) {
-        setInputState(input, false);
-        setHint('hint-tgl', `❌ Tanggal lahir tampaknya tidak valid (usia ${age} tahun).`, 'error');
-    } else {
-        setInputState(input, true);
-        setHint('hint-tgl', `✓ Usia ${age} tahun.`, 'success');
-    }
+    setInputState(input, true);
+    setHint('hint-tgl', '✓ Tanggal lahir valid.', 'success');
 }
-
 function validateHP(input) {
     const v = input.value.replace(/\s/g, '');
     const re = /^(\+62|62|0)[0-9]{8,13}$/;

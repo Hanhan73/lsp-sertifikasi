@@ -32,9 +32,14 @@ class AsesiController extends Controller
             return redirect()->route('asesi.first-login');
         }
 
-        $asesmen = Asesmen::with(['tuk', 'skema', 'payment', 'schedule', 'certificate', 'registrar'])
-            ->where('user_id', $user->id)
-            ->first();
+        $asesmen = Asesmen::with([
+            'tuk', 'skema', 'payment', 'schedule', 'certificate', 'registrar',
+            'soalTeoriAsesi',
+            'jawabanObservasi',
+            'schedule.distribusiSoalObservasi.soalObservasi.paket',
+        ])
+        ->where('user_id', $user->id)
+        ->first();
 
         // Get batch info if collective
         $batchInfo = null;
@@ -112,12 +117,7 @@ public function storeData(Request $request)
         'full_name'      => 'required|string|max:255',
         'nik'            => $nikRule,
         'birth_place'    => 'required|string',
-        'birth_date'     => [
-            'required',
-            'date',
-            'before_or_equal:' . now()->subYears(12)->format('Y-m-d'),
-            'after_or_equal:'  . now()->subYears(80)->format('Y-m-d'),
-        ],
+        'birth_date'     => ['required', 'date'],
         'gender'         => 'required|in:L,P',
         'address'        => 'required|string',
         'city_code'      => 'required|string|size:4',
@@ -134,9 +134,6 @@ public function storeData(Request $request)
         'ktp'            => $ktpRule,
         'document'       => $documentRule,
         'training_flag'  => 'required_if:is_collective,false|boolean',
-    ], [
-        'birth_date.before_or_equal' => 'Usia minimal untuk mendaftar adalah 12 tahun.',
-        'birth_date.after_or_equal'  => 'Usia maksimal untuk mendaftar adalah 80 tahun.',
     ]);
  
     // Upload file hanya jika ada file baru yang di-upload

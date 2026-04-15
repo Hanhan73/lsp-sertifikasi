@@ -40,11 +40,6 @@
             <i class="bi bi-file-pdf me-1"></i>Daftar Hadir
         </button>
         @endif
-        {{-- Hasil Asesmen --}}
-        <a href="{{ route('manajer-sertifikasi.jadwal.hasil', $schedule) }}"
-        class="btn btn-sm btn-outline-success">
-            <i class="bi bi-graph-up me-1"></i>Hasil Asesmen
-        </a>
         {{-- Summary counter --}}
         <div class="d-flex gap-2 flex-wrap">
             @php

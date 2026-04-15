@@ -26,17 +26,24 @@
     @endif
 </a>
 
+<div class="sidebar-divider"><span>Penilaian</span></div>
+
+<a href="{{ route('manajer-sertifikasi.hasil-asesmen.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.hasil-asesmen') ? 'active' : '' }}">
+    <i class="bi bi-graph-up-arrow"></i> Hasil Asesmen
+</a>
+
 <a href="{{ route('manajer-sertifikasi.export-hasil-teori.index') }}"
-   class="nav-link {{ request()->routeIs('manajer-sertifikasi.export-hasil-teori.*') ? 'active' : '' }}">
+    class="nav-link {{ request()->routeIs('manajer-sertifikasi.export-hasil-teori.*') ? 'active' : '' }}">
     <i class="bi bi-file-earmark-arrow-down me-2"></i>Export Hasil Teori
 </a>
 
 <div class="sidebar-divider"><span>SK Ujikom</span></div>
- 
+
 <a href="{{ route('manajer-sertifikasi.sk-ujikom.index') }}"
-   class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.sk-ujikom') ? 'active' : '' }}">
+    class="nav-link {{ Str::startsWith($route, 'manajer-sertifikasi.sk-ujikom') ? 'active' : '' }}">
     @php
-        $pendingSk = \App\Models\SkHasilUjikom::where('status', 'rejected')->count();
+    $pendingSk = \App\Models\SkHasilUjikom::where('status', 'rejected')->count();
     @endphp
     <i class="bi bi-file-earmark-ruled"></i> Pengajuan SK Ujikom
     @if($pendingSk > 0)

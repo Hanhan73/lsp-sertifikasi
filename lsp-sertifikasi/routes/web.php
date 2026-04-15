@@ -52,6 +52,7 @@ use App\Http\Controllers\Direktur\DirekturSkUjikomController;
 use App\Http\Controllers\ManajerSertifikasi\DashboardController as ManajerDashboardController;
 use App\Http\Controllers\ManajerSertifikasi\DistribusiSoalController;
 use App\Http\Controllers\ManajerSertifikasi\SkUjikomController;
+use App\Http\Controllers\ManajerSertifikasi\HasilAsesmenController;
 
 // Bendahara
 use App\Http\Controllers\Bendahara\BendaharaController;
@@ -690,12 +691,16 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::delete('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianPortofolio'])->name('portofolio.form-penilaian.hapus');
             Route::get('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.download');
 
-            Route::get('/hasil', [DistribusiSoalController::class, 'hasilAsesmen'])->name('hasil');
             Route::get('/berita-acara/pdf', [DistribusiSoalController::class, 'pdfBeritaAcara'])->name('berita-acara.pdf');
-
-
         });
-
+            
+        Route::prefix('hasil-asesmen')->name('hasil-asesmen.')->group(function () {
+            Route::get('/',                              [HasilAsesmenController::class, 'index'])      ->name('index');
+            Route::get('/jadwal/{schedule}',             [HasilAsesmenController::class, 'showJadwal']) ->name('jadwal');
+            Route::get('/jadwal/{schedule}/foto/{slot}', [HasilAsesmenController::class, 'previewFoto'])->name('foto');
+            Route::get('/batch/{batchId}',               [HasilAsesmenController::class, 'showBatch'])  ->name('batch');
+        });
+        
         Route::prefix('export-hasil-teori')->name('export-hasil-teori.')->group(function () {
             Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'index'])->name('index');
             Route::get('/batch/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBatch'])->name('batch');

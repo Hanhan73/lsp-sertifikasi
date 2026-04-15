@@ -479,7 +479,86 @@ default => 0,
             </div>
         </div>
         @endif
+        {{-- Warning progress soal --}}
+        @if($asesmen->status === 'asesmen_started')
+        @php
+            $soalTeori      = $asesmen->soalTeoriAsesi ?? collect();
+            $totalTeori     = $soalTeori->count();
+            $teoriSubmit    = $totalTeori > 0 && $soalTeori->whereNotNull('submitted_at')->count() > 0;
 
+            $distribusiObs  = $asesmen->schedule?->distribusiSoalObservasi ?? collect();
+            $obsTotal       = 0;
+            $obsUpload      = 0;
+            foreach ($distribusiObs as $dist) {
+                foreach ($dist->soalObservasi->paket ?? [] as $p) {
+                    $obsTotal++;
+                    $jwb = ($asesmen->jawabanObservasi ?? collect())->where('paket_soal_observasi_id', $p->id)->first();
+                    if ($jwb?->hasLink()) $obsUpload++;
+                }
+            }
+            $obsSelesai     = $obsTotal > 0 && $obsUpload === $obsTotal;
+
+            $adaWarning     = ($totalTeori > 0 && !$teoriSubmit) || ($obsTotal > 0 && !$obsSelesai);
+
+            // Cek reopen aktif
+            $reopenUntil    = $asesmen->observasi_reopen_until
+                ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
+                : null;
+            $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
+        @endphp
+
+    @if($adaWarning || $isReopenActive)
+    <div class="card border-0 shadow-sm mb-4 border-warning" style="border-left:4px solid #f59e0b !important;">
+        <div class="card-header bg-warning bg-opacity-10 fw-semibold" style="font-size:.875rem;">
+            <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>Tugas Belum Selesai
+        </div>
+        <div class="card-body d-grid gap-2 py-3">
+
+            {{-- Soal Teori --}}
+            @if($totalTeori > 0)
+            <a href="{{ route('asesi.soal.teori.intro') }}"
+            class="d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none
+                    {{ $teoriSubmit ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10' }}">
+                <i class="bi {{ $teoriSubmit ? 'bi-check-circle-fill text-success' : 'bi-exclamation-circle-fill text-warning' }} fs-5 flex-shrink-0"></i>
+                <div>
+                    <div class="fw-semibold" style="font-size:.82rem;color:#1e293b;">Soal Teori</div>
+                    <div style="font-size:.75rem;color:#64748b;">
+                        {{ $teoriSubmit ? 'Sudah disubmit' : 'Belum dikerjakan / disubmit' }}
+                    </div>
+                </div>
+                @if(!$teoriSubmit)
+                <span class="badge bg-warning text-dark ms-auto">Kerjakan</span>
+                @endif
+            </a>
+            @endif
+
+            {{-- Soal Observasi --}}
+            @if($obsTotal > 0)
+            <a href="{{ route('asesi.soal.observasi.index') }}"
+            class="d-flex align-items-center gap-3 p-2 rounded-3 text-decoration-none
+                    {{ $obsSelesai ? 'bg-success bg-opacity-10' : 'bg-warning bg-opacity-10' }}">
+                <i class="bi {{ $obsSelesai ? 'bi-check-circle-fill text-success' : 'bi-exclamation-circle-fill text-warning' }} fs-5 flex-shrink-0"></i>
+                <div>
+                    <div class="fw-semibold" style="font-size:.82rem;color:#1e293b;">Soal Observasi</div>
+                    <div style="font-size:.75rem;color:#64748b;">
+                        {{ $obsUpload }}/{{ $obsTotal }} link diupload
+                        @if($isReopenActive && !$obsSelesai)
+                        · <span class="text-primary fw-semibold">Dibuka kembali s/d {{ $reopenUntil->format('d/m H:i') }}</span>
+                        @endif
+                    </div>
+                </div>
+                @if(!$obsSelesai)
+                <span class="badge {{ $isReopenActive ? 'bg-primary' : 'bg-warning text-dark' }} ms-auto">
+                    {{ $isReopenActive ? 'Upload!' : 'Belum Lengkap' }}
+                </span>
+                @endif
+            </a>
+            @endif
+
+        </div>
+    </div>
+    @endif
+    @endif
         {{-- Aksi cepat --}}
         @if(in_array($asesmen->status, ['pra_asesmen_started']))
         <div class="card border-0 shadow-sm">

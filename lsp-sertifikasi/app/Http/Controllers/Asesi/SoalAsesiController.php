@@ -211,29 +211,44 @@ public function teoriSubmit(Request $request): JsonResponse
     {
         $user    = auth()->user();
         $asesmen = Asesmen::with(['schedule'])->where('user_id', $user->id)->firstOrFail();
-
+ 
         if (!$asesmen->schedule_id) {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Belum ada jadwal asesmen.');
         }
-
+ 
+        // Distribusi soal observasi untuk jadwal asesi ini
         $distribusiObservasi = DistribusiSoalObservasi::with([
-            'soalObservasi',
-            'paketSoalObservasi', // ← hanya paket yang dipilih manajer
+            'soalObservasi.paket',
         ])
         ->where('schedule_id', $asesmen->schedule_id)
         ->get();
-
+ 
         if ($distribusiObservasi->isEmpty()) {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Soal observasi belum didistribusikan.');
         }
-
+ 
+        // Map jawaban (gdrive link) asesi ini per paket
         $jawabanMap = JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
             ->get()
             ->keyBy('paket_soal_observasi_id');
-
-        return view('asesi.soal.observasi', compact('asesmen', 'distribusiObservasi', 'jawabanMap'));
+ 
+        // Apakah form bisa diisi? Cek window reopen
+        $reopenUntil  = $asesmen->observasi_reopen_until
+            ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
+            : null;
+        $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
+ 
+        // Hitung paket yang belum diisi link
+        $totalPaket  = $distribusiObservasi->sum(fn($d) => $d->soalObservasi->paket->count());
+        $sudahIsi    = $jawabanMap->filter(fn($j) => $j->hasLink())->count();
+        $belumIsi    = $totalPaket - $sudahIsi;
+ 
+        return view('asesi.soal.observasi', compact(
+            'asesmen', 'distribusiObservasi', 'jawabanMap',
+            'reopenUntil', 'isReopenActive', 'belumIsi', 'totalPaket'
+        ));
     }
 
     /**
@@ -255,14 +270,25 @@ public function teoriSubmit(Request $request): JsonResponse
                 },
             ],
         ]);
-
+ 
         $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
-
+ 
+        // Cek apakah masih dalam window reopen (kalau ada)
+        if ($asesmen->observasi_reopen_until) {
+            $until = \Carbon\Carbon::parse($asesmen->observasi_reopen_until);
+            if ($until->isPast()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Waktu pengumpulan link sudah berakhir. Hubungi asesor untuk membuka kembali.',
+                ], 403);
+            }
+        }
+ 
         // Pastikan distribusi ini memang untuk schedule asesi ini
         $distribusi = DistribusiSoalObservasi::where('id', $request->distribusi_id)
             ->where('schedule_id', $asesmen->schedule_id)
             ->firstOrFail();
-
+ 
         $jawaban = JawabanObservasiAsesi::updateOrCreate(
             [
                 'asesmen_id'                  => $asesmen->id,
@@ -274,13 +300,13 @@ public function teoriSubmit(Request $request): JsonResponse
                 'uploaded_at'                  => $request->gdrive_link ? now() : null,
             ]
         );
-
+ 
         return response()->json([
             'success' => true,
             'message' => $request->gdrive_link ? 'Link berhasil disimpan.' : 'Link dihapus.',
         ]);
     }
-
+    
     public function downloadPaket(\App\Models\PaketSoalObservasi $paket): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();

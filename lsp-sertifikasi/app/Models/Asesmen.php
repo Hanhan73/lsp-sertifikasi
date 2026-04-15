@@ -70,6 +70,8 @@ class Asesmen extends Model
         'biodata_verified_at',
         'biodata_verified_by',
         'hadir',
+        'observasi_reopen_until',
+        'observasi_reopen_by',
     ];
 
     protected $casts = [
@@ -97,6 +99,7 @@ class Asesmen extends Model
         'biodata_needs_revision' => 'boolean',
         'biodata_verified_at'  => 'date:d-m-Y',
         'hadir'                 => 'boolean',
+        'observasi_reopen_until' => 'datetime',
     ];
 
     // =========================================================================

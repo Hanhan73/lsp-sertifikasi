@@ -285,6 +285,26 @@
                     </span>
                 </div>
                 @endif
+
+                {{-- Reopen observasi aktif — tampilkan tombol upload walau jadwal sudah lewat --}}
+                @php
+                    $reopenUntil    = $asesmen->observasi_reopen_until
+                        ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
+                        : null;
+                    $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
+                @endphp
+                @if($isReopenActive && $obsTotal > 0)
+                <div class="mt-3 alert alert-warning d-flex align-items-center gap-2 py-2 px-3" style="font-size:.82rem;">
+                    <i class="bi bi-unlock-fill flex-shrink-0"></i>
+                    <div>
+                        Asesor membuka kembali pengumpulan link observasi hingga
+                        <strong>{{ $reopenUntil->translatedFormat('d F Y, H:i') }}</strong>.
+                    </div>
+                </div>
+                <a href="{{ route('asesi.soal.observasi.index') }}" class="btn btn-warning btn-sm mt-1">
+                    <i class="bi bi-upload me-1"></i>Upload Link Observasi ({{ $obsUpload }}/{{ $obsTotal }})
+                </a>
+                @endif
             </div>
 
             @elseif(!$asesmenDimulai)

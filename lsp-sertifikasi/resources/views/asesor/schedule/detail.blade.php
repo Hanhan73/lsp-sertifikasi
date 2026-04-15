@@ -464,12 +464,35 @@
                                         @foreach($paketList as $paket)
                                         <th class="text-center">Paket {{ $paket->kode_paket }}</th>
                                         @endforeach
+                                        <th class="text-center" style="min-width:160px;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach($asesmens as $asesmen)
-                                    <tr>
-                                        <td><div class="fw-semibold">{{ $asesmen->full_name }}</div></td>
+                                    @php
+                                        $reopenUntil    = $asesmen->observasi_reopen_until
+                                            ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
+                                            : null;
+                                        $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
+                                        $belumIsiCount  = 0;
+                                        foreach ($paketList as $paket) {
+                                            $j = $asesmen->jawabanObservasi
+                                                    ->where('paket_soal_observasi_id', $paket->id)
+                                                    ->first();
+                                            if (!$j?->hasLink()) $belumIsiCount++;
+                                        }
+                                    @endphp
+                                    <tr class="{{ $isReopenActive ? 'table-info' : ($belumIsiCount > 0 ? 'table-warning' : '') }}">
+                                        <td>
+                                            <div class="fw-semibold">{{ $asesmen->full_name }}</div>
+                                            @if($belumIsiCount > 0)
+                                            <span class="badge bg-warning text-dark" style="font-size:.65rem;">
+                                                {{ $belumIsiCount }} link belum diisi
+                                            </span>
+                                            @else
+                                            <span class="badge bg-success" style="font-size:.65rem;">Lengkap</span>
+                                            @endif
+                                        </td>
                                         @foreach($paketList as $paket)
                                         @php
                                             $jawaban = $asesmen->jawabanObservasi
@@ -487,6 +510,34 @@
                                             @endif
                                         </td>
                                         @endforeach
+ 
+                                        {{-- Kolom Aksi Reopen --}}
+                                        <td class="text-center">
+                                            @if($isReopenActive)
+                                            <div class="d-flex flex-column align-items-center gap-1">
+                                                <span class="badge bg-info text-dark" style="font-size:.65rem;">
+                                                    <i class="bi bi-unlock me-1"></i>
+                                                    s/d {{ $reopenUntil->format('d/m H:i') }}
+                                                </span>
+                                                <button type="button"
+                                                        class="btn btn-outline-danger btn-sm py-0 px-2"
+                                                        style="font-size:.7rem;"
+                                                        data-close-url="{{ route('asesor.asesi.observasi.close-reopen', [$schedule, $asesmen]) }}"
+                                                        onclick="closeReopenObservasi(this, '{{ addslashes($asesmen->full_name) }}')">
+                                                    <i class="bi bi-x-circle me-1"></i>Tutup
+                                                </button>
+                                            </div>
+                                            @else
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-sm py-0 px-2"
+                                                    style="font-size:.7rem;"
+                                                    data-reopen-url="{{ route('asesor.asesi.observasi.reopen', [$schedule, $asesmen]) }}"
+                                                    data-asesi-name="{{ $asesmen->full_name }}"
+                                                    onclick="showReopenModal(this)">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i>Buka Kembali
+                                            </button>
+                                            @endif
+                                        </td>
                                     </tr>
                                     @endforeach
                                 </tbody>
@@ -1112,6 +1163,37 @@
     </div>
 </div>
 
+
+{{-- Modal Reopen Observasi --}}
+<div class="modal fade" id="modalReopenObservasi" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">
+                    <i class="bi bi-arrow-counterclockwise text-primary me-2"></i>Buka Kembali Observasi
+                </h6>
+                <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body pt-2">
+                <p class="text-muted mb-3" style="font-size:.82rem;">
+                    Peserta: <strong id="reopenAsesiName"></strong>
+                </p>
+                <label class="form-label fw-semibold" style="font-size:.82rem;">Durasi dibuka (jam):</label>
+                <input type="number" id="reopenDurasiJam" class="form-control form-control-sm"
+                       min="1" max="72" value="24">
+                <div class="form-text">Maksimal 72 jam.</div>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btnKonfirmasiReopen">
+                    <i class="bi bi-check2 me-1"></i>Buka Sekarang
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 @push('scripts')
 <script>
 const CSRF         = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -1392,6 +1474,75 @@ async function konfirmasiMulaiAsesmen() {
         Swal.fire('Error', 'Terjadi kesalahan.', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Mulai Asesmen';
+    }
+}
+
+// ── Reopen Observasi ──
+let _reopenUrl = null;
+ 
+function showReopenModal(btn) {
+    _reopenUrl = btn.dataset.reopenUrl;
+    document.getElementById('reopenAsesiName').textContent = btn.dataset.asesiName;
+    document.getElementById('reopenDurasiJam').value = 24;
+    new bootstrap.Modal(document.getElementById('modalReopenObservasi')).show();
+}
+ 
+document.getElementById('btnKonfirmasiReopen')?.addEventListener('click', async function () {
+    const durasi = parseInt(document.getElementById('reopenDurasiJam').value);
+    if (!durasi || durasi < 1 || durasi > 72) {
+        Swal.fire('Durasi tidak valid', 'Isi durasi antara 1–72 jam.', 'warning');
+        return;
+    }
+ 
+    this.disabled = true;
+    this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+ 
+    try {
+        const res  = await fetch(_reopenUrl, {
+            method : 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body   : JSON.stringify({ durasi_jam: durasi }),
+        });
+        const data = await res.json();
+ 
+        bootstrap.Modal.getInstance(document.getElementById('modalReopenObservasi'))?.hide();
+ 
+        if (data.success) {
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 2500, showConfirmButton: false });
+            window.location.reload();
+        } else {
+            Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    } finally {
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-check2 me-1"></i>Buka Sekarang';
+    }
+});
+ 
+async function closeReopenObservasi(btn, asesiName) {
+    const url = btn.dataset.closeUrl;
+ 
+    const conf = await Swal.fire({
+        title: 'Tutup akses?',
+        text: `Link observasi ${asesiName} akan langsung ditutup.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, tutup',
+        cancelButtonText: 'Batal',
+    });
+    if (!conf.isConfirmed) return;
+ 
+    const res  = await fetch(url, {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+        body   : JSON.stringify({}),
+    });
+    const data = await res.json();
+    if (data.success) {
+        Swal.fire({ icon: 'success', title: 'Ditutup', timer: 1500, showConfirmButton: false })
+            .then(() => window.location.reload());
     }
 }
 </script>

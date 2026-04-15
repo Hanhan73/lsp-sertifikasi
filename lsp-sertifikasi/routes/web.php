@@ -528,6 +528,8 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     Route::prefix('schedule/{schedule}/asesi/{asesmen}')->name('asesi.')->group(function () {
         Route::get('/',               [AsesorController::class, 'asesiDetail']) ->name('detail');
         Route::post('/apl02/verify',  [AsesorController::class, 'verifyApl02'])->name('apl02.verify');  // note: name jadi asesor.asesi.apl02.verify
+        Route::post('/observasi/reopen',       [AsesorController::class, 'reopenObservasi'])      ->name('observasi.reopen');
+        Route::post('/observasi/close-reopen', [AsesorController::class, 'closeReopenObservasi']) ->name('observasi.close-reopen');
         Route::get('/apl01/preview',  [AsesorController::class, 'previewApl01'])->name('apl01.preview');
         Route::get('/apl02/preview',  [AsesorController::class, 'previewApl02'])->name('apl02.preview');
     });

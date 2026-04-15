@@ -655,4 +655,60 @@ public function previewFotoDokumentasi(Schedule $schedule, int $slot)
         'Content-Type' => Storage::disk('private')->mimeType($path),
     ]);
 }
+
+/**
+     * Asesor membuka kembali pengumpulan link GDrive observasi untuk satu asesi.
+     * POST /asesor/jadwal/{schedule}/asesi/{asesmen}/observasi/reopen
+     */
+    public function reopenObservasi(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $request->validate([
+            'durasi_jam' => 'required|integer|min:1|max:72',
+        ], [
+            'durasi_jam.required' => 'Durasi wajib diisi.',
+            'durasi_jam.min'      => 'Minimal 1 jam.',
+            'durasi_jam.max'      => 'Maksimal 72 jam.',
+        ]);
+
+        $until = now()->addHours((int) $request->durasi_jam);
+
+        $asesmen->update([
+            'observasi_reopen_until' => $until,
+            'observasi_reopen_by'    => auth()->id(),
+        ]);
+
+        $namaAsesi   = $asesmen->full_name;
+        $untilFormatted = $until->translatedFormat('d M Y, H:i');
+
+        return response()->json([
+            'success' => true,
+            'message' => "Soal observasi {$namaAsesi} dibuka kembali hingga {$untilFormatted}.",
+            'until'   => $untilFormatted,
+        ]);
+    }
+
+    /**
+     * Asesor menutup paksa window reopen observasi.
+     * POST /asesor/jadwal/{schedule}/asesi/{asesmen}/observasi/close-reopen
+     */
+    public function closeReopenObservasi(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $asesmen->update([
+            'observasi_reopen_until' => null,
+            'observasi_reopen_by'    => null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Akses pengumpulan ditutup.',
+        ]);
+    }
 }

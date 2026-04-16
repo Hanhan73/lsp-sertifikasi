@@ -197,7 +197,7 @@
                     <th>Skema</th>
                     <th>TUK</th>
                     <th class="text-center">Total Peserta</th>
-                    <th class="text-center">Jadwal Upload</th>
+                    <th class="text-center">Jumlah File</th>
                     <th class="text-center">Peserta Tercakup</th>
                     <th class="text-center pe-4">Download</th>
                 </tr>
@@ -275,7 +275,7 @@
                     <th>Skema</th>
                     <th>TUK</th>
                     <th class="text-center">Total Peserta</th>
-                    <th class="text-center">Jadwal BA</th>
+                    <th class="text-center">Jumlah File</th>
                     <th class="text-center">Peserta Tercakup</th>
                     <th class="text-center pe-4">Download</th>
                 </tr>

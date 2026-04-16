@@ -293,6 +293,19 @@
             </div>
         </div>
         @endif
+        {{-- Catatan Asesor --}}
+        @if($schedule->catatan_asesor)
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <div class="fw-semibold">
+                    <i class="bi bi-pencil-square text-secondary me-2"></i>Catatan Asesor
+                </div>
+            </div>
+            <div class="card-body">
+                <p class="mb-0 small" style="white-space:pre-wrap;">{{ $schedule->catatan_asesor }}</p>
+            </div>
+        </div>
+        @endif
     </div>
 
     {{-- Kanan --}}

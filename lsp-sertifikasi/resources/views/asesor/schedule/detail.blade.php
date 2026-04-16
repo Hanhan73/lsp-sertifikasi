@@ -850,6 +850,31 @@
                             @endif
                         </div>
                     </div>
+
+                    {{-- Catatan Asesor --}}
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
+                            <div><i class="bi bi-pencil-square text-secondary me-2"></i>Catatan Asesor</div>
+                            @if($schedule->catatan_asesor)
+                            <span class="badge bg-success" style="font-size:.65rem;"><i class="bi bi-check-circle me-1"></i>Ada catatan</span>
+                            @else
+                            <span class="badge bg-secondary" style="font-size:.65rem;">Belum diisi</span>
+                            @endif
+                        </div>
+                        <div class="card-body">
+                            <textarea id="catatan-asesor-input"
+                                    class="form-control form-control-sm mb-2"
+                                    rows="4"
+                                    maxlength="2000"
+                                    placeholder="Tulis catatan selama pelaksanaan ujian (kondisi ruangan, kendala teknis, kejadian khusus, dll.)...">{{ $schedule->catatan_asesor }}</textarea>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted"><span id="catatan-char-count">{{ strlen($schedule->catatan_asesor ?? '') }}</span>/2000 karakter</small>
+                                <button type="button" class="btn btn-sm btn-primary" onclick="simpanCatatanAsesor()">
+                                    <i class="bi bi-save me-1"></i>Simpan Catatan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                     @if($distribusiObs->isEmpty() && $distribusiPorto->isEmpty())
                     <div class="text-center py-5 text-muted border rounded-3">
                         <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
@@ -1545,6 +1570,32 @@ async function closeReopenObservasi(btn, asesiName) {
     if (data.success) {
         Swal.fire({ icon: 'success', title: 'Ditutup', timer: 1500, showConfirmButton: false })
             .then(() => window.location.reload());
+    }
+}
+
+// ── Catatan Asesor ──
+const _catatanUrl = '{{ route("asesor.schedule.catatan-asesor.simpan", $schedule) }}';
+
+document.getElementById('catatan-asesor-input')?.addEventListener('input', function () {
+    document.getElementById('catatan-char-count').textContent = this.value.length;
+});
+
+async function simpanCatatanAsesor() {
+    const val = document.getElementById('catatan-asesor-input')?.value ?? '';
+    try {
+        const res  = await fetch(_catatanUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({ catatan_asesor: val }),
+        });
+        const data = await res.json();
+        if (data.success) {
+            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: data.message, timer: 1800, showConfirmButton: false, toast: true, position: 'top-end' });
+        } else {
+            Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
     }
 }
 </script>

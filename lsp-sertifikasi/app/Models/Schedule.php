@@ -43,6 +43,8 @@ class Schedule extends Model
         'foto_dokumentasi_2',
         'foto_uploaded_by',
         'foto_uploaded_at',
+        // Catatan asesor
+        'catatan_asesor',
     ];
 
     protected $casts = [

@@ -711,4 +711,18 @@ public function previewFotoDokumentasi(Schedule $schedule, int $slot)
             'message' => 'Akses pengumpulan ditutup.',
         ]);
     }
+
+    public function simpanCatatanAsesor(Request $request, Schedule $schedule)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+
+        $request->validate([
+            'catatan_asesor' => 'nullable|string|max:2000',
+        ]);
+
+        $schedule->update(['catatan_asesor' => $request->catatan_asesor]);
+
+        return response()->json(['success' => true, 'message' => 'Catatan berhasil disimpan.']);
+    }
 }

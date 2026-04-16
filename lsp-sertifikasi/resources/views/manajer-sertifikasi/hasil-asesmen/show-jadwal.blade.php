@@ -256,7 +256,7 @@
 
         {{-- Foto Dokumentasi --}}
         @if($schedule->foto_dokumentasi_1 || $schedule->foto_dokumentasi_2)
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mt-4">
             <div class="card-header bg-white py-3">
                 <div class="fw-semibold">
                     <i class="bi bi-camera text-info me-2"></i>Foto Dokumentasi
@@ -273,11 +273,15 @@
                     @php $col = "foto_dokumentasi_{$slot}"; @endphp
                     @if($schedule->$col)
                     <div class="col-6">
-                        <div class="border rounded-3 overflow-hidden">
+                        <div class="border rounded-3 overflow-hidden" style="cursor:zoom-in;"
+                            onclick="bukaFotoModal('{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}', 'Foto {{ $slot }}')">
                             <img src="{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}"
-                                class="w-100" style="max-height:200px;object-fit:cover;" alt="Foto {{ $slot }}">
-                            <div class="px-2 py-1 bg-light text-muted" style="font-size:.75rem;">
-                                <i class="bi bi-image me-1"></i>Foto {{ $slot }}
+                                class="w-100" style="max-height:200px;object-fit:cover;transition:opacity .2s;"
+                                onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
+                                alt="Foto {{ $slot }}">
+                            <div class="px-2 py-1 bg-light text-muted d-flex align-items-center justify-content-between" style="font-size:.75rem;">
+                                <span><i class="bi bi-image me-1"></i>Foto {{ $slot }}</span>
+                                <span class="text-primary"><i class="bi bi-zoom-in"></i></span>
                             </div>
                         </div>
                     </div>
@@ -518,5 +522,33 @@
 
     </div>
 </div>
+{{-- Modal Lightbox Foto --}}
+<div class="modal fade" id="modalFoto" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 bg-transparent shadow-none">
+            <div class="modal-header border-0 pb-1 px-0">
+                <span class="text-white fw-semibold" id="modalFotoLabel" style="font-size:.9rem;"></span>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="modalFotoImg" src="" alt="Foto Dokumentasi"
+                     class="img-fluid rounded-3 shadow"
+                     style="max-height:85vh;object-fit:contain;">
+            </div>
+        </div>
+    </div>
+</div>
 
+<style>
+#modalFoto .modal-dialog { max-width: 90vw; }
+#modalFoto { background: rgba(0,0,0,.85); }
+</style>
+
+<script>
+function bukaFotoModal(src, label) {
+    document.getElementById('modalFotoImg').src = src;
+    document.getElementById('modalFotoLabel').textContent = label;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFoto')).show();
+}
+</script>
 @endsection

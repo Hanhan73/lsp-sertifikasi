@@ -748,19 +748,14 @@ async function submitApldua() {
     const btn = document.getElementById('btn-submit-apldua');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...'; }
  
-    // Save dulu sebelum submit
-    await doSave();
- 
-    // ✅ FIX: Ambil signature SEBELUM dimasukkan ke fetch body.
-    // Sebelumnya menggunakan await di dalam non-async IIFE:
-    //   body: (() => { const sig = await ...; })()  ← SYNTAX ERROR
-    // Itu menyebabkan seluruh <script> block gagal diparse sehingga
-    // semua fungsi (setJawaban, dll) tidak ter-define.
     const signature = await SigPadManager.prepareAndGet('asesi-apl02');
  
     try {
+        // ✅ FIX: Kirim rows sekalian dalam request submit (atomic)
+        // Tidak perlu doSave() terpisah — tidak ada race condition
         const fd = new FormData();
         fd.append('signature', signature);
+        fd.append('rows', JSON.stringify(buildRows())); // semua jawaban dikirim sekalian
  
         const res = await fetch(SUBMIT_URL, {
             method: 'POST',

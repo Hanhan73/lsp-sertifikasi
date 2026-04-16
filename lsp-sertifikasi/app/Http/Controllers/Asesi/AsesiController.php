@@ -822,24 +822,24 @@ public function aplsatuBuktiSave(Request $request)
             ->latest()
             ->firstOrFail();
 
-        $apldua = $asesmen->apldua ?? \App\Models\AplDua::create([
-            'asesmen_id' => $asesmen->id,
-            'status'     => 'draft',
-        ]);
+            $apldua = $asesmen->apldua ?? \App\Models\AplDua::create([
+                'asesmen_id' => $asesmen->id,
+                'status'     => 'draft',
+            ]);
 
-        // ✅ Selalu pastikan SEMUA elemen punya row — bukan hanya kalau kosong
-        $units = $asesmen->skema->unitKompetensis->load('elemens');
-        foreach ($units as $unit) {
-            foreach ($unit->elemens as $elemen) {
-                \App\Models\AplDuaJawaban::firstOrCreate([
-                    'apl_02_id' => $apldua->id,
-                    'elemen_id' => $elemen->id,
-                ]);
+            // ✅ Selalu pastikan SEMUA elemen punya row — bukan hanya kalau kosong
+            $units = $asesmen->skema->unitKompetensis->load('elemens');
+            foreach ($units as $unit) {
+                foreach ($unit->elemens as $elemen) {
+                    \App\Models\AplDuaJawaban::firstOrCreate([
+                        'apl_02_id' => $apldua->id,
+                        'elemen_id' => $elemen->id,
+                    ]);
+                }
             }
-        }
-        $apldua->load('jawabans');
+            $apldua->load('jawabans');
 
-        $jawabanMap = $apldua->jawabans->keyBy('elemen_id');
+            $jawabanMap = $apldua->jawabans->keyBy('elemen_id');
 
         return view('asesi.apldua.form', compact('asesmen', 'apldua', 'jawabanMap'));
     }
@@ -901,14 +901,17 @@ public function aplsatuBuktiSave(Request $request)
     {
         $request->validate([
             'signature' => 'required|string',
+            'rows'      => 'nullable|array',
+            'rows.*.elemen_id' => 'integer|exists:elemens,id',
+            'rows.*.jawaban'   => 'nullable|in:K,BK',
+            'rows.*.bukti'     => 'nullable|string|max:1000',
         ]);
-    
-        // ✅ Hapus whereNotNull('schedule_id') — sama seperti method apldua() GET
+
         $asesmen = auth()->user()->asesmens()->latest()->first();
         if (!$asesmen) {
             return response()->json(['success' => false, 'message' => 'Asesmen tidak ditemukan.'], 404);
         }
-    
+
         $apldua = $asesmen->apldua;
         if (!$apldua) {
             return response()->json(['success' => false, 'message' => 'APL-02 tidak ditemukan.'], 404);
@@ -916,7 +919,17 @@ public function aplsatuBuktiSave(Request $request)
         if (!$apldua->is_editable) {
             return response()->json(['success' => false, 'message' => 'APL-02 sudah disubmit.'], 400);
         }
-    
+
+        // ✅ Simpan jawaban dari request sebelum validasi (atomic)
+        if ($request->has('rows') && is_array($request->rows)) {
+            foreach ($request->rows as $row) {
+                AplDuaJawaban::updateOrCreate(
+                    ['apl_02_id' => $apldua->id, 'elemen_id' => $row['elemen_id']],
+                    ['jawaban' => $row['jawaban'] ?? null, 'bukti' => $row['bukti'] ?? null]
+                );
+            }
+        }
+
         // Validasi semua elemen sudah dijawab
         $total    = $apldua->jawabans()->count();
         $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
@@ -926,9 +939,9 @@ public function aplsatuBuktiSave(Request $request)
                 'message' => "Semua elemen harus dijawab terlebih dahulu. ({$answered}/{$total} sudah diisi)",
             ], 422);
         }
-    
+
         $sig = preg_replace('/^data:image\/\w+;base64,/', '', $request->signature);
-    
+
         $apldua->update([
             'status'            => 'submitted',
             'ttd_asesi'         => $sig,
@@ -936,12 +949,12 @@ public function aplsatuBuktiSave(Request $request)
             'tanggal_ttd_asesi' => now(),
             'submitted_at'      => now(),
         ]);
-    
-        \Log::info('[APL02-SUBMIT] Submitted', ['apldua_id' => $apldua->id]);
-    
+
+        Log::info('[APL02-SUBMIT] Submitted', ['apldua_id' => $apldua->id]);
+
         return response()->json(['success' => true, 'message' => 'APL-02 berhasil disubmit!']);
     }
-    
+        
     
     /**
      * Preview / Download PDF APL-02 (hanya jika sudah verified)

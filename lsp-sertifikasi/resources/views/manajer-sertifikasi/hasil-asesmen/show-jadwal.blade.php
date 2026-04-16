@@ -150,12 +150,12 @@
                             <span class="badge bg-warning text-dark" style="font-size:.7rem;">Belum Submit</span>
                             @else
                             <div class="fw-bold {{ $nilaiPct >= 60 ? 'text-success' : 'text-danger' }}">
-                                {{ $benarSoal }}/{{ $totalSoal }}</div>
+                                {{ $nilaiPct }}</div>
                             <div class="progress mt-1" style="height:4px;width:60px;margin:0 auto;">
                                 <div class="progress-bar {{ $nilaiPct >= 60 ? 'bg-success' : 'bg-danger' }}"
                                     style="width:{{ $nilaiPct }}%"></div>
                             </div>
-                            <div style="font-size:.68rem;color:#6b7280;">{{ $nilaiPct }}</div>
+                            <div style="font-size:.68rem;color:#6b7280;">{{ $benarSoal }}/{{ $totalSoal }}</div>
                             @endif
                         </td>
                         @foreach($schedule->distribusiSoalObservasi as $distObs)

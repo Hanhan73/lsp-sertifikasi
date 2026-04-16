@@ -866,7 +866,7 @@
                                     class="form-control form-control-sm mb-2"
                                     rows="4"
                                     maxlength="2000"
-                                    placeholder="Tulis catatan selama pelaksanaan ujian (kondisi ruangan, kendala teknis, kejadian khusus, dll.)...">{{ $schedule->catatan_asesor }}</textarea>
+                                    placeholder="Tulis catatan selama pelaksanaan ujian...">{{ $schedule->catatan_asesor }}</textarea>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted"><span id="catatan-char-count">{{ strlen($schedule->catatan_asesor ?? '') }}</span>/2000 karakter</small>
                                 <button type="button" class="btn btn-sm btn-primary" onclick="simpanCatatanAsesor()">

@@ -48,6 +48,38 @@
                 <div class="fw-bold" style="font-size:1.2rem;color:#2563eb">{{ $totalAsesiAll }}</div>
                 <div style="font-size:.65rem;color:#6b7280;font-weight:600">TOTAL ASESI</div>
             </div>
+            <div class="vr mx-1"></div>
+
+            <div class="dropdown">
+                <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-download me-1"></i>Download Rekap
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0" style="min-width:200px;">
+                    <li>
+                        <h6 class="dropdown-header text-muted" style="font-size:.7rem;">REKAP BATCH</h6>
+                    </li>
+                    <li>
+                        <a class="dropdown-item small"
+                        href="{{ route('manajer-sertifikasi.export-hasil-teori.batch', $batchId) }}">
+                            <i class="bi bi-file-earmark-excel text-primary me-2"></i>Hasil Teori
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item small {{ !$adaObservasi ? 'disabled text-muted' : '' }}"
+                        href="{{ $adaObservasi ? route('manajer-sertifikasi.export-hasil-teori.observasi', $batchId) : '#' }}">
+                            <i class="bi bi-file-earmark-excel text-success me-2"></i>Hasil Observasi
+                            @if(!$adaObservasi)<span class="ms-1 text-muted" style="font-size:.7rem;">(belum ada)</span>@endif
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item small {{ !$adaBA ? 'disabled text-muted' : '' }}"
+                        href="{{ $adaBA ? route('manajer-sertifikasi.export-hasil-teori.berita-acara', $batchId) : '#' }}">
+                            <i class="bi bi-file-earmark-excel text-warning me-2"></i>Berita Acara
+                            @if(!$adaBA)<span class="ms-1 text-muted" style="font-size:.7rem;">(belum ada)</span>@endif
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
     </div>
 </div>

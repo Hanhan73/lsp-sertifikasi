@@ -129,7 +129,7 @@ class HasilAsesmenController extends Controller
             'distribusiSoalObservasi.soalObservasi',
             'distribusiSoalObservasi.paketSoalObservasi',
             'distribusiPortofolio.portofolio',
-            'beritaAcara.asesis',
+            'beritaAcara.asesis', 'hasilObservasi', 'hasilPortofolio',
         ])
         ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $batchId))
         ->orderBy('assessment_date')
@@ -159,6 +159,8 @@ class HasilAsesmenController extends Controller
                 }
             }
         }
+        $adaObservasi = $schedules->flatMap->hasilObservasi->isNotEmpty();
+        $adaBA        = $schedules->some(fn($s) => $s->beritaAcara !== null);
 
         return view('manajer-sertifikasi.hasil-asesmen.show-batch', [
             'batchId'             => $batchId,
@@ -171,6 +173,8 @@ class HasilAsesmenController extends Controller
             'rekomendasiMap'      => $rekomendasiMap,
             'totalK'              => $totalK,
             'totalBK'             => $totalBK,
+            'adaObservasi'        => $adaObservasi,
+            'adaBA'               => $adaBA,
         ]);
     }
 

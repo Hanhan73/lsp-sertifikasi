@@ -250,6 +250,81 @@ class ExcelService
         ];
     }
 
+    public function parseHasilObservasi(string $filePath): array
+    {
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['xlsx', 'xlsm', 'xls'])) {
+            return ['sheets' => [], 'error' => 'Format file tidak didukung: ' . $ext];
+        }
+
+        try {
+            $reader      = $this->createReader($filePath);
+            $spreadsheet = $reader->load($filePath);
+        } catch (\Throwable $e) {
+            \Log::error('[ExcelService][parseHasilObservasi] Gagal buka file: ' . $e->getMessage());
+            return ['sheets' => [], 'error' => 'Gagal membuka file: ' . $e->getMessage()];
+        }
+
+        $result = [];
+
+        foreach ($spreadsheet->getSheetNames() as $sheetName) {
+            if (in_array($sheetName, $this->skipSheets)) continue;
+
+            $ws = $spreadsheet->getSheetByName($sheetName);
+            if (!$ws) continue;
+
+            [$headerRow, $namaCol] = $this->findNamaHeader($ws);
+            if (!$headerRow) continue;
+
+            $maxCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestColumn());
+            $headerMap = [];
+
+            for ($c = 1; $c <= $maxCol; $c++) {
+                try {
+                    $val = trim((string) $ws->getCellByColumnAndRow($c, $headerRow)->getCalculatedValue());
+                } catch (\Throwable $e) {
+                    $val = trim((string) $ws->getCellByColumnAndRow($c, $headerRow)->getValue());
+                }
+                if ($val !== '') $headerMap[$c] = $val;
+            }
+
+            if (empty($headerMap)) continue;
+
+            $dataStartRow = $this->detectDataStartRow($ws, $headerRow, $namaCol);
+            $maxRow       = $ws->getHighestRow();
+            $rows         = [];
+
+            for ($r = $dataStartRow; $r <= $maxRow; $r++) {
+                try {
+                    $namaVal = trim((string) $ws->getCellByColumnAndRow($namaCol, $r)->getCalculatedValue());
+                } catch (\Throwable $e) {
+                    $namaVal = trim((string) $ws->getCellByColumnAndRow($namaCol, $r)->getValue());
+                }
+                if (in_array($namaVal, ['', '0', '-'])) break;
+
+                $row = [];
+                foreach ($headerMap as $c => $label) {
+                    try {
+                        $cell = $ws->getCellByColumnAndRow($c, $r)->getCalculatedValue();
+                    } catch (\Throwable $e) {
+                        $cell = $ws->getCellByColumnAndRow($c, $r)->getValue();
+                    }
+                    $row[$label] = $cell !== null ? (string) $cell : '';
+                }
+                $rows[] = $row;
+            }
+
+            if (!empty($rows)) {
+                $result[$sheetName] = [
+                    'headers' => array_values($headerMap),
+                    'rows'    => $rows,
+                ];
+            }
+        }
+
+        return ['sheets' => $result, 'error' => null];
+    }
+
     // =========================================================================
     // PRIVATE HELPERS
     // =========================================================================
@@ -307,6 +382,7 @@ class ExcelService
         return $headerRow + 2;
     }
 
+
     /**
      * Unmerge merged cells yang overlap dengan kolom Nama di baris data.
      */
@@ -357,4 +433,6 @@ class ExcelService
 
         return IOFactory::createReader($readerType);
     }
+
+    
 }

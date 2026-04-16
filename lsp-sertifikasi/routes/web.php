@@ -707,6 +707,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'index'])->name('index');
             Route::get('/batch/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBatch'])->name('batch');
             Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportJadwal'])->name('jadwal');
+            // TAMBAH 2 ini:
+            Route::get('/observasi/{batchId}',    [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportObservasi'])   ->name('observasi');
+            Route::get('/berita-acara/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBeritaAcara']) ->name('berita-acara');
         });
         
         // ── Bank Soal 1: Soal Observasi ──────────────────────────────────

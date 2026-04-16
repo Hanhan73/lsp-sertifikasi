@@ -78,6 +78,7 @@
                         <tr>
                             <th class="ps-3">#</th>
                             <th>Skema & TUK</th>
+                            <th> Asesor</th>
                             <th>Tanggal</th>
                             <th class="text-center">Asesi</th>
                             <th class="text-center">Hadir</th>
@@ -100,6 +101,9 @@
                             <td>
                                 <div class="fw-semibold">{{ $s->skema->name }}</div>
                                 <div class="text-muted small"><i class="bi bi-building me-1"></i>{{ $s->tuk->name ?? '-' }}</div>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ $s->asesor->name ?? '-' }}</div>
                             </td>
                             <td>
                                 {{ $s->assessment_date->translatedFormat('d M Y') }}

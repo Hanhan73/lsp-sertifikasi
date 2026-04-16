@@ -78,6 +78,7 @@
                         <tr>
                             <th class="ps-3">#</th>
                             <th>Skema & TUK</th>
+                            <th>Batch</th>
                             <th> Asesor</th>
                             <th>Tanggal</th>
                             <th class="text-center">Asesi</th>
@@ -101,6 +102,29 @@
                             <td>
                                 <div class="fw-semibold">{{ $s->skema->name }}</div>
                                 <div class="text-muted small"><i class="bi bi-building me-1"></i>{{ $s->tuk->name ?? '-' }}</div>
+                            </td>
+                            <td>
+                                @php
+                                    $batchIds = $s->asesmens
+                                        ->whereNotNull('collective_batch_id')
+                                        ->pluck('collective_batch_id')
+                                        ->unique()
+                                        ->values();
+                                @endphp
+                                @if($batchIds->isEmpty())
+                                    <span class="text-muted small">—</span>
+                                @else
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @foreach($batchIds as $bid)
+                                        <a href="{{ route('manajer-sertifikasi.hasil-asesmen.batch', $bid) }}"
+                                        class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none"
+                                        style="font-size:.68rem;font-family:monospace;"
+                                        title="{{ $bid }}">
+                                            {{ Str::limit($bid, 20) }}
+                                        </a>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 <div class="fw-semibold">{{ $s->asesor->nama ?? '-' }}</div>

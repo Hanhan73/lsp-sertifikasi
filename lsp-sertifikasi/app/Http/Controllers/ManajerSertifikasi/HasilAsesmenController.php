@@ -16,7 +16,7 @@ class HasilAsesmenController extends Controller
 {
     public function index(Request $request)
     {
-        $jadwalQuery = Schedule::with(['skema', 'tuk', 'beritaAcara.asesis'])
+        $jadwalQuery = Schedule::with(['skema', 'tuk', 'beritaAcara.asesis', 'asesmens'])
             ->approved()
             ->withCount('asesmens');
 
@@ -129,7 +129,7 @@ class HasilAsesmenController extends Controller
             'distribusiSoalObservasi.soalObservasi',
             'distribusiSoalObservasi.paketSoalObservasi',
             'distribusiPortofolio.portofolio',
-            'beritaAcara.asesis', 'hasilObservasi', 'hasilPortofolio',
+            'beritaAcara.asesis', 'hasilObservasi', 'hasilPortofolio', 
         ])
         ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $batchId))
         ->orderBy('assessment_date')

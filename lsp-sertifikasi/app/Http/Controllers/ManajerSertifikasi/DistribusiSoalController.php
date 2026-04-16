@@ -972,7 +972,7 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
     /**
      * [FIX #1] Download hasil observasi — tambah cek exists()
      */
-    public function downloadHasilObservasi(Schedule $schedule, SoalObservasi $soalObservasi): \Illuminate\Http\Response
+    public function downloadHasilObservasi(Schedule $schedule, SoalObservasi $soalObservasi)
     {
         $hasil = HasilObservasi::where([
             'schedule_id'       => $schedule->id,
@@ -991,7 +991,7 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
     /**
      * [FIX #1] Download hasil portofolio — tambah cek exists()
      */
-    public function downloadHasilPortofolio(Schedule $schedule, Portofolio $portofolio): \Illuminate\Http\Response
+    public function downloadHasilPortofolio(Schedule $schedule, Portofolio $portofolio)
     {
         $hasil = HasilPortofolio::where([
             'schedule_id'   => $schedule->id,

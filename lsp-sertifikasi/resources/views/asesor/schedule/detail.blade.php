@@ -854,11 +854,14 @@
                     {{-- Catatan Asesor --}}
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
-                            <div><i class="bi bi-pencil-square text-secondary me-2"></i>Catatan Asesor</div>
+                            <div>
+                                <i class="bi bi-pencil-square text-secondary me-2"></i>Catatan Asesor
+                                <span class="text-danger ms-1" title="Wajib diisi">*</span>
+                            </div>
                             @if($schedule->catatan_asesor)
-                            <span class="badge bg-success" style="font-size:.65rem;"><i class="bi bi-check-circle me-1"></i>Ada catatan</span>
+                            <span class="badge bg-success" style="font-size:.65rem;"><i class="bi bi-check-circle me-1"></i>Tersimpan</span>
                             @else
-                            <span class="badge bg-secondary" style="font-size:.65rem;">Belum diisi</span>
+                            <span class="badge bg-warning text-dark" style="font-size:.65rem;"><i class="bi bi-exclamation-circle me-1"></i>Belum diisi</span>
                             @endif
                         </div>
                         <div class="card-body">
@@ -866,15 +869,16 @@
                                     class="form-control form-control-sm mb-2"
                                     rows="4"
                                     maxlength="2000"
-                                    placeholder="Tulis catatan selama pelaksanaan ujian...">{{ $schedule->catatan_asesor }}</textarea>
+                                    placeholder="Tuliskan kondisi ruangan, kendala teknis, kejadian khusus, atau hal lain selama pelaksanaan ujian...">{{ $schedule->catatan_asesor }}</textarea>
                             <div class="d-flex justify-content-between align-items-center">
                                 <small class="text-muted"><span id="catatan-char-count">{{ strlen($schedule->catatan_asesor ?? '') }}</span>/2000 karakter</small>
-                                <button type="button" class="btn btn-sm btn-primary" onclick="simpanCatatanAsesor()">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="simpanCatatanAsesor()" id="btn-simpan-catatan">
                                     <i class="bi bi-save me-1"></i>Simpan Catatan
                                 </button>
                             </div>
                         </div>
                     </div>
+
                     @if($distribusiObs->isEmpty() && $distribusiPorto->isEmpty())
                     <div class="text-center py-5 text-muted border rounded-3">
                         <i class="bi bi-inbox" style="font-size:2.5rem;opacity:.3;"></i>
@@ -1582,6 +1586,11 @@ document.getElementById('catatan-asesor-input')?.addEventListener('input', funct
 
 async function simpanCatatanAsesor() {
     const val = document.getElementById('catatan-asesor-input')?.value ?? '';
+    const btn = document.getElementById('btn-simpan-catatan');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+
     try {
         const res  = await fetch(_catatanUrl, {
             method: 'POST',
@@ -1596,6 +1605,9 @@ async function simpanCatatanAsesor() {
         }
     } catch (e) {
         Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-save me-1"></i>Simpan Catatan';
     }
 }
 </script>

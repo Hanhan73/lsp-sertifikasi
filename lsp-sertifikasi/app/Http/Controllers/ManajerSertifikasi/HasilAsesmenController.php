@@ -188,10 +188,19 @@ class HasilAsesmenController extends Controller
         abort_unless($path && Storage::disk('private')->exists($path), 404, 'Foto tidak ditemukan.');
 
         $mime = Storage::disk('private')->mimeType($path) ?: 'image/jpeg';
+        $ext  = pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg';
 
-        return response(Storage::disk('private')->get($path), 200, [
+        $headers = [
             'Content-Type'  => $mime,
             'Cache-Control' => 'private, max-age=300',
-        ]);
+        ];
+
+        if (request()->boolean('download')) {
+            $skema   = preg_replace('/[\/\\\s]+/', '_', $schedule->skema->name ?? 'foto');
+            $tanggal = $schedule->assessment_date->format('Ymd');
+            $headers['Content-Disposition'] = "attachment; filename=\"Foto_{$slot}_{$skema}_{$tanggal}.{$ext}\"";
+        }
+
+        return response(Storage::disk('private')->get($path), 200, $headers);
     }
 }

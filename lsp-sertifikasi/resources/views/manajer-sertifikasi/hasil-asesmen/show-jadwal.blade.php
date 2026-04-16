@@ -273,15 +273,28 @@
                     @php $col = "foto_dokumentasi_{$slot}"; @endphp
                     @if($schedule->$col)
                     <div class="col-6">
-                        <div class="border rounded-3 overflow-hidden" style="cursor:zoom-in;"
-                            onclick="bukaFotoModal('{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}', 'Foto {{ $slot }}')">
-                            <img src="{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}"
-                                class="w-100" style="max-height:200px;object-fit:cover;transition:opacity .2s;"
-                                onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
-                                alt="Foto {{ $slot }}">
-                            <div class="px-2 py-1 bg-light text-muted d-flex align-items-center justify-content-between" style="font-size:.75rem;">
-                                <span><i class="bi bi-image me-1"></i>Foto {{ $slot }}</span>
-                                <span class="text-primary"><i class="bi bi-zoom-in"></i></span>
+                        <div class="border rounded-3 overflow-hidden">
+                            <div style="cursor:zoom-in;"
+                                onclick="bukaFotoModal('{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}', 'Foto {{ $slot }}')">
+                                <img src="{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}"
+                                    class="w-100" style="max-height:200px;object-fit:cover;transition:opacity .2s;"
+                                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'"
+                                    alt="Foto {{ $slot }}">
+                            </div>
+                            <div class="px-2 py-1 bg-light d-flex align-items-center justify-content-between" style="font-size:.75rem;">
+                                <span class="text-muted"><i class="bi bi-image me-1"></i>Foto {{ $slot }}</span>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-xs btn-outline-secondary py-0 px-1" style="font-size:.7rem;"
+                                            onclick="bukaFotoModal('{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}', 'Foto {{ $slot }}')"
+                                            title="Lihat foto">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                    <a href="{{ route('manajer-sertifikasi.hasil-asesmen.foto', [$schedule, $slot]) }}?download=1"
+                                    class="btn btn-xs btn-outline-primary py-0 px-1" style="font-size:.7rem;"
+                                    title="Download foto {{ $slot }}">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -297,6 +310,7 @@
             </div>
         </div>
         @endif
+
         {{-- Catatan Asesor --}}
         @if($schedule->catatan_asesor)
         <div class="card border-0 shadow-sm">

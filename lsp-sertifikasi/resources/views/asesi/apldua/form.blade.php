@@ -446,9 +446,8 @@ const CSRF       = document.querySelector('meta[name="csrf-token"]')?.content ??
 const SAVE_URL   = '{{ route("asesi.apldua.save") }}';
 const SUBMIT_URL = '{{ route("asesi.apldua.submit") }}';
 const TOTAL_EL   = {{ $asesmen->skema->unitKompetensis->flatMap->elemens->count() }};
- 
+
 // ── State ──────────────────────────────────────────────────
-// jawaban[elemen_id] = { jawaban: 'K'|'BK'|null, bukti: '' }
 const jawaban = {};
 @foreach($asesmen->skema->unitKompetensis as $unit)
 @foreach($unit->elemens as $elemen)
@@ -459,8 +458,8 @@ jawaban[{{ $elemen->id }}] = @json([
 ]);
 @endforeach
 @endforeach
- 
-// Per-unit metadata for progress updates
+
+// Per-unit metadata
 const unitElemenMap = {};
 @foreach($asesmen->skema->unitKompetensis as $unit)
 unitElemenMap[{{ $unit->id }}] = [
@@ -469,12 +468,12 @@ unitElemenMap[{{ $unit->id }}] = [
     @endforeach
 ];
 @endforeach
- 
+
 window.addEventListener('DOMContentLoaded', () => {
     SigPadManager.init('asesi-apl02', @json(auth()->user()->signature_image));
     updateAllProgress();
 });
- 
+
 // ── Toggle unit accordion ──────────────────────────────────
 function toggleUnit(unitId) {
     const body  = document.getElementById(`unit-body-${unitId}`);
@@ -484,12 +483,11 @@ function toggleUnit(unitId) {
     body.style.display = open ? 'none' : 'block';
     if (arrow) arrow.style.transform = open ? '' : 'rotate(90deg)';
 }
- 
+
 // ── Set jawaban (K / BK) ───────────────────────────────────
 function setJawaban(elemenId, val, btn) {
     const prev = jawaban[elemenId]?.jawaban;
- 
-    // Toggle off if clicking same button
+
     if (prev === val) {
         jawaban[elemenId].jawaban = null;
         document.querySelectorAll(`.jawaban-btn[data-elemen="${elemenId}"]`)
@@ -498,8 +496,6 @@ function setJawaban(elemenId, val, btn) {
     } else {
         jawaban[elemenId] = jawaban[elemenId] ?? {};
         jawaban[elemenId].jawaban = val;
- 
-        // Update button states
         document.querySelectorAll(`.jawaban-btn[data-elemen="${elemenId}"]`)
                 .forEach(b => {
                     b.classList.remove('active');
@@ -507,17 +503,17 @@ function setJawaban(elemenId, val, btn) {
                 });
         updateRowStyle(elemenId, val);
     }
- 
+
     updateAllProgress();
     debouncedSave();
 }
- 
+
 function onBuktiChange(elemenId, value) {
     jawaban[elemenId] = jawaban[elemenId] ?? {};
     jawaban[elemenId].bukti = value;
     debouncedSave();
 }
- 
+
 function updateRowStyle(elemenId, val) {
     const row = document.getElementById(`row-${elemenId}`);
     if (!row) return;
@@ -526,11 +522,11 @@ function updateRowStyle(elemenId, val) {
     else if (val === 'BK') row.classList.add('answered-BK');
     else                   row.classList.add('unanswered');
 }
- 
+
 // ── Progress update ─────────────────────────────────────────
 function updateAllProgress() {
     let answered = 0, countK = 0, countBK = 0;
- 
+
     Object.values(jawaban).forEach(j => {
         if (j.jawaban) {
             answered++;
@@ -538,57 +534,54 @@ function updateAllProgress() {
             if (j.jawaban === 'BK') countBK++;
         }
     });
- 
+
     const pct = TOTAL_EL > 0 ? Math.round(answered / TOTAL_EL * 100) : 0;
- 
+
     const bar   = document.getElementById('prog-bar');
     const label = document.getElementById('prog-label');
     if (bar)   bar.style.width = pct + '%';
     if (label) label.textContent = `${answered} / ${TOTAL_EL} elemen`;
- 
+
     const cK  = document.getElementById('count-K');
     const cBK = document.getElementById('count-BK');
     if (cK)  cK.textContent  = countK;
     if (cBK) cBK.textContent = countBK;
- 
-    // Summary cards
+
     const sTotal = document.getElementById('sum-total');
     const sK     = document.getElementById('sum-k');
     const sBK    = document.getElementById('sum-bk');
     if (sTotal) sTotal.textContent = TOTAL_EL;
     if (sK)     sK.textContent     = countK;
     if (sBK)    sBK.textContent    = countBK;
- 
-    // Per-unit progress badges
+
     Object.entries(unitElemenMap).forEach(([unitId, elemenIds]) => {
         const ua = elemenIds.filter(id => jawaban[id]?.jawaban).length;
         const ut = elemenIds.length;
         const el = document.getElementById(`unit-prog-${unitId}`);
         if (el) el.textContent = `${ua}/${ut}`;
- 
-        // Update unit header badge
+
         const header = document.getElementById(`unit-card-${unitId}`)?.querySelector('.badge');
         if (header) {
             header.className = `badge ${ua === ut && ut > 0 ? 'bg-success' : 'bg-secondary'} me-1`;
         }
     });
 }
- 
+
 // ── Auto-save (debounced) ───────────────────────────────────
 let saveTimer = null;
- 
+
 function debouncedSave() {
     clearTimeout(saveTimer);
     saveTimer = setTimeout(doSave, 1200);
 }
- 
+
 async function doSave() {
     const rows = Object.entries(jawaban).map(([elemenId, data]) => ({
         elemen_id: parseInt(elemenId),
         jawaban:   data.jawaban ?? null,
         bukti:     data.bukti ?? '',
     }));
- 
+
     try {
         const res = await fetch(SAVE_URL, {
             method: 'POST',
@@ -607,20 +600,19 @@ async function doSave() {
         console.error('[APL02] save error:', e);
     }
 }
- 
+
 function showSaveIndicator() {
     const el = document.getElementById('save-indicator');
     if (!el) return;
     el.style.opacity = '1';
     setTimeout(() => { el.style.opacity = '0'; }, 2000);
 }
- 
+
 // ── Submit ─────────────────────────────────────────────────
 async function submitApldua() {
     // Cek semua terisi
     const answered = Object.values(jawaban).filter(j => j.jawaban).length;
     if (answered < TOTAL_EL) {
-        // Buka semua unit yang ada elemen belum dijawab
         Object.entries(unitElemenMap).forEach(([unitId, elemenIds]) => {
             const adaUnanswered = elemenIds.some(id => !jawaban[id]?.jawaban);
             if (adaUnanswered) {
@@ -632,10 +624,10 @@ async function submitApldua() {
                 }
             }
         });
- 
+
         const firstUnanswered = document.querySelector('.elemen-row.unanswered');
         if (firstUnanswered) firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
- 
+
         Swal.fire({
             icon: 'warning',
             title: 'Belum Semua Elemen Diisi',
@@ -643,11 +635,10 @@ async function submitApldua() {
         });
         return;
     }
- 
-    // Cek apakah ada jawaban BK
+
+    // Cek BK
     const countBKCheck = Object.values(jawaban).filter(j => j.jawaban === 'BK').length;
     if (countBKCheck > 0) {
-        // Kumpulkan nama elemen BK
         const bkElemen = [];
         document.querySelectorAll('.jawaban-btn.BK.active').forEach(btn => {
             const elemenId = btn.dataset.elemen;
@@ -655,12 +646,11 @@ async function submitApldua() {
             const judulEl  = row?.querySelector('.fw-semibold.small');
             if (judulEl) bkElemen.push(judulEl.textContent.trim());
         });
- 
+
         const bkList  = bkElemen.slice(0, 5).map(j => `<li>${j}</li>`).join('');
         const sisanya = bkElemen.length > 5
             ? `<li><em>...dan ${bkElemen.length - 5} elemen lainnya</em></li>` : '';
- 
-        // Auto-expand unit yang mengandung BK
+
         Object.entries(unitElemenMap).forEach(([unitId, elemenIds]) => {
             const adaBK = elemenIds.some(id => jawaban[id]?.jawaban === 'BK');
             if (adaBK) {
@@ -672,11 +662,10 @@ async function submitApldua() {
                 }
             }
         });
- 
-        // Scroll ke elemen BK pertama
+
         const firstBKRow = document.querySelector('.elemen-row.answered-BK');
         if (firstBKRow) firstBKRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
- 
+
         Swal.fire({
             icon: 'error',
             title: 'Terdapat Elemen Belum Kompeten',
@@ -694,23 +683,23 @@ async function submitApldua() {
         });
         return;
     }
- 
+
     // Cek agreement
     if (!document.getElementById('apldua-agree')?.checked) {
         Swal.fire({ icon: 'warning', title: 'Persetujuan Diperlukan', text: 'Centang pernyataan persetujuan terlebih dahulu.' });
         return;
     }
- 
+
     // Cek TTD
     if (SigPadManager.isEmpty('asesi-apl02')) {
         Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Tanda tangan di kotak yang tersedia.' });
         return;
     }
- 
+
     const countK  = Object.values(jawaban).filter(j => j.jawaban === 'K').length;
     const countBK = Object.values(jawaban).filter(j => j.jawaban === 'BK').length;
- 
-    const confirm = await Swal.fire({
+
+    const result = await Swal.fire({
         title: 'Konfirmasi Submit APL-02',
         html: `
             <div class="text-start">
@@ -742,21 +731,22 @@ async function submitApldua() {
         cancelButtonColor: '#6c757d',
         reverseButtons: true,
     });
- 
-    if (!confirm.isConfirmed) return;
- 
+
+    if (!result.isConfirmed) return;
+
     const btn = document.getElementById('btn-submit-apldua');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memproses...'; }
- 
-    const signature = await SigPadManager.prepareAndGet('asesi-apl02');
- 
+
     try {
-        // ✅ FIX: Kirim rows sekalian dalam request submit (atomic)
-        // Tidak perlu doSave() terpisah — tidak ada race condition
+        // Pastikan auto-save selesai dulu sebelum submit
+        clearTimeout(saveTimer);
+        await doSave();
+
+        const signature = await SigPadManager.prepareAndGet('asesi-apl02');
+
         const fd = new FormData();
         fd.append('signature', signature);
-        fd.append('rows', JSON.stringify(buildRows())); // semua jawaban dikirim sekalian
- 
+
         const res = await fetch(SUBMIT_URL, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
@@ -783,4 +773,3 @@ async function submitApldua() {
 }
 </script>
 @endpush
- 

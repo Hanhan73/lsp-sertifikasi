@@ -102,17 +102,47 @@ class ExportHasilTeoriController extends Controller
             ->groupBy('collective_batch_id')
             ->map(function ($items) {
                 $scheduleIds = $items->pluck('schedule_id')->unique()->filter();
-                $schedules   = Schedule::with(['beritaAcara', 'hasilObservasi'])
+                $schedules   = Schedule::with(['beritaAcara.asesis', 'hasilObservasi'])
                     ->whereIn('id', $scheduleIds)->get();
-                $first = $items->first();
+
+                $first           = $items->first();
+                $totalJadwal     = $scheduleIds->count();
+
+                // Observasi
+                $jadwalAdaObs    = $schedules->filter(fn($s) => $s->hasilObservasi->isNotEmpty())->count();
+                $pesertaObs      = $schedules->flatMap->hasilObservasi->count(); // file yg diupload
+                // Hitung asesi dari jadwal yang sudah upload
+                $asesiObs        = $schedules
+                    ->filter(fn($s) => $s->hasilObservasi->isNotEmpty())
+                    ->sum(fn($s) => $s->hasilObservasi->pluck('schedule_id')->unique()->count() > 0
+                        ? Asesmen::where('schedule_id', $s->id)->count()
+                        : 0
+                    );
+
+                // Berita Acara
+                $jadwalAdaBA     = $schedules->filter(fn($s) => $s->beritaAcara !== null)->count();
+                $pesertaBA       = $schedules
+                    ->filter(fn($s) => $s->beritaAcara !== null)
+                    ->sum(fn($s) => $s->beritaAcara->asesis->count());
+
                 return [
-                    'batch_id'       => $first->collective_batch_id,
-                    'skema_name'     => $first->skema?->name ?? '-',
-                    'tuk_name'       => $first->tuk?->name ?? '-',
-                    'jumlah_peserta' => $items->count(),
-                    'ada_observasi'  => $schedules->flatMap->hasilObservasi->isNotEmpty(),
-                    'ada_ba'         => $schedules->some(fn($s) => $s->beritaAcara !== null),
-                    'tanggal'        => $items->pluck('schedule.assessment_date')->filter()->sort()->first(),
+                    'batch_id'        => $first->collective_batch_id,
+                    'skema_name'      => $first->skema?->name ?? '-',
+                    'tuk_name'        => $first->tuk?->name ?? '-',
+                    'jumlah_peserta'  => $items->count(),
+                    'total_jadwal'    => $totalJadwal,
+                    // observasi
+                    'ada_observasi'   => $jadwalAdaObs > 0,
+                    'jadwal_obs'      => $jadwalAdaObs,      // berapa jadwal yg sudah upload
+                    'peserta_obs'     => $items->whereIn(   // asesi dari jadwal yg sudah upload
+                        'schedule_id',
+                        $schedules->filter(fn($s) => $s->hasilObservasi->isNotEmpty())->pluck('id')
+                    )->count(),
+                    // berita acara
+                    'ada_ba'          => $jadwalAdaBA > 0,
+                    'jadwal_ba'       => $jadwalAdaBA,
+                    'peserta_ba'      => $pesertaBA,
+                    'tanggal'         => $items->pluck('schedule.assessment_date')->filter()->sort()->first(),
                 ];
             })
             ->sortByDesc('tanggal')

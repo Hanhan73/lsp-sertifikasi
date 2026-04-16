@@ -196,9 +196,9 @@
                     <th class="ps-4">Batch ID</th>
                     <th>Skema</th>
                     <th>TUK</th>
-                    <th class="text-center">Peserta</th>
-                    <th class="text-center">Tgl Asesmen</th>
-                    <th class="text-center">File Observasi</th>
+                    <th class="text-center">Total Peserta</th>
+                    <th class="text-center">Jadwal Upload</th>
+                    <th class="text-center">Peserta Tercakup</th>
                     <th class="text-center pe-4">Download</th>
                 </tr>
             </thead>
@@ -211,20 +211,28 @@
                     <td class="text-center">
                         <span class="badge bg-secondary">{{ $batch['jumlah_peserta'] }}</span>
                     </td>
-                    <td class="text-center small text-muted">
-                        {{ $batch['tanggal'] ? \Carbon\Carbon::parse($batch['tanggal'])->translatedFormat('d M Y') : '-' }}
+                    <td class="text-center">
+                        @if($batch['ada_observasi'])
+                        <span class="badge {{ $batch['jadwal_obs'] === $batch['total_jadwal'] ? 'bg-success' : 'bg-warning text-dark' }}">
+                            {{ $batch['jadwal_obs'] }}/{{ $batch['total_jadwal'] }} jadwal
+                        </span>
+                        @else
+                        <span class="badge bg-secondary">0/{{ $batch['total_jadwal'] }} jadwal</span>
+                        @endif
                     </td>
                     <td class="text-center">
                         @if($batch['ada_observasi'])
-                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Ada</span>
+                        <span class="badge {{ $batch['peserta_obs'] === $batch['jumlah_peserta'] ? 'bg-success' : 'bg-warning text-dark' }}">
+                            {{ $batch['peserta_obs'] }}/{{ $batch['jumlah_peserta'] }} peserta
+                        </span>
                         @else
-                        <span class="badge bg-secondary">Belum diupload</span>
+                        <span class="text-muted small">—</span>
                         @endif
                     </td>
                     <td class="text-center pe-4">
                         @if($batch['ada_observasi'])
                         <a href="{{ route('manajer-sertifikasi.export-hasil-teori.observasi', $batch['batch_id']) }}"
-                           class="btn btn-sm btn-success">
+                        class="btn btn-sm btn-success">
                             <i class="bi bi-file-earmark-excel me-1"></i>Download
                         </a>
                         @else
@@ -266,9 +274,9 @@
                     <th class="ps-4">Batch ID</th>
                     <th>Skema</th>
                     <th>TUK</th>
-                    <th class="text-center">Peserta</th>
-                    <th class="text-center">Tgl Asesmen</th>
-                    <th class="text-center">Berita Acara</th>
+                    <th class="text-center">Total Peserta</th>
+                    <th class="text-center">Jadwal BA</th>
+                    <th class="text-center">Peserta Tercakup</th>
                     <th class="text-center pe-4">Download</th>
                 </tr>
             </thead>
@@ -281,20 +289,24 @@
                     <td class="text-center">
                         <span class="badge bg-secondary">{{ $batch['jumlah_peserta'] }}</span>
                     </td>
-                    <td class="text-center small text-muted">
-                        {{ $batch['tanggal'] ? \Carbon\Carbon::parse($batch['tanggal'])->translatedFormat('d M Y') : '-' }}
+                    <td class="text-center">
+                        <span class="badge {{ $batch['jadwal_ba'] === $batch['total_jadwal'] ? 'bg-success' : ($batch['jadwal_ba'] > 0 ? 'bg-warning text-dark' : 'bg-secondary') }}">
+                            {{ $batch['jadwal_ba'] }}/{{ $batch['total_jadwal'] }} jadwal
+                        </span>
                     </td>
                     <td class="text-center">
-                        @if($batch['ada_ba'])
-                        <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Ada</span>
+                        @if($batch['peserta_ba'] > 0)
+                        <span class="badge {{ $batch['peserta_ba'] === $batch['jumlah_peserta'] ? 'bg-success' : 'bg-warning text-dark' }}">
+                            {{ $batch['peserta_ba'] }}/{{ $batch['jumlah_peserta'] }} peserta
+                        </span>
                         @else
-                        <span class="badge bg-secondary">Belum ada</span>
+                        <span class="text-muted small">—</span>
                         @endif
                     </td>
                     <td class="text-center pe-4">
                         @if($batch['ada_ba'])
                         <a href="{{ route('manajer-sertifikasi.export-hasil-teori.berita-acara', $batch['batch_id']) }}"
-                           class="btn btn-sm btn-success">
+                        class="btn btn-sm btn-success">
                             <i class="bi bi-file-earmark-excel me-1"></i>Download
                         </a>
                         @else

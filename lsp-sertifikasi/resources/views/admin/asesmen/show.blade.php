@@ -147,6 +147,14 @@
                                 onclick="resetPasswordAsesi({{ $asesmen->id }})">
                                 <i class="bi bi-key me-1"></i>Reset Password ke "password123"
                             </button>
+                            {{-- Impersonate --}}
+                            <form action="{{ route('admin.asesi.impersonate', $asesmen) }}" method="POST" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-warning btn-sm"
+                                    onclick="return confirm('Masuk sebagai {{ $asesmen->user->name }}?')">
+                                    <i class="bi bi-person-fill-gear"></i> Login sebagai Asesi
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>

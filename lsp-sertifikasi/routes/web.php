@@ -341,6 +341,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{asesmen}/update-email', [AsesmenController::class, 'updateEmail'])->name('update-email');
         Route::delete('/{asesmen}/hapus-mandiri', [AsesmenController::class, 'destroyMandiri'])->name('asesi.destroy-mandiri');
         Route::post('/{asesmen}/reset-password', [AsesmenController::class, 'resetPasswordAsesi'])->name('reset-password');
+        Route::post('/{asesmen}/impersonate',     [AsesmenController::class, 'impersonate'])    ->name('impersonate');
+        Route::post('/impersonate/stop',          [AsesmenController::class, 'stopImpersonate'])->name('impersonate.stop');
 
 
     });

@@ -226,6 +226,19 @@
 </head>
 
 <body>
+
+@if(session('impersonate_original_id'))
+<div class="alert alert-warning rounded-0 mb-0 py-2 text-center" style="position:sticky;top:0;z-index:9999;">
+    <i class="bi bi-eye-fill"></i>
+    Kamu sedang login sebagai <strong>{{ auth()->user()->name }}</strong> (mode impersonate).
+    <form action="{{ route('admin.asesi.impersonate.stop') }}" method="POST" class="d-inline ms-3">
+        @csrf
+        <button type="submit" class="btn btn-sm btn-danger">
+            <i class="bi bi-x-circle"></i> Kembali ke Admin
+        </button>
+    </form>
+</div>
+@endif
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="logo">

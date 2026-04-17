@@ -719,4 +719,46 @@ public function resetPasswordAsesi(Asesmen $asesmen)
         'message' => 'Password berhasil direset ke "password123". Asesi akan diminta ganti password saat login berikutnya.',
     ]);
 }
+
+public function impersonate(Asesmen $asesmen)
+{
+    $target = $asesmen->user;
+
+    if (!$target) {
+        return back()->with('error', 'User asesi tidak ditemukan.');
+    }
+
+    // Simpan admin original di session
+    session([
+        'impersonate_original_id'   => auth()->id(),
+        'impersonate_original_role' => auth()->user()->role,
+    ]);
+
+    auth()->login($target);
+
+    return redirect()->route('asesi.dashboard')
+        ->with('info', 'Sedang impersonate sebagai ' . $target->name);
+}
+
+public function stopImpersonate()
+{
+    $originalId = session('impersonate_original_id');
+
+    if (!$originalId) {
+        return redirect()->route('home');
+    }
+
+    $admin = \App\Models\User::find($originalId);
+
+    session()->forget(['impersonate_original_id', 'impersonate_original_role']);
+
+    if (!$admin) {
+        return redirect()->route('login');
+    }
+
+    auth()->login($admin);
+
+    return redirect()->route('admin.asesi.index')
+        ->with('success', 'Kembali ke akun admin.');
+}
 }

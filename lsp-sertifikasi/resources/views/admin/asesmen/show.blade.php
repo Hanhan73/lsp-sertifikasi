@@ -600,8 +600,8 @@
                                     style="width:{{ $pctIsi }}%;"></div>
                             </div>
                             <span class="small text-muted text-nowrap">{{ $isiCount }}/{{ $totalBukti }} diperiksa</span>
-                            <span class="badge bg-success">{{ $okCount }} OK</span>
-                            <span class="badge bg-secondary">{{ $totalBukti - $isiCount }} Belum</span>
+                            <span class="badge bg-success" id="bukti-badge-ok">{{ $okCount }} OK</span>
+                            <span class="badge bg-secondary" id="bukti-badge-belum">{{ $totalBukti - $isiCount }} Belum</span>
                         </div>
                         @endif
 
@@ -1027,6 +1027,10 @@ async function updateStatusBuktiInline(buktiId, status, selectEl) {
                 if (status === 'Ada Tidak Memenuhi Syarat') card.classList.add('warn');
             }
             selectEl.dataset.semula = status;
+            
+            // ── Update progress counter ──────────────────────────
+            updateBuktiProgress();
+
             Swal.fire({ icon: 'success', title: 'Tersimpan!', timer: 1200, showConfirmButton: false });
         } else {
             Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
@@ -1113,6 +1117,44 @@ async function submitRejectApl01() {
         btn.innerHTML = '<i class="bi bi-send me-1"></i>Kembalikan APL-01';
     }
 }
+
+// ── Update progress bukti kelengkapan (real-time) ───────────
+function updateBuktiProgress() {
+    const selects = document.querySelectorAll('[data-bukti-id]');
+    const total   = selects.length;
+    if (!total) return;
+
+    let isiCount = 0;
+    let okCount  = 0;
+
+    selects.forEach(sel => {
+        const val = sel.value;
+        if (val !== 'Tidak Ada')             isiCount++;
+        if (val === 'Ada Memenuhi Syarat')   okCount++;
+    });
+
+    const belum = total - isiCount;
+    const pct   = Math.round(isiCount / total * 100);
+
+    // Progress bar
+    const bar = document.querySelector('.progress-bar');
+    if (bar) {
+        bar.style.width   = pct + '%';
+        bar.className     = 'progress-bar bg-' + (isiCount === total ? 'success' : 'warning');
+    }
+
+    // "X/Y diperiksa"
+    const counterEl = document.querySelector('.small.text-muted.text-nowrap');
+    if (counterEl) counterEl.textContent = `${isiCount}/${total} diperiksa`;
+
+    // Badge OK — pakai ID supaya tidak salah ambil badge lain
+    const badgeOk = document.querySelector('#bukti-badge-ok');
+    if (badgeOk) badgeOk.textContent = `${okCount} OK`;
+
+    const badgeBelum = document.querySelector('#bukti-badge-belum');
+    if (badgeBelum) badgeBelum.textContent = `${belum} Belum`;
+}
+
 // ── Toggle accordion unit (APL-02 & AK.01) ─────────────────
 function toggleUnit(key) {
     const body  = document.getElementById(`body-${key}`);

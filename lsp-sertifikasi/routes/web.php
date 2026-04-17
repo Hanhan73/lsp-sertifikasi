@@ -166,6 +166,9 @@ Route::middleware('auth')->group(function () {
 
     Route::delete('/user/signature', [SignatureController::class, 'destroy'])
         ->name('user.signature.destroy');
+
+    Route::post('/impersonate/stop', [App\Http\Controllers\Admin\AsesmenController::class, 'stopImpersonate'])
+        ->name('admin.asesi.impersonate.stop');
 });
 
 /*
@@ -342,7 +345,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::delete('/{asesmen}/hapus-mandiri', [AsesmenController::class, 'destroyMandiri'])->name('asesi.destroy-mandiri');
         Route::post('/{asesmen}/reset-password', [AsesmenController::class, 'resetPasswordAsesi'])->name('reset-password');
         Route::post('/{asesmen}/impersonate',     [AsesmenController::class, 'impersonate'])    ->name('impersonate');
-        Route::post('/impersonate/stop',          [AsesmenController::class, 'stopImpersonate'])->name('impersonate.stop');
+        Route::post('/impersonate/stop', [App\Http\Controllers\Admin\AsesmenController::class, 'stopImpersonate'])
+            ->name('admin.asesi.impersonate.stop');
+
 
 
     });

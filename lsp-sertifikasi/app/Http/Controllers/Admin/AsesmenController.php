@@ -740,25 +740,25 @@ public function impersonate(Asesmen $asesmen)
         ->with('info', 'Sedang impersonate sebagai ' . $target->name);
 }
 
-public function stopImpersonate()
-{
-    $originalId = session('impersonate_original_id');
+    public function stopImpersonate()
+    {
+        $originalId = session('impersonate_original_id');
 
-    if (!$originalId) {
-        return redirect()->route('home');
-    }
+        if (!$originalId) {
+            return redirect()->route('home');
+        }
 
-    $admin = \App\Models\User::find($originalId);
+        $admin = \App\Models\User::find($originalId);
 
-    session()->forget(['impersonate_original_id', 'impersonate_original_role']);
+        session()->forget(['impersonate_original_id', 'impersonate_original_role']);
 
-    if (!$admin) {
-        return redirect()->route('login');
-    }
+        if (!$admin) {
+            return redirect()->route('login');
+        }
 
-    auth()->login($admin);
+        auth()->login($admin);
 
-    return redirect()->route('admin.asesi.index')
+    return redirect()->route('admin.dashboard')
         ->with('success', 'Kembali ke akun admin.');
-}
+    }
 }

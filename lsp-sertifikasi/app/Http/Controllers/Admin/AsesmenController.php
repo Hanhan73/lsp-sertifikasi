@@ -53,17 +53,23 @@ class AsesmenController extends Controller
         $asesmen->load([
             'user',
             'tuk',
-            'skema.unitKompetensis',
+            'skema.unitKompetensis.elemens.kuks',  // ← tambah .elemens.kuks
             'schedule.asesor',
             'registrar',
             'adminVerifier',
             'aplsatu.buktiKelengkapan',
-            'apldua.jawabans.elemen',
+            'apldua.jawabans',
             'frak01',
             'frak04',
             'certificate',
             'payment',
         ]);
+
+        // Build jawabanMap untuk APL-02
+        $jawabanMap = collect();
+        if ($asesmen->apldua) {
+            $jawabanMap = $asesmen->apldua->jawabans->keyBy('elemen_id');
+        }
 
         $batchMembers = null;
         if ($asesmen->is_collective && $asesmen->collective_batch_id) {
@@ -72,7 +78,7 @@ class AsesmenController extends Controller
                 ->get();
         }
 
-        return view('admin.asesmen.show', compact('asesmen', 'batchMembers'));
+        return view('admin.asesmen.show', compact('asesmen', 'batchMembers', 'jawabanMap'));
     }
 
     /**

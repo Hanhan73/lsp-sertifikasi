@@ -191,32 +191,27 @@ class ExportHasilTeoriController extends Controller
     }
 
     // =========================================================================
-    // EXPORT OBSERVASI PER BATCH
-    // =========================================================================
-
-// =========================================================================
     // EXPORT OBSERVASI PER BATCH — merge semua file asesor jadi satu
     // =========================================================================
-
+ 
     public function exportObservasi(string $batchId)
     {
         $asesmens = Asesmen::with(['skema', 'tuk', 'schedule'])
             ->where('collective_batch_id', $batchId)
             ->whereNotNull('schedule_id')
             ->get();
-
+ 
         abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
-
+ 
         $scheduleIds = $asesmens->pluck('schedule_id')->unique()->filter();
         $schedules   = Schedule::with(['hasilObservasi'])
             ->whereIn('id', $scheduleIds)
             ->orderBy('assessment_date')
             ->get();
-
+ 
         $first     = $asesmens->first();
         $skemaName = $first->skema?->name ?? 'Asesmen';
-
-        // Kumpulkan path file observasi, urut per jadwal
+ 
         $files = [];
         foreach ($schedules as $schedule) {
             foreach ($schedule->hasilObservasi as $hasil) {
@@ -227,36 +222,34 @@ class ExportHasilTeoriController extends Controller
                 }
             }
         }
-
+ 
         abort_if(empty($files), 404, 'Belum ada file observasi yang diupload untuk batch ini.');
-
+ 
         $targetSheets = ['Pencapaian', 'Hasil Asesmen'];
-
+ 
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
-
+ 
         foreach ($targetSheets as $targetSheetName) {
             $outputWs   = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $targetSheetName);
             $spreadsheet->addSheet($outputWs);
-
-            $currentRow = 1;
-            $headerDone = false;
-            $globalNo   = 1; // nomor urut global lintas semua file
-
-            // Pencapaian  : No di kolom 1 (A), validasi dari kolom 2 (B = Nama)
-            // Hasil Asesmen: No di kolom 3 (C), validasi dari kolom 5 (E = UK 01)
-            $isPencapaian = mb_strtolower(trim($targetSheetName)) === 'pencapaian';
-            $colNo        = $isPencapaian ? 1 : 3;
-            $colFilter    = $isPencapaian ? 2 : 5;
-
-            // Pencapaian: ambil col 1-14 saja (No, Nama, UK01-UK11, Pencapaian K/BK)
-            // Col 15-19 (skor, Rubrik Penilaian) tidak dibawa
-            // Hasil Asesmen: ambil semua kolom
-            $colLimit = $isPencapaian ? 14 : null;
-
+ 
+            $currentRow   = 1;
+            $headersDone  = 0; // jumlah baris header yang sudah dicopy (Pencapaian punya 2 baris header)
+            $globalNo     = 1;
+ 
+            // Pencapaian  : No=col1, filter valid=col2 (Nama), sub-header UK di col3
+            // Hasil Asesmen: No=col3, filter valid=col5 (UK 01)
+            $isPencapaian  = mb_strtolower(trim($targetSheetName)) === 'pencapaian';
+            $colNo         = $isPencapaian ? 1 : 3;
+            $colFilter     = $isPencapaian ? 2 : 5;
+            $totalHeaders  = $isPencapaian ? 2 : 2; // kedua sheet punya 2 baris header
+            // Pencapaian: col 1-14 (No,Nama,UK01-UK11,Pencapaian). Col 15+ (skor,Rubrik) dibuang.
+            // Hasil Asesmen: semua kolom.
+            $colLimit      = $isPencapaian ? 14 : null;
+ 
             foreach ($files as $filePath) {
                 try {
-                    // data_only=true → baca nilai hasil evaluasi, bukan string formula
                     $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
                     $reader->setReadDataOnly(true);
                     $sourceBook = $reader->load($filePath);
@@ -264,8 +257,7 @@ class ExportHasilTeoriController extends Controller
                     \Log::warning("[exportObservasi] Gagal buka file: {$filePath} — " . $e->getMessage());
                     continue;
                 }
-
-                // Cari sheet dengan nama yang cocok (case-insensitive)
+ 
                 $sourceWs = null;
                 foreach ($sourceBook->getSheetNames() as $sName) {
                     if (mb_strtolower(trim($sName)) === mb_strtolower(trim($targetSheetName))) {
@@ -273,33 +265,42 @@ class ExportHasilTeoriController extends Controller
                         break;
                     }
                 }
-
+ 
                 if (!$sourceWs) {
                     \Log::info("[exportObservasi] Sheet '{$targetSheetName}' tidak ditemukan di: {$filePath}");
                     continue;
                 }
-
-                $highestRow  = $sourceWs->getHighestRow();
-                $highestCol  = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sourceWs->getHighestColumn());
-                $copyUpToCol = $colLimit !== null ? min($colLimit, $highestCol) : $highestCol;
+ 
+                $highestRow    = $sourceWs->getHighestRow();
+                $highestCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sourceWs->getHighestColumn());
+                $copyUpToCol   = $colLimit !== null ? min($colLimit, $highestCol) : $highestCol;
                 $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($copyUpToCol);
-
+ 
                 for ($r = 1; $r <= $highestRow; $r++) {
                     $noVal     = $sourceWs->getCellByColumnAndRow($colNo, $r)->getValue();
                     $filterVal = $sourceWs->getCellByColumnAndRow($colFilter, $r)->getValue();
-
-                    // DUMMY: No numeric tapi kolom validasi null → skip sepenuhnya
+ 
+                    // --- Klasifikasi baris ---
+ 
+                    // DUMMY: No numeric tapi kolom validasi null → skip
                     if (is_numeric($noVal) && $filterVal === null) {
                         continue;
                     }
-
-                    $isDataRow   = is_numeric($noVal) && $filterVal !== null;
-                    $isHeaderRow = !$isDataRow && ($noVal !== null || $filterVal !== null);
-
-                    // HEADER: copy sekali saja dari file pertama, file berikutnya skip
+ 
+                    // DATA VALID: No numeric dan kolom validasi tidak null
+                    $isDataRow = is_numeric($noVal) && $filterVal !== null;
+ 
+                    // HEADER: baris yang punya konten tapi bukan data numerik
+                    // Pencapaian row1: col1='No', col2='Nama'
+                    // Pencapaian row2: col1=null, col2=null, col3='UK 01' ← ini yang sebelumnya terlewat
+                    // Hasil Asesmen row1: col3='No', col4='Nama'
+                    // Hasil Asesmen row2: col3=null, col4=null, col5='UK 01'
+                    $isHeaderRow = !$isDataRow && !($noVal === null && $filterVal === null && $sourceWs->getCellByColumnAndRow(3, $r)->getValue() === null);
+ 
                     if ($isHeaderRow) {
-                        if ($headerDone) continue;
-
+                        // Hanya copy header dari file pertama (sampai $totalHeaders baris)
+                        if ($headersDone >= $totalHeaders) continue;
+ 
                         for ($c = 1; $c <= $copyUpToCol; $c++) {
                             $outputWs->setCellValueByColumnAndRow(
                                 $c, $currentRow,
@@ -314,23 +315,23 @@ class ExportHasilTeoriController extends Controller
                         ]);
                         $outputWs->getRowDimension($currentRow)->setRowHeight(24);
                         $currentRow++;
+                        $headersDone++;
                         continue;
                     }
-
+ 
                     if (!$isDataRow) continue;
-
-                    // DATA: copy sampai kolom yang diizinkan saja
+ 
+                    // DATA: copy sampai kolom yang diizinkan
                     for ($c = 1; $c <= $copyUpToCol; $c++) {
                         $outputWs->setCellValueByColumnAndRow(
                             $c, $currentRow,
                             $sourceWs->getCellByColumnAndRow($c, $r)->getValue()
                         );
                     }
-
-                    // Override kolom No dengan nomor urut global (1, 2, 3, ... lintas file)
+ 
+                    // Override No dengan nomor urut global lintas file
                     $outputWs->setCellValueByColumnAndRow($colNo, $currentRow, $globalNo);
-
-                    // Zebra striping
+ 
                     $bg = ($globalNo % 2 === 0) ? self::GRAY : self::WHITE;
                     $outputWs->getStyle("A{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
                         'font'      => ['name' => self::FONT, 'size' => 10],
@@ -339,14 +340,13 @@ class ExportHasilTeoriController extends Controller
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     ]);
                     $outputWs->getRowDimension($currentRow)->setRowHeight(18);
-
+ 
                     $currentRow++;
                     $globalNo++;
-                    $headerDone = true;
                 }
             }
-
-            // Auto-width semua kolom
+ 
+            // Auto-width
             if ($currentRow > 1) {
                 $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(
                     $outputWs->getHighestColumn()
@@ -354,14 +354,14 @@ class ExportHasilTeoriController extends Controller
                 for ($c = 1; $c <= $highestColOut; $c++) {
                     $outputWs->getColumnDimensionByColumn($c)->setAutoSize(true);
                 }
-                $outputWs->freezePane('A2');
+                $outputWs->freezePane('A3'); // freeze setelah 2 baris header
             }
         }
-
+ 
         $safe    = str_replace(['/', '\\', ' '], '-', $batchId);
         $tmpPath = sys_get_temp_dir() . "/Rekap_Observasi_{$safe}_" . time() . '.xlsx';
         (new Xlsx($spreadsheet))->save($tmpPath);
-
+ 
         return response()->download($tmpPath, "Rekap_Observasi_{$safe}_" . date('Ymd') . '.xlsx')
             ->deleteFileAfterSend();
     }

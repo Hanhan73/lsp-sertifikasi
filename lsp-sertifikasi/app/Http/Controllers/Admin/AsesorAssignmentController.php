@@ -7,12 +7,16 @@ use App\Models\Asesor;
 use App\Models\Schedule;
 use App\Models\Tuk;
 use App\Services\AsesorAssignmentService;
+use App\Services\SkGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class AsesorAssignmentController extends Controller
 {
-    public function __construct(private AsesorAssignmentService $service) {}
+        public function __construct(
+        private AsesorAssignmentService $service,
+        private SkGeneratorService $skGenerator,   // ← tambah inject
+    ) {}
 
     // =========================================================
     // INDEX
@@ -70,59 +74,74 @@ class AsesorAssignmentController extends Controller
     // =========================================================
 
     public function assign(Request $request, Schedule $schedule)
-    {
-        $request->validate([
-            'asesor_id' => 'required|exists:asesors,id',
-            'notes'     => 'nullable|string|max:500',
-        ]);
+        {
+            $request->validate([
+                'asesor_id' => 'required|exists:asesors,id',
+                'notes'     => 'nullable|string|max:500',
+            ]);
 
-        try {
-            $asesor = Asesor::findOrFail($request->asesor_id);
+            try {
+                $asesor = Asesor::findOrFail($request->asesor_id);
 
-            if (!$this->service->assignAsesor($schedule, $asesor, $request->notes)) {
+                if (!$this->service->assignAsesor($schedule, $asesor, $request->notes)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Gagal menugaskan asesor.',
+                    ], 500);
+                }
+
+                $schedule->refresh();
+
+                if ($schedule->asesor_id !== $asesor->id) {
+                    Log::error('[ASESOR-ASSIGN] Verification failed after assign', [
+                        'schedule_id' => $schedule->id,
+                        'expected'    => $asesor->id,
+                        'actual'      => $schedule->asesor_id,
+                    ]);
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Assignment berhasil tapi verifikasi gagal. Silakan refresh.',
+                    ], 500);
+                }
+
+                // ── Auto re-generate SK jika jadwal sudah approved ──────────
+                if ($schedule->isApproved() && $schedule->hasSk()) {
+                    try {
+                        $skPath = $this->skGenerator->generate(
+                            $schedule->load(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy'])
+                        );
+                        $schedule->update(['sk_path' => $skPath]);
+                        Log::info("[SK-REGEN] SK di-generate ulang untuk jadwal #{$schedule->id} karena asesor diganti ke {$asesor->nama}");
+                    } catch (\Exception $e) {
+                        // Jangan gagalkan assign hanya karena SK gagal di-generate
+                        Log::error("[SK-REGEN] Gagal re-generate SK untuk jadwal #{$schedule->id}: " . $e->getMessage());
+                    }
+                }
+                // ─────────────────────────────────────────────────────────────
+
                 return response()->json([
-                    'success' => false,
-                    'message' => 'Gagal menugaskan asesor.',
-                ], 500);
-            }
+                    'success' => true,
+                    'message' => "Asesor {$asesor->nama} berhasil ditugaskan!",
+                    'data'    => [
+                        'schedule_id' => $schedule->id,
+                        'asesor_id'   => $asesor->id,
+                        'asesor_nama' => $asesor->nama,
+                    ],
+                ]);
 
-            $schedule->refresh();
-
-            if ($schedule->asesor_id !== $asesor->id) {
-                Log::error('[ASESOR-ASSIGN] Verification failed after assign', [
+            } catch (\Exception $e) {
+                Log::error('[ASESOR-ASSIGN] ' . $e->getMessage(), [
                     'schedule_id' => $schedule->id,
-                    'expected'    => $asesor->id,
-                    'actual'      => $schedule->asesor_id,
+                    'asesor_id'   => $request->asesor_id,
                 ]);
 
                 return response()->json([
                     'success' => false,
-                    'message' => 'Assignment berhasil tapi verifikasi gagal. Silakan refresh.',
+                    'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
                 ], 500);
             }
-
-            return response()->json([
-                'success' => true,
-                'message' => "Asesor {$asesor->nama} berhasil ditugaskan!",
-                'data'    => [
-                    'schedule_id' => $schedule->id,
-                    'asesor_id'   => $asesor->id,
-                    'asesor_nama' => $asesor->nama,
-                ],
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('[ASESOR-ASSIGN] ' . $e->getMessage(), [
-                'schedule_id' => $schedule->id,
-                'asesor_id'   => $request->asesor_id,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
-            ], 500);
         }
-    }
 
     // =========================================================
     // UNASSIGN

@@ -363,4 +363,24 @@ public function create(Request $request)
             'message' => 'Asesor berhasil dilepas.',
         ]);
     }
+
+    public function downloadSk(Schedule $schedule)
+    {
+        if (!$schedule->hasSk()) {
+            abort(404, 'SK belum tersedia untuk jadwal ini.');
+        }
+
+        if (!\Illuminate\Support\Facades\Storage::disk('private')->exists($schedule->sk_path)) {
+            abort(404, 'File SK tidak ditemukan.');
+        }
+
+        $ext      = pathinfo($schedule->sk_path, PATHINFO_EXTENSION);
+        $filename = 'SK_' . str_replace('/', '-', $schedule->sk_number) . '.' . $ext;
+
+        return response()->streamDownload(function () use ($schedule) {
+            echo \Illuminate\Support\Facades\Storage::disk('private')->get($schedule->sk_path);
+        }, $filename, [
+            'Content-Type' => $ext === 'pdf' ? 'application/pdf' : 'text/html',
+        ]);
+    }
 }

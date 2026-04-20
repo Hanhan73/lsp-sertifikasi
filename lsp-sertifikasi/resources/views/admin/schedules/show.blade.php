@@ -75,7 +75,7 @@
         </div>
     </div>
     @if($schedule->hasSk())
-    <a href="{{ route('direktur.schedules.sk.download', $schedule) }}" class="btn btn-sm btn-success ms-auto">
+    <a href="{{ route('admin.schedules.sk.download', $schedule) }}" class="btn btn-sm btn-success ms-auto">
         <i class="bi bi-download me-1"></i>Unduh SK
     </a>
     @endif

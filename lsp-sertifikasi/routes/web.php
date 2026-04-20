@@ -281,6 +281,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/',                               [AdminScheduleController::class, 'index'])           ->name('index');
         Route::get('/create',                         [AdminScheduleController::class, 'create'])          ->name('create');
         Route::post('/',                              [AdminScheduleController::class, 'store'])           ->name('store');
+        Route::get('/{schedule}/sk/download', [AdminScheduleController::class, 'downloadSk'])->name('sk.download');
         Route::get('/{schedule}',                     [AdminScheduleController::class, 'show'])            ->name('show');
         Route::get('/{schedule}/edit',                [AdminScheduleController::class, 'edit'])            ->name('edit');
         Route::put('/{schedule}',                     [AdminScheduleController::class, 'update'])          ->name('update');

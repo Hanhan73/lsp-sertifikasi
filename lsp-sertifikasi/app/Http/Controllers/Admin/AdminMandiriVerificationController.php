@@ -20,7 +20,7 @@ class AdminMandiriVerificationController extends Controller
     {
         $asesmens = Asesmen::with(['user', 'skema', 'tuk'])
             ->where('is_collective', false)
-            ->whereNotIn('status', ['certified', 'assessed', 'registered'])
+            ->whereNotIn('status', ['certified', 'assessed'])
             ->orderBy('created_at', 'asc')
             ->get();
 

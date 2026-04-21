@@ -18,14 +18,13 @@ class AdminMandiriVerificationController extends Controller
      */
     public function index()
     {
-        $asesmens = Asesmen::with(['user', 'skema'])
+        $asesmens = Asesmen::with(['user', 'skema', 'tuk'])
             ->where('is_collective', false)
-            ->whereNull('admin_verified_at')
+            ->whereNotIn('status', ['certified', 'assessed', 'registered'])
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Ambil semua kolektif, group by full_name lowercase
-        // Matching by nama + skema_id supaya tidak salah flag kalau ada nama sama tapi skema beda
+        // Duplikat detection by nama + skema
         $kolektifByNama = Asesmen::where('is_collective', true)
             ->whereNotNull('collective_batch_id')
             ->whereNotNull('full_name')
@@ -36,9 +35,7 @@ class AdminMandiriVerificationController extends Controller
         $asesmens->each(function ($a) use ($kolektifByNama) {
             $key     = strtolower(trim($a->full_name ?? ''));
             $matches = $kolektifByNama->get($key, collect());
-
-            // Prioritas: nama sama + skema sama
-            $match = $matches->firstWhere('skema_id', $a->skema_id) ?? $matches->first();
+            $match   = $matches->firstWhere('skema_id', $a->skema_id) ?? $matches->first();
 
             $a->_kolektif_batch = $match?->collective_batch_id ?? null;
             $a->_kolektif_tuk   = $match?->tuk?->name ?? null;

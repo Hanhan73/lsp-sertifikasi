@@ -20,7 +20,6 @@ class AdminMandiriVerificationController extends Controller
     {
         $asesmens = Asesmen::with(['user', 'skema'])
             ->where('is_collective', false)
-            ->where('status', 'data_completed')
             ->whereNull('admin_verified_at')
             ->orderBy('created_at', 'asc')
             ->get();

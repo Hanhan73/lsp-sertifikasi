@@ -122,7 +122,7 @@ public function storeCollectiveRegistration(Request $request)
         'batch_name'           => 'nullable|string|max:255',
         'participants'         => 'required|array|min:1',
         'participants.*.name'  => 'required|string|max:255',
-        'participants.*.email' => 'required|string|unique:users,email',
+        'participants.*.email' => 'required|string|email',
         'skema_id'             => 'required|exists:skemas,id',
         'payment_phases'       => 'required|in:single,two_phase',
         'preferred_date'       => 'required|date|after:today',
@@ -154,22 +154,28 @@ public function storeCollectiveRegistration(Request $request)
                 Log::info("Collective Reg - progress: peserta ke-{$index}");
             }
 
-            if (User::where('email', $email)->exists()) {
-                $errors[]        = "Baris " . ($index + 1) . ": Email {$email} sudah terdaftar";
-                $skippedEmails[] = $email;
-                Log::warning("Collective Reg SKIP: {$email}");
-                continue;
-            }
+            $user = User::where('email', $email)->first();
 
-            $user = User::create([
-                'name'               => $name,
-                'email'              => $email,
-                'password'           => Hash::make('password123'),
-                'role'               => 'asesi',
-                'is_active'          => true,
-                'password_changed_at' => null,
-                'email_verified_at'  => now(),
-            ]);
+            if ($user) {
+                $existingAsesmen = Asesmen::where('user_id', $user->id)->exists();
+                if ($existingAsesmen) {
+                    $errors[]        = "Baris " . ($index + 1) . ": Email {$email} sudah terdaftar dan memiliki asesmen aktif";
+                    $skippedEmails[] = $email;
+                    Log::warning("Collective Reg SKIP (existing asesmen): {$email}");
+                    continue;
+                }
+                Log::info("Collective Reg REUSE user: {$email}");
+            } else {
+                $user = User::create([
+                    'name'               => $name,
+                    'email'              => $email,
+                    'password'           => Hash::make('password123'),
+                    'role'               => 'asesi',
+                    'is_active'          => true,
+                    'password_changed_at' => null,
+                    'email_verified_at'  => now(),
+                ]);
+            }
 
             Asesmen::create([
                 'user_id'                => $user->id,

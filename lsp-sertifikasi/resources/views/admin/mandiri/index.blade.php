@@ -15,6 +15,7 @@
         </h5>
         <div>
             <span class="badge bg-warning">{{ $asesmens->count() }} Perlu Verifikasi</span>
+            <span class="badge bg-secondary">{{ $asesmens->count() }} Total Mandiri</span>
         </div>
     </div>
     <div class="card-body">
@@ -65,6 +66,7 @@
                         <th>Nama</th>
                         <th>Email</th>
                         <th>Skema</th>
+                        <th>Status</th>
                         <th>Pelatihan</th>
                         <th>Biaya Estimasi</th>
                         <th>Tanggal Daftar</th>
@@ -77,7 +79,7 @@
                         $kolektifBatch = $asesmen->_kolektif_batch ?? null;
                         $kolektifTuk   = $asesmen->_kolektif_tuk   ?? null;
                         $isDuplikat    = !empty($kolektifBatch);
-                        $estimatedFee  = $asesmen->skema->fee + ($asesmen->training_flag ? 1500000 : 0);
+                        $estimatedFee = $asesmen->skema ? $asesmen->skema->fee + ($asesmen->training_flag ? 1500000 : 0) : 0;
                     @endphp
                     <tr class="{{ $isDuplikat ? 'table-danger' : '' }}" data-asesmen-id="{{ $asesmen->id }}">
                         <td><strong>#{{ $asesmen->id }}</strong></td>
@@ -102,6 +104,9 @@
                             <span class="badge bg-primary">{{ $asesmen->skema->name }}</span>
                         </td>
                         <td>
+                            <span class="badge bg-{{ $asesmen->status_badge }}">{{ $asesmen->status_label }}</span>
+                        </td>
+                        <td>
                             @if($asesmen->training_flag)
                             <span class="badge bg-warning text-dark">
                                 <i class="bi bi-mortarboard-fill"></i> Ya
@@ -111,9 +116,13 @@
                             @endif
                         </td>
                         <td>
-                            <strong>Rp {{ number_format($estimatedFee, 0, ',', '.') }}</strong>
-                            @if($asesmen->training_flag)
-                            <br><small class="text-muted">+ Pelatihan</small>
+                            @if($asesmen->skema)
+                                <strong>Rp {{ number_format($estimatedFee, 0, ',', '.') }}</strong>
+                                @if($asesmen->training_flag)
+                                <br><small class="text-muted">+ Pelatihan</small>
+                                @endif
+                            @else
+                                <span class="text-muted">-</span>
                             @endif
                         </td>
                         <td>

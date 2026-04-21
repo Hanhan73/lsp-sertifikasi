@@ -101,7 +101,7 @@
                             <small>{{ $asesmen->user->email ?? '-' }}</small>
                         </td>
                         <td>
-                            <span class="badge bg-primary">{{ $asesmen->skema->name }}</span>
+                            <span class="badge bg-primary">{{ $asesmen->skema->name ?? "-" }}</span>
                         </td>
                         <td>
                             <span class="badge bg-{{ $asesmen->status_badge }}">{{ $asesmen->status_label }}</span>

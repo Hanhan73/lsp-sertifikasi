@@ -106,8 +106,8 @@
                     @endphp
                     <tr class="{{ $isDuplikat ? 'table-danger' : '' }}"
                         data-asesmen-id="{{ $asesmen->id }}"
-                        data-mandiri="{{ $isDuplikat ? htmlspecialchars($mandiriJson) : '' }}"
-                        data-kolektif="{{ $isDuplikat ? htmlspecialchars($kolektifJson) : '' }}">
+                        data-mandiri='{{ $isDuplikat ? $mandiriJson : "{}" }}'
+                        data-kolektif='{{ $isDuplikat ? $kolektifJson : "{}" }}'>
 
                         <td><strong>#{{ $asesmen->id }}</strong></td>
 

@@ -339,9 +339,39 @@
 
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+{{-- Modal Duplikat --}}
+<div class="modal fade" id="modalDuplikat" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Ditemukan Data Duplikat!</h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Beberapa peserta yang akan didaftarkan <strong>sudah ada di sistem</strong>.
+                    Pilih tindakan untuk setiap peserta duplikat, lalu klik <strong>"Lanjutkan Pendaftaran"</strong>.
+                </div>
+                <div id="duplikat-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-pencil me-1"></i> Kembali & Edit
+                </button>
+                <button type="button" class="btn btn-success" id="btn-lanjutkan">
+                    <i class="bi bi-send me-1"></i> Lanjutkan Pendaftaran (Skip Duplikat)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let participantCount = 0;
 let importedData = [];
+let pendingSubmit = false;
+let detectedDuplicates = [];
 
 $(document).ready(function() {
     addParticipant();
@@ -351,12 +381,7 @@ $(document).ready(function() {
         const file = e.target.files[0];
         if (!file) return;
 
-        Swal.fire({
-            title: 'Memproses...',
-            html: 'Membaca file Excel/CSV',
-            allowOutsideClick: false,
-            didOpen: () => Swal.showLoading()
-        });
+        Swal.fire({ title: 'Memproses...', html: 'Membaca file Excel/CSV', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -379,9 +404,7 @@ $(document).ready(function() {
         $('#uploadModal').modal('hide');
     });
 
-    $('#add-participant').click(function() {
-        addParticipant();
-    });
+    $('#add-participant').click(function() { addParticipant(); });
 
     $(document).on('click', '.remove-participant', function() {
         $(this).closest('.participant-item').remove();
@@ -395,18 +418,14 @@ $(document).ready(function() {
     function generateRandomSuffix(length) {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         let result = '';
-        for (let i = 0; i < length; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
+        for (let i = 0; i < length; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
         return result;
     }
 
     function slugify(text) {
         return text.toString().toUpperCase().trim()
-            .replace(/\s+/g, '-')
-            .replace(/[^A-Z0-9\-]/g, '')
-            .replace(/\-+/g, '-')
-            .replace(/^-+|-+$/g, '');
+            .replace(/\s+/g, '-').replace(/[^A-Z0-9\-]/g, '')
+            .replace(/\-+/g, '-').replace(/^-+|-+$/g, '');
     }
 
     function updateBatchPreview() {
@@ -418,29 +437,168 @@ $(document).ready(function() {
     $('#batch_name_input').on('input', updateBatchPreview);
     updateBatchPreview();
 
-    $('#collective-form').on('submit', function(e) {
-        // Sanitize email
+    // ← SUBMIT HANDLER UTAMA
+    $('#collective-form').on('submit', async function(e) {
+        e.preventDefault();
+
         $('.participant-email').each(function() {
             $(this).val($(this).val().trim().toLowerCase());
         });
 
         if ($('.participant-item').length === 0) {
-            e.preventDefault();
             Swal.fire({ icon: 'warning', title: 'Peserta Kosong', text: 'Tambahkan minimal 1 peserta.' });
-            return false;
+            return;
         }
 
-        // ← FIX UTAMA: Re-index ulang semua name attribute agar sequential
-        // Ini fix gap index ketika ada peserta yang dihapus manual
+        // Re-index
         $('.participant-item').each(function(newIdx) {
             $(this).find('input[name*="[name]"]').attr('name', `participants[${newIdx}][name]`);
             $(this).find('input[name*="[email]"]').attr('name', `participants[${newIdx}][email]`);
         });
 
-        $(this).find('[type=submit]').prop('disabled', true)
-            .html('<span class="spinner-border spinner-border-sm me-1"></span> Mendaftarkan...');
+        if (pendingSubmit) {
+            // Sudah dicek duplikat, submit langsung
+            pendingSubmit = false;
+            $(this).find('[type=submit]').prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-1"></span> Mendaftarkan...');
+            this.submit();
+            return;
+        }
+
+        // Kumpulkan peserta
+        const participants = [];
+        $('.participant-item').each(function() {
+            participants.push({
+                name:  $(this).find('input[name*="[name]"]').val().trim(),
+                email: $(this).find('input[name*="[email]"]').val().trim().toLowerCase(),
+            });
+        });
+
+        // Cek duplikat ke server
+        Swal.fire({ title: 'Memeriksa data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        try {
+            const res = await fetch('{{ route("tuk.collective.check-duplicates") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ participants }),
+            });
+            const data = await res.json();
+            Swal.close();
+
+            if (data.duplicates && data.duplicates.length > 0) {
+                detectedDuplicates = data.duplicates;
+                tampilkanModalDuplikat(data.duplicates);
+            } else {
+                // Tidak ada duplikat, submit langsung
+                pendingSubmit = true;
+                $('#collective-form').submit();
+            }
+        } catch (err) {
+            Swal.close();
+            // Kalau gagal cek, submit saja langsung
+            pendingSubmit = true;
+            $('#collective-form').submit();
+        }
+    });
+
+    // Tombol lanjutkan dari modal
+    $('#btn-lanjutkan').on('click', function() {
+        // Kirim request hapus untuk yang dicentang
+        const requestHapusIds = [];
+        $('.chk-request-hapus:checked').each(function() {
+            requestHapusIds.push($(this).data('asesmen-id'));
+        });
+
+        if (requestHapusIds.length > 0) {
+            requestHapusIds.forEach(id => {
+                fetch(`/admin/asesi/${id}/request-hapus`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ reason: 'Duplikat dengan pendaftaran kolektif baru' }),
+                });
+            });
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
+        pendingSubmit = true;
+        $('#collective-form').submit();
     });
 });
+
+function tampilkanModalDuplikat(duplicates) {
+    let html = '';
+    duplicates.forEach((d, i) => {
+        const matchTypeBadge = d.match_type === 'email'
+            ? '<span class="badge bg-danger">Email sama</span>'
+            : '<span class="badge bg-warning text-dark">Nama sama</span>';
+
+        const jenisExisting = d.existing.is_collective
+            ? `<span class="badge bg-info">Kolektif</span> <small class="text-muted">${d.existing.batch_id}</small>`
+            : '<span class="badge bg-success">Mandiri</span>';
+
+        html += `
+        <div class="card mb-3 border-warning">
+            <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Peserta #${d.index + 1}: ${d.input_name}</span>
+                ${matchTypeBadge}
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <div class="card border-secondary h-100">
+                            <div class="card-header bg-secondary text-white py-1">
+                                <small><i class="bi bi-person-plus me-1"></i>Yang akan didaftarkan</small>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="small"><strong>Nama:</strong> ${d.input_name}</div>
+                                <div class="small"><strong>Email:</strong> ${d.input_email}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-flex align-items-center justify-content-center">
+                        <i class="bi bi-arrow-left-right fs-3 text-warning"></i>
+                    </div>
+                    <div class="col-md-5">
+                        <div class="card border-danger h-100">
+                            <div class="card-header bg-danger text-white py-1">
+                                <small><i class="bi bi-database me-1"></i>Sudah ada di sistem</small>
+                            </div>
+                            <div class="card-body py-2">
+                                <div class="small"><strong>Nama:</strong> ${d.existing.nama}</div>
+                                <div class="small"><strong>Email:</strong> ${d.existing.email}</div>
+                                <div class="small"><strong>Skema:</strong> ${d.existing.skema}</div>
+                                <div class="small"><strong>TUK:</strong> ${d.existing.tuk}</div>
+                                <div class="small"><strong>Status:</strong> ${d.existing.status}</div>
+                                <div class="small"><strong>Jenis:</strong> ${jenisExisting}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 d-flex align-items-center gap-2">
+                    <input type="checkbox" class="form-check-input chk-request-hapus"
+                        id="req-hapus-${i}"
+                        data-asesmen-id="${d.existing.id}">
+                    <label class="form-check-label small" for="req-hapus-${i}">
+                        <i class="bi bi-flag text-danger me-1"></i>
+                        <strong>Request ke Admin</strong> untuk menghapus data lama ini (jika memang duplikat)
+                    </label>
+                </div>
+            </div>
+        </div>`;
+    });
+
+    $('#duplikat-list').html(html);
+    new bootstrap.Modal(document.getElementById('modalDuplikat')).show();
+}
 
 function validateAndPreview(data) {
     if (data.length === 0) {
@@ -454,7 +612,7 @@ function validateAndPreview(data) {
     importedData = [];
 
     data.forEach((row, index) => {
-        const rowNumber = index + 2; // ← FIX BUG #2: definisikan rowNumber di sini
+        const rowNumber = index + 2;
         const rawEmail  = (row['Email'] || row['email'] || '').toString();
         const name      = (row['Nama Lengkap'] || row['nama_lengkap'] || '').toString().trim();
         const email     = rawEmail.trim().toLowerCase();
@@ -466,16 +624,11 @@ function validateAndPreview(data) {
         else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
 
         const isValid = rowErrors.length === 0;
-        if (isValid) {
-            validCount++;
-            importedData.push({ name, email });
-        }
+        if (isValid) { validCount++; importedData.push({ name, email }); }
 
         const statusClass = isValid ? 'success' : 'danger';
         const statusIcon  = isValid ? 'check-circle' : 'x-circle';
-        const fixedBadge  = (isValid && wasFixed)
-            ? ' <span class="badge bg-warning text-dark">Spasi dihapus</span>'
-            : '';
+        const fixedBadge  = (isValid && wasFixed) ? ' <span class="badge bg-warning text-dark">Spasi dihapus</span>' : '';
         const statusText  = isValid ? ('Valid' + fixedBadge) : rowErrors.join(', ');
 
         previewHtml += `
@@ -494,9 +647,7 @@ function validateAndPreview(data) {
 
     if (errors.length > 0) {
         let errorHtml = '<strong>Data tidak valid:</strong><ul>';
-        errors.forEach(err => {
-            errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`;
-        });
+        errors.forEach(err => { errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`; });
         errorHtml += '</ul>';
         $('#validation-errors').html(errorHtml).show();
         $('#import-btn').prop('disabled', true);
@@ -511,28 +662,19 @@ function validateAndPreview(data) {
 function importData() {
     $('#participants-list').empty();
     participantCount = 0;
-
     importedData.forEach(p => addParticipant(p.name.trim(), p.email.trim()));
-
     $('#import-summary').show();
     $('#import-count').text(importedData.length);
     $('#participant-file').val('');
     $('#preview-area').hide();
     $('#import-btn').prop('disabled', true);
-
-    Swal.fire({
-        icon: 'success',
-        title: 'Berhasil!',
-        text: `${importedData.length} peserta berhasil diimport`,
-        timer: 2000,
-        showConfirmButton: false
-    });
+    Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${importedData.length} peserta berhasil diimport`, timer: 2000, showConfirmButton: false });
 }
 
 function addParticipant(name = '', email = '') {
-    const idx        = participantCount;
-    const safeName   = name.trim().replace(/"/g, '&quot;');
-    const safeEmail  = email.trim().replace(/"/g, '&quot;'); // ← FIX BUG #1: hapus Blade comment, pakai JS variable biasa
+    const idx       = participantCount;
+    const safeName  = name.trim().replace(/"/g, '&quot;');
+    const safeEmail = email.trim().replace(/"/g, '&quot;');
     const html = `
         <div class="participant-item card mb-3">
             <div class="card-body">
@@ -545,24 +687,18 @@ function addParticipant(name = '', email = '') {
                 <div class="row">
                     <div class="col-md-6 mb-2">
                         <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control"
-                               name="participants[${idx}][name]"
-                               value="${safeName}"
-                               placeholder="Nama lengkap peserta" required>
+                        <input type="text" class="form-control" name="participants[${idx}][name]"
+                               value="${safeName}" placeholder="Nama lengkap peserta" required>
                     </div>
                     <div class="col-md-6 mb-2">
                         <label class="form-label">Email <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control participant-email"
-                               name="participants[${idx}][email]"
-                               value="${safeEmail}"
-                               placeholder="email@contoh.com"
-                               pattern="[^\\s@]+@[^\\s@]+\\.[^\\s@]+"
-                               title="Format email tidak valid" required>
+                        <input type="text" class="form-control participant-email" name="participants[${idx}][email]"
+                               value="${safeEmail}" placeholder="email@contoh.com"
+                               pattern="[^\\s@]+@[^\\s@]+\\.[^\\s@]+" title="Format email tidak valid" required>
                     </div>
                 </div>
             </div>
         </div>`;
-
     $('#participants-list').append(html);
     participantCount++;
     updateParticipantNumbers();
@@ -571,30 +707,18 @@ function addParticipant(name = '', email = '') {
 
 function updateParticipantNumbers() {
     const items = $('.participant-item');
-    items.each(function(index) {
-        $(this).find('.participant-number').text(index + 1);
-    });
+    items.each(function(index) { $(this).find('.participant-number').text(index + 1); });
     $('.remove-participant').toggle(items.length > 1);
 }
 
-function updateSummary() {
-    $('#total-participants').text($('.participant-item').length);
-}
+function updateSummary() { $('#total-participants').text($('.participant-item').length); }
 
 function selectTraining(withTraining) {
     $('.training-option').removeClass('selected');
-    if (withTraining) {
-        $('#option-yes').addClass('selected');
-        $('#training-yes').prop('checked', true);
-    } else {
-        $('#option-no').addClass('selected');
-        $('#training-no').prop('checked', true);
-    }
+    if (withTraining) { $('#option-yes').addClass('selected'); $('#training-yes').prop('checked', true); }
+    else { $('#option-no').addClass('selected'); $('#training-no').prop('checked', true); }
 }
 
-function isValidEmail(email) {
-    // basic check only
-    return email.includes('@') && email.includes('.');
-}
+function isValidEmail(email) { return email.includes('@') && email.includes('.'); }
 </script>
 @endpush

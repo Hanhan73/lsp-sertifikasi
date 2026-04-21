@@ -39,6 +39,8 @@ class AdminMandiriVerificationController extends Controller
 
             $a->_kolektif_batch = $match?->collective_batch_id ?? null;
             $a->_kolektif_tuk   = $match?->tuk?->name ?? null;
+            $a->_delete_requested = $a->delete_requested ?? false;
+            $a->_kolektif_data  = $match;
         });
 
         return view('admin.mandiri.index', compact('asesmens'));
@@ -269,4 +271,18 @@ class AdminMandiriVerificationController extends Controller
             ], 500);
         }
     }
+
+    public function requestHapus(Request $request, Asesmen $asesmen)
+{
+    $request->validate(['reason' => 'nullable|string|max:500']);
+
+    $asesmen->update([
+        'delete_requested'    => true,
+        'delete_request_reason' => $request->reason ?? 'Diduga duplikat dengan pendaftaran kolektif',
+        'delete_requested_at' => now(),
+        'delete_requested_by' => null, // dari TUK bukan admin
+    ]);
+
+    return response()->json(['success' => true, 'message' => 'Request hapus berhasil dikirim ke admin.']);
+}
 }

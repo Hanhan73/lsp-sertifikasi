@@ -344,6 +344,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
         Route::post('/{asesmen}/update-email', [AsesmenController::class, 'updateEmail'])->name('update-email');
         Route::delete('/{asesmen}/hapus-mandiri', [AsesmenController::class, 'destroyMandiri'])->name('asesi.destroy-mandiri');
+        Route::post('/{asesmen}/request-hapus', [AdminMandiriVerificationController::class, 'requestHapus'])->name('request-hapus');
         Route::post('/{asesmen}/reset-password', [AsesmenController::class, 'resetPasswordAsesi'])->name('reset-password');
         Route::post('/{asesmen}/impersonate',     [AsesmenController::class, 'impersonate'])    ->name('impersonate');
         Route::post('/impersonate/stop', [App\Http\Controllers\Admin\AsesmenController::class, 'stopImpersonate'])
@@ -480,6 +481,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
 
     Route::get('/collective/download-template/{type}', [TukController::class, 'downloadTemplate'])      ->name('collective.download-template');
     Route::post('/collective/parse-file',              [TukController::class, 'parseParticipantsFile']) ->name('collective.parse-file');
+    Route::post('/collective/check-duplicates', [TukController::class, 'checkDuplicates'])->name('collective.check-duplicates');
 
     // Asesi
     Route::get('/asesi',           [TukController::class, 'asesi'])      ->name('asesi');

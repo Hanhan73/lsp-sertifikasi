@@ -1004,4 +1004,47 @@ public function storeCollectiveRegistration(Request $request)
             ], 500);
         }
     }
+
+    public function checkDuplicates(Request $request)
+{
+    $participants = $request->participants ?? [];
+    $duplicates = [];
+
+    foreach ($participants as $index => $p) {
+        $email = strtolower(trim($p['email'] ?? ''));
+        $name  = strtolower(trim($p['name'] ?? ''));
+
+        $byEmail = Asesmen::with(['user', 'skema', 'tuk'])
+            ->whereHas('user', fn($q) => $q->where('email', $email))
+            ->where('email', '!=', '')
+            ->first();
+
+        $byName = !$byEmail ? Asesmen::with(['user', 'skema', 'tuk'])
+            ->whereRaw('LOWER(TRIM(full_name)) = ?', [$name])
+            ->first() : null;
+
+        $match = $byEmail ?? $byName;
+
+        if ($match) {
+            $duplicates[] = [
+                'index'      => $index,
+                'input_name' => $p['name'],
+                'input_email'=> $p['email'],
+                'match_type' => $byEmail ? 'email' : 'nama',
+                'existing'   => [
+                    'id'         => $match->id,
+                    'nama'       => $match->full_name,
+                    'email'      => $match->user->email ?? '-',
+                    'skema'      => $match->skema->name ?? '-',
+                    'tuk'        => $match->tuk->name ?? '-',
+                    'status'     => $match->status_label,
+                    'is_collective' => $match->is_collective,
+                    'batch_id'   => $match->collective_batch_id ?? '-',
+                ],
+            ];
+        }
+    }
+
+    return response()->json(['duplicates' => $duplicates]);
+}
 }

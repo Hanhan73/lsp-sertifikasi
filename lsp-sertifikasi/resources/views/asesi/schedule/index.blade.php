@@ -1,13 +1,3 @@
-@extends('layouts.app')
-@section('title', 'Jadwal Asesmen')
-@section('page-title', 'Jadwal Asesmen')
-
-@section('sidebar')
-@include('asesi.partials.sidebar')
-@endsection
-
-@section('content')
-
 @php
     $frak01  = $asesmen->frak01  ?? null;
     $aplsatu = $asesmen->aplsatu ?? null;
@@ -16,14 +6,13 @@
 
     $daysLeft = now()->startOfDay()->diffInDays($schedule->assessment_date->startOfDay(), false);
 
-    $asesmenDimulai = in_array($asesmen->status, ['asesmen_started']);
-    $asesmenSelesai = in_array($asesmen->status, ['assessed', 'certified'])
-                   || ($daysLeft < 0 && $asesmenDimulai);
-
-    // Jadwal sudah lewat DAN schedule pernah dimulai (ada asesi lain yg started)
-    // tapi asesi ini sendiri belum/tidak ikut
-    $jadwalLewatStarted = $daysLeft < 0 
-                       && !$asesmenDimulai 
+    $asesmenDimulai     = in_array($asesmen->status, ['asesmen_started']);
+    $asesmenSelesai     = in_array($asesmen->status, ['assessed', 'certified']);
+    $ketinggalanSesi    = $asesmen->status === 'scheduled'
+                       && ($schedule->assessment_start ?? false)
+                       && $daysLeft <= 0;
+    $jadwalLewatStarted = $daysLeft < 0
+                       && !$asesmenDimulai
                        && ($schedule->assessment_start ?? false);
 
     $soalTeori   = $asesmen->soalTeoriAsesi ?? collect();
@@ -268,8 +257,8 @@
                 <i class="bi bi-journal-check text-primary"></i>Soal Asesmen
             </div>
 
-            @if($asesmenSelesai || $jadwalLewatStarted)
-            {{-- Jadwal sudah lewat / asesmen selesai — soal dikunci --}}
+            @if($asesmenSelesai || $jadwalLewatStarted || $ketinggalanSesi)
+            {{-- Asesmen selesai / jadwal sudah lewat / asesi ketinggalan sesi --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
                 <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
                     style="width:64px;height:64px;">
@@ -289,7 +278,6 @@
                 </div>
                 @endif
 
-                {{-- Reopen observasi aktif — tampilkan tombol upload walau jadwal sudah lewat --}}
                 @php
                     $reopenUntil    = $asesmen->observasi_reopen_until
                         ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
@@ -309,6 +297,7 @@
                 </a>
                 @endif
             </div>
+
             @elseif(!$asesmenDimulai)
             {{-- Asesmen belum dimulai oleh asesor --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">

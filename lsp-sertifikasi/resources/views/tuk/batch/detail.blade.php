@@ -135,11 +135,11 @@
 
         {{-- Daftar Peserta --}}
         <div class="card mb-3">
-            <div class="card-header bg-white">
-                <h5 class="mb-0">
-                    <i class="bi bi-people"></i> Daftar Peserta
-                    <span class="badge bg-secondary ms-1">{{ $asesmens->count() }}</span>
-                </h5>
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-people"></i> Daftar Peserta ({{ $asesmens->count() }})</h6>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#modalTambahPeserta">
+                    <i class="bi bi-person-plus"></i> Tambah Peserta
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -265,4 +265,72 @@
 
     </div>
 </div>
+
+{{-- Modal Tambah Peserta Manual --}}
+<div class="modal fade" id="modalTambahPeserta" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus"></i> Tambah Peserta ke Batch
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ route('tuk.batch.add-participant', $batchId) }}">
+                @csrf
+                <div class="modal-body">
+                    @if($errors->any())
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                    @endif
+
+                    <div class="alert alert-info small">
+                        <i class="bi bi-info-circle"></i>
+                        Peserta akan ditambahkan ke batch <strong>{{ $batchId }}</strong>
+                        dengan skema <strong>{{ $firstAsesmen->skema->name ?? '-' }}</strong>.
+                        Password default: <code>password123</code>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nama Lengkap <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control @error('name') is-invalid @enderror"
+                            value="{{ old('name') }}" placeholder="Nama sesuai KTP" required>
+                        @error('name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" name="email" class="form-control @error('email') is-invalid @enderror"
+                            value="{{ old('email') }}" placeholder="email@contoh.com" required>
+                        @error('email')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-person-check"></i> Tambah Peserta
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- Buka modal otomatis jika ada error validasi --}}
+@if($errors->any())
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        new bootstrap.Modal(document.getElementById('modalTambahPeserta')).show();
+    });
+</script>
+@endif
 @endsection

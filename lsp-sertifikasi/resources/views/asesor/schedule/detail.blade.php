@@ -283,6 +283,19 @@
                         <span class="badge bg-light text-muted border" style="font-size:.7rem;">APL-02: Belum Ada</span>
                         @endif
                     </div>
+                    @if($schedule->assessment_start && $asesmen->status === 'scheduled')
+                    @php
+                        $bisaMulaiSingle = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified','approved'])
+                                        && $asesmen->apldua && in_array($asesmen->apldua->status, ['verified','approved']);
+                    @endphp
+                    <button type="button"
+                            class="btn btn-sm btn-warning flex-shrink-0"
+                            {{ !$bisaMulaiSingle ? 'disabled' : '' }}
+                            title="{{ !$bisaMulaiSingle ? 'FR.AK.01 atau APL-02 belum diverifikasi' : 'Mulai asesmen untuk asesi ini' }}"
+                            onclick="mulaiSingle({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name) }}')">
+                        <i class="bi bi-play-fill me-1"></i>Mulai
+                    </button>
+                    @endif
 
                     <a href="{{ route('asesor.asesi.detail', [$schedule, $asesmen]) }}"
                        class="btn btn-sm {{ $needsVerify ? 'btn-warning' : 'btn-outline-primary' }} flex-shrink-0">
@@ -1505,6 +1518,38 @@ async function konfirmasiMulaiAsesmen() {
         Swal.fire('Error', 'Terjadi kesalahan.', 'error');
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-play-fill me-1"></i>Mulai Asesmen';
+    }
+}
+
+async function mulaiSingle(asesmenId, nama) {
+    const result = await Swal.fire({
+        title: 'Mulai Asesmen?',
+        html: `Mulai asesmen untuk <strong>${nama}</strong>?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: '<i class="bi bi-play-fill me-1"></i>Ya, Mulai',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#f59e0b',
+        reverseButtons: true,
+    });
+    if (!result.isConfirmed) return;
+
+    try {
+        const res = await fetch(`{{ url('asesor/jadwal/' . $schedule->id . '/asesi') }}/${asesmenId}/mulai`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            body: JSON.stringify({}),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 1800, showConfirmButton: false });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message, 'error');
+        }
+    } catch (e) {
+        Swal.fire('Error', 'Terjadi kesalahan.', 'error');
     }
 }
 

@@ -725,4 +725,52 @@ public function previewFotoDokumentasi(Schedule $schedule, int $slot)
 
         return response()->json(['success' => true, 'message' => 'Catatan berhasil disimpan.']);
     }
+
+    /**
+     * Mulai asesmen untuk satu asesi saja (yang ketinggalan / late start).
+     * Endpoint: POST /asesor/jadwal/{schedule}/asesi/{asesmen}/mulai
+     */
+    public function mulaiAsesmenSingle(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
+        $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+
+        if (!$frak01Ready || !$apl02Ready) {
+            return response()->json([
+                'success' => false,
+                'message' => 'FR.AK.01 dan APL-02 harus sudah diverifikasi.',
+            ], 422);
+        }
+
+        if (in_array($asesmen->status, ['asesmen_started', 'assessed', 'certified'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Asesi sudah dalam sesi asesmen.',
+            ], 422);
+        }
+
+        $asesmen->update([
+            'status'      => 'asesmen_started',
+            'assessed_by' => auth()->id(),
+            'assessed_at' => now(),
+        ]);
+
+        // Pastikan schedule juga ditandai started
+        $schedule->update(['assessment_start' => true]);
+
+        Log::info('[ASESMEN-MULAI-SINGLE]', [
+            'schedule_id' => $schedule->id,
+            'asesmen_id'  => $asesmen->id,
+            'asesor_id'   => $asesor->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Asesmen dimulai untuk {$asesmen->full_name}.",
+        ]);
+    }
 }

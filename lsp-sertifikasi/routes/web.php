@@ -624,6 +624,9 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         ->name('schedule.foto-dokumentasi.preview');
     Route::post('/jadwal/{schedule}/catatan-asesor', [AsesorController::class, 'simpanCatatanAsesor'])
     ->name('schedule.catatan-asesor.simpan');
+
+    Route::post('/jadwal/{schedule}/asesi/{asesmen}/mulai', [AsesorController::class, 'mulaiAsesmenSingle'])
+    ->name('schedule.asesi.mulai');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin

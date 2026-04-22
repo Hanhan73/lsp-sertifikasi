@@ -16,18 +16,21 @@
 
     $daysLeft = now()->startOfDay()->diffInDays($schedule->assessment_date->startOfDay(), false);
 
-    // Asesmen sudah dimulai jika status asesi = 'assessed'
     $asesmenDimulai = in_array($asesmen->status, ['asesmen_started']);
-    $asesmenSelesai = in_array($asesmen->status, ['assessed', 'certified']) 
-               || ($daysLeft < 0 && $asesmenDimulai);
+    $asesmenSelesai = in_array($asesmen->status, ['assessed', 'certified'])
+                   || ($daysLeft < 0 && $asesmenDimulai);
 
-    // Hitung status soal teori (hanya relevan jika asesmen sudah dimulai)
+    // Jadwal sudah lewat DAN schedule pernah dimulai (ada asesi lain yg started)
+    // tapi asesi ini sendiri belum/tidak ikut
+    $jadwalLewatStarted = $daysLeft < 0 
+                       && !$asesmenDimulai 
+                       && ($schedule->assessment_start ?? false);
+
     $soalTeori   = $asesmen->soalTeoriAsesi ?? collect();
     $totalTeori  = $soalTeori->count();
     $teoriSubmit = $totalTeori > 0 && $soalTeori->whereNotNull('submitted_at')->count() > 0;
     $teoriMulai  = $totalTeori > 0 && $soalTeori->whereNotNull('started_at')->count() > 0;
 
-    // Soal observasi
     $distribusiObservasi = $asesmen->schedule?->distribusiSoalObservasi ?? collect();
     $obsTotal  = 0;
     $obsUpload = 0;
@@ -265,7 +268,7 @@
                 <i class="bi bi-journal-check text-primary"></i>Soal Asesmen
             </div>
 
-            @if($asesmenSelesai || ($daysLeft <= 0 && !$asesmenDimulai))
+            @if($asesmenSelesai || ($daysLeft < 0 && !$asesmenDimulai))
             {{-- Jadwal sudah lewat / asesmen selesai — soal dikunci --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
                 <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
@@ -307,6 +310,20 @@
                 @endif
             </div>
 
+            @elseif($asesmen->status === 'scheduled' && ($daysLeft <= 0))
+            {{-- Jadwal sudah lewat/hari ini tapi asesi ini tidak ikut di-start --}}
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
+                <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
+                    style="width:64px;height:64px;">
+                    <i class="bi bi-person-dash text-warning" style="font-size:1.6rem;"></i>
+                </div>
+                <p class="fw-semibold mb-1">Tidak Mengikuti Sesi Ini</p>
+                <p class="text-muted small mb-0">
+                    Anda tidak tercatat dalam sesi asesmen tanggal
+                    <strong>{{ $schedule->assessment_date->translatedFormat('d F Y') }}</strong>.
+                    Silakan hubungi admin LSP untuk informasi lebih lanjut.
+                </p>
+            </div>
             @elseif(!$asesmenDimulai)
             {{-- Asesmen belum dimulai oleh asesor --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">

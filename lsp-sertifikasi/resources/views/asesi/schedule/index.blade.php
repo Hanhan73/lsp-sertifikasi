@@ -309,21 +309,6 @@
                 </a>
                 @endif
             </div>
-
-            @elseif($asesmen->status === 'scheduled' && ($daysLeft <= 0))
-            {{-- Jadwal sudah lewat/hari ini tapi asesi ini tidak ikut di-start --}}
-            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
-                <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
-                    style="width:64px;height:64px;">
-                    <i class="bi bi-person-dash text-warning" style="font-size:1.6rem;"></i>
-                </div>
-                <p class="fw-semibold mb-1">Tidak Mengikuti Sesi Ini</p>
-                <p class="text-muted small mb-0">
-                    Anda tidak tercatat dalam sesi asesmen tanggal
-                    <strong>{{ $schedule->assessment_date->translatedFormat('d F Y') }}</strong>.
-                    Silakan hubungi admin LSP untuk informasi lebih lanjut.
-                </p>
-            </div>
             @elseif(!$asesmenDimulai)
             {{-- Asesmen belum dimulai oleh asesor --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">

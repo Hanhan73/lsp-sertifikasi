@@ -268,7 +268,7 @@
                 <i class="bi bi-journal-check text-primary"></i>Soal Asesmen
             </div>
 
-            @if($asesmenSelesai || ($daysLeft < 0 && !$asesmenDimulai))
+            @if($asesmenSelesai || ($daysLeft <= 0 && !$asesmenDimulai))
             {{-- Jadwal sudah lewat / asesmen selesai — soal dikunci --}}
             <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
                 <div class="rounded-circle bg-success bg-opacity-10 d-flex align-items-center justify-content-center mb-3"

@@ -155,15 +155,46 @@ public function storeCollectiveRegistration(Request $request)
             }
 
             $user = User::where('email', $email)->first();
-
             if ($user) {
-                $existingAsesmen = Asesmen::where('user_id', $user->id)->exists();
+                $existingAsesmen = Asesmen::where('user_id', $user->id)
+                    ->whereNotIn('status', ['certified', 'assessed', 'scheduled'])
+                    ->first();
+
                 if ($existingAsesmen) {
-                    $errors[]        = "Baris " . ($index + 1) . ": Email {$email} sudah terdaftar dan memiliki asesmen aktif";
-                    $skippedEmails[] = $email;
-                    Log::warning("Collective Reg SKIP (existing asesmen): {$email}");
+                    // Kalau sudah di batch kolektif lain → skip
+                    if ($existingAsesmen->is_collective && $existingAsesmen->collective_batch_id) {
+                        $errors[] = "Baris " . ($index + 1) . ": {$name} ({$email}) sudah di batch {$existingAsesmen->collective_batch_id}";
+                        $skippedEmails[] = $email;
+                        continue;
+                    }
+
+                    // Kalau mandiri (belum jauh prosesnya) → convert ke kolektif
+                    $existingAsesmen->update([
+                        'tuk_id'                 => $tuk->id,
+                        'skema_id'               => $request->skema_id,
+                        'full_name'              => $name,
+                        'preferred_date'         => $request->preferred_date,
+                        'training_flag'          => $request->training_flag,
+                        'registration_date'      => now(),
+                        'status'                 => 'registered',
+                        'registered_by'          => auth()->id(),
+                        'is_collective'          => true,
+                        'collective_batch_id'    => $batchId,
+                        'payment_phases'         => $request->payment_phases,
+                        'collective_paid_by_tuk' => true,
+                        'skip_payment'           => true,
+                        // Reset data mandiri yang tidak relevan
+                        'fee_amount'             => null,
+                        'admin_verified_at'      => null,
+                        'admin_verified_by'      => null,
+                    ]);
+
+                    Log::info("Collective Reg CONVERT mandiri→kolektif: asesmen #{$existingAsesmen->id} ({$email})");
+                    $registeredCount++;
                     continue;
                 }
+
+                // User ada tapi tidak punya asesmen aktif
                 Log::info("Collective Reg REUSE user: {$email}");
             } else {
                 $user = User::create([
@@ -1046,5 +1077,28 @@ public function storeCollectiveRegistration(Request $request)
     }
 
     return response()->json(['duplicates' => $duplicates]);
+}
+
+public function requestHapusMandiri(Request $request, Asesmen $asesmen)
+{
+    $tuk = auth()->user()->tuk;
+
+    // Pastikan yang direquest bukan milik TUK ini sendiri
+    if ($asesmen->tuk_id === $tuk->id) {
+        return response()->json(['success' => false, 'message' => 'Tidak bisa request hapus asesi sendiri.'], 422);
+    }
+
+    // Jangan duplikat request
+    if ($asesmen->delete_requested) {
+        return response()->json(['success' => true, 'message' => 'Request sudah pernah dikirim.']);
+    }
+
+    $asesmen->update([
+        'delete_requested'       => true,
+        'delete_request_reason'  => $request->reason ?? 'Duplikat dengan pendaftaran kolektif dari TUK ' . $tuk->name,
+        'delete_requested_at'    => now(),
+    ]);
+
+    return response()->json(['success' => true, 'message' => 'Request hapus berhasil dikirim ke admin.']);
 }
 }

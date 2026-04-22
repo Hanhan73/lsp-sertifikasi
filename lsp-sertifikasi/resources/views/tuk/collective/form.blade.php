@@ -507,31 +507,50 @@ $(document).ready(function() {
     });
 
     // Tombol lanjutkan dari modal
-    $('#btn-lanjutkan').on('click', function() {
-        // Kirim request hapus untuk yang dicentang
-        const requestHapusIds = [];
-        $('.chk-request-hapus:checked').each(function() {
-            requestHapusIds.push($(this).data('asesmen-id'));
+    $('#btn-lanjutkan').on('click', async function () {
+    const toRequest = [];
+    $('.chk-request-hapus:checked').each(function () {
+        toRequest.push({
+            id:   $(this).data('asesmen-id'),
+            nama: $(this).data('nama'),
         });
-
-        if (requestHapusIds.length > 0) {
-            requestHapusIds.forEach(id => {
-                fetch(`/admin/asesi/${id}/request-hapus`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ reason: 'Duplikat dengan pendaftaran kolektif baru' }),
-                });
-            });
-        }
-
-        bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
-        pendingSubmit = true;
-        $('#collective-form').submit();
     });
+
+    if (toRequest.length > 0) {
+        // Tampilkan loading
+        Swal.fire({ title: 'Mengirim request hapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+        await Promise.all(toRequest.map(item =>
+            fetch(`/tuk/asesi/${item.id}/request-hapus`, {  // ← route TUK, bukan admin
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({
+                    reason: `Duplikat dengan pendaftaran kolektif baru — peserta: ${item.nama}`
+                }),
+            })
+        ));
+
+        Swal.close();
+
+        await Swal.fire({
+            icon: 'info',
+            title: `${toRequest.length} request hapus terkirim`,
+            text: 'Admin akan memproses request tersebut. Pendaftaran kolektif dilanjutkan untuk peserta lainnya.',
+            timer: 2500,
+            showConfirmButton: false,
+        });
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
+    pendingSubmit = true;
+    $('#collective-form').submit();
+});
 });
 
 function tampilkanModalDuplikat(duplicates) {
@@ -583,13 +602,17 @@ function tampilkanModalDuplikat(duplicates) {
                         </div>
                     </div>
                 </div>
-                <div class="mt-3 d-flex align-items-center gap-2">
-                    <input type="checkbox" class="form-check-input chk-request-hapus"
+                <div class="mt-3 p-3 bg-light rounded d-flex align-items-start gap-2">
+                    <input type="checkbox" class="form-check-input mt-1 chk-request-hapus"
                         id="req-hapus-${i}"
-                        data-asesmen-id="${d.existing.id}">
+                        data-asesmen-id="${d.existing.id}"
+                        data-nama="${d.existing.nama}">
                     <label class="form-check-label small" for="req-hapus-${i}">
                         <i class="bi bi-flag text-danger me-1"></i>
-                        <strong>Request ke Admin</strong> untuk menghapus data lama ini (jika memang duplikat)
+                        <strong>Request ke Admin</strong> untuk menghapus pendaftaran <em>${d.existing.nama}</em> yang lama
+                        <div class="text-muted" style="font-size:0.8rem;">
+                            (${d.existing.is_collective ? 'Kolektif batch ' + d.existing.batch_id : 'Mandiri'} — status: ${d.existing.status})
+                        </div>
                     </label>
                 </div>
             </div>

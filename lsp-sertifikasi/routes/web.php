@@ -487,6 +487,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::get('/asesi',           [TukController::class, 'asesi'])      ->name('asesi');
     Route::get('/asesi/{asesmen}', [TukController::class, 'asesiDetail'])->name('asesi.show');
     Route::get('/batch/{batchId}', [TukController::class, 'batchDetail'])->name('batch.detail');
+    Route::post('/asesi/{asesmen}/request-hapus', [TukController::class, 'requestHapusMandiri'])->name('asesi.request-hapus');
 
     // Jadwal
     Route::prefix('schedules')->name('schedules.')->group(function () {
@@ -508,6 +509,8 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
         Route::post('/{asesmen}',    [TukVerificationController::class, 'process'])      ->name('process');
         Route::post('/batch/process',[TukVerificationController::class, 'processBatch'])->name('batch');
     });
+
+    
 });
 
 /*

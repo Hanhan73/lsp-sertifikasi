@@ -216,7 +216,7 @@
             <div class="modal-body">
                 <div class="alert alert-warning mb-4">
                     <i class="bi bi-info-circle me-1"></i>
-                    Asesi ini kemungkinan sudah terdaftar via kolektif oleh TUK. Bandingkan datanya, lalu hapus pendaftaran mandirinya jika memang duplikat.
+                    Asesi ini kemungkinan sudah terdaftar.
                 </div>
                 <div class="row g-3">
                     {{-- Mandiri --}}
@@ -305,6 +305,7 @@ function lihatDuplikat(asesmenId) {
     currentAsesmenId = asesmenId;
     currentNama      = mandiri.nama;
 
+    // Isi data mandiri
     document.getElementById('m-id').textContent        = '#' + mandiri.id;
     document.getElementById('m-nama').textContent      = mandiri.nama;
     document.getElementById('m-email').textContent     = mandiri.email;
@@ -314,17 +315,34 @@ function lihatDuplikat(asesmenId) {
     document.getElementById('m-phone').textContent     = mandiri.phone;
     document.getElementById('m-institusi').textContent = mandiri.institusi;
 
-    document.getElementById('k-batch').textContent  = kolektif.batch_id;
-    document.getElementById('k-tuk').textContent    = kolektif.tuk;
-    document.getElementById('k-skema').textContent  = kolektif.skema;
-    document.getElementById('k-status').textContent = kolektif.status;
-    document.getElementById('k-tgl').textContent    = kolektif.tgl_daftar;
+    // Isi data kolektif
+    document.getElementById('k-batch').textContent    = kolektif.batch_id;
     document.getElementById('k-nama').textContent     = kolektif.nama;
     document.getElementById('k-email').textContent    = kolektif.email;
+    document.getElementById('k-tuk').textContent      = kolektif.tuk;
+    document.getElementById('k-skema').textContent    = kolektif.skema;
+    document.getElementById('k-status').textContent   = kolektif.status;
+    document.getElementById('k-tgl').textContent      = kolektif.tgl_daftar;
     document.getElementById('k-phone').textContent    = kolektif.phone;
     document.getElementById('k-institusi').textContent = kolektif.institusi;
 
+    // Highlight beda — bandingkan nama & email
+    highlightBeda('m-nama', 'k-nama', mandiri.nama, kolektif.nama);
+    highlightBeda('m-email', 'k-email', mandiri.email, kolektif.email);
+
     new bootstrap.Modal(document.getElementById('modalDuplikat')).show();
+}
+
+function highlightBeda(idA, idB, valA, valB) {
+    const elA = document.getElementById(idA);
+    const elB = document.getElementById(idB);
+    if (valA.toLowerCase().trim() !== valB.toLowerCase().trim()) {
+        elA.classList.add('text-danger', 'fw-bold');
+        elB.classList.add('text-danger', 'fw-bold');
+    } else {
+        elA.classList.remove('text-danger', 'fw-bold');
+        elB.classList.remove('text-danger', 'fw-bold');
+    }
 }
 
 document.getElementById('btn-hapus-dari-modal').addEventListener('click', function () {

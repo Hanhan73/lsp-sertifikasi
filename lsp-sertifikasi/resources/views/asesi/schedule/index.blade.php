@@ -1,3 +1,13 @@
+@extends('layouts.app')
+@section('title', 'Jadwal Asesmen')
+@section('page-title', 'Jadwal Asesmen')
+
+@section('sidebar')
+@include('asesi.partials.sidebar')
+@endsection
+
+@section('content')
+
 @php
     $frak01  = $asesmen->frak01  ?? null;
     $aplsatu = $asesmen->aplsatu ?? null;

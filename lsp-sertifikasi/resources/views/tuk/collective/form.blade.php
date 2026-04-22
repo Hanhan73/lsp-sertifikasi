@@ -351,7 +351,7 @@
                 <div class="alert alert-warning">
                     <i class="bi bi-info-circle me-1"></i>
                     Beberapa peserta yang akan didaftarkan <strong>sudah ada di sistem</strong>.
-                    Pilih tindakan untuk setiap peserta duplikat, lalu klik <strong>"Lanjutkan Pendaftaran"</strong>.
+                    Tinjau data perbandingan, lalu setujui konversi untuk melanjutkan pendaftaran.
                 </div>
                 <div id="duplikat-list"></div>
             </div>
@@ -360,7 +360,7 @@
                     <i class="bi bi-pencil me-1"></i> Kembali & Edit
                 </button>
                 <button type="button" class="btn btn-success" id="btn-lanjutkan">
-                    <i class="bi bi-send me-1"></i> Lanjutkan Pendaftaran (Skip Duplikat)
+                    <i class="bi bi-send me-1"></i> Lanjutkan Pendaftaran
                 </button>
             </div>
         </div>
@@ -368,29 +368,28 @@
 </div>
 
 <script>
-let participantCount = 0;
-let importedData = [];
-let pendingSubmit = false;
-let detectedDuplicates = [];
+let participantCount    = 0;
+let importedData        = [];
+let pendingSubmit       = false;
+let detectedDuplicates  = [];
 
-$(document).ready(function() {
+$(document).ready(function () {
     addParticipant();
     selectTraining(false);
 
-    $('#participant-file').change(function(e) {
+    $('#participant-file').change(function (e) {
         const file = e.target.files[0];
         if (!file) return;
 
         Swal.fire({ title: 'Memproses...', html: 'Membaca file Excel/CSV', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             try {
-                const data = new Uint8Array(e.target.result);
+                const data     = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                validateAndPreview(jsonData);
+                const sheet    = workbook.Sheets[workbook.SheetNames[0]];
+                validateAndPreview(XLSX.utils.sheet_to_json(sheet));
                 Swal.close();
             } catch (error) {
                 Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal membaca file: ' + error.message });
@@ -399,20 +398,20 @@ $(document).ready(function() {
         reader.readAsArrayBuffer(file);
     });
 
-    $('#import-btn').click(function() {
+    $('#import-btn').click(function () {
         importData();
         $('#uploadModal').modal('hide');
     });
 
-    $('#add-participant').click(function() { addParticipant(); });
+    $('#add-participant').click(function () { addParticipant(); });
 
-    $(document).on('click', '.remove-participant', function() {
+    $(document).on('click', '.remove-participant', function () {
         $(this).closest('.participant-item').remove();
         updateParticipantNumbers();
         updateSummary();
     });
 
-    const tukCode = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
+    const tukCode     = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
     const randomSuffix = generateRandomSuffix(6);
 
     function generateRandomSuffix(length) {
@@ -437,11 +436,11 @@ $(document).ready(function() {
     $('#batch_name_input').on('input', updateBatchPreview);
     updateBatchPreview();
 
-    // ← SUBMIT HANDLER UTAMA
-    $('#collective-form').on('submit', async function(e) {
+    // SUBMIT HANDLER UTAMA
+    $('#collective-form').on('submit', async function (e) {
         e.preventDefault();
 
-        $('.participant-email').each(function() {
+        $('.participant-email').each(function () {
             $(this).val($(this).val().trim().toLowerCase());
         });
 
@@ -451,13 +450,12 @@ $(document).ready(function() {
         }
 
         // Re-index
-        $('.participant-item').each(function(newIdx) {
+        $('.participant-item').each(function (newIdx) {
             $(this).find('input[name*="[name]"]').attr('name', `participants[${newIdx}][name]`);
             $(this).find('input[name*="[email]"]').attr('name', `participants[${newIdx}][email]`);
         });
 
         if (pendingSubmit) {
-            // Sudah dicek duplikat, submit langsung
             pendingSubmit = false;
             $(this).find('[type=submit]').prop('disabled', true)
                 .html('<span class="spinner-border spinner-border-sm me-1"></span> Mendaftarkan...');
@@ -467,7 +465,7 @@ $(document).ready(function() {
 
         // Kumpulkan peserta
         const participants = [];
-        $('.participant-item').each(function() {
+        $('.participant-item').each(function () {
             participants.push({
                 name:  $(this).find('input[name*="[name]"]').val().trim(),
                 email: $(this).find('input[name*="[email]"]').val().trim().toLowerCase(),
@@ -478,12 +476,12 @@ $(document).ready(function() {
         Swal.fire({ title: 'Memeriksa data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
         try {
-            const res = await fetch('{{ route("tuk.collective.check-duplicates") }}', {
+            const res  = await fetch('{{ route("tuk.collective.check-duplicates") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json',
+                    'Accept':       'application/json',
                 },
                 body: JSON.stringify({ participants }),
             });
@@ -494,133 +492,152 @@ $(document).ready(function() {
                 detectedDuplicates = data.duplicates;
                 tampilkanModalDuplikat(data.duplicates);
             } else {
-                // Tidak ada duplikat, submit langsung
                 pendingSubmit = true;
                 $('#collective-form').submit();
             }
         } catch (err) {
             Swal.close();
-            // Kalau gagal cek, submit saja langsung
             pendingSubmit = true;
             $('#collective-form').submit();
         }
     });
 
-    // Tombol lanjutkan dari modal
-    $('#btn-lanjutkan').on('click', async function () {
-    const toRequest = [];
-    $('.chk-request-hapus:checked').each(function () {
-        toRequest.push({
-            id:   $(this).data('asesmen-id'),
-            nama: $(this).data('nama'),
-        });
+    // Tombol lanjutkan — langsung submit, tidak ada request hapus
+    $('#btn-lanjutkan').on('click', function () {
+        bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
+        pendingSubmit = true;
+        $('#collective-form').submit();
     });
-
-    if (toRequest.length > 0) {
-        // Tampilkan loading
-        Swal.fire({ title: 'Mengirim request hapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-        await Promise.all(toRequest.map(item =>
-            fetch(`/tuk/asesi/${item.id}/request-hapus`, {  // ← route TUK, bukan admin
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-                body: JSON.stringify({
-                    reason: `Duplikat dengan pendaftaran kolektif baru — peserta: ${item.nama}`
-                }),
-            })
-        ));
-
-        Swal.close();
-
-        await Swal.fire({
-            icon: 'info',
-            title: `${toRequest.length} request hapus terkirim`,
-            text: 'Admin akan memproses request tersebut. Pendaftaran kolektif dilanjutkan untuk peserta lainnya.',
-            timer: 2500,
-            showConfirmButton: false,
-        });
-    }
-
-    bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
-    pendingSubmit = true;
-    $('#collective-form').submit();
-});
 });
 
 function tampilkanModalDuplikat(duplicates) {
     let html = '';
+
     duplicates.forEach((d, i) => {
-        const matchTypeBadge = d.match_type === 'email'
+        const isEmailSama = d.match_type === 'email';
+        const canConvert  = d.can_convert;
+
+        const matchTypeBadge = isEmailSama
             ? '<span class="badge bg-danger">Email sama</span>'
             : '<span class="badge bg-warning text-dark">Nama sama</span>';
 
         const jenisExisting = d.existing.is_collective
-            ? `<span class="badge bg-info">Kolektif</span> <small class="text-muted">${d.existing.batch_id}</small>`
+            ? `<span class="badge bg-info">Kolektif</span> <small class="text-muted">batch: ${d.existing.batch_id}</small>`
             : '<span class="badge bg-success">Mandiri</span>';
 
+        let actionSection = '';
+
+        if (!isEmailSama) {
+            actionSection = `
+            <div class="mt-3 p-3 bg-light border rounded">
+                <i class="bi bi-info-circle text-secondary me-1"></i>
+                <span class="small">Nama mirip tapi email berbeda — peserta ini akan <strong>di-skip</strong>.
+                Koreksi email di form jika ini orang yang sama.</span>
+            </div>`;
+        } else if (canConvert) {
+            actionSection = `
+            <div class="mt-3 p-3 bg-warning bg-opacity-10 border border-warning rounded">
+                <div class="small mb-2">
+                    <i class="bi bi-arrow-repeat text-warning me-1"></i>
+                    Pendaftaran <strong>${d.existing.is_collective ? 'kolektif' : 'mandiri'}</strong> lama
+                    akan dikonversi dan dimasukkan ke batch ini.
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input chk-setuju-convert"
+                        id="setuju-${i}"
+                        data-index="${i}"
+                        data-asesmen-id="${d.existing.id}">
+                    <label class="form-check-label small fw-semibold" for="setuju-${i}">
+                        Saya setuju — konversi pendaftaran <em>${d.existing.nama}</em> ke batch ini
+                    </label>
+                </div>
+            </div>`;
+        } else {
+            actionSection = `
+            <div class="mt-3 p-3 bg-danger bg-opacity-10 border border-danger rounded">
+                <i class="bi bi-x-circle text-danger me-1"></i>
+                <span class="small"><strong>Tidak bisa dikonversi.</strong>
+                Peserta sudah dalam status <strong>${d.existing.status}</strong> —
+                proses sudah terlalu jauh untuk dipindahkan ke batch ini.
+                Hubungi admin untuk penanganan lebih lanjut.</span>
+            </div>`;
+        }
+
         html += `
-        <div class="card mb-3 border-warning">
-            <div class="card-header bg-warning bg-opacity-25 d-flex justify-content-between align-items-center">
+        <div class="card mb-3 border-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'}">
+            <div class="card-header bg-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'} ${isEmailSama && !canConvert ? 'text-white' : ''} bg-opacity-25 d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">Peserta #${d.index + 1}: ${d.input_name}</span>
                 ${matchTypeBadge}
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-5">
-                        <div class="card border-secondary h-100">
-                            <div class="card-header bg-secondary text-white py-1">
+                        <div class="card border-primary h-100">
+                            <div class="card-header bg-primary text-white py-2">
                                 <small><i class="bi bi-person-plus me-1"></i>Yang akan didaftarkan</small>
                             </div>
                             <div class="card-body py-2">
-                                <div class="small"><strong>Nama:</strong> ${d.input_name}</div>
-                                <div class="small"><strong>Email:</strong> ${d.input_email}</div>
+                                <table class="table table-sm mb-0">
+                                    <tr><th class="text-muted" style="width:35%">Nama</th><td>${d.input_name}</td></tr>
+                                    <tr><th class="text-muted">Email</th><td>${d.input_email}</td></tr>
+                                </table>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-2 d-flex align-items-center justify-content-center">
-                        <i class="bi bi-arrow-left-right fs-3 text-warning"></i>
+                        <div class="text-center">
+                            <i class="bi bi-arrow-left-right fs-3 text-warning d-block"></i>
+                            <small class="text-muted">vs</small>
+                        </div>
                     </div>
                     <div class="col-md-5">
                         <div class="card border-danger h-100">
-                            <div class="card-header bg-danger text-white py-1">
+                            <div class="card-header bg-danger text-white py-2">
                                 <small><i class="bi bi-database me-1"></i>Sudah ada di sistem</small>
                             </div>
                             <div class="card-body py-2">
-                                <div class="small"><strong>Nama:</strong> ${d.existing.nama}</div>
-                                <div class="small"><strong>Email:</strong> ${d.existing.email}</div>
-                                <div class="small"><strong>Skema:</strong> ${d.existing.skema}</div>
-                                <div class="small"><strong>TUK:</strong> ${d.existing.tuk}</div>
-                                <div class="small"><strong>Status:</strong> ${d.existing.status}</div>
-                                <div class="small"><strong>Jenis:</strong> ${jenisExisting}</div>
+                                <table class="table table-sm mb-0">
+                                    <tr><th class="text-muted" style="width:35%">Nama</th><td>${d.existing.nama}</td></tr>
+                                    <tr><th class="text-muted">Email</th><td>${d.existing.email}</td></tr>
+                                    <tr><th class="text-muted">Skema</th><td>${d.existing.skema}</td></tr>
+                                    <tr><th class="text-muted">TUK</th><td>${d.existing.tuk}</td></tr>
+                                    <tr><th class="text-muted">Status</th><td><span class="badge bg-secondary">${d.existing.status}</span></td></tr>
+                                    <tr><th class="text-muted">Jenis</th><td>${jenisExisting}</td></tr>
+                                </table>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="mt-3 p-3 bg-light rounded d-flex align-items-start gap-2">
-                    <input type="checkbox" class="form-check-input mt-1 chk-request-hapus"
-                        id="req-hapus-${i}"
-                        data-asesmen-id="${d.existing.id}"
-                        data-nama="${d.existing.nama}">
-                    <label class="form-check-label small" for="req-hapus-${i}">
-                        <i class="bi bi-flag text-danger me-1"></i>
-                        <strong>Request ke Admin</strong> untuk menghapus pendaftaran <em>${d.existing.nama}</em> yang lama
-                        <div class="text-muted" style="font-size:0.8rem;">
-                            (${d.existing.is_collective ? 'Kolektif batch ' + d.existing.batch_id : 'Mandiri'} — status: ${d.existing.status})
-                        </div>
-                    </label>
-                </div>
+                ${actionSection}
             </div>
         </div>`;
     });
 
     $('#duplikat-list').html(html);
+    cekTombolLanjutkan();
+
+    $(document).off('change', '.chk-setuju-convert').on('change', '.chk-setuju-convert', function () {
+        cekTombolLanjutkan();
+    });
+
     new bootstrap.Modal(document.getElementById('modalDuplikat')).show();
+}
+
+function cekTombolLanjutkan() {
+    const totalWajib   = $('.chk-setuju-convert').length;
+    const totalChecked = $('.chk-setuju-convert:checked').length;
+    const semuaSetuju  = totalWajib === 0 || totalChecked === totalWajib;
+
+    const btn = $('#btn-lanjutkan');
+    if (semuaSetuju) {
+        btn.prop('disabled', false)
+           .removeClass('btn-secondary').addClass('btn-success')
+           .html(`<i class="bi bi-send me-1"></i> Lanjutkan${totalWajib > 0 ? ' & Konversi ' + totalWajib + ' Peserta' : ''}`);
+    } else {
+        btn.prop('disabled', true)
+           .removeClass('btn-success').addClass('btn-secondary')
+           .html(`<i class="bi bi-lock me-1"></i> Setujui konversi dulu (${totalChecked}/${totalWajib})`);
+    }
 }
 
 function validateAndPreview(data) {
@@ -629,9 +646,7 @@ function validateAndPreview(data) {
         return;
     }
 
-    let validCount = 0;
-    let errors = [];
-    let previewHtml = '';
+    let validCount = 0, errors = [], previewHtml = '';
     importedData = [];
 
     data.forEach((row, index) => {
@@ -646,7 +661,7 @@ function validateAndPreview(data) {
         if (!email) rowErrors.push('Email wajib diisi');
         else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
 
-        const isValid = rowErrors.length === 0;
+        const isValid    = rowErrors.length === 0;
         if (isValid) { validCount++; importedData.push({ name, email }); }
 
         const statusClass = isValid ? 'success' : 'danger';
@@ -730,7 +745,7 @@ function addParticipant(name = '', email = '') {
 
 function updateParticipantNumbers() {
     const items = $('.participant-item');
-    items.each(function(index) { $(this).find('.participant-number').text(index + 1); });
+    items.each(function (index) { $(this).find('.participant-number').text(index + 1); });
     $('.remove-participant').toggle(items.length > 1);
 }
 

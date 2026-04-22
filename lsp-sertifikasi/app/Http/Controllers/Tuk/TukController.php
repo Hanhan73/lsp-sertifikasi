@@ -155,59 +155,57 @@ public function storeCollectiveRegistration(Request $request)
             }
 
             $user = User::where('email', $email)->first();
+
             if ($user) {
                 $existingAsesmen = Asesmen::where('user_id', $user->id)
-                    ->whereNotIn('status', ['certified', 'assessed', 'scheduled'])
+                    ->whereNotIn('status', ['certified', 'assessed'])
                     ->first();
 
                 if ($existingAsesmen) {
-                    // Kalau sudah di batch kolektif lain → skip
-                    if ($existingAsesmen->is_collective && $existingAsesmen->collective_batch_id) {
-                        $errors[] = "Baris " . ($index + 1) . ": {$name} ({$email}) sudah di batch {$existingAsesmen->collective_batch_id}";
-                        $skippedEmails[] = $email;
+                    // Hanya convert kalau status memungkinkan
+                    if (in_array($existingAsesmen->status, ['registered', 'data_completed'])) {
+                        $existingAsesmen->update([
+                            'tuk_id'                 => $tuk->id,
+                            'skema_id'               => $request->skema_id,
+                            'full_name'              => $name,
+                            'preferred_date'         => $request->preferred_date,
+                            'training_flag'          => $request->training_flag,
+                            'registration_date'      => now(),
+                            'status'                 => 'registered',
+                            'registered_by'          => auth()->id(),
+                            'is_collective'          => true,
+                            'collective_batch_id'    => $batchId,
+                            'payment_phases'         => $request->payment_phases,
+                            'collective_paid_by_tuk' => true,
+                            'skip_payment'           => true,
+                            'fee_amount'             => null,
+                            'admin_verified_at'      => null,
+                            'admin_verified_by'      => null,
+                        ]);
+                        Log::info("Collective Reg CONVERT: asesmen #{$existingAsesmen->id} ({$email}) → batch {$batchId}");
+                        $registeredCount++;
                         continue;
                     }
 
-                    // Kalau mandiri (belum jauh prosesnya) → convert ke kolektif
-                    $existingAsesmen->update([
-                        'tuk_id'                 => $tuk->id,
-                        'skema_id'               => $request->skema_id,
-                        'full_name'              => $name,
-                        'preferred_date'         => $request->preferred_date,
-                        'training_flag'          => $request->training_flag,
-                        'registration_date'      => now(),
-                        'status'                 => 'registered',
-                        'registered_by'          => auth()->id(),
-                        'is_collective'          => true,
-                        'collective_batch_id'    => $batchId,
-                        'payment_phases'         => $request->payment_phases,
-                        'collective_paid_by_tuk' => true,
-                        'skip_payment'           => true,
-                        // Reset data mandiri yang tidak relevan
-                        'fee_amount'             => null,
-                        'admin_verified_at'      => null,
-                        'admin_verified_by'      => null,
-                    ]);
-
-                    Log::info("Collective Reg CONVERT mandiri→kolektif: asesmen #{$existingAsesmen->id} ({$email})");
-                    $registeredCount++;
+                    // Status tidak memungkinkan convert → skip
+                    $errors[]        = "Baris " . ($index + 1) . ": {$name} ({$email}) sudah terdaftar dengan status {$existingAsesmen->status_label}, tidak bisa dikonversi";
+                    $skippedEmails[] = $email;
+                    Log::warning("Collective Reg SKIP (status tidak bisa convert): {$email} status={$existingAsesmen->status}");
                     continue;
                 }
 
-                // User ada tapi tidak punya asesmen aktif
-                Log::info("Collective Reg REUSE user: {$email}");
+                Log::info("Collective Reg REUSE user (no asesmen): {$email}");
             } else {
                 $user = User::create([
-                    'name'               => $name,
-                    'email'              => $email,
-                    'password'           => Hash::make('password123'),
-                    'role'               => 'asesi',
-                    'is_active'          => true,
+                    'name'                => $name,
+                    'email'               => $email,
+                    'password'            => Hash::make('password123'),
+                    'role'                => 'asesi',
+                    'is_active'           => true,
                     'password_changed_at' => null,
-                    'email_verified_at'  => now(),
+                    'email_verified_at'   => now(),
                 ]);
             }
-
             Asesmen::create([
                 'user_id'                => $user->id,
                 'tuk_id'                 => $tuk->id,
@@ -1037,47 +1035,50 @@ public function storeCollectiveRegistration(Request $request)
     }
 
     public function checkDuplicates(Request $request)
-{
-    $participants = $request->participants ?? [];
-    $duplicates = [];
+    {
+        $participants = $request->participants ?? [];
+        $duplicates   = [];
 
-    foreach ($participants as $index => $p) {
-        $email = strtolower(trim($p['email'] ?? ''));
-        $name  = strtolower(trim($p['name'] ?? ''));
+        foreach ($participants as $index => $p) {
+            $email = strtolower(trim($p['email'] ?? ''));
+            $name  = strtolower(trim($p['name'] ?? ''));
 
-        $byEmail = Asesmen::with(['user', 'skema', 'tuk'])
-            ->whereHas('user', fn($q) => $q->where('email', $email))
-            ->where('email', '!=', '')
-            ->first();
+            $byEmail = Asesmen::with(['user', 'skema', 'tuk'])
+                ->whereHas('user', fn($q) => $q->where('email', $email))
+                ->first();
 
-        $byName = !$byEmail ? Asesmen::with(['user', 'skema', 'tuk'])
-            ->whereRaw('LOWER(TRIM(full_name)) = ?', [$name])
-            ->first() : null;
+            $byName = !$byEmail ? Asesmen::with(['user', 'skema', 'tuk'])
+                ->whereRaw('LOWER(TRIM(full_name)) = ?', [$name])
+                ->first() : null;
 
-        $match = $byEmail ?? $byName;
+            $match = $byEmail ?? $byName;
 
-        if ($match) {
-            $duplicates[] = [
-                'index'      => $index,
-                'input_name' => $p['name'],
-                'input_email'=> $p['email'],
-                'match_type' => $byEmail ? 'email' : 'nama',
-                'existing'   => [
-                    'id'         => $match->id,
-                    'nama'       => $match->full_name,
-                    'email'      => $match->user->email ?? '-',
-                    'skema'      => $match->skema->name ?? '-',
-                    'tuk'        => $match->tuk->name ?? '-',
-                    'status'     => $match->status_label,
-                    'is_collective' => $match->is_collective,
-                    'batch_id'   => $match->collective_batch_id ?? '-',
-                ],
-            ];
+            if ($match) {
+                $canConvert = $byEmail && in_array($match->status, ['registered', 'data_completed']);
+
+                $duplicates[] = [
+                    'index'       => $index,
+                    'input_name'  => $p['name'],
+                    'input_email' => $p['email'],
+                    'match_type'  => $byEmail ? 'email' : 'nama',
+                    'can_convert' => $canConvert,
+                    'existing'    => [
+                        'id'           => $match->id,
+                        'nama'         => $match->full_name,
+                        'email'        => $match->user->email ?? '-',
+                        'skema'        => $match->skema->name ?? '-',
+                        'tuk'          => $match->tuk->name ?? '-',
+                        'status'       => $match->status_label,
+                        'status_raw'   => $match->status,
+                        'is_collective'=> $match->is_collective,
+                        'batch_id'     => $match->collective_batch_id ?? '-',
+                    ],
+                ];
+            }
         }
-    }
 
-    return response()->json(['duplicates' => $duplicates]);
-}
+        return response()->json(['duplicates' => $duplicates]);
+    }
 
 public function requestHapusMandiri(Request $request, Asesmen $asesmen)
 {

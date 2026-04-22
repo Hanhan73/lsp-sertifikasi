@@ -102,6 +102,10 @@
                             'skema'     => $kolektifData?->skema?->name ?? '-',
                             'status'    => $kolektifData?->status_label ?? '-',
                             'tgl_daftar'=> $kolektifData?->registration_date?->format('d/m/Y') ?? '-',
+                            'nama'      => $kolektifData?->full_name ?? '-',
+                            'email'     => $kolektifData?->user?->email ?? '-',
+                            'phone'     => $kolektifData?->phone ?? '-',
+                            'institusi' => $kolektifData?->institution ?? '-',
                         ]) : '{}';
                     @endphp
                     <tr class="{{ $isDuplikat ? 'table-danger' : '' }}"
@@ -249,10 +253,14 @@
                                 <table class="table table-sm mb-0">
                                     <tbody>
                                         <tr><th class="ps-3 text-muted" style="width:35%">Batch ID</th><td id="k-batch">-</td></tr>
+                                        <tr><th class="ps-3 text-muted">Nama</th><td id="k-nama">-</td></tr>
+                                        <tr><th class="ps-3 text-muted">Email</th><td id="k-email">-</td></tr>
                                         <tr><th class="ps-3 text-muted">TUK</th><td id="k-tuk">-</td></tr>
                                         <tr><th class="ps-3 text-muted">Skema</th><td id="k-skema">-</td></tr>
                                         <tr><th class="ps-3 text-muted">Status</th><td id="k-status">-</td></tr>
                                         <tr><th class="ps-3 text-muted">Tgl Daftar</th><td id="k-tgl">-</td></tr>
+                                        <tr><th class="ps-3 text-muted">No. HP</th><td id="k-phone">-</td></tr>
+                                        <tr><th class="ps-3 text-muted">Institusi</th><td id="k-institusi">-</td></tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -311,6 +319,10 @@ function lihatDuplikat(asesmenId) {
     document.getElementById('k-skema').textContent  = kolektif.skema;
     document.getElementById('k-status').textContent = kolektif.status;
     document.getElementById('k-tgl').textContent    = kolektif.tgl_daftar;
+    document.getElementById('k-nama').textContent     = kolektif.nama;
+    document.getElementById('k-email').textContent    = kolektif.email;
+    document.getElementById('k-phone').textContent    = kolektif.phone;
+    document.getElementById('k-institusi').textContent = kolektif.institusi;
 
     new bootstrap.Modal(document.getElementById('modalDuplikat')).show();
 }

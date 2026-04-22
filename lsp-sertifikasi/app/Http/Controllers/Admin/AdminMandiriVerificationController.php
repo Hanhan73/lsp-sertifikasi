@@ -28,7 +28,7 @@ class AdminMandiriVerificationController extends Controller
         $kolektifByNama = Asesmen::where('is_collective', true)
             ->whereNotNull('collective_batch_id')
             ->whereNotNull('full_name')
-            ->with('tuk')
+            ->with('tuk', 'skema' , 'user')
             ->get()
             ->groupBy(fn($a) => strtolower(trim($a->full_name)));
 

@@ -36,7 +36,13 @@
     </div>
 
     <div class="col-lg-8">
-        {{-- Hanya ganti password untuk asesi --}}
+        {{-- Form ubah email --}}
+        @include('profile.partials.form-info', [
+            'nameValue'  => $asesmen?->full_name ?? $user->name,
+            'emailValue' => $user->email,
+        ])
+
+        {{-- Form ganti password --}}
         @include('profile.partials.form-password')
     </div>
 </div>

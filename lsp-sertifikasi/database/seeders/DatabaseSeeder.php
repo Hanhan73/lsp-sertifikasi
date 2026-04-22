@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
             // ── Skema ─────────────────────────────────────────────────────
             $skemas = $this->buatSkemas();
             $this->command->info('✅ ' . count($skemas) . ' Skema dibuat.');
+            $this->buatAsessiMandiri($skemas);
 
             // ── Asesor ────────────────────────────────────────────────────
             $asesor = $this->buatAsesor();
@@ -366,6 +367,55 @@ class DatabaseSeeder extends Seeder
         }
     }
 
+
+    private function buatAsessiMandiri(array $skemas): void
+{
+    $skenario = [
+        [
+            'label'   => 'MANDIRI-REGISTERED',
+            'email'   => 'mandiri.registered@test.com',
+            'nama'    => 'Budi Santoso Mandiri',
+            'skema'   => $skemas[0],
+            'status'  => 'registered',
+            'keterangan' => 'Baru daftar, belum isi data',
+        ],
+        [
+            'label'   => 'MANDIRI-DATA-COMPLETED',
+            'email'   => 'mandiri.datacompleted@test.com',
+            'nama'    => 'Siti Rahayu Mandiri',
+            'skema'   => $skemas[1],
+            'status'  => 'data_completed',
+            'keterangan' => 'Data sudah diisi, menunggu verifikasi admin',
+        ],
+        [
+            'label'   => 'MANDIRI-DATA-COMPLETED-2',
+            'email'   => 'mandiri.datacompleted2@test.com',
+            'nama'    => 'Ahmad Fauzi Mandiri',
+            'skema'   => $skemas[0],
+            'status'  => 'data_completed',
+            'keterangan' => 'Data sudah diisi, nama sama dengan peserta kolektif (untuk test duplikat)',
+        ],
+        [
+            'label'   => 'MANDIRI-VERIFIED',
+            'email'   => 'mandiri.verified@test.com',
+            'nama'    => 'Dewi Lestari Mandiri',
+            'skema'   => $skemas[2],
+            'status'  => 'verified',
+            'fee'     => 600000,
+            'keterangan' => 'Sudah diverifikasi admin, menunggu assignment TUK',
+        ],
+        [
+            'label'   => 'MANDIRI-PAID',
+            'email'   => 'mandiri.paid@test.com',
+            'nama'    => 'Reza Pratama Mandiri',
+            'skema'   => $skemas[1],
+            'status'  => 'paid',
+            'fee'     => 750000,
+            'paid'    => true,
+            'keterangan' => 'Sudah bayar, menunggu jadwal',
+        ],
+    ];
+}
     // =========================================================================
     // BATCH KOLEKTIF — satu method untuk semua skenario
     // =========================================================================

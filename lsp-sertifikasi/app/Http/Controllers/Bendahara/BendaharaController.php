@@ -8,6 +8,12 @@ use App\Models\Asesmen;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Invoice;
+use App\Models\CollectivePayment;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class BendaharaController extends Controller
 {
@@ -50,7 +56,7 @@ class BendaharaController extends Controller
         if ($request->search) {
             $query->whereHas('asesmen', function ($q) use ($request) {
                 $q->where('full_name', 'like', '%' . $request->search . '%')
-                  ->orWhere('nik', 'like', '%' . $request->search . '%');
+                    ->orWhere('nik', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -160,17 +166,17 @@ class BendaharaController extends Controller
     }
 
     /**
-    * Halaman daftar skema + tarif honor asesor per asesi.
-    */
+     * Halaman daftar skema + tarif honor asesor per asesi.
+     */
     public function tarifHonorIndex()
     {
         $skemas = \App\Models\Skema::where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'code', 'name', 'jenis_skema', 'honor_per_asesi']);
-    
+
         return view('bendahara.tarif-honor.index', compact('skemas'));
     }
-    
+
     /**
      * AJAX PATCH — update honor_per_asesi satu skema.
      * Hanya bendahara yang bisa akses (sudah dijaga oleh middleware role:bendahara).
@@ -180,13 +186,283 @@ class BendaharaController extends Controller
         $request->validate([
             'honor_per_asesi' => 'required|integer|min:0',
         ]);
-    
+
         $skema->update(['honor_per_asesi' => (int) $request->honor_per_asesi]);
-    
+
         return response()->json([
             'success'        => true,
-            'honor_per_asesi'=> $skema->honor_per_asesi,
+            'honor_per_asesi' => $skema->honor_per_asesi,
             'message'        => 'Tarif honor berhasil disimpan.',
         ]);
+    }
+
+    // ── Invoice Kolektif ──────────────────────────────────────────────────────
+
+    public function kolektifInvoiceShow($batchId)
+    {
+        $asesmens = Asesmen::where('collective_batch_id', $batchId)
+            ->with(['skema', 'tuk'])
+            ->get();
+        abort_if($asesmens->isEmpty(), 404);
+
+        $tuk     = $asesmens->first()->tuk;
+        $invoice = Invoice::where('batch_id', $batchId)->first();
+
+        $skemaGroups = $asesmens->groupBy('skema_id')->map(function ($group) {
+            $skema = $group->first()->skema;
+            return [
+                'skema_id'     => $skema->id,
+                'skema_name'   => $skema->name,
+                'jumlah'       => $group->count(),
+                'harga_satuan' => $skema->fee ?? 0,
+                'subtotal'     => 0,
+            ];
+        })->values();
+
+        if ($invoice) {
+            $skemaGroups        = collect($invoice->items);
+            $collectivePayments = $invoice->collectivePayments;
+        } else {
+            $collectivePayments = collect();
+        }
+
+        return view('bendahara.payments.kolektif-invoice', compact(
+            'asesmens',
+            'tuk',
+            'batchId',
+            'invoice',
+            'skemaGroups',
+            'collectivePayments'
+        ));
+    }
+
+    public function kolektifInvoiceStore(Request $request)
+    {
+        $request->validate([
+            'batch_id'                 => 'required|string',
+            'recipient_name'           => 'required|string|max:255',
+            'recipient_address'        => 'nullable|string',
+            'items'                    => 'required|array|min:1',
+            'items.*.skema_id'         => 'required|integer',
+            'items.*.skema_name'       => 'required|string',
+            'items.*.jumlah'           => 'required|integer|min:1',
+            'items.*.harga_satuan'     => 'required|numeric|min:0',
+            'notes'                    => 'nullable|string',
+        ]);
+
+        abort_if(Invoice::where('batch_id', $request->batch_id)->exists(), 422, 'Invoice sudah ada.');
+
+        $asesmens = Asesmen::where('collective_batch_id', $request->batch_id)->get();
+        abort_if($asesmens->isEmpty(), 404);
+
+        $items = collect($request->items)->map(function ($item) {
+            $item['subtotal'] = (float) $item['harga_satuan'] * (int) $item['jumlah'];
+            return $item;
+        })->toArray();
+
+        $invoice = DB::transaction(function () use ($request, $items, $asesmens) {
+            $n = Invoice::generateNumber();
+            return Invoice::create([
+                'invoice_number'    => $n['invoice_number'],
+                'sequence_number'   => $n['sequence_number'],
+                'invoice_year'      => $n['invoice_year'],
+                'batch_id'          => $request->batch_id,
+                'tuk_id'            => $asesmens->first()->tuk_id,
+                'issued_by'         => Auth::id(),
+                'issued_at'         => now(),
+                'recipient_name'    => $request->recipient_name,
+                'recipient_address' => $request->recipient_address,
+                'items'             => $items,
+                'total_amount'      => collect($items)->sum('subtotal'),
+                'notes'             => $request->notes,
+                'status'            => 'draft',
+            ]);
+        });
+
+        return redirect()->route('bendahara.payments.kolektif.detail', $request->batch_id)
+            ->with('success', 'Invoice ' . $invoice->invoice_number . ' berhasil dibuat.');
+    }
+
+    public function kolektifInvoiceUpdate(Request $request, Invoice $invoice)
+    {
+        abort_if($invoice->status !== 'draft', 403, 'Invoice sudah dikirim, tidak bisa diubah.');
+
+        $request->validate([
+            'recipient_name'           => 'required|string|max:255',
+            'recipient_address'        => 'nullable|string',
+            'items'                    => 'required|array|min:1',
+            'items.*.skema_id'         => 'required|integer',
+            'items.*.skema_name'       => 'required|string',
+            'items.*.jumlah'           => 'required|integer|min:1',
+            'items.*.harga_satuan'     => 'required|numeric|min:0',
+            'notes'                    => 'nullable|string',
+        ]);
+
+        $items = collect($request->items)->map(function ($item) {
+            $item['subtotal'] = (float) $item['harga_satuan'] * (int) $item['jumlah'];
+            return $item;
+        })->toArray();
+
+        $invoice->update([
+            'recipient_name'    => $request->recipient_name,
+            'recipient_address' => $request->recipient_address,
+            'items'             => $items,
+            'total_amount'      => collect($items)->sum('subtotal'),
+            'notes'             => $request->notes,
+        ]);
+
+        return redirect()->route('bendahara.payments.kolektif.invoice', $invoice->batch_id)
+            ->with('success', 'Invoice berhasil diperbarui.');
+    }
+
+    public function kolektifInvoiceSend(Invoice $invoice)
+    {
+        abort_if($invoice->status !== 'draft', 403);
+        $invoice->update(['status' => 'sent']);
+        return redirect()->route('bendahara.payments.kolektif.invoice', $invoice->batch_id)
+            ->with('success', 'Invoice telah dikirim ke TUK.');
+    }
+
+    public function kolektifInvoicePdf(Invoice $invoice)
+    {
+        $pdf      = Pdf::loadView('pdf.invoice-kolektif', compact('invoice'))->setPaper('A4');
+        $filename = 'Invoice_' . str_replace('/', '-', $invoice->invoice_number) . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    public function kolektifKwitansi(Invoice $invoice, Request $request)
+    {
+        $versi             = $request->query('versi', 'kosong');
+        $collectivePayment = $request->has('payment_id')
+            ? CollectivePayment::findOrFail($request->payment_id)
+            : null;
+
+        $pdf      = Pdf::loadView('pdf.kwitansi-kolektif', compact('invoice', 'collectivePayment', 'versi'))
+            ->setPaper('A4');
+        $filename = 'Kwitansi_' . str_replace('/', '-', $invoice->invoice_number)
+            . ($collectivePayment ? '-Angsuran' . $collectivePayment->installment_number : '')
+            . '_' . $versi . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    public function kolektifAngsuranStore(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'amount'   => 'required|numeric|min:1',
+            'due_date' => 'nullable|date',
+            'notes'    => 'nullable|string',
+        ]);
+
+        $count = $invoice->collectivePayments()->count();
+        abort_if($count >= 3, 422, 'Maksimal 3 angsuran.');
+
+        $allocated = $invoice->collectivePayments()->sum('amount');
+        abort_if(($allocated + $request->amount) > $invoice->total_amount, 422, 'Melebihi total invoice.');
+
+        CollectivePayment::create([
+            'invoice_id'         => $invoice->id,
+            'batch_id'           => $invoice->batch_id,
+            'tuk_id'             => $invoice->tuk_id,
+            'installment_number' => $count + 1,
+            'amount'             => $request->amount,
+            'due_date'           => $request->due_date,
+            'notes'              => $request->notes,
+            'status'             => 'pending',
+        ]);
+
+        return redirect()->route('bendahara.payments.kolektif.invoice', $invoice->batch_id)
+            ->with('success', 'Angsuran ke-' . ($count + 1) . ' berhasil ditambahkan.');
+    }
+
+    public function kolektifAngsuranVerify(Request $request, CollectivePayment $payment)
+    {
+        $request->validate(['action' => 'required|in:verify,reject', 'notes' => 'nullable|string']);
+        abort_if($payment->status !== 'pending', 422, 'Sudah diproses.');
+        abort_if(!$payment->proof_path, 422, 'Belum ada bukti bayar.');
+
+        if ($request->action === 'verify') {
+            $payment->update(['status' => 'verified', 'verified_by' => Auth::id(), 'verified_at' => now()]);
+            if ($payment->invoice->isFullyPaid()) {
+                $payment->invoice->update(['status' => 'paid']);
+            }
+            $msg = 'Angsuran ke-' . $payment->installment_number . ' terverifikasi.';
+        } else {
+            $payment->update(['status' => 'rejected', 'rejection_notes' => $request->notes]);
+            $msg = 'Angsuran ke-' . $payment->installment_number . ' ditolak.';
+        }
+
+        return redirect()->route('bendahara.payments.kolektif.invoice', $payment->invoice->batch_id)
+            ->with('success', $msg);
+    }
+
+    public function kolektifBuktiBayar(CollectivePayment $payment)
+    {
+        abort_if(!$payment->proof_path, 404);
+        return Storage::disk('private')->download($payment->proof_path);
+    }
+
+    // Ganti method kolektif() yang lama dengan ini:
+    public function kolektif()
+    {
+        $batches = Asesmen::where('is_collective', true)
+            ->select(
+                'collective_batch_id',
+                'tuk_id',
+                DB::raw('COUNT(*) as jumlah_asesi'),
+                DB::raw('MIN(registration_date) as tanggal_daftar')
+            )
+            ->groupBy('collective_batch_id', 'tuk_id')
+            ->with('tuk')
+            ->orderByDesc('tanggal_daftar')
+            ->get()
+            ->map(function ($b) {
+                $b->invoice = Invoice::where('batch_id', $b->collective_batch_id)
+                ->with ('collectivePayments')
+                ->first();
+                return $b;
+            });
+
+        return view('bendahara.payments.kolektif', compact('batches'));
+    }
+
+    // Ganti method kolektifDetail() dengan ini:
+    public function kolektifDetail($batchId)
+    {
+        $asesmens = Asesmen::where('collective_batch_id', $batchId)
+            ->with(['skema', 'tuk'])
+            ->get();
+
+        abort_if($asesmens->isEmpty(), 404);
+
+        $tuk     = $asesmens->first()->tuk;
+        $invoice = Invoice::where('batch_id', $batchId)->first();
+
+        $skemaGroups = $asesmens->groupBy('skema_id')->map(function ($group) {
+            $skema = $group->first()->skema;
+            return [
+                'skema_id'     => $skema->id,
+                'skema_name'   => $skema->name,
+                'jumlah'       => $group->count(),
+                'harga_satuan' => $skema->fee ?? 0,
+                'subtotal'     => 0,
+            ];
+        })->values();
+
+        if ($invoice) {
+            $skemaGroups        = collect($invoice->items);
+            $collectivePayments = $invoice->collectivePayments;
+        } else {
+            $collectivePayments = collect();
+        }
+
+        return view('bendahara.payments.kolektif-detail', compact(
+            'asesmens',
+            'tuk',
+            'batchId',
+            'invoice',
+            'skemaGroups',
+            'collectivePayments'
+        ));
     }
 }

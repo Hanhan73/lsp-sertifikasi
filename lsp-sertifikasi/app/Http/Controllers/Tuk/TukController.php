@@ -1102,4 +1102,71 @@ public function requestHapusMandiri(Request $request, Asesmen $asesmen)
 
     return response()->json(['success' => true, 'message' => 'Request hapus berhasil dikirim ke admin.']);
 }
+
+public function addParticipantToBatch(Request $request, string $batchId)
+{
+    $tuk = auth()->user()->tuk;
+
+    // Pastikan batch ini milik TUK ini
+    $existingBatch = Asesmen::where('collective_batch_id', $batchId)
+        ->where('tuk_id', $tuk->id)
+        ->first();
+
+    abort_if(!$existingBatch, 404, 'Batch tidak ditemukan.');
+
+    $request->validate([
+        'name'  => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+    ], [
+        'name.required'  => 'Nama lengkap wajib diisi.',
+        'email.required' => 'Email wajib diisi.',
+        'email.email'    => 'Format email tidak valid.',
+        'email.unique'   => 'Email sudah terdaftar di sistem.',
+    ]);
+
+    DB::beginTransaction();
+    try {
+        $name  = trim($request->name);
+        $email = strtolower(trim($request->email));
+
+        $user = User::create([
+            'name'                => $name,
+            'email'               => $email,
+            'password'            => Hash::make('password123'),
+            'role'                => 'asesi',
+            'is_active'           => true,
+            'password_changed_at' => null,
+            'email_verified_at'   => now(),
+        ]);
+
+        Asesmen::create([
+            'user_id'                => $user->id,
+            'tuk_id'                 => $tuk->id,
+            'skema_id'               => $existingBatch->skema_id,
+            'full_name'              => $name,
+            'preferred_date'         => $existingBatch->preferred_date,
+            'training_flag'          => $existingBatch->training_flag,
+            'registration_date'      => now(),
+            'status'                 => 'registered',
+            'registered_by'          => auth()->id(),
+            'is_collective'          => true,
+            'collective_batch_id'    => $batchId,
+            'payment_phases'         => $existingBatch->payment_phases,
+            'collective_paid_by_tuk' => true,
+            'skip_payment'           => true,
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('tuk.batch.detail', $batchId)
+            ->with('success', "Peserta {$name} berhasil ditambahkan ke batch.");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Add Participant To Batch Error: ' . $e->getMessage());
+
+        return redirect()->back()
+            ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+    }
+}
 }

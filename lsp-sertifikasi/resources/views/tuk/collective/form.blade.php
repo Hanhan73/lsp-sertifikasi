@@ -336,7 +336,6 @@
 }
 </style>
 @endpush
-
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
@@ -368,10 +367,10 @@
 </div>
 
 <script>
-let participantCount    = 0;
-let importedData        = [];
-let pendingSubmit       = false;
-let detectedDuplicates  = [];
+let participantCount   = 0;
+let importedData       = [];
+let pendingSubmit      = false;
+let detectedDuplicates = [];
 
 $(document).ready(function () {
     addParticipant();
@@ -380,9 +379,7 @@ $(document).ready(function () {
     $('#participant-file').change(function (e) {
         const file = e.target.files[0];
         if (!file) return;
-
         Swal.fire({ title: 'Memproses...', html: 'Membaca file Excel/CSV', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
         const reader = new FileReader();
         reader.onload = function (e) {
             try {
@@ -411,7 +408,7 @@ $(document).ready(function () {
         updateSummary();
     });
 
-    const tukCode     = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
+    const tukCode      = '{{ strtoupper(auth()->user()->tuk->code ?? "TUK") }}';
     const randomSuffix = generateRandomSuffix(6);
 
     function generateRandomSuffix(length) {
@@ -436,7 +433,14 @@ $(document).ready(function () {
     $('#batch_name_input').on('input', updateBatchPreview);
     updateBatchPreview();
 
-    // SUBMIT HANDLER UTAMA
+    // ── Tombol lanjutkan duplikat ──
+    $('#btn-lanjutkan').on('click', function () {
+        bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
+        pendingSubmit = true;
+        $('#collective-form').submit();
+    });
+
+    // ── SUBMIT HANDLER UTAMA ──
     $('#collective-form').on('submit', async function (e) {
         e.preventDefault();
 
@@ -446,6 +450,46 @@ $(document).ready(function () {
 
         if ($('.participant-item').length === 0) {
             Swal.fire({ icon: 'warning', title: 'Peserta Kosong', text: 'Tambahkan minimal 1 peserta.' });
+            return;
+        }
+
+        // Validasi email
+        const emailInvalid = [];
+        $('.participant-item').each(function (idx) {
+            const nama  = $(this).find('input[name*="[name]"]').val().trim();
+            const email = $(this).find('input[name*="[email]"]').val().trim().toLowerCase();
+            if (!isValidEmail(email)) {
+                emailInvalid.push({ no: idx + 1, nama: nama || '(nama kosong)', email: email || '(kosong)' });
+                $(this).find('input[name*="[email]"]').addClass('is-invalid');
+            } else {
+                $(this).find('input[name*="[email]"]').removeClass('is-invalid');
+            }
+        });
+
+        if (emailInvalid.length > 0) {
+            const listHtml = emailInvalid.map(p =>
+                `<tr>
+                    <td class="text-center">${p.no}</td>
+                    <td>${p.nama}</td>
+                    <td><code class="text-danger">${p.email || '<em>kosong</em>'}</code></td>
+                </tr>`
+            ).join('');
+            Swal.fire({
+                icon: 'error',
+                title: `${emailInvalid.length} Email Tidak Valid`,
+                html: `
+                    <p class="text-muted small mb-3">Perbaiki email berikut sebelum melanjutkan pendaftaran:</p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered text-start">
+                            <thead class="table-light">
+                                <tr><th class="text-center" width="40">No</th><th>Nama</th><th>Email</th></tr>
+                            </thead>
+                            <tbody>${listHtml}</tbody>
+                        </table>
+                    </div>`,
+                confirmButtonText: 'Oke, saya perbaiki',
+                width: '600px',
+            });
             return;
         }
 
@@ -502,31 +546,20 @@ $(document).ready(function () {
         }
     });
 
-    // Tombol lanjutkan — langsung submit, tidak ada request hapus
-    $('#btn-lanjutkan').on('click', function () {
-        bootstrap.Modal.getInstance(document.getElementById('modalDuplikat')).hide();
-        pendingSubmit = true;
-        $('#collective-form').submit();
-    });
-});
+}); // end $(document).ready
 
 function tampilkanModalDuplikat(duplicates) {
     let html = '';
-
     duplicates.forEach((d, i) => {
         const isEmailSama = d.match_type === 'email';
         const canConvert  = d.can_convert;
-
         const matchTypeBadge = isEmailSama
             ? '<span class="badge bg-danger">Email sama</span>'
             : '<span class="badge bg-warning text-dark">Nama sama</span>';
-
         const jenisExisting = d.existing.is_collective
             ? `<span class="badge bg-info">Kolektif</span> <small class="text-muted">batch: ${d.existing.batch_id}</small>`
             : '<span class="badge bg-success">Mandiri</span>';
-
         let actionSection = '';
-
         if (!isEmailSama) {
             actionSection = `
             <div class="mt-3 p-3 bg-light border rounded">
@@ -544,9 +577,7 @@ function tampilkanModalDuplikat(duplicates) {
                 </div>
                 <div class="form-check">
                     <input type="checkbox" class="form-check-input chk-setuju-convert"
-                        id="setuju-${i}"
-                        data-index="${i}"
-                        data-asesmen-id="${d.existing.id}">
+                        id="setuju-${i}" data-index="${i}" data-asesmen-id="${d.existing.id}">
                     <label class="form-check-label small fw-semibold" for="setuju-${i}">
                         Saya setuju — konversi pendaftaran <em>${d.existing.nama}</em> ke batch ini
                     </label>
@@ -562,7 +593,6 @@ function tampilkanModalDuplikat(duplicates) {
                 Hubungi admin untuk penanganan lebih lanjut.</span>
             </div>`;
         }
-
         html += `
         <div class="card mb-3 border-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'}">
             <div class="card-header bg-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'} ${isEmailSama && !canConvert ? 'text-white' : ''} bg-opacity-25 d-flex justify-content-between align-items-center">
@@ -612,14 +642,11 @@ function tampilkanModalDuplikat(duplicates) {
             </div>
         </div>`;
     });
-
     $('#duplikat-list').html(html);
     cekTombolLanjutkan();
-
     $(document).off('change', '.chk-setuju-convert').on('change', '.chk-setuju-convert', function () {
         cekTombolLanjutkan();
     });
-
     new bootstrap.Modal(document.getElementById('modalDuplikat')).show();
 }
 
@@ -627,7 +654,6 @@ function cekTombolLanjutkan() {
     const totalWajib   = $('.chk-setuju-convert').length;
     const totalChecked = $('.chk-setuju-convert:checked').length;
     const semuaSetuju  = totalWajib === 0 || totalChecked === totalWajib;
-
     const btn = $('#btn-lanjutkan');
     if (semuaSetuju) {
         btn.prop('disabled', false)
@@ -645,30 +671,24 @@ function validateAndPreview(data) {
         Swal.fire({ icon: 'warning', title: 'File Kosong', text: 'File tidak mengandung data peserta' });
         return;
     }
-
     let validCount = 0, errors = [], previewHtml = '';
     importedData = [];
-
     data.forEach((row, index) => {
         const rowNumber = index + 2;
         const rawEmail  = (row['Email'] || row['email'] || '').toString();
         const name      = (row['Nama Lengkap'] || row['nama_lengkap'] || '').toString().trim();
         const email     = rawEmail.trim().toLowerCase();
         const wasFixed  = rawEmail.trim() !== rawEmail;
-
         let rowErrors = [];
         if (!name)  rowErrors.push('Nama wajib diisi');
         if (!email) rowErrors.push('Email wajib diisi');
         else if (!isValidEmail(email)) rowErrors.push('Format email tidak valid');
-
-        const isValid    = rowErrors.length === 0;
+        const isValid = rowErrors.length === 0;
         if (isValid) { validCount++; importedData.push({ name, email }); }
-
         const statusClass = isValid ? 'success' : 'danger';
         const statusIcon  = isValid ? 'check-circle' : 'x-circle';
         const fixedBadge  = (isValid && wasFixed) ? ' <span class="badge bg-warning text-dark">Spasi dihapus</span>' : '';
         const statusText  = isValid ? ('Valid' + fixedBadge) : rowErrors.join(', ');
-
         previewHtml += `
             <tr class="table-${statusClass}">
                 <td>${index + 1}</td>
@@ -676,13 +696,10 @@ function validateAndPreview(data) {
                 <td>${email || '<em class="text-muted">Kosong</em>'}</td>
                 <td><i class="bi bi-${statusIcon}"></i> ${statusText}</td>
             </tr>`;
-
         if (!isValid) errors.push({ row: rowNumber, errors: rowErrors });
     });
-
     $('#preview-tbody').html(previewHtml);
     $('#preview-area').show();
-
     if (errors.length > 0) {
         let errorHtml = '<strong>Data tidak valid:</strong><ul>';
         errors.forEach(err => { errorHtml += `<li>Baris ${err.row}: ${err.errors.join(', ')}</li>`; });
@@ -693,7 +710,6 @@ function validateAndPreview(data) {
         $('#validation-errors').hide();
         $('#import-btn').prop('disabled', false);
     }
-
     $('#import-btn').html(`<i class="bi bi-check-circle"></i> Import ${validCount} Peserta Valid`);
 }
 

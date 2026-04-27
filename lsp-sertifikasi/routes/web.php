@@ -460,7 +460,7 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
 
 /*
 |--------------------------------------------------------------------------
-| TUK
+| CONTROLLER
 |--------------------------------------------------------------------------
 */
 
@@ -511,6 +511,8 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
         Route::post('/{asesmen}',    [TukVerificationController::class, 'process'])      ->name('process');
         Route::post('/batch/process',[TukVerificationController::class, 'processBatch'])->name('batch');
     });
+
+    Route::post('/batch/{batchId}/add-participant', [TukController::class, 'addParticipantToBatch'])->name('batch.add-participant');
 
     
 });

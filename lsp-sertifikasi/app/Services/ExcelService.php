@@ -343,11 +343,7 @@ class ExcelService
             for ($c = 1; $c <= $maxCol; $c++) {
                 $cell = $ws->getCellByColumnAndRow($c, $r);
 
-                try {
-                    $val = strtolower(trim((string) $cell->getCalculatedValue()));
-                } catch (\Throwable $e) {
-                    $val = strtolower(trim((string) $cell->getValue()));
-                }
+                $val = strtolower(trim((string) $cell->getValue()));
 
                 if (str_contains($val, 'nama')) {
                     return [$r, $c];

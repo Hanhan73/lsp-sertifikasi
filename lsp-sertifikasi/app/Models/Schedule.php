@@ -314,5 +314,9 @@ class Schedule extends Model
     {
         return $this->foto_dokumentasi_1 && $this->foto_dokumentasi_2;
     }
- 
+
+    public function honorPaymentDetails()
+    {
+        return $this->hasMany(HonorPaymentDetail::class);
+    }
 }

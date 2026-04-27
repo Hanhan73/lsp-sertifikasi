@@ -158,4 +158,35 @@ class BendaharaController extends Controller
 
         return Storage::disk('private')->download($payment->proof_path, $filename);
     }
+
+    /**
+    * Halaman daftar skema + tarif honor asesor per asesi.
+    */
+    public function tarifHonorIndex()
+    {
+        $skemas = \App\Models\Skema::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'code', 'name', 'jenis_skema', 'honor_per_asesi']);
+    
+        return view('bendahara.tarif-honor.index', compact('skemas'));
+    }
+    
+    /**
+     * AJAX PATCH — update honor_per_asesi satu skema.
+     * Hanya bendahara yang bisa akses (sudah dijaga oleh middleware role:bendahara).
+     */
+    public function tarifHonorUpdate(Request $request, \App\Models\Skema $skema)
+    {
+        $request->validate([
+            'honor_per_asesi' => 'required|integer|min:0',
+        ]);
+    
+        $skema->update(['honor_per_asesi' => (int) $request->honor_per_asesi]);
+    
+        return response()->json([
+            'success'        => true,
+            'honor_per_asesi'=> $skema->honor_per_asesi,
+            'message'        => 'Tarif honor berhasil disimpan.',
+        ]);
+    }
 }

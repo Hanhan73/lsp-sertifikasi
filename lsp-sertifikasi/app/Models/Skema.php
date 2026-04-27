@@ -13,11 +13,12 @@ class Skema extends Model
         'code', 'name', 'jenis_skema', 'description',
         'dokumen_pengesahan_path', 'dokumen_pengesahan_name',
         'tanggal_pengesahan', 'nomor_skema',
-        'fee', 'is_active',
+        'fee', 'honor_per_asesi', 'is_active',
     ];
 
     protected $casts = [
         'fee'               => 'decimal:2',
+        'honor_per_asesi'   => 'integer',
         'tanggal_pengesahan'=> 'date',
         'is_active'         => 'boolean',
     ];

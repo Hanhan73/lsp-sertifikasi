@@ -264,14 +264,15 @@
                         @if($aplsatu)
                         <span class="badge bg-{{ $aplsatu->status === 'verified' ? 'success' : ($aplsatu->status === 'submitted' ? 'info' : 'secondary') }}"
                               style="font-size:.7rem;">
-                            APL-01: {{ ucfirst($aplsatu->status) }}
+                            APL-01: {{ ucfirst($aplsatu->status_label ) }}
                         </span>
                         @else
                         <span class="badge bg-light text-muted border" style="font-size:.7rem;">APL-01: Belum Ada</span>
                         @endif
 
                         @if($apldua)
-                        <span class="badge bg-{{ $apldua->status_badge }}" style="font-size:.7rem;">
+                        <span class="badge bg-{{ $apldua->status === 'verified' ? 'success' : ($apldua->status === 'submitted' ? 'info' : 'secondary') }}"
+                              style="font-size:.7rem;">
                             APL-02: {{ $apldua->status_label }}
                         </span>
                         @if($needsVerify)

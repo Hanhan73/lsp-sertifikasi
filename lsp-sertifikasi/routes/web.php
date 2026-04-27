@@ -42,6 +42,7 @@ use App\Http\Controllers\Asesor\AsesorController;
 use App\Http\Controllers\Asesor\FrAk01Controller;
 use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController; 
 use App\Http\Controllers\Asesor\HasilPenilaianController;
+use App\Http\Controllers\Asesor\HonorController;
 
 // Direktur
 use App\Http\Controllers\Direktur\DirekturScheduleController;
@@ -56,6 +57,7 @@ use App\Http\Controllers\ManajerSertifikasi\HasilAsesmenController;
 
 // Bendahara
 use App\Http\Controllers\Bendahara\BendaharaController;
+use App\Http\Controllers\Bendahara\HonorAsesorController;
 
 
 /*
@@ -627,6 +629,14 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 
     Route::post('/jadwal/{schedule}/asesi/{asesmen}/mulai', [AsesorController::class, 'mulaiAsesmenSingle'])
     ->name('schedule.asesi.mulai');
+
+    Route::prefix('honor')->name('honor.')->group(function () {
+        Route::get('/',                          [HonorController::class, 'index'])           ->name('index');
+        Route::get('/{honor}',                   [HonorController::class, 'show'])            ->name('show');
+        Route::post('/{honor}/konfirmasi',       [HonorController::class, 'konfirmasi'])      ->name('konfirmasi');
+        Route::get('/{honor}/bukti/download',    [HonorController::class, 'downloadBukti'])   ->name('bukti.download');
+        Route::get('/{honor}/kwitansi',          [HonorController::class, 'downloadKwitansi'])->name('kwitansi');
+    });
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -806,18 +816,59 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
     });
 
 
-Route::middleware(['auth', 'role:bendahara'])
-    ->prefix('bendahara')
-    ->name('bendahara.')
-    ->group(function () {
-        Route::get('/',                               [BendaharaController::class, 'dashboard'])      ->name('dashboard');
-        Route::get('/payments',                       [BendaharaController::class, 'index'])          ->name('payments.index');
-        Route::get('/payments/{payment}',             [BendaharaController::class, 'show'])           ->name('payments.show');
-        Route::post('/payments/{payment}/verify',     [BendaharaController::class, 'verify'])         ->name('payments.verify');
-        Route::post('/payments/{payment}/reject',     [BendaharaController::class, 'reject'])         ->name('payments.reject');
-        Route::get('/payments/{payment}/download-bukti', [BendaharaController::class, 'downloadBukti'])->name('payments.download-bukti');
+    Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendahara.')->group(function () {
+    
+        Route::get('/', [BendaharaController::class, 'dashboard'])->name('dashboard');
+    
+        // ── Pembayaran Asesmen ─────────────────────────────────────────────────
+        Route::prefix('payments')->name('payments.')->group(function () {
+            // Individu
+            Route::get('/',                              [BendaharaController::class, 'index'])          ->name('index');
+            Route::get('/{payment}',                     [BendaharaController::class, 'show'])           ->name('show');
+            Route::post('/{payment}/verify',             [BendaharaController::class, 'verify'])         ->name('verify');
+            Route::post('/{payment}/reject',             [BendaharaController::class, 'reject'])         ->name('reject');
+            Route::get('/{payment}/download-bukti',      [BendaharaController::class, 'downloadBukti'])  ->name('download-bukti');
+    
+            // Kolektif
+            Route::get('/kolektif',                      [BendaharaController::class, 'kolektif'])       ->name('kolektif');
+            Route::get('/kolektif/{batchId}',            [BendaharaController::class, 'kolektifDetail']) ->name('kolektif.detail');
+        });
+    
+        // ── Honor Asesor ──────────────────────────────────────────────────────
+        Route::prefix('honor')->name('honor.')->group(function () {
+            Route::get('/',                               [HonorAsesorController::class, 'index'])        ->name('index');
+            Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])         ->name('show');
+            Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])        ->name('store');
+            Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])  ->name('payment.show');
+            Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])  ->name('payment.bukti');
+            Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
+            Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])  ->name('payment.kwitansi');
+        });
+    
+        // ── Rekap Pendapatan ──────────────────────────────────────────────────
+        Route::get('/rekap-pendapatan', [BendaharaController::class, 'rekapPendapatan'])->name('rekap-pendapatan');
+    
+        // ── Biaya Operasional ─────────────────────────────────────────────────
+        Route::prefix('operasional')->name('operasional.')->group(function () {
+            Route::get('/',                          [BendaharaController::class, 'operasionalIndex']) ->name('index');
+            Route::post('/',                         [BendaharaController::class, 'operasionalStore'])->name('store');
+            Route::get('/{operasional}/edit',        [BendaharaController::class, 'operasionalEdit']) ->name('edit');
+            Route::put('/{operasional}',             [BendaharaController::class, 'operasionalUpdate'])->name('update');
+            Route::delete('/{operasional}',          [BendaharaController::class, 'operasionalDestroy'])->name('destroy');
+            Route::get('/{operasional}/bukti',       [BendaharaController::class, 'operasionalDownloadBukti'])->name('bukti.download');
+            Route::get('/{operasional}/kegiatan',    [BendaharaController::class, 'operasionalDownloadKegiatan'])->name('kegiatan.download');
+        });
+    
+        // ── Laporan ───────────────────────────────────────────────────────────
+        Route::prefix('laporan')->name('laporan.')->group(function () {
+            Route::get('/keuangan',         [BendaharaController::class, 'laporanKeuangan'])       ->name('keuangan');
+            Route::get('/pajak',            [BendaharaController::class, 'laporanPajak'])          ->name('pajak');
+            Route::get('/transaksi-harian', [BendaharaController::class, 'transaksiHarian'])       ->name('transaksi-harian');
+            Route::get('/buku-besar',       [BendaharaController::class, 'bukuBesar'])             ->name('buku-besar');
+        });
+        Route::get('/tarif-honor',              [BendaharaController::class, 'tarifHonorIndex']) ->name('tarif-honor.index');
+        Route::patch('/tarif-honor/{skema}',    [BendaharaController::class, 'tarifHonorUpdate'])->name('tarif-honor.update');
     });
-
 /*
 |--------------------------------------------------------------------------
 | Debug — hapus di production

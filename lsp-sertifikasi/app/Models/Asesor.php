@@ -95,4 +95,9 @@ class Asesor extends Model
             ? asset('storage/' . $this->foto_path)
             : asset('images/default-avatar.png');
     }
+
+    public function honorPayments()
+    {
+        return $this->hasMany(HonorPayment::class);
+    }
 }

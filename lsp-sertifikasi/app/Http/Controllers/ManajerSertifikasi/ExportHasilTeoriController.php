@@ -17,7 +17,6 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 
 class ExportHasilTeoriController extends Controller
 {
-    // Style constants — dipakai semua export agar konsisten
     private const NAVY       = '1E3A5F';
     private const BLUE       = '2563EB';
     private const LIGHT_BLUE = 'DBEAFE';
@@ -26,12 +25,11 @@ class ExportHasilTeoriController extends Controller
     private const FONT       = 'Calibri';
 
     // =========================================================================
-    // INDEX — tampilkan daftar batch + tab observasi & berita acara
+    // INDEX
     // =========================================================================
 
     public function index()
     {
-        // Tab teori: batch kolektif
         $batches = Asesmen::select(
             'collective_batch_id',
             DB::raw('MIN(asesmens.id) as first_asesmen_id'),
@@ -71,7 +69,6 @@ class ExportHasilTeoriController extends Controller
             ];
         });
 
-        // Tab teori: jadwal mandiri
         $jadwalMandiri = Schedule::with(['skema', 'asesmens.soalTeoriAsesi'])
             ->whereHas('asesmens.soalTeoriAsesi')
             ->whereHas('asesmens', fn($q) => $q->where('is_collective', false))
@@ -97,7 +94,6 @@ class ExportHasilTeoriController extends Controller
                 ];
             });
 
-        // Tab observasi & berita acara: semua batch yang punya jadwal
         $batchData = Asesmen::with(['skema', 'tuk', 'schedule'])
             ->whereNotNull('collective_batch_id')
             ->whereNotNull('schedule_id')
@@ -108,45 +104,31 @@ class ExportHasilTeoriController extends Controller
                 $schedules   = Schedule::with(['beritaAcara.asesis', 'hasilObservasi'])
                     ->whereIn('id', $scheduleIds)->get();
 
-                $first           = $items->first();
-                $totalJadwal     = $scheduleIds->count();
+                $first       = $items->first();
+                $totalJadwal = $scheduleIds->count();
 
-                // Observasi
-                $jadwalAdaObs    = $schedules->filter(fn($s) => $s->hasilObservasi->isNotEmpty())->count();
-                $pesertaObs      = $schedules->flatMap->hasilObservasi->count(); // file yg diupload
-                // Hitung asesi dari jadwal yang sudah upload
-                $asesiObs        = $schedules
-                    ->filter(fn($s) => $s->hasilObservasi->isNotEmpty())
-                    ->sum(
-                        fn($s) => $s->hasilObservasi->pluck('schedule_id')->unique()->count() > 0
-                            ? Asesmen::where('schedule_id', $s->id)->count()
-                            : 0
-                    );
-
-                // Berita Acara
-                $jadwalAdaBA     = $schedules->filter(fn($s) => $s->beritaAcara !== null)->count();
-                $pesertaBA       = $schedules
+                $jadwalAdaObs = $schedules->filter(fn($s) => $s->hasilObservasi->isNotEmpty())->count();
+                $jadwalAdaBA  = $schedules->filter(fn($s) => $s->beritaAcara !== null)->count();
+                $pesertaBA    = $schedules
                     ->filter(fn($s) => $s->beritaAcara !== null)
                     ->sum(fn($s) => $s->beritaAcara->asesis->count());
 
                 return [
-                    'batch_id'        => $first->collective_batch_id,
-                    'skema_name'      => $first->skema?->name ?? '-',
-                    'tuk_name'        => $first->tuk?->name ?? '-',
-                    'jumlah_peserta'  => $items->count(),
-                    'total_jadwal'    => $totalJadwal,
-                    // observasi
-                    'ada_observasi'   => $jadwalAdaObs > 0,
-                    'jadwal_obs'      => $jadwalAdaObs,      // berapa jadwal yg sudah upload
-                    'peserta_obs'     => $items->whereIn(   // asesi dari jadwal yg sudah upload
+                    'batch_id'       => $first->collective_batch_id,
+                    'skema_name'     => $first->skema?->name ?? '-',
+                    'tuk_name'       => $first->tuk?->name ?? '-',
+                    'jumlah_peserta' => $items->count(),
+                    'total_jadwal'   => $totalJadwal,
+                    'ada_observasi'  => $jadwalAdaObs > 0,
+                    'jadwal_obs'     => $jadwalAdaObs,
+                    'peserta_obs'    => $items->whereIn(
                         'schedule_id',
                         $schedules->filter(fn($s) => $s->hasilObservasi->isNotEmpty())->pluck('id')
                     )->count(),
-                    // berita acara
-                    'ada_ba'          => $jadwalAdaBA > 0,
-                    'jadwal_ba'       => $jadwalAdaBA,
-                    'peserta_ba'      => $pesertaBA,
-                    'tanggal'         => $items->pluck('schedule.assessment_date')->filter()->sort()->first(),
+                    'ada_ba'         => $jadwalAdaBA > 0,
+                    'jadwal_ba'      => $jadwalAdaBA,
+                    'peserta_ba'     => $pesertaBA,
+                    'tanggal'        => $items->pluck('schedule.assessment_date')->filter()->sort()->first(),
                 ];
             })
             ->sortByDesc('tanggal')
@@ -160,7 +142,7 @@ class ExportHasilTeoriController extends Controller
     }
 
     // =========================================================================
-    // EXPORT TEORI — existing methods (tidak diubah)
+    // EXPORT TEORI
     // =========================================================================
 
     public function exportBatch(string $batchId)
@@ -197,7 +179,7 @@ class ExportHasilTeoriController extends Controller
     }
 
     // =========================================================================
-    // EXPORT OBSERVASI PER BATCH — merge semua file asesor jadi satu
+    // EXPORT OBSERVASI PER BATCH
     // =========================================================================
 
     public function exportObservasi(string $batchId)
@@ -226,6 +208,7 @@ class ExportHasilTeoriController extends Controller
 
         abort_if(empty($files), 404, 'Belum ada file observasi yang diupload untuk batch ini.');
 
+        // Helper: ambil nilai cell tanpa trigger formula evaluation
         $safeVal = function ($cell) {
             try {
                 $old = $cell->getOldCalculatedValue();
@@ -252,8 +235,95 @@ class ExportHasilTeoriController extends Controller
             $colNo        = $isPencapaian ? 1 : 3;
             $colFilter    = $isPencapaian ? 2 : 5;
             $totalHeaders = 2;
-            $colLimit     = $isPencapaian ? 14 : null;
 
+            // ------------------------------------------------------------------
+            // PASS 1: scan semua file — cari sheet dengan kolom terbanyak
+            // ------------------------------------------------------------------
+            $headerSourcePath = null;
+            $maxColFound      = 0;
+
+            foreach ($files as $filePath) {
+                try {
+                    $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
+                    $reader->setReadDataOnly(true);
+                    $book = $reader->load($filePath);
+                } catch (\Throwable $e) {
+                    continue;
+                }
+                foreach ($book->getSheetNames() as $sName) {
+                    if (mb_strtolower(trim($sName)) === mb_strtolower(trim($targetSheetName))) {
+                        $ws  = $book->getSheetByName($sName);
+                        $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($ws->getHighestColumn());
+                        if ($col > $maxColFound) {
+                            $maxColFound      = $col;
+                            $headerSourcePath = $filePath;
+                        }
+                        break;
+                    }
+                }
+                $book->disconnectWorksheets();
+                unset($book);
+            }
+
+            if ($maxColFound === 0) continue; // sheet tidak ditemukan di file manapun
+
+            $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($maxColFound);
+
+            // ------------------------------------------------------------------
+            // PASS 2: copy header dari file dengan kolom terbanyak
+            // ------------------------------------------------------------------
+            if ($headerSourcePath) {
+                try {
+                    $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($headerSourcePath);
+                    $reader->setReadDataOnly(true);
+                    $hBook = $reader->load($headerSourcePath);
+                    $hWs   = null;
+                    foreach ($hBook->getSheetNames() as $sName) {
+                        if (mb_strtolower(trim($sName)) === mb_strtolower(trim($targetSheetName))) {
+                            $hWs = $hBook->getSheetByName($sName);
+                            break;
+                        }
+                    }
+                    if ($hWs) {
+                        for ($r = 1; $r <= $hWs->getHighestRow() && $headersDone < $totalHeaders; $r++) {
+                            $noVal     = $safeVal($hWs->getCellByColumnAndRow($colNo, $r));
+                            $filterVal = $safeVal($hWs->getCellByColumnAndRow($colFilter, $r));
+                            $isDataRow = is_numeric($noVal) && $filterVal !== null;
+                            $isHeader  = !$isDataRow && !(
+                                $noVal === null &&
+                                $filterVal === null &&
+                                $safeVal($hWs->getCellByColumnAndRow(3, $r)) === null
+                            );
+                            if (!$isHeader) continue;
+
+                            for ($c = 1; $c <= $maxColFound; $c++) {
+                                $outputWs->setCellValueByColumnAndRow(
+                                    $c,
+                                    $currentRow,
+                                    $safeVal($hWs->getCellByColumnAndRow($c, $r))
+                                );
+                            }
+                            $outputWs->getStyle("A{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
+                                'font'      => ['bold' => true, 'color' => ['rgb' => self::WHITE], 'name' => self::FONT, 'size' => 10],
+                                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::BLUE]],
+                                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+                                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::LIGHT_BLUE]]],
+                            ]);
+                            $outputWs->getRowDimension($currentRow)->setRowHeight(24);
+                            $currentRow++;
+                            $headersDone++;
+                        }
+                    }
+                    $hBook->disconnectWorksheets();
+                    unset($hBook);
+                } catch (\Throwable $e) {
+                    \Log::warning("[exportObservasi] Gagal load header source: " . $e->getMessage());
+                }
+            }
+
+            // ------------------------------------------------------------------
+            // PASS 3: copy data dari semua file (skip baris header)
+            // ------------------------------------------------------------------
             foreach ($files as $filePath) {
                 try {
                     $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
@@ -273,49 +343,29 @@ class ExportHasilTeoriController extends Controller
                 }
 
                 if (!$sourceWs) {
-                    \Log::info("[exportObservasi] Sheet '{$targetSheetName}' tidak ditemukan di: {$filePath}");
                     $sourceBook->disconnectWorksheets();
                     unset($sourceBook);
                     continue;
                 }
 
-                $highestRow    = $sourceWs->getHighestRow();
-                $highestCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($sourceWs->getHighestColumn());
-                $copyUpToCol   = $colLimit !== null ? min($colLimit, $highestCol) : $highestCol;
-                $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($copyUpToCol);
+                $highestRow = $sourceWs->getHighestRow();
 
                 for ($r = 1; $r <= $highestRow; $r++) {
                     $noVal     = $safeVal($sourceWs->getCellByColumnAndRow($colNo, $r));
                     $filterVal = $safeVal($sourceWs->getCellByColumnAndRow($colFilter, $r));
 
-                    // Skip dummy row (nomor ada tapi kolom validasi kosong)
-                    if (is_numeric($noVal) && $filterVal === null) continue;
+                    // Hanya proses baris data valid
+                    if (!is_numeric($noVal) || $filterVal === null) continue;
 
-                    $isDataRow   = is_numeric($noVal) && $filterVal !== null;
-                    $isHeaderRow = !$isDataRow && !($noVal === null && $filterVal === null && $safeVal($sourceWs->getCellByColumnAndRow(3, $r)) === null);
-
-                    if ($isHeaderRow) {
-                        if ($headersDone >= $totalHeaders) continue;
-                        for ($c = 1; $c <= $copyUpToCol; $c++) {
-                            $outputWs->setCellValueByColumnAndRow($c, $currentRow, $safeVal($sourceWs->getCellByColumnAndRow($c, $r)));
-                        }
-                        $outputWs->getStyle("A{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
-                            'font'      => ['bold' => true, 'color' => ['rgb' => self::WHITE], 'name' => self::FONT, 'size' => 10],
-                            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::BLUE]],
-                            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-                            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => self::LIGHT_BLUE]]],
-                        ]);
-                        $outputWs->getRowDimension($currentRow)->setRowHeight(24);
-                        $currentRow++;
-                        $headersDone++;
-                        continue;
+                    for ($c = 1; $c <= $maxColFound; $c++) {
+                        $outputWs->setCellValueByColumnAndRow(
+                            $c,
+                            $currentRow,
+                            $safeVal($sourceWs->getCellByColumnAndRow($c, $r))
+                        );
                     }
 
-                    if (!$isDataRow) continue;
-
-                    for ($c = 1; $c <= $copyUpToCol; $c++) {
-                        $outputWs->setCellValueByColumnAndRow($c, $currentRow, $safeVal($sourceWs->getCellByColumnAndRow($c, $r)));
-                    }
+                    // Override nomor urut global
                     $outputWs->setCellValueByColumnAndRow($colNo, $currentRow, $globalNo);
 
                     $bg = ($globalNo % 2 === 0) ? self::GRAY : self::WHITE;
@@ -334,8 +384,11 @@ class ExportHasilTeoriController extends Controller
                 unset($sourceBook);
             }
 
+            // Auto-width
             if ($currentRow > 1) {
-                $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($outputWs->getHighestColumn());
+                $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(
+                    $outputWs->getHighestColumn()
+                );
                 for ($c = 1; $c <= $highestColOut; $c++) {
                     $outputWs->getColumnDimensionByColumn($c)->setAutoSize(true);
                 }
@@ -352,7 +405,6 @@ class ExportHasilTeoriController extends Controller
         return response()->download($tmpPath, "Rekap_Observasi_{$safe}_" . date('Ymd') . '.xlsx')
             ->deleteFileAfterSend();
     }
-
 
     // =========================================================================
     // EXPORT BERITA ACARA PER BATCH
@@ -379,7 +431,6 @@ class ExportHasilTeoriController extends Controller
         $ws          = $spreadsheet->getActiveSheet();
         $ws->setTitle('Berita Acara');
 
-        // Judul
         $ws->mergeCells('A1:G1');
         $ws->setCellValue('A1', 'REKAP BERITA ACARA — ' . strtoupper($skemaName));
         $ws->getStyle('A1')->applyFromArray([
@@ -388,7 +439,6 @@ class ExportHasilTeoriController extends Controller
         ]);
         $ws->getRowDimension(1)->setRowHeight(34);
 
-        // Subtitle
         $ws->mergeCells('A2:G2');
         $ws->setCellValue('A2', "TUK: {$tukName}  |  Batch: {$batchId}  |  Dicetak: " . now()->translatedFormat('d F Y, H:i'));
         $ws->getStyle('A2')->applyFromArray([
@@ -398,7 +448,6 @@ class ExportHasilTeoriController extends Controller
         $ws->getRowDimension(2)->setRowHeight(16);
         $ws->getRowDimension(3)->setRowHeight(6);
 
-        // Header
         $headers = ['No', 'Nama Asesi', 'Asal Lembaga', 'Tanggal Pelaksanaan', 'Asesor', 'Rekomendasi', 'Catatan'];
         foreach ($headers as $ci => $h) {
             $ws->setCellValueByColumnAndRow($ci + 1, 4, $h);
@@ -411,9 +460,8 @@ class ExportHasilTeoriController extends Controller
         ]);
         $ws->getRowDimension(4)->setRowHeight(26);
 
-        // Data
-        $row    = 5;
-        $no     = 1;
+        $row = 5;
+        $no = 1;
         $totalK = 0;
         $totalBK = 0;
 
@@ -439,23 +487,22 @@ class ExportHasilTeoriController extends Controller
 
                 $bg = $no % 2 === 0 ? self::GRAY : self::WHITE;
                 $ws->getStyle("A{$row}:G{$row}")->applyFromArray([
-                    'font'    => ['name' => self::FONT, 'size' => 10],
-                    'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
+                    'font'      => ['name' => self::FONT, 'size' => 10],
+                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $bg]],
+                    'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'E2E8F0']]],
                     'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                 ]);
 
-                // Warna kolom rekomendasi
                 if ($rek === 'K') {
                     $ws->getStyle("F{$row}")->applyFromArray([
-                        'font' => ['bold' => true, 'color' => ['rgb' => '065F46']],
-                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D1FAE5']],
+                        'font'      => ['bold' => true, 'color' => ['rgb' => '065F46']],
+                        'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'D1FAE5']],
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     ]);
                 } elseif ($rek === 'BK') {
                     $ws->getStyle("F{$row}")->applyFromArray([
-                        'font' => ['bold' => true, 'color' => ['rgb' => '991B1B']],
-                        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
+                        'font'      => ['bold' => true, 'color' => ['rgb' => '991B1B']],
+                        'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FEE2E2']],
                         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
                     ]);
                 }
@@ -466,19 +513,17 @@ class ExportHasilTeoriController extends Controller
             }
         }
 
-        // Summary row
         $ws->mergeCells("A{$row}:E{$row}");
         $ws->setCellValue("A{$row}", "Total: " . ($no - 1) . " peserta");
         $ws->setCellValue("F{$row}", "K: {$totalK}  |  BK: {$totalBK}");
         $ws->mergeCells("F{$row}:G{$row}");
         $ws->getStyle("A{$row}:G{$row}")->applyFromArray([
-            'font'    => ['bold' => true, 'size' => 9, 'color' => ['rgb' => self::NAVY], 'name' => self::FONT],
-            'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LIGHT_BLUE]],
+            'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => self::NAVY], 'name' => self::FONT],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LIGHT_BLUE]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $ws->getRowDimension($row)->setRowHeight(20);
 
-        // Column widths
         $ws->getColumnDimension('A')->setWidth(5);
         $ws->getColumnDimension('B')->setWidth(32);
         $ws->getColumnDimension('C')->setWidth(28);
@@ -589,8 +634,8 @@ class ExportHasilTeoriController extends Controller
         $ws->mergeCells("A{$r}:F{$r}");
         $ws->setCellValue("A{$r}", "Total: {$totalAsesi} peserta  |  Sudah Submit: {$sudahSubmit}  |  Belum Submit: " . ($totalAsesi - $sudahSubmit));
         $ws->getStyle("A{$r}:F{$r}")->applyFromArray([
-            'font'    => ['bold' => true, 'size' => 9, 'color' => ['rgb' => self::NAVY], 'name' => self::FONT],
-            'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LIGHT_BLUE]],
+            'font'      => ['bold' => true, 'size' => 9, 'color' => ['rgb' => self::NAVY], 'name' => self::FONT],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::LIGHT_BLUE]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
         ]);
         $ws->getRowDimension($r)->setRowHeight(20);

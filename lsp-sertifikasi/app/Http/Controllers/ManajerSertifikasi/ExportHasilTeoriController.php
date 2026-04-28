@@ -360,7 +360,9 @@ class ExportHasilTeoriController extends Controller
  
         $safe    = str_replace(['/', '\\', ' '], '-', $batchId);
         $tmpPath = sys_get_temp_dir() . "/Rekap_Observasi_{$safe}_" . time() . '.xlsx';
-        (new Xlsx($spreadsheet))->save($tmpPath);
+        $writer = new Xlsx($spreadsheet);
+$writer->setPreCalculateFormulas(false);
+$writer->save($tmpPath);
  
         return response()->download($tmpPath, "Rekap_Observasi_{$safe}_" . date('Ymd') . '.xlsx')
             ->deleteFileAfterSend();

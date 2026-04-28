@@ -215,25 +215,21 @@ class ExportHasilTeoriController extends Controller
             ->orderBy('assessment_date')
             ->get();
 
-        $first     = $asesmens->first();
-        $skemaName = $first->skema?->name ?? 'Asesmen';
-
         $files = [];
         foreach ($schedules as $schedule) {
             foreach ($schedule->hasilObservasi as $hasil) {
                 if (!$hasil->file_path) continue;
                 $path = Storage::disk('private')->path($hasil->file_path);
-                if (file_exists($path)) {
-                    $files[] = $path;
-                }
+                if (file_exists($path)) $files[] = $path;
             }
         }
 
         abort_if(empty($files), 404, 'Belum ada file observasi yang diupload untuk batch ini.');
 
-        // Helper: ambil nilai cell tanpa trigger formula evaluation
         $safeVal = function ($cell) {
             try {
+                $old = $cell->getOldCalculatedValue();
+                if ($old !== null) return $old;
                 return $cell->getValue();
             } catch (\Throwable $e) {
                 return null;
@@ -241,31 +237,28 @@ class ExportHasilTeoriController extends Controller
         };
 
         $targetSheets = ['Pencapaian', 'Hasil Asesmen'];
-
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet  = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
 
         foreach ($targetSheets as $targetSheetName) {
-            $outputWs   = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $targetSheetName);
+            $outputWs    = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $targetSheetName);
             $spreadsheet->addSheet($outputWs);
 
-            $currentRow   = 1;
-            $headersDone  = 0;
-            $globalNo     = 1;
+            $currentRow  = 1;
+            $headersDone = 0;
+            $globalNo    = 1;
 
-            $isPencapaian  = mb_strtolower(trim($targetSheetName)) === 'pencapaian';
-            $colNo         = $isPencapaian ? 1 : 3;
-            $colFilter     = $isPencapaian ? 2 : 5;
-            $totalHeaders  = 2;
-            $colLimit      = $isPencapaian ? 14 : null;
+            $isPencapaian = mb_strtolower(trim($targetSheetName)) === 'pencapaian';
+            $colNo        = $isPencapaian ? 1 : 3;
+            $colFilter    = $isPencapaian ? 2 : 5;
+            $totalHeaders = 2;
+            $colLimit     = $isPencapaian ? 14 : null;
 
             foreach ($files as $filePath) {
                 try {
                     $reader = \PhpOffice\PhpSpreadsheet\IOFactory::createReaderForFile($filePath);
                     $reader->setReadDataOnly(true);
-                    \PhpOffice\PhpSpreadsheet\Calculation\Calculation::getInstance()->disableCalculationCache();
                     $sourceBook = $reader->load($filePath);
-                    \PhpOffice\PhpSpreadsheet\Calculation\Calculation::flushInstance();
                 } catch (\Throwable $e) {
                     \Log::warning("[exportObservasi] Gagal buka file: {$filePath} — " . $e->getMessage());
                     continue;
@@ -281,6 +274,8 @@ class ExportHasilTeoriController extends Controller
 
                 if (!$sourceWs) {
                     \Log::info("[exportObservasi] Sheet '{$targetSheetName}' tidak ditemukan di: {$filePath}");
+                    $sourceBook->disconnectWorksheets();
+                    unset($sourceBook);
                     continue;
                 }
 
@@ -293,23 +288,16 @@ class ExportHasilTeoriController extends Controller
                     $noVal     = $safeVal($sourceWs->getCellByColumnAndRow($colNo, $r));
                     $filterVal = $safeVal($sourceWs->getCellByColumnAndRow($colFilter, $r));
 
-                    if (is_numeric($noVal) && $filterVal === null) {
-                        continue;
-                    }
+                    // Skip dummy row (nomor ada tapi kolom validasi kosong)
+                    if (is_numeric($noVal) && $filterVal === null) continue;
 
-                    $isDataRow = is_numeric($noVal) && $filterVal !== null;
-
+                    $isDataRow   = is_numeric($noVal) && $filterVal !== null;
                     $isHeaderRow = !$isDataRow && !($noVal === null && $filterVal === null && $safeVal($sourceWs->getCellByColumnAndRow(3, $r)) === null);
 
                     if ($isHeaderRow) {
                         if ($headersDone >= $totalHeaders) continue;
-
                         for ($c = 1; $c <= $copyUpToCol; $c++) {
-                            $outputWs->setCellValueByColumnAndRow(
-                                $c,
-                                $currentRow,
-                                $safeVal($sourceWs->getCellByColumnAndRow($c, $r))
-                            );
+                            $outputWs->setCellValueByColumnAndRow($c, $currentRow, $safeVal($sourceWs->getCellByColumnAndRow($c, $r)));
                         }
                         $outputWs->getStyle("A{$currentRow}:{$lastColLetter}{$currentRow}")->applyFromArray([
                             'font'      => ['bold' => true, 'color' => ['rgb' => self::WHITE], 'name' => self::FONT, 'size' => 10],
@@ -326,13 +314,8 @@ class ExportHasilTeoriController extends Controller
                     if (!$isDataRow) continue;
 
                     for ($c = 1; $c <= $copyUpToCol; $c++) {
-                        $outputWs->setCellValueByColumnAndRow(
-                            $c,
-                            $currentRow,
-                            $safeVal($sourceWs->getCellByColumnAndRow($c, $r))
-                        );
+                        $outputWs->setCellValueByColumnAndRow($c, $currentRow, $safeVal($sourceWs->getCellByColumnAndRow($c, $r)));
                     }
-
                     $outputWs->setCellValueByColumnAndRow($colNo, $currentRow, $globalNo);
 
                     $bg = ($globalNo % 2 === 0) ? self::GRAY : self::WHITE;
@@ -343,20 +326,16 @@ class ExportHasilTeoriController extends Controller
                         'alignment' => ['vertical' => Alignment::VERTICAL_CENTER],
                     ]);
                     $outputWs->getRowDimension($currentRow)->setRowHeight(18);
-
                     $currentRow++;
                     $globalNo++;
                 }
 
-                // Disconnect spreadsheet untuk free memory
                 $sourceBook->disconnectWorksheets();
                 unset($sourceBook);
             }
 
             if ($currentRow > 1) {
-                $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(
-                    $outputWs->getHighestColumn()
-                );
+                $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString($outputWs->getHighestColumn());
                 for ($c = 1; $c <= $highestColOut; $c++) {
                     $outputWs->getColumnDimensionByColumn($c)->setAutoSize(true);
                 }

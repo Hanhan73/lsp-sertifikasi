@@ -197,6 +197,10 @@ class ExportHasilTeoriController extends Controller
             ->orderBy('assessment_date')
             ->get();
 
+        $first     = $asesmens->first();
+        $skemaName = $first->skema?->name ?? 'Asesmen';
+        $tukName   = $first->tuk?->name ?? '-';
+
         $files = [];
         foreach ($schedules as $schedule) {
             foreach ($schedule->hasilObservasi as $hasil) {
@@ -224,12 +228,11 @@ class ExportHasilTeoriController extends Controller
         $spreadsheet->removeSheetByIndex(0);
 
         foreach ($targetSheets as $targetSheetName) {
-            $outputWs    = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $targetSheetName);
+            $outputWs = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($spreadsheet, $targetSheetName);
             $spreadsheet->addSheet($outputWs);
 
-            $currentRow  = 1;
-            $headersDone = 0;
             $globalNo    = 1;
+            $headersDone = 0;
 
             $isPencapaian = mb_strtolower(trim($targetSheetName)) === 'pencapaian';
             $colNo        = $isPencapaian ? 1 : 3;
@@ -265,9 +268,32 @@ class ExportHasilTeoriController extends Controller
                 unset($book);
             }
 
-            if ($maxColFound === 0) continue; // sheet tidak ditemukan di file manapun
+            if ($maxColFound === 0) continue;
 
             $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($maxColFound);
+
+            // ------------------------------------------------------------------
+            // JUDUL — baris 1, 2, 3 (sebelum header dari file sumber)
+            // ------------------------------------------------------------------
+            $outputWs->mergeCells("A1:{$lastColLetter}1");
+            $outputWs->setCellValue('A1', 'REKAP HASIL OBSERVASI — ' . strtoupper($skemaName));
+            $outputWs->getStyle("A1:{$lastColLetter}1")->applyFromArray([
+                'font'      => ['bold' => true, 'size' => 14, 'color' => ['rgb' => self::NAVY], 'name' => self::FONT],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+            ]);
+            $outputWs->getRowDimension(1)->setRowHeight(34);
+
+            $outputWs->mergeCells("A2:{$lastColLetter}2");
+            $outputWs->setCellValue('A2', "Batch: {$batchId}  |  TUK: {$tukName}  |  Dicetak: " . now()->translatedFormat('d F Y, H:i'));
+            $outputWs->getStyle("A2:{$lastColLetter}2")->applyFromArray([
+                'font'      => ['size' => 9, 'italic' => true, 'color' => ['rgb' => '64748B'], 'name' => self::FONT],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+            $outputWs->getRowDimension(2)->setRowHeight(16);
+            $outputWs->getRowDimension(3)->setRowHeight(6);
+
+            // Header mulai baris 4, data mulai baris 6 (2 baris header)
+            $currentRow = 4;
 
             // ------------------------------------------------------------------
             // PASS 2: copy header dari file dengan kolom terbanyak
@@ -384,15 +410,15 @@ class ExportHasilTeoriController extends Controller
                 unset($sourceBook);
             }
 
-            // Auto-width
-            if ($currentRow > 1) {
+            // Auto-width & freeze
+            if ($currentRow > 4) {
                 $highestColOut = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::columnIndexFromString(
                     $outputWs->getHighestColumn()
                 );
                 for ($c = 1; $c <= $highestColOut; $c++) {
                     $outputWs->getColumnDimensionByColumn($c)->setAutoSize(true);
                 }
-                $outputWs->freezePane('A3');
+                $outputWs->freezePane('A6'); // freeze setelah baris judul (1-3) + 2 baris header (4-5)
             }
         }
 

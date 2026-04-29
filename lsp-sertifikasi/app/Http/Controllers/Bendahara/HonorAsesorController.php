@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use App\Services\JournalService;
+
 
 class HonorAsesorController extends Controller
 {
@@ -23,14 +25,14 @@ class HonorAsesorController extends Controller
         $asesors = Asesor::whereHas('schedules', function ($q) {
             $q->whereHas('beritaAcara');
         })
-        ->with([
-            'schedules' => function ($q) {
-                $q->whereHas('beritaAcara')
-                  ->with(['skema', 'tuk', 'beritaAcara']);
-            },
-        ])
-        ->orderBy('nama')
-        ->get();
+            ->with([
+                'schedules' => function ($q) {
+                    $q->whereHas('beritaAcara')
+                        ->with(['skema', 'tuk', 'beritaAcara']);
+                },
+            ])
+            ->orderBy('nama')
+            ->get();
 
         return view('bendahara.honor.index', compact('asesors'));
     }
@@ -96,7 +98,7 @@ class HonorAsesorController extends Controller
                 $details[] = [
                     'schedule_id'    => $schedule->id,
                     'jumlah_asesi'   => $jumlahAsesi,
-                    'honor_per_asesi'=> $honorPerAsesi,
+                    'honor_per_asesi' => $honorPerAsesi,
                     'subtotal'       => $subtotal,
                 ];
             }
@@ -119,7 +121,6 @@ class HonorAsesorController extends Controller
             return redirect()
                 ->route('bendahara.honor.payment.show', $honor)
                 ->with('success', 'Kwitansi honor berhasil dibuat.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
@@ -170,6 +171,12 @@ class HonorAsesorController extends Controller
             'dibayar_at'          => now(),
             'dibayar_oleh'        => Auth::id(),
         ]);
+
+        try {
+            app(JournalService::class)->jurnalHonorDibayar($honor->fresh(['asesor']));
+        } catch (\Exception $e) {
+            \Log::warning('Gagal buat jurnal honor: ' . $e->getMessage());
+        }
 
         // Notifikasi ke asesor
         if ($honor->asesor) {

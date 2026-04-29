@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\JournalService;
 
 class LaporanKeuanganController extends Controller
 {
@@ -100,9 +102,14 @@ class LaporanKeuanganController extends Controller
         }
 
         return view('bendahara.laporan-keuangan.laba-rugi', compact(
-            'tahun', 'tahunList', 'balance',
-            'pendapatanBulan', 'honorBulan', 'opsBulan',
-            'pendapatanSkema', 'bebanOpsDetail'
+            'tahun',
+            'tahunList',
+            'balance',
+            'pendapatanBulan',
+            'honorBulan',
+            'opsBulan',
+            'pendapatanSkema',
+            'bebanOpsDetail'
         ));
     }
 
@@ -144,14 +151,30 @@ class LaporanKeuanganController extends Controller
         $kasAkhir    = $kasAwal + $kasOperasi;
 
         if ($request->get('export') === 'pdf') {
-            return $this->exportArusKasPdf($tahun, $balance, $kasAwal, $kasAkhir, $kasOperasi,
-                $penerimaanSertifikasi, $pembayaranHonor, $pembayaranOps, $pembayaranDistr);
+            return $this->exportArusKasPdf(
+                $tahun,
+                $balance,
+                $kasAwal,
+                $kasAkhir,
+                $kasOperasi,
+                $penerimaanSertifikasi,
+                $pembayaranHonor,
+                $pembayaranOps,
+                $pembayaranDistr
+            );
         }
 
         return view('bendahara.laporan-keuangan.arus-kas', compact(
-            'tahun', 'tahunList', 'balance',
-            'kasAwal', 'kasAkhir', 'kasOperasi',
-            'penerimaanSertifikasi', 'pembayaranHonor', 'pembayaranOps', 'pembayaranDistr'
+            'tahun',
+            'tahunList',
+            'balance',
+            'kasAwal',
+            'kasAkhir',
+            'kasOperasi',
+            'penerimaanSertifikasi',
+            'pembayaranHonor',
+            'pembayaranOps',
+            'pembayaranDistr'
         ));
     }
 
@@ -173,8 +196,13 @@ class LaporanKeuanganController extends Controller
         }
 
         return view('bendahara.laporan-keuangan.perubahan-modal', compact(
-            'tahun', 'tahunList', 'balance',
-            'saldoAwal', 'surplus', 'distribusi', 'saldoAkhir'
+            'tahun',
+            'tahunList',
+            'balance',
+            'saldoAwal',
+            'surplus',
+            'distribusi',
+            'saldoAkhir'
         ));
     }
 
@@ -199,8 +227,19 @@ class LaporanKeuanganController extends Controller
         ]);
 
         $balance = AccountBalance::forTahun($tahun);
-        $balance->update(array_merge($validated, ['diupdate_oleh' => auth()->id()]));
+        $balance->update($validated);
 
+        // Buat jurnal distribusi kalau belum ada
+        if ($validated['distribusi_yayasan'] > 0) {
+            try {
+                app(JournalService::class)->jurnalDistribusi(
+                    $validated['distribusi_yayasan'],
+                    $tahun
+                );
+            } catch (\Exception $e) {
+                \Log::warning('Gagal buat jurnal distribusi: ' . $e->getMessage());
+            }
+        }
         return back()->with('success', 'Data distribusi berhasil disimpan.');
     }
 
@@ -229,20 +268,25 @@ class LaporanKeuanganController extends Controller
     {
         $tanggal   = $request->get('tanggal', today()->toDateString());
         $tahunList = $this->tahunList();
+        // Ambil akun dari CoA
+        $akunKas        = \App\Models\ChartOfAccount::where('kode', '1-001')->value('nama') ?? 'Kas';
+        $akunBank       = \App\Models\ChartOfAccount::where('kode', '1-002')->value('nama') ?? 'Bank';
+        $akunPendapatan = \App\Models\ChartOfAccount::where('kode', '4-001')->value('nama') ?? 'Pendapatan Sertifikasi';
+        $akunHonor      = \App\Models\ChartOfAccount::where('kode', '5-001')->value('nama') ?? 'Beban Honor Asesor';
+        $akunOps        = \App\Models\ChartOfAccount::where('kode', '5-002')->value('nama') ?? 'Beban Operasional';
 
-        // Gabung semua transaksi hari itu
         $pemasukan = Payment::with(['asesmen.tuk', 'asesmen.skema'])
             ->where('status', 'verified')
             ->whereDate('verified_at', $tanggal)
             ->get()
             ->map(fn($p) => [
-                'waktu'      => $p->verified_at->format('H:i'),
-                'tipe'       => 'pemasukan',
-                'akun_debit' => 'Kas/Bank',
-                'akun_kredit'=> 'Pendapatan Sertifikasi',
-                'keterangan' => ($p->asesmen->full_name ?? '-') . ' — ' . ($p->asesmen->skema->name ?? '-'),
-                'debit'      => $p->amount,
-                'kredit'     => 0,
+                'waktu'       => $p->verified_at->format('H:i'),
+                'tipe'        => 'pemasukan',
+                'akun_debit'  => '1-002 ' . $akunBank,
+                'akun_kredit' => '4-001 ' . $akunPendapatan,
+                'keterangan'  => ($p->asesmen->full_name ?? '-') . ' — ' . ($p->asesmen->skema->name ?? '-'),
+                'debit'       => $p->amount,
+                'kredit'      => 0,
             ]);
 
         $honor = HonorPayment::with('asesor')
@@ -250,25 +294,25 @@ class LaporanKeuanganController extends Controller
             ->whereDate('dibayar_at', $tanggal)
             ->get()
             ->map(fn($h) => [
-                'waktu'      => $h->dibayar_at->format('H:i'),
-                'tipe'       => 'honor',
-                'akun_debit' => 'Beban Honor Asesor',
-                'akun_kredit'=> 'Kas/Bank',
-                'keterangan' => 'Honor ' . ($h->asesor->nama ?? '-') . ' — ' . $h->nomor_kwitansi,
-                'debit'      => 0,
-                'kredit'     => $h->total,
+                'waktu'       => $h->dibayar_at->format('H:i'),
+                'tipe'        => 'honor',
+                'akun_debit'  => '5-001 ' . $akunHonor,
+                'akun_kredit' => '1-002 ' . $akunBank,
+                'keterangan'  => 'Honor ' . ($h->asesor->nama ?? '-') . ' — ' . $h->nomor_kwitansi,
+                'debit'       => 0,
+                'kredit'      => $h->total,
             ]);
 
         $ops = BiayaOperasional::whereDate('tanggal', $tanggal)
             ->get()
             ->map(fn($b) => [
-                'waktu'      => $b->created_at->format('H:i'),
-                'tipe'       => 'biaya_ops',
-                'akun_debit' => 'Beban Operasional',
-                'akun_kredit'=> 'Kas/Bank',
-                'keterangan' => $b->uraian . ' — ' . $b->nama_penerima,
-                'debit'      => 0,
-                'kredit'     => $b->total,
+                'waktu'       => $b->created_at->format('H:i'),
+                'tipe'        => 'biaya_ops',
+                'akun_debit'  => '5-002 ' . $akunOps,
+                'akun_kredit' => '1-002 ' . $akunBank,
+                'keterangan'  => $b->uraian . ' — ' . $b->nama_penerima,
+                'debit'       => 0,
+                'kredit'      => $b->total,
             ]);
 
         $transaksi = $pemasukan->concat($honor)->concat($ops)->sortBy('waktu')->values();
@@ -277,105 +321,75 @@ class LaporanKeuanganController extends Controller
         $totalKredit = $transaksi->sum('kredit');
 
         return view('bendahara.laporan-keuangan.transaksi-harian', compact(
-            'tanggal', 'tahunList', 'transaksi', 'totalDebit', 'totalKredit'
+            'tanggal',
+            'tahunList',
+            'transaksi',
+            'totalDebit',
+            'totalKredit'
         ));
     }
 
     // ── Buku Besar ────────────────────────────────────────────────────────
     public function bukuBesar(Request $request)
     {
-        $tahun   = (int)($request->get('tahun', now()->year));
-        $akun    = $request->get('akun', 'pendapatan_sertifikasi');
+        $tahun    = (int)($request->get('tahun', now()->year));
+        $akunId   = $request->get('akun_id');
         $tahunList = $this->tahunList();
 
-        $akunList = [
-            'pendapatan_sertifikasi' => 'Pendapatan Sertifikasi',
-            'beban_honor'            => 'Beban Honor Asesor',
-            'beban_operasional'      => 'Beban Operasional',
-            'kas_bank'               => 'Kas / Bank',
-            'piutang_asesi'          => 'Piutang Asesi',
-            'utang_honor'            => 'Utang Honor Asesor',
-            'distribusi_yayasan'     => 'Distribusi ke Yayasan',
-        ];
+        // Ambil semua akun aktif dari CoA
+        $akunList = \App\Models\ChartOfAccount::active()
+            ->orderBy('urutan')
+            ->orderBy('kode')
+            ->get();
 
-        $entries = $this->getBukuBesarEntries($akun, $tahun);
+        // Default ke akun pertama kalau belum dipilih
+        $selectedAkun = $akunId
+            ? $akunList->firstWhere('id', $akunId)
+            : $akunList->first();
+
+        $entries = $selectedAkun
+            ? $this->getBukuBesarEntries($selectedAkun, $tahun)
+            : collect();
 
         return view('bendahara.laporan-keuangan.buku-besar', compact(
-            'tahun', 'tahunList', 'akun', 'akunList', 'entries'
+            'tahun',
+            'tahunList',
+            'akunList',
+            'selectedAkun',
+            'entries'
         ));
     }
-
     // ── Private helpers ───────────────────────────────────────────────────
 
-    private function getBukuBesarEntries(string $akun, int $tahun): \Illuminate\Support\Collection
+    private function getBukuBesarEntries(\App\Models\ChartOfAccount $akun, int $tahun): \Illuminate\Support\Collection
     {
-        return match($akun) {
-            'pendapatan_sertifikasi' => Payment::with(['asesmen.skema'])
-                ->where('status', 'verified')
-                ->whereYear('verified_at', $tahun)
-                ->orderBy('verified_at')
-                ->get()
-                ->map(fn($p) => [
-                    'tanggal'    => $p->verified_at->format('d/m/Y'),
-                    'keterangan' => ($p->asesmen->full_name ?? '-') . ' — ' . ($p->asesmen->skema->name ?? '-'),
-                    'debit'      => 0,
-                    'kredit'     => $p->amount,
-                    'saldo'      => 0,
-                ]),
+        $lines = \App\Models\JournalEntryLine::with('entry')
+            ->where('chart_of_account_id', $akun->id)
+            ->whereHas('entry', fn($q) => $q->whereYear('tanggal', $tahun))
+            ->orderBy(
+                \App\Models\JournalEntry::select('tanggal')
+                    ->whereColumn('journal_entries.id', 'journal_entry_lines.journal_entry_id'),
+                'asc'
+            )
+            ->get();
 
-            'beban_honor' => HonorPayment::with('asesor')
-                ->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])
-                ->whereYear('dibayar_at', $tahun)
-                ->whereNotNull('dibayar_at')
-                ->orderBy('dibayar_at')
-                ->get()
-                ->map(fn($h) => [
-                    'tanggal'    => $h->dibayar_at->format('d/m/Y'),
-                    'keterangan' => 'Honor ' . ($h->asesor->nama ?? '-') . ' — ' . $h->nomor_kwitansi,
-                    'debit'      => $h->total,
-                    'kredit'     => 0,
-                    'saldo'      => 0,
-                ]),
+        $saldo = 0;
+        return $lines->map(function ($line) use (&$saldo, $akun) {
+            if (in_array($akun->tipe, ['aset', 'beban'])) {
+                $saldo += $line->debit - $line->kredit;
+            } else {
+                $saldo += $line->kredit - $line->debit;
+            }
 
-            'beban_operasional' => BiayaOperasional::whereYear('tanggal', $tahun)
-                ->orderBy('tanggal')
-                ->get()
-                ->map(fn($b) => [
-                    'tanggal'    => $b->tanggal->format('d/m/Y'),
-                    'keterangan' => $b->uraian . ' — ' . $b->nama_penerima,
-                    'debit'      => $b->total,
-                    'kredit'     => 0,
-                    'saldo'      => 0,
-                ]),
-
-            'piutang_asesi' => Payment::with(['asesmen.skema'])
-                ->whereIn('status', ['pending', 'uploaded'])
-                ->whereYear('created_at', $tahun)
-                ->orderBy('created_at')
-                ->get()
-                ->map(fn($p) => [
-                    'tanggal'    => $p->created_at->format('d/m/Y'),
-                    'keterangan' => ($p->asesmen->full_name ?? '-') . ' — belum lunas',
-                    'debit'      => $p->amount,
-                    'kredit'     => 0,
-                    'saldo'      => 0,
-                ]),
-
-            'utang_honor' => HonorPayment::with('asesor')
-                ->where('status', 'menunggu_pembayaran')
-                ->whereYear('created_at', $tahun)
-                ->orderBy('created_at')
-                ->get()
-                ->map(fn($h) => [
-                    'tanggal'    => $h->created_at->format('d/m/Y'),
-                    'keterangan' => 'Honor terutang ' . ($h->asesor->nama ?? '-'),
-                    'debit'      => 0,
-                    'kredit'     => $h->total,
-                    'saldo'      => 0,
-                ]),
-
-            default => collect(),
-        };
+            return [
+                'tanggal'    => $line->entry->tanggal->format('d/m/Y'),
+                'keterangan' => $line->entry->keterangan . ($line->keterangan ? ' — ' . $line->keterangan : ''),
+                'debit'      => (int) $line->debit,
+                'kredit'     => (int) $line->kredit,
+                'saldo'      => $saldo,
+                'nomor'      => $line->entry->nomor,
+            ];
+        });
     }
 
     private function tahunList(): \Illuminate\Support\Collection
@@ -392,7 +406,10 @@ class LaporanKeuanganController extends Controller
     private function exportLabaRugiPdf($tahun, $balance, $pendapatanSkema, $bebanOpsDetail)
     {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bendahara.laporan-keuangan.pdf.laba-rugi', compact(
-            'tahun', 'balance', 'pendapatanSkema', 'bebanOpsDetail'
+            'tahun',
+            'balance',
+            'pendapatanSkema',
+            'bebanOpsDetail'
         ))->setPaper('A4', 'portrait');
         return $pdf->download("Laporan_Laba_Rugi_{$tahun}.pdf");
     }
@@ -400,17 +417,33 @@ class LaporanKeuanganController extends Controller
     private function exportNeracaPdf($tahun, $balance)
     {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bendahara.laporan-keuangan.pdf.neraca', compact(
-            'tahun', 'balance'
+            'tahun',
+            'balance'
         ))->setPaper('A4', 'landscape');
         return $pdf->download("Neraca_{$tahun}.pdf");
     }
 
-    private function exportArusKasPdf($tahun, $balance, $kasAwal, $kasAkhir, $kasOperasi,
-        $penerimaanSertifikasi, $pembayaranHonor, $pembayaranOps, $pembayaranDistr)
-    {
+    private function exportArusKasPdf(
+        $tahun,
+        $balance,
+        $kasAwal,
+        $kasAkhir,
+        $kasOperasi,
+        $penerimaanSertifikasi,
+        $pembayaranHonor,
+        $pembayaranOps,
+        $pembayaranDistr
+    ) {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bendahara.laporan-keuangan.pdf.arus-kas', compact(
-            'tahun', 'balance', 'kasAwal', 'kasAkhir', 'kasOperasi',
-            'penerimaanSertifikasi', 'pembayaranHonor', 'pembayaranOps', 'pembayaranDistr'
+            'tahun',
+            'balance',
+            'kasAwal',
+            'kasAkhir',
+            'kasOperasi',
+            'penerimaanSertifikasi',
+            'pembayaranHonor',
+            'pembayaranOps',
+            'pembayaranDistr'
         ))->setPaper('A4', 'portrait');
         return $pdf->download("Arus_Kas_{$tahun}.pdf");
     }
@@ -418,7 +451,12 @@ class LaporanKeuanganController extends Controller
     private function exportPerubahanModalPdf($tahun, $balance, $saldoAwal, $surplus, $distribusi, $saldoAkhir)
     {
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('bendahara.laporan-keuangan.pdf.perubahan-modal', compact(
-            'tahun', 'balance', 'saldoAwal', 'surplus', 'distribusi', 'saldoAkhir'
+            'tahun',
+            'balance',
+            'saldoAwal',
+            'surplus',
+            'distribusi',
+            'saldoAkhir'
         ))->setPaper('A4', 'portrait');
         return $pdf->download("Perubahan_Modal_{$tahun}.pdf");
     }

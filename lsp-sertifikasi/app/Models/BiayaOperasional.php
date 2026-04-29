@@ -47,7 +47,7 @@ class BiayaOperasional extends Model
     {
         $year  = now()->year;
         $count = static::whereYear('created_at', $year)->count() + 1;
-        return 'BO-' . $year . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
+        return 'OPS-' . $year . '-' . str_pad($count, 3, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -69,7 +69,7 @@ class BiayaOperasional extends Model
     }
 
     public function asesor(): BelongsTo
-{
-    return $this->belongsTo(\App\Models\Asesor::class, 'asesor_id');
-}
+    {
+        return $this->belongsTo(\App\Models\Asesor::class, 'asesor_id');
+    }
 }

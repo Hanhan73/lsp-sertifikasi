@@ -76,3 +76,8 @@
     class="nav-link {{ $route === 'bendahara.laporan-keuangan.buku-besar' ? 'active' : '' }}">
     <i class="bi bi-journal-bookmark"></i> Buku Besar
 </a>
+
+<a href="{{ route('bendahara.coa.index') }}"
+   class="nav-link {{ str_starts_with($route, 'bendahara.coa') ? 'active' : '' }}">
+    <i class="bi bi-list-columns-reverse"></i> Chart of Account
+</a>

@@ -173,6 +173,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'manajer_sertifikasi';
     }
 
+    public function isBendahara(): bool
+    {
+        return $this->role === 'bendahara';
+    }
+
     /**
      * TTD yang sudah tersimpan, siap pakai sebagai data URI.
      */

@@ -1,13 +1,13 @@
 {{-- resources/views/direktur/partials/sidebar.blade.php --}}
 
 <a href="{{ route('direktur.dashboard') }}"
-   class="nav-link {{ request()->routeIs('direktur.dashboard') ? 'active' : '' }}">
+    class="nav-link {{ request()->routeIs('direktur.dashboard') ? 'active' : '' }}">
     <i class="bi bi-speedometer2"></i>
     Dashboard
 </a>
 
 <a href="{{ route('direktur.schedules.index') }}"
-   class="nav-link {{ request()->routeIs('direktur.schedules.*') ? 'active' : '' }}">
+    class="nav-link {{ request()->routeIs('direktur.schedules.*') ? 'active' : '' }}">
     <i class="bi bi-calendar-check"></i>
     Approval Jadwal
     @php $pending = \App\Models\Schedule::pendingApproval()->count(); @endphp
@@ -17,7 +17,7 @@
 </a>
 
 <a href="{{ route('direktur.sk-ujikom.index') }}"
-   class="nav-link {{ request()->routeIs('direktur.sk-ujikom.*') ? 'active' : '' }}">
+    class="nav-link {{ request()->routeIs('direktur.sk-ujikom.*') ? 'active' : '' }}">
     <i class="bi bi-file-earmark-ruled"></i>
     SK Hasil Ujikom
     @php $pendingSkDir = \App\Models\SkHasilUjikom::where('status', 'submitted')->count(); @endphp
@@ -26,8 +26,13 @@
     @endif
 </a>
 
-<a href="{{ route('profile.show') }}"
-   class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
+<a href="{{ route('direktur.rekap-pendapatan') }}"
+    class="nav-link {{ request()->routeIs('direktur.rekap-pendapatan') ? 'active' : '' }}">
+    <i class="bi bi-graph-up-arrow"></i>
+    Rekap Pendapatan
+</a>
+
+<a href="{{ route('profile.show') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
     <i class="bi bi-person-circle"></i>
     Profil Saya
 </a>

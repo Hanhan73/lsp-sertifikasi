@@ -989,4 +989,32 @@ public function aplsatuBuktiSave(Request $request)
             : $pdf->download($filename);
     }
 
+        public function downloadInvoice()
+    {
+        $user    = auth()->user();
+        $asesmen = Asesmen::with(['payment', 'skema', 'tuk'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+ 
+        $payment = $asesmen->payment;
+ 
+        if (!$payment || $payment->status !== 'verified') {
+            return redirect()->route('asesi.dashboard')
+                ->with('error', 'Pembayaran belum terverifikasi.');
+        }
+ 
+        $issuedAt = $payment->verified_at ?? now();
+ 
+        $invoiceNumber = str_pad($asesmen->id, 5, '0', STR_PAD_LEFT)
+            . '/LSP-KAP/KU.00.01/'
+            . \Carbon\Carbon::parse($issuedAt)->format('n') . '/'
+            . \Carbon\Carbon::parse($issuedAt)->format('Y');
+ 
+        $pdf = Pdf::loadView('pdf.invoice-individu', compact(
+            'asesmen', 'payment', 'invoiceNumber'
+        ))->setPaper('A4', 'portrait');
+ 
+        return $pdf->download('Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf');
+    }
+
 }

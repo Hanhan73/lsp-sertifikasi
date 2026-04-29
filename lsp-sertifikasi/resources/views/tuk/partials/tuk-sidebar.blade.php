@@ -1,51 +1,31 @@
-<a href="{{ route('tuk.dashboard') }}" class="nav-link {{ request()->routeIs('tuk.dashboard') ? 'active' : '' }}">
+@php $route = request()->route()->getName(); @endphp
+
+<a href="{{ route('tuk.dashboard') }}" class="nav-link {{ $route === 'tuk.dashboard' ? 'active' : '' }}">
     <i class="bi bi-speedometer2"></i> Dashboard
 </a>
 
-<a href="{{ route('tuk.collective') }}"
-    class="nav-link {{ request()->routeIs('tuk.collective') && !request()->routeIs('tuk.collective.payment*') ? 'active' : '' }}">
+<a href="{{ route('tuk.collective') }}" class="nav-link {{ $route === 'tuk.collective' ? 'active' : '' }}">
     <i class="bi bi-person-plus"></i> Pendaftaran Kolektif
 </a>
 
-<!-- ✅ NEW: Menu Pembayaran Kolektif -->
-<a href="{{ route('tuk.collective.payments') }}"
-    class="nav-link {{ request()->routeIs('tuk.collective.payment*') ? 'active' : '' }}">
-    <i class="bi bi-credit-card"></i> Pembayaran Kolektif
+<a href="{{ route('tuk.invoice-kolektif.index') }}"
+    class="nav-link {{ str_starts_with($route, 'tuk.invoice-kolektif') ? 'active' : '' }}">
+    <i class="bi bi-receipt"></i> Pembayaran Kolektif
     @php
-    $pendingBatches = \App\Models\Asesmen::whereNotNull('collective_batch_id')
-    ->where('is_collective', true)
-    ->where('status', 'verified')
-    ->where('collective_paid_by_tuk', true)
-    ->get()
-    ->groupBy('collective_batch_id')
-    ->filter(function($batch) {
-    // Check if batch needs payment
-    $firstAsesmen = $batch->first();
-    if ($firstAsesmen->payment_phases === 'single') {
-    return $batch->every(fn($a) => !$a->payments()->where('payment_phase', 'full')->where('status',
-    'verified')->exists());
-    } else {
-    // Check phase 1
-    $phase1Unpaid = $batch->every(fn($a) => !$a->payments()->where('payment_phase', 'phase_1')->where('status',
-    'verified')->exists());
-    if ($phase1Unpaid) return true;
-
-    // Check phase 2
-    $allAssessed = $batch->every(fn($a) => in_array($a->status, ['assessed', 'certified']));
-    $phase2Unpaid = $batch->every(fn($a) => !$a->payments()->where('payment_phase', 'phase_2')->where('status',
-    'verified')->exists());
-    return $allAssessed && $phase2Unpaid;
-    }
-    return false;
-    })
-    ->count();
+    $tukId = auth()->user()->tuk?->id;
+    $badgeCount = $tukId
+    ? \App\Models\CollectivePayment::whereHas('invoice', fn($q) => $q->where('tuk_id', $tukId))
+    ->where('status', 'pending')
+    ->whereNull('proof_path') // belum upload sama sekali
+    ->count()
+    : 0;
     @endphp
-    @if($pendingBatches > 0)
-    <span class="badge bg-danger ms-2">{{ $pendingBatches }}</span>
+    @if($badgeCount > 0)
+    <span class="badge bg-danger ms-1">{{ $badgeCount }}</span>
     @endif
 </a>
 
 <a href="{{ route('tuk.asesi') }}"
-    class="nav-link {{ request()->routeIs('tuk.asesi') || request()->routeIs('tuk.batch.detail') ? 'active' : '' }}">
+    class="nav-link {{ $route === 'tuk.asesi' || $route === 'tuk.batch.detail' ? 'active' : '' }}">
     <i class="bi bi-people"></i> Daftar Asesi
 </a>

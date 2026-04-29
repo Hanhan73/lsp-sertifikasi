@@ -31,9 +31,7 @@
 <a href="{{ route('bendahara.honor.index') }}"
     class="nav-link {{ str_starts_with($route, 'bendahara.honor') ? 'active' : '' }}">
     <i class="bi bi-person-badge"></i> Honor Asesmen Asesor
-    @php
-    $honorPending = \App\Models\HonorPayment::where('status','menunggu_pembayaran')->count();
-    @endphp
+    @php $honorPending = \App\Models\HonorPayment::where('status','menunggu_pembayaran')->count(); @endphp
     @if($honorPending > 0)
     <span class="badge bg-warning text-dark ms-1">{{ $honorPending }}</span>
     @endif
@@ -46,7 +44,7 @@
 
 <a href="{{ route('bendahara.rekap-pendapatan') }}"
     class="nav-link {{ str_starts_with($route, 'bendahara.rekap-pendapatan') ? 'active' : '' }}">
-    <i class="bi bi-bar-chart-line"></i> Rekap Pendapatan
+    <i class="bi bi-graph-up-arrow"></i> Rekap Pendapatan
 </a>
 
 {{-- ── BIAYA OPERASIONAL ──────────────────────────────────────────── --}}
@@ -54,9 +52,9 @@
     <span>BIAYA OPERASIONAL</span>
 </div>
 
-<a href="{{ route('bendahara.operasional.index') }}"
-    class="nav-link {{ str_starts_with($route, 'bendahara.operasional') ? 'active' : '' }}">
-    <i class="bi bi-receipt-cutoff"></i> Biaya Operasional
+<a href="{{ route('bendahara.biaya-operasional.index') }}"
+    class="nav-link {{ str_starts_with($route, 'bendahara.biaya-operasional') ? 'active' : '' }}">
+    <i class="bi bi-cash-stack"></i> Biaya Operasional
 </a>
 
 {{-- ── LAPORAN ─────────────────────────────────────────────────────── --}}
@@ -64,22 +62,17 @@
     <span>LAPORAN</span>
 </div>
 
-<a href="{{ route('bendahara.laporan.keuangan') }}"
-    class="nav-link {{ str_starts_with($route, 'bendahara.laporan.keuangan') ? 'active' : '' }}">
+<a href="{{ route('bendahara.laporan-keuangan.index') }}"
+    class="nav-link {{ str_starts_with($route, 'bendahara.laporan-keuangan') ? 'active' : '' }}">
     <i class="bi bi-file-earmark-spreadsheet"></i> Laporan Keuangan
 </a>
 
-<a href="{{ route('bendahara.laporan.pajak') }}"
-    class="nav-link {{ str_starts_with($route, 'bendahara.laporan.pajak') ? 'active' : '' }}">
-    <i class="bi bi-file-earmark-text"></i> Laporan Pajak
-</a>
-
-<a href="{{ route('bendahara.laporan.transaksi-harian') }}"
-    class="nav-link {{ str_starts_with($route, 'bendahara.laporan.transaksi-harian') ? 'active' : '' }}">
+<a href="{{ route('bendahara.laporan-keuangan.transaksi-harian') }}"
+    class="nav-link {{ $route === 'bendahara.laporan-keuangan.transaksi-harian' ? 'active' : '' }}">
     <i class="bi bi-calendar-day"></i> Transaksi Harian
 </a>
 
-<a href="{{ route('bendahara.laporan.buku-besar') }}"
-    class="nav-link {{ str_starts_with($route, 'bendahara.laporan.buku-besar') ? 'active' : '' }}">
+<a href="{{ route('bendahara.laporan-keuangan.buku-besar') }}"
+    class="nav-link {{ $route === 'bendahara.laporan-keuangan.buku-besar' ? 'active' : '' }}">
     <i class="bi bi-journal-bookmark"></i> Buku Besar
 </a>

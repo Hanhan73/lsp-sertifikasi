@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Invoice extends Model
 {
@@ -14,7 +13,7 @@ class Invoice extends Model
         'invoice_number',
         'sequence_number',
         'invoice_year',
-        'batch_id',
+        'batch_ids',       // JSON array of batch IDs
         'tuk_id',
         'issued_by',
         'issued_at',
@@ -27,8 +26,9 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'items'       => 'array',
-        'issued_at'   => 'datetime',
+        'batch_ids'    => 'array',
+        'items'        => 'array',
+        'issued_at'    => 'datetime',
         'total_amount' => 'decimal:2',
     ];
 
@@ -52,7 +52,7 @@ class Invoice extends Model
     }
 
     // =========================================================================
-    // Static: Generate nomor invoice
+    // Generate nomor invoice
     // Format: {urutan}/LSP-KAP/KU.00.01/{bulan-romawi}/{tahun}
     // =========================================================================
 
@@ -64,12 +64,11 @@ class Invoice extends Model
         $sequence     = $lastSequence + 1;
 
         $romans = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV',
-            5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII',
+            1 => 'I',  2 => 'II',  3 => 'III', 4 => 'IV',
+            5 => 'V',  6 => 'VI',  7 => 'VII', 8 => 'VIII',
             9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
         ];
-        $month = (int) now()->format('n');
-
+        $month  = (int) now()->format('n');
         $number = $sequence . '/LSP-KAP/KU.00.01/' . $romans[$month] . '/' . $year;
 
         return [
@@ -98,6 +97,18 @@ class Invoice extends Model
     public function isFullyPaid(): bool
     {
         return $this->remaining <= 0;
+    }
+
+    /** Jumlah batch dalam invoice ini */
+    public function getBatchCountAttribute(): int
+    {
+        return count($this->batch_ids ?? []);
+    }
+
+    /** Total asesi dari semua batch */
+    public function getTotalAsesiAttribute(): int
+    {
+        return Asesmen::whereIn('collective_batch_id', $this->batch_ids ?? [])->count();
     }
 
     public function getStatusLabelAttribute(): string

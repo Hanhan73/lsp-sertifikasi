@@ -47,17 +47,33 @@
             {{-- Terverifikasi --}}
             <i class="bi bi-check-circle-fill text-success" style="font-size:5rem;"></i>
             <h4 class="mt-4 text-success">Pembayaran Terverifikasi!</h4>
-            <p class="text-muted">Pembayaran Anda telah diverifikasi oleh bendahara LSP. Proses sertifikasi akan segera dimulai.</p>
+            <p class="text-muted">Pembayaran Anda telah diverifikasi oleh bendahara LSP.</p>
+            
             <div class="alert alert-success mt-3 text-start">
                 <div class="row">
-                    <div class="col-6"><small>Jumlah</small><br><strong>Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong></div>
-                    <div class="col-6"><small>Metode</small><br><strong>{{ strtoupper($payment->method) }}</strong></div>
-                    <div class="col-12 mt-2"><small>Diverifikasi</small><br>{{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}</div>
+                    <div class="col-6">
+                        <small>Jumlah</small><br>
+                        <strong>Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong>
+                    </div>
+                    <div class="col-6">
+                        <small>Metode</small><br>
+                        <strong>{{ strtoupper($payment->method) }}</strong>
+                    </div>
+                    <div class="col-12 mt-2">
+                        <small>Diverifikasi</small><br>
+                        {{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}
+                    </div>
                 </div>
             </div>
-            <a href="{{ route('asesi.dashboard') }}" class="btn btn-success mt-3">
-                <i class="bi bi-house me-1"></i>Kembali ke Dashboard
-            </a>
+            
+            <div class="d-flex gap-2 justify-content-center flex-wrap mt-3">
+                <a href="{{ route('asesi.payment.invoice') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Invoice
+                </a>
+                <a href="{{ route('asesi.dashboard') }}" class="btn btn-success">
+                    <i class="bi bi-house me-1"></i>Kembali ke Dashboard
+                </a>
+            </div>
 
             @elseif($payment->status === 'rejected')
             {{-- Ditolak --}}

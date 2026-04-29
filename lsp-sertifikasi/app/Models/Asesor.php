@@ -46,6 +46,7 @@ class Asesor extends Model
         return $this->hasMany(Schedule::class, 'asesor_id');
     }
 
+
     public function activeSchedules()
     {
         return $this->hasMany(Schedule::class, 'asesor_id')

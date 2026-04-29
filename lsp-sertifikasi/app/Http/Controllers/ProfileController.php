@@ -35,6 +35,18 @@ class ProfileController extends Controller
             return view('profile.asesi', compact('user'));
         }
 
+        if ($user->isBendahara()) {
+            return view('profile.bendahara', compact('user'));
+        }
+
+        if ($user->isManajerSertifikasi()) {
+            return view('profile.manajer_sertifikasi', compact('user'));
+        }
+
+        if ($user->isDirektur()) {
+            return view('profile.direktur', compact('user'));
+        }
+
         return view('profile.admin', compact('user'));
     }
 

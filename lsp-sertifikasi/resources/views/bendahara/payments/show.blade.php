@@ -149,7 +149,44 @@
             Pembayaran ini sudah diverifikasi pada {{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}
             oleh <strong>{{ $payment->verifier->name ?? 'Sistem' }}</strong>.
         </div>
-
+    
+        {{-- TAMBAHKAN INI: Tombol Invoice & Kwitansi --}}
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header bg-white fw-semibold small">
+                <i class="bi bi-file-earmark-text me-1 text-primary"></i>Dokumen Pembayaran
+            </div>
+            <div class="card-body">
+                <div class="d-flex gap-2 flex-wrap">
+                    <a href="{{ route('bendahara.payments.invoice', $payment) }}"
+                    target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Invoice
+                    </a>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
+                                data-bs-toggle="dropdown">
+                            <i class="bi bi-file-earmark-text me-1"></i>Kwitansi
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item"
+                                href="{{ route('bendahara.payments.kwitansi', [$payment, 'versi' => 'kosong']) }}"
+                                target="_blank">
+                                    <i class="bi bi-file-earmark me-1"></i>Kosong (tanpa TTD)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item"
+                                href="{{ route('bendahara.payments.kwitansi', [$payment, 'versi' => 'berisi']) }}"
+                                target="_blank">
+                                    <i class="bi bi-file-earmark-check me-1"></i>Berisi (TTD + Stempel)
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         @else
         <div class="alert alert-danger">
             <i class="bi bi-x-circle-fill me-2"></i>

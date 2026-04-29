@@ -45,17 +45,26 @@
     <div class="card border-0 shadow-sm mb-4"
         style="border-left: 4px solid {{ $payment->status === 'verified' ? '#22c55e' : ($payment->status === 'rejected' ? '#ef4444' : '#f59e0b') }} !important;">
         <div class="card-body">
-            @if($payment->status === 'verified')
-            <div class="d-flex align-items-center gap-3">
-                <i class="bi bi-check-circle-fill text-success fs-3"></i>
-                <div>
-                    <div class="fw-bold text-success">Pembayaran Terverifikasi</div>
-                    <div class="small text-muted">{{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}</div>
-                </div>
+            
+        @if($payment->status === 'verified')
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-3"></i>
+            <div>
+                <div class="fw-bold text-success">Pembayaran Terverifikasi</div>
+                <div class="small text-muted">{{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}</div>
             </div>
-            <a href="{{ route('asesi.dashboard') }}" class="btn btn-success mt-3">
+        </div>
+        
+        {{-- Tombol aksi setelah verified --}}
+        <div class="d-flex gap-2 flex-wrap mt-3">
+            <a href="{{ route('asesi.payment.invoice') }}"
+            class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-file-earmark-arrow-down me-1"></i>Download Invoice
+            </a>
+            <a href="{{ route('asesi.dashboard') }}" class="btn btn-success btn-sm">
                 <i class="bi bi-house me-1"></i>Kembali ke Dashboard
             </a>
+        </div>
 
             @elseif($payment->status === 'rejected')
             <div class="d-flex align-items-start gap-3 mb-3">

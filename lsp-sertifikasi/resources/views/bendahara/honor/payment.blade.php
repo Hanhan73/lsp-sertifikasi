@@ -105,6 +105,7 @@
             <div class="card-body">
 
                 @if($honor->isMenunggu())
+                {{-- Form upload --}}
                 <form action="{{ route('bendahara.honor.payment.bukti', $honor) }}" method="POST"
                     enctype="multipart/form-data">
                     @csrf
@@ -112,8 +113,9 @@
                     <div class="alert alert-danger py-2 small">{{ $message }}</div>
                     @enderror
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Upload Bukti Transfer <span
-                                class="text-danger">*</span></label>
+                        <label class="form-label fw-semibold">
+                            Upload Bukti Transfer <span class="text-danger">*</span>
+                        </label>
                         <input type="file" name="bukti_transfer" class="form-control" accept=".jpg,.jpeg,.png,.pdf"
                             required>
                         <div class="form-text">Format: JPG, PNG, atau PDF. Maks 5MB.</div>
@@ -124,7 +126,7 @@
                 </form>
 
                 @elseif($honor->isSudahDibayar())
-                <div class="alert alert-info">
+                <div class="alert alert-info py-2 small mb-3">
                     <i class="bi bi-clock me-1"></i>
                     Bukti transfer sudah diupload. Menunggu konfirmasi dari asesor.
                 </div>
@@ -132,24 +134,23 @@
                     <div class="text-muted small">Dibayar pada</div>
                     <div>{{ optional($honor->dibayar_at)->translatedFormat('d F Y, H:i') }}</div>
                 </div>
-                <a href="{{ route('bendahara.honor.payment.bukti.download', $honor) }}"
-                    class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-download me-1"></i>Download Bukti Transfer
-                </a>
+
+                {{-- Preview bukti --}}
+                @include('bendahara.honor._bukti-preview', ['honor' => $honor])
 
                 @elseif($honor->isDikonfirmasi())
-                <div class="alert alert-success">
+                <div class="alert alert-success py-2 small mb-3">
                     <i class="bi bi-check-circle-fill me-1"></i>
                     Asesor sudah konfirmasi penerimaan honor.
                 </div>
-                <div class="mb-2">
+                <div class="mb-3">
                     <div class="text-muted small">Dikonfirmasi pada</div>
                     <div>{{ optional($honor->dikonfirmasi_at)->translatedFormat('d F Y, H:i') }}</div>
                 </div>
-                <a href="{{ route('bendahara.honor.payment.bukti.download', $honor) }}"
-                    class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-download me-1"></i>Download Bukti Transfer
-                </a>
+
+                {{-- Preview bukti --}}
+                @include('bendahara.honor._bukti-preview', ['honor' => $honor])
+
                 @endif
 
             </div>
@@ -164,7 +165,7 @@
                 @php
                 $steps = [
                 ['label' => 'Kwitansi Dibuat', 'done' => true],
-                ['label' => 'Bukti Transfer Upload','done' => in_array($honor->status,
+                ['label' => 'Bukti Transfer Upload', 'done' => in_array($honor->status,
                 ['sudah_dibayar','dikonfirmasi'])],
                 ['label' => 'Konfirmasi Asesor', 'done' => $honor->isDikonfirmasi()],
                 ];
@@ -180,6 +181,8 @@
         </div>
 
     </div>
+
+</div>
 
 </div>
 @endsection

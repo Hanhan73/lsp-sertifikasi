@@ -63,13 +63,22 @@ class HonorController extends Controller
     /**
      * Download bukti transfer dari bendahara.
      */
-    public function downloadBukti(HonorPayment $honor): \Symfony\Component\HttpFoundation\StreamedResponse
+    public function downloadBukti(HonorPayment $honor, Request $request)
     {
         $asesor = Auth::user()->asesor;
         abort_if($honor->asesor_id !== $asesor->id, 403);
         abort_unless($honor->bukti_transfer_path, 404, 'Bukti transfer belum tersedia.');
 
-        return Storage::disk('private')->download($honor->bukti_transfer_path, $honor->bukti_transfer_name);
+        $disk = app()->environment('production')
+            ? 'public_html'
+            : 'private';
+
+        $path = Storage::disk($disk)->path($honor->bukti_transfer_path);
+        abort_unless(file_exists($path), 404, 'File tidak ditemukan.');
+
+        return $request->boolean('download')
+            ? response()->download($path, $honor->bukti_transfer_name)
+            : response()->file($path);
     }
 
     /**

@@ -59,8 +59,9 @@ use App\Http\Controllers\ManajerSertifikasi\HasilAsesmenController;
 // Bendahara
 use App\Http\Controllers\Bendahara\BendaharaController;
 use App\Http\Controllers\Bendahara\HonorAsesorController;
-use App\Http\Controllers\Bendahara\InvoiceKolektifController;
-
+use App\Http\Controllers\Bendahara\BiayaOperasionalController;
+use App\Http\Controllers\Bendahara\RekapPendapatanController;
+use App\Http\Controllers\Bendahara\LaporanKeuanganController;
 
 /*
 |--------------------------------------------------------------------------
@@ -396,7 +397,8 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/payment',          [PaymentController::class, 'show'])->name('payment');
         Route::post('/payment/upload',  [PaymentController::class, 'uploadBukti'])->name('payment.upload-bukti');
         Route::get('/payment/status',   [PaymentController::class, 'status'])->name('payment.status');
-
+        Route::get('/payment/invoice', [AsesiController::class, 'downloadInvoice'])->name('payment.invoice');
+        
         // Pre-assessment
         Route::get('/pre-assessment',  [AsesiController::class, 'preAssessment'])->name('pre-assessment');
         Route::post('/pre-assessment', [AsesiController::class, 'submitPreAssessment'])->name('pre-assessment.submit');
@@ -509,9 +511,11 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::post('/batch/{batchId}/add-participant', [TukController::class, 'addParticipantToBatch'])->name('batch.add-participant');
 
     Route::prefix('invoice-kolektif')->name('invoice-kolektif.')->group(function () {
-        Route::get('/',                                 [TukAngsuranController::class, 'index'])->name('index');
-        Route::post('/angsuran/{payment}/upload-bukti', [TukAngsuranController::class, 'uploadBukti'])->name('upload-bukti');
-        Route::get('/{invoice}',                        [TukAngsuranController::class, 'show'])->name('show'); // wildcard terakhir
+        Route::get('/',                                  [TukAngsuranController::class, 'index'])      ->name('index');
+        Route::post('/angsuran/{payment}/upload-bukti',  [TukAngsuranController::class, 'uploadBukti'])->name('upload-bukti');
+        Route::get('/{invoice}',                         [TukAngsuranController::class, 'show'])       ->name('show');
+        Route::post('/{invoice}/angsuran',               [TukAngsuranController::class, 'storeAngsuran'])->name('angsuran.store');
+        Route::get('/{invoice}/pdf',                     [TukAngsuranController::class, 'pdf'])->name('pdf');
     });
 });
 
@@ -678,6 +682,9 @@ Route::prefix('direktur')
 
         Route::get('/jadwal/{schedule}/berita-acara/download', [DirekturSkUjikomController::class, 'downloadFileBeritaAcara'])
             ->name('jadwal.berita-acara.download-file');
+
+        Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])
+            ->name('rekap-pendapatan');
     });
 
 
@@ -820,10 +827,8 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
  
         // ── Pembayaran Asesmen ─────────────────────────────────────────────────
         Route::prefix('payments')->name('payments.')->group(function () {
- 
-            // ── Kolektif: semua static kolektif DULU ─────────────────────────
- 
-            // Invoice actions (static, sebelum wildcard apapun)
+        
+            // ── Kolektif (semua static sebelum wildcard) ──────────────────────────
             Route::post('/kolektif/invoice/store',             [BendaharaController::class, 'kolektifInvoiceStore'])->name('kolektif.invoice.store');
             Route::put('/kolektif/invoice/{invoice}',           [BendaharaController::class, 'kolektifInvoiceUpdate'])->name('kolektif.invoice.update');
             Route::post('/kolektif/invoice/{invoice}/send',     [BendaharaController::class, 'kolektifInvoiceSend'])->name('kolektif.invoice.send');
@@ -832,23 +837,25 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
             Route::post('/kolektif/invoice/{invoice}/angsuran', [BendaharaController::class, 'kolektifAngsuranStore'])->name('kolektif.angsuran.store');
             Route::post('/kolektif/angsuran/{payment}/verify',  [BendaharaController::class, 'kolektifAngsuranVerify'])->name('kolektif.angsuran.verify');
             Route::get('/kolektif/angsuran/{payment}/bukti',    [BendaharaController::class, 'kolektifBuktiBayar'])->name('kolektif.angsuran.bukti');
- 
-            // Kolektif index & detail — wildcard {batchId} setelah semua static kolektif
+            Route::post('/kolektif/tuk/{tuk}/invoice/bulk',     [BendaharaController::class, 'kolektifInvoiceStoreBulk'])->name('kolektif.invoice.bulk');
+        
             Route::get('/kolektif',           [BendaharaController::class, 'kolektif'])->name('kolektif');
-            Route::get('/kolektif/{batchId}', [BendaharaController::class, 'kolektifDetail'])->name('kolektif.detail');
- 
-            // ── Individu: index dulu, lalu wildcard {payment} PALING BAWAH ──
-            Route::get('/', [BendaharaController::class, 'index'])->name('index');
- 
-            // static sub-routes individu sebelum wildcard
+            Route::get('/kolektif/tuk/{tuk}', [BendaharaController::class, 'kolektifTuk'])->name('kolektif.tuk');
+            Route::get('/kolektif/{invoice}', [BendaharaController::class, 'kolektifDetail'])->name('kolektif.detail');
+        
+            // ── Individu ──────────────────────────────────────────────────────────
+            Route::get('/',                         [BendaharaController::class, 'index'])->name('index');
             Route::get('/bukti/{payment}/download', [BendaharaController::class, 'downloadBukti'])->name('download-bukti');
- 
-            // wildcard individu — HARUS PALING BAWAH
+        
+            // Invoice & kwitansi individu — SEBELUM wildcard /{payment}
+            Route::get('/{payment}/invoice',        [BendaharaController::class, 'downloadInvoiceIndividu'])->name('invoice');
+            Route::get('/{payment}/kwitansi',       [BendaharaController::class, 'kwitansiIndividu'])       ->name('kwitansi');
+        
+            // Wildcard individu — PALING BAWAH
             Route::get('/{payment}',         [BendaharaController::class, 'show'])->name('show');
             Route::post('/{payment}/verify', [BendaharaController::class, 'verify'])->name('verify');
             Route::post('/{payment}/reject', [BendaharaController::class, 'reject'])->name('reject');
         });
- 
         // ── Honor Asesor ──────────────────────────────────────────────────────
         Route::prefix('honor')->name('honor.')->group(function () {
             Route::get('/',                               [HonorAsesorController::class, 'index'])->name('index');
@@ -861,30 +868,43 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         });
  
         // ── Rekap Pendapatan ──────────────────────────────────────────────────
-        Route::get('/rekap-pendapatan', [BendaharaController::class, 'rekapPendapatan'])->name('rekap-pendapatan');
+        Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])->name('rekap-pendapatan');
  
         // ── Biaya Operasional ─────────────────────────────────────────────────
-        Route::prefix('operasional')->name('operasional.')->group(function () {
-            Route::get('/',                       [BendaharaController::class, 'operasionalIndex'])->name('index');
-            Route::post('/',                      [BendaharaController::class, 'operasionalStore'])->name('store');
-            Route::get('/{operasional}/edit',     [BendaharaController::class, 'operasionalEdit'])->name('edit');
-            Route::put('/{operasional}',          [BendaharaController::class, 'operasionalUpdate'])->name('update');
-            Route::delete('/{operasional}',       [BendaharaController::class, 'operasionalDestroy'])->name('destroy');
-            Route::get('/{operasional}/bukti',    [BendaharaController::class, 'operasionalDownloadBukti'])->name('bukti.download');
-            Route::get('/{operasional}/kegiatan', [BendaharaController::class, 'operasionalDownloadKegiatan'])->name('kegiatan.download');
+        Route::prefix('biaya-operasional')->name('biaya-operasional.')->group(function () {
+            Route::get('/',          [BiayaOperasionalController::class, 'index'])  ->name('index');
+            Route::get('/create',    [BiayaOperasionalController::class, 'create']) ->name('create');
+            Route::post('/',         [BiayaOperasionalController::class, 'store'])  ->name('store');
+            Route::get('/{biayaOperasional}/edit',   [BiayaOperasionalController::class, 'edit'])   ->name('edit');
+            Route::put('/{biayaOperasional}',        [BiayaOperasionalController::class, 'update']) ->name('update');
+            Route::delete('/{biayaOperasional}',     [BiayaOperasionalController::class, 'destroy'])->name('destroy');
         });
  
         // ── Laporan ───────────────────────────────────────────────────────────
-        Route::prefix('laporan')->name('laporan.')->group(function () {
-            Route::get('/keuangan',         [BendaharaController::class, 'laporanKeuangan'])->name('keuangan');
-            Route::get('/pajak',            [BendaharaController::class, 'laporanPajak'])->name('pajak');
-            Route::get('/transaksi-harian', [BendaharaController::class, 'transaksiHarian'])->name('transaksi-harian');
-            Route::get('/buku-besar',       [BendaharaController::class, 'bukuBesar'])->name('buku-besar');
+        Route::prefix('laporan-keuangan')->name('laporan-keuangan.')->group(function () {
+            Route::get('/',                    [LaporanKeuanganController::class, 'index'])           ->name('index');
+            Route::get('/edit-saldo',          [LaporanKeuanganController::class, 'editSaldo'])       ->name('edit-saldo');
+            Route::post('/edit-saldo',         [LaporanKeuanganController::class, 'updateSaldo'])     ->name('update-saldo');
+            Route::get('/laba-rugi',           [LaporanKeuanganController::class, 'labaRugi'])        ->name('laba-rugi');
+            Route::get('/neraca',              [LaporanKeuanganController::class, 'neraca'])          ->name('neraca');
+            Route::get('/arus-kas',            [LaporanKeuanganController::class, 'arusKas'])         ->name('arus-kas');
+            Route::get('/perubahan-modal',     [LaporanKeuanganController::class, 'perubahanModal'])  ->name('perubahan-modal');
+            Route::get('/distribusi',          [LaporanKeuanganController::class, 'distribusi'])      ->name('distribusi');
+            Route::post('/distribusi',         [LaporanKeuanganController::class, 'updateDistribusi'])->name('distribusi.update');
+            Route::post('/distribusi/jurnal-balik', [LaporanKeuanganController::class, 'jurnalBalik'])->name('jurnal-balik');
+            Route::get('/transaksi-harian',    [LaporanKeuanganController::class, 'transaksiHarian']) ->name('transaksi-harian');
+            Route::get('/buku-besar',          [LaporanKeuanganController::class, 'bukuBesar'])       ->name('buku-besar');
         });
  
         // ── Tarif Honor ───────────────────────────────────────────────────────
         Route::get('/tarif-honor',           [BendaharaController::class, 'tarifHonorIndex'])->name('tarif-honor.index');
         Route::patch('/tarif-honor/{skema}', [BendaharaController::class, 'tarifHonorUpdate'])->name('tarif-honor.update');
+        
+        Route::get('/rekap-pendapatan/export', [RekapPendapatanController::class, 'export'])
+            ->name('rekap-pendapatan.export');
+
+
+
     });
  
 /*

@@ -108,8 +108,11 @@
                     <div class="text-muted small">Ditransfer pada</div>
                     <div>{{ optional($honor->dibayar_at)->translatedFormat('d F Y, H:i') }}</div>
                 </div>
+
+                @include('bendahara.honor._bukti-preview', ['honor' => $honor])
+
                 <a href="{{ route('asesor.honor.bukti.download', $honor) }}"
-                   class="btn btn-sm btn-outline-info w-100 mb-3">
+                class="btn btn-sm btn-outline-info w-100 mb-3">
                     <i class="bi bi-download me-1"></i>Download Bukti Transfer
                 </a>
 
@@ -128,6 +131,7 @@
                 @endif
             </div>
         </div>
+
         @endif
 
         {{-- Download Kwitansi --}}

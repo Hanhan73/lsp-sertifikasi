@@ -31,6 +31,16 @@
                 </optgroup>
                 @endforeach
             </select>
+            <div class="ms-auto d-flex gap-2">
+                <a href="{{ route('bendahara.laporan-keuangan.buku-besar.export', ['tahun'=>$tahun,'akun_id'=>$selectedAkun?->id,'format'=>'pdf']) }}"
+                class="btn btn-sm btn-outline-danger">
+                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                </a>
+                <a href="{{ route('bendahara.laporan-keuangan.buku-besar.export', ['tahun'=>$tahun,'akun_id'=>$selectedAkun?->id,'format'=>'excel']) }}"
+                class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-file-earmark-excel"></i> Excel
+                </a>
+            </div>
 
             <a href="{{ route('bendahara.laporan-keuangan.index', ['tahun' => $tahun]) }}"
                 class="btn btn-sm btn-outline-secondary ms-auto">

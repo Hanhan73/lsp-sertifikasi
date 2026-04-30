@@ -15,23 +15,33 @@
         <form method="GET" class="d-flex align-items-center gap-3 flex-wrap">
             <label class="fw-semibold mb-0"><i class="bi bi-calendar-event"></i> Tanggal:</label>
             <input type="date" name="tanggal" class="form-control form-control-sm" style="width:160px"
-                   value="{{ $tanggal }}" onchange="this.form.submit()">
+                value="{{ $tanggal }}" onchange="this.form.submit()">
             <span class="text-muted small">
                 {{ \Carbon\Carbon::parse($tanggal)->translatedFormat('l, d F Y') }}
             </span>
             <div class="ms-auto d-flex gap-2">
                 <a href="{{ route('bendahara.laporan-keuangan.transaksi-harian', ['tanggal' => \Carbon\Carbon::parse($tanggal)->subDay()->toDateString()]) }}"
-                   class="btn btn-sm btn-outline-secondary">
+                    class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-left"></i>
                 </a>
                 <a href="{{ route('bendahara.laporan-keuangan.transaksi-harian', ['tanggal' => today()->toDateString()]) }}"
-                   class="btn btn-sm btn-outline-primary">Hari Ini</a>
+                    class="btn btn-sm btn-outline-primary">Hari Ini</a>
                 <a href="{{ route('bendahara.laporan-keuangan.transaksi-harian', ['tanggal' => \Carbon\Carbon::parse($tanggal)->addDay()->toDateString()]) }}"
-                   class="btn btn-sm btn-outline-secondary">
+                    class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-chevron-right"></i>
                 </a>
             </div>
         </form>
+        <div class="ms-auto d-flex gap-2">
+            <a href="{{ route('bendahara.laporan-keuangan.transaksi-harian.export', ['tanggal'=>$tanggal,'format'=>'pdf']) }}"
+                class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf"></i> PDF
+            </a>
+            <a href="{{ route('bendahara.laporan-keuangan.transaksi-harian.export', ['tanggal'=>$tanggal,'format'=>'excel']) }}"
+                class="btn btn-sm btn-outline-success">
+                <i class="bi bi-file-earmark-excel"></i> Excel
+            </a>
+        </div>
     </div>
 </div>
 
@@ -81,36 +91,41 @@
                     </tr>
                 </thead>
                 <tbody>
-                @forelse($transaksi as $t)
-                <tr>
-                    <td class="text-muted">{{ $t['waktu'] }}</td>
-                    <td>{{ $t['keterangan'] }}</td>
-                    <td class="small text-success">{{ $t['akun_debit'] }}</td>
-                    <td class="small text-danger">{{ $t['akun_kredit'] }}</td>
-                    <td class="text-center">
-                        @if($t['tipe'] === 'pemasukan')
-                        <span class="badge bg-success">Pemasukan</span>
-                        @elseif($t['tipe'] === 'honor')
-                        <span class="badge bg-danger">Honor</span>
-                        @else
-                        <span class="badge bg-info text-dark">Operasional</span>
-                        @endif
-                    </td>
-                    <td class="text-end fw-semibold text-success">
-                        {{ $t['debit'] > 0 ? number_format($t['debit'],0,',','.') : '-' }}
-                    </td>
-                    <td class="text-end fw-semibold text-danger">
-                        {{ $t['kredit'] > 0 ? number_format($t['kredit'],0,',','.') : '-' }}
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="7" class="text-center text-muted py-5">
-                        <i class="bi bi-inbox" style="font-size:2rem"></i><br>
-                        Tidak ada transaksi pada tanggal ini.
-                    </td>
-                </tr>
-                @endforelse
+                    @forelse($transaksi as $t)
+                    <tr>
+                        <td class="text-muted">{{ $t['waktu'] }}</td>
+                        <td>{{ $t['keterangan'] }}</td>
+                        <td class="small text-success">{{ $t['akun_debit'] }}</td>
+                        <td class="small text-danger">{{ $t['akun_kredit'] }}</td>
+                        <td class="text-center">
+                            @php
+                            $tipeBadge = match($t['tipe']) {
+                                'pemasukan'  => ['bg-success',          'Masuk'],
+                                'piutang'    => ['bg-primary',           'Piutang'],
+                                'honor'      => ['bg-danger',            'Honor Bayar'],
+                                'beban'      => ['bg-warning text-dark', 'Beban Honor'],
+                                'biaya_ops'  => ['bg-info text-dark',    'Operasional'],
+                                'distribusi' => ['bg-secondary',         'Distribusi'],
+                                default      => ['bg-light text-dark',   'Umum'],
+                            };
+                            @endphp
+                            <span class="badge {{ $tipeBadge[0] }}">{{ $tipeBadge[1] }}</span>
+                        </td>
+                        <td class="text-end fw-semibold text-success">
+                            {{ $t['debit'] > 0 ? number_format($t['debit'],0,',','.') : '-' }}
+                        </td>
+                        <td class="text-end fw-semibold text-danger">
+                            {{ $t['kredit'] > 0 ? number_format($t['kredit'],0,',','.') : '-' }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox" style="font-size:2rem"></i><br>
+                            Tidak ada transaksi pada tanggal ini.
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
                 @if($transaksi->count())
                 <tfoot class="table-dark">

@@ -69,16 +69,23 @@ class HonorController extends Controller
         abort_if($honor->asesor_id !== $asesor->id, 403);
         abort_unless($honor->bukti_transfer_path, 404, 'Bukti transfer belum tersedia.');
 
-        $disk = app()->environment('production')
-            ? 'public_html'
-            : 'private';
-
-        $path = Storage::disk($disk)->path($honor->bukti_transfer_path);
+        $path = storage_path('app/private/' . $honor->bukti_transfer_path);
         abort_unless(file_exists($path), 404, 'File tidak ditemukan.');
 
-        return $request->boolean('download')
-            ? response()->download($path, $honor->bukti_transfer_name)
-            : response()->file($path);
+        $ext     = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
+        $isImage = in_array($ext, ['jpg','jpeg','png']);
+        $filename = $honor->bukti_transfer_name ?? 'bukti-honor.' . $ext;
+
+        if ($request->boolean('download')) {
+            return response()->download($path, $filename);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $isImage
+                ? 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext)
+                : 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 
     /**

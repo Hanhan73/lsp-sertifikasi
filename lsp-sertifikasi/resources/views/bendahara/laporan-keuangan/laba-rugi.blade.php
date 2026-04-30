@@ -7,7 +7,7 @@
 
 @section('content')
 
-@include('bendahara.laporan-keuangan._filter', ['route' => 'bendahara.laporan-keuangan.laba-rugi', 'exportPdf' => true])
+@include('bendahara.laporan-keuangan._filter', ['route' => 'bendahara.laporan-keuangan.laba-rugi'])
 
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom">
@@ -30,10 +30,9 @@
             </tr>
             <tr>
                 <td class="ps-4">Pendapatan Sertifikasi Kompetensi</td>
-                <td class="text-end pe-3 fw-semibold">Rp {{ number_format($balance->pendapatan,0,',','.') }}</td>
+                <td class="text-end pe-3 fw-semibold">Rp {{ number_format($summary['pendapatan'],0,',','.') }}</td>
             </tr>
 
-            {{-- Breakdown per skema --}}
             @foreach($pendapatanSkema as $s)
             <tr class="text-muted" style="font-size:.82rem;">
                 <td class="ps-5"><i class="bi bi-dash me-1"></i>{{ $s->skema }}</td>
@@ -43,7 +42,7 @@
 
             <tr class="table-light fw-bold">
                 <td class="ps-3">Total Pendapatan</td>
-                <td class="text-end pe-3 text-success">Rp {{ number_format($balance->pendapatan,0,',','.') }}</td>
+                <td class="text-end pe-3 text-success">Rp {{ number_format($summary['pendapatan'],0,',','.') }}</td>
             </tr>
 
             {{-- BEBAN --}}
@@ -53,14 +52,13 @@
             </tr>
             <tr>
                 <td class="ps-4">Beban Honor Asesor</td>
-                <td class="text-end pe-3">Rp {{ number_format($balance->beban_honor,0,',','.') }}</td>
+                <td class="text-end pe-3">Rp {{ number_format($summary['beban_honor'],0,',','.') }}</td>
             </tr>
             <tr>
                 <td class="ps-4">Beban Operasional</td>
-                <td class="text-end pe-3">Rp {{ number_format($balance->beban_operasional,0,',','.') }}</td>
+                <td class="text-end pe-3">Rp {{ number_format($summary['beban_ops'],0,',','.') }}</td>
             </tr>
 
-            {{-- Breakdown ops --}}
             @foreach($bebanOpsDetail as $b)
             <tr class="text-muted" style="font-size:.82rem;">
                 <td class="ps-5"><i class="bi bi-dash me-1"></i>{{ $b->uraian }} ({{ $b->nama_penerima }})</td>
@@ -71,28 +69,30 @@
             <tr class="table-light fw-bold">
                 <td class="ps-3">Total Beban</td>
                 <td class="text-end pe-3 text-danger">
-                    Rp {{ number_format($balance->beban_honor + $balance->beban_operasional,0,',','.') }}
+                    Rp {{ number_format($summary['beban_honor'] + $summary['beban_ops'],0,',','.') }}
                 </td>
             </tr>
 
             {{-- SURPLUS --}}
             <tr><td colspan="2" class="py-1 bg-white border-0"></td></tr>
-            <tr class="{{ $balance->surplus >= 0 ? 'table-success' : 'table-danger' }} fw-bold fs-6">
-                <td class="ps-3">{{ $balance->surplus >= 0 ? 'SURPLUS' : 'DEFISIT' }} TAHUN BERJALAN</td>
-                <td class="text-end pe-3 {{ $balance->surplus >= 0 ? 'text-success' : 'text-danger' }}">
-                    Rp {{ number_format(abs($balance->surplus),0,',','.') }}
+            <tr class="{{ $summary['surplus'] >= 0 ? 'table-success' : 'table-danger' }} fw-bold fs-6">
+                <td class="ps-3">{{ $summary['surplus'] >= 0 ? 'SURPLUS' : 'DEFISIT' }} TAHUN BERJALAN</td>
+                <td class="text-end pe-3 {{ $summary['surplus'] >= 0 ? 'text-success' : 'text-danger' }}">
+                    Rp {{ number_format(abs($summary['surplus']),0,',','.') }}
                 </td>
             </tr>
 
-            @if($balance->distribusi_yayasan > 0)
+            @if($summary['distribusi'] > 0)
             <tr>
                 <td class="ps-4 text-muted">Distribusi ke Yayasan</td>
-                <td class="text-end pe-3 text-danger">(Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }})</td>
+                <td class="text-end pe-3 text-danger">
+                    (Rp {{ number_format($summary['distribusi'],0,',','.') }})
+                </td>
             </tr>
             <tr class="fw-bold">
                 <td class="ps-3">Surplus Setelah Distribusi</td>
-                <td class="text-end pe-3 {{ ($balance->surplus - $balance->distribusi_yayasan) >= 0 ? 'text-success' : 'text-danger' }}">
-                    Rp {{ number_format($balance->surplus - $balance->distribusi_yayasan,0,',','.') }}
+                <td class="text-end pe-3 {{ ($summary['surplus'] - $summary['distribusi']) >= 0 ? 'text-success' : 'text-danger' }}">
+                    Rp {{ number_format($summary['surplus'] - $summary['distribusi'],0,',','.') }}
                 </td>
             </tr>
             @endif

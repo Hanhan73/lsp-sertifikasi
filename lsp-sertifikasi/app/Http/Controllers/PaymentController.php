@@ -81,6 +81,14 @@ class PaymentController extends Controller
             ]
         );
  
+            try {
+                if (!\App\Models\JournalEntry::existsFor(\App\Models\Payment::class . '_piutang', $payment->id)) {
+                    app(\App\Services\JournalService::class)
+                        ->jurnalPiutangAsesi($payment->fresh(['asesmen.skema']));
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Gagal buat jurnal piutang asesi: ' . $e->getMessage());
+            }
         // Update status asesmen
         $asesmen->update(['status' => 'payment_pending']);
  

@@ -68,7 +68,7 @@
             <i class="bi bi-arrow-down-circle icon-bg"></i>
             <p>Total Pemasukan {{ $tahun }}</p>
             <h3>Rp {{ number_format($totalPemasukan, 0, ',', '.') }}</h3>
-            <small>{{ $breakdownJenis->total_transaksi ?? 0 }} transaksi terverifikasi</small>
+            <small>{{ $breakdownJenis->total_transaksi ?? 0 }} payment individu terverifikasi</small>
         </div>
     </div>
     <div class="col-sm-6 col-xl-3">

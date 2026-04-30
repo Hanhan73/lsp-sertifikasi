@@ -93,6 +93,7 @@ class TukAngsuranController extends Controller
         CollectivePayment::create([
             'invoice_id'         => $invoice->id,
             'tuk_id'             => $tuk->id,
+            'batch_id'           => $invoice->batch_ids[0] ?? null,
             'installment_number' => $count + 1,
             'amount'             => $request->amount,
             'due_date'           => $request->due_date,
@@ -138,4 +139,31 @@ class TukAngsuranController extends Controller
         return redirect()->route('tuk.invoice-kolektif.show', $payment->invoice_id)
             ->with('success', 'Bukti bayar angsuran ke-' . $payment->installment_number . ' berhasil diupload ulang.');
     }
+
+    public function downloadBukti(CollectivePayment $payment)
+{
+    $tuk = auth()->user()->tuk;
+    abort_if($payment->tuk_id !== $tuk->id, 403);
+    abort_if(!$payment->proof_path, 404);
+
+    $disk = Storage::disk('private');
+    abort_if(!$disk->exists($payment->proof_path), 404);
+
+    $ext      = strtolower(pathinfo($payment->proof_path, PATHINFO_EXTENSION));
+    $isImage  = in_array($ext, ['jpg', 'jpeg', 'png']);
+    $filename = 'bukti-angsuran-' . $payment->installment_number . '.' . $ext;
+
+    if (request()->has('download')) {
+        return $disk->download($payment->proof_path, $filename);
+    }
+
+    // Stream untuk preview (gambar/PDF inline)
+    return response()->file(
+        storage_path('app/private/' . $payment->proof_path),
+        [
+            'Content-Type'        => $isImage ? 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext) : 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]
+    );
+}
 }

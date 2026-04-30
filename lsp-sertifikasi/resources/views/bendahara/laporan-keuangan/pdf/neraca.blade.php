@@ -36,30 +36,33 @@ th,td{padding:6px 8px;border:1px solid #ccc}
 <tbody>
 <tr>
     <td>Kas</td><td class="val">{{ number_format($balance->kas,0,',','.') }}</td>
-    <td>Utang Honor Asesor</td><td class="val">{{ number_format($balance->utang_honor,0,',','.') }}</td>
+    <td>Utang Honor Asesor</td>
+    <td class="val">{{ number_format($utangHonor,0,',','.') }}</td>  {{-- ← ganti --}}
 </tr>
 <tr>
-    <td>Bank</td><td class="val">{{ number_format($balance->bank,0,',','.') }}</td>
-    <td>Utang Operasional</td><td class="val">{{ number_format($balance->utang_operasional,0,',','.') }}</td>
+    <td>Bank</td>
+    <td class="val">{{ number_format($bank,0,',','.') }}</td>
+    <td>Utang Operasional</td>
+    <td class="val">{{ number_format($balance->utang_operasional,0,',','.') }}</td>
 </tr>
 <tr>
-    <td>Piutang Asesi</td><td class="val">{{ number_format($balance->piutang_asesi,0,',','.') }}</td>
-    <td>Hutang Distribusi Yayasan</td><td class="val">{{ number_format($balance->hutang_distribusi,0,',','.') }}</td>
+    <td>Piutang Asesi</td>
+    <td class="val">{{ number_format($piutangAsesi,0,',','.') }}</td>
+    <td class="ekuitas-bg">Saldo Dana</td>
+    <td class="val ekuitas-bg">{{ number_format($balance->saldo_dana,0,',','.') }}</td>
 </tr>
 <tr>
     <td>Perlengkapan</td><td class="val">{{ number_format($balance->perlengkapan,0,',','.') }}</td>
-    <td class="ekuitas-bg">Saldo Dana</td><td class="val ekuitas-bg">{{ number_format($balance->saldo_dana,0,',','.') }}</td>
-</tr>
-<tr>
-    <td></td><td></td>
     <td class="ekuitas-bg">Surplus Tahun Berjalan</td>
-    <td class="val ekuitas-bg">{{ number_format($balance->surplus - $balance->distribusi_yayasan,0,',','.') }}</td>
+    <td class="val ekuitas-bg">
+        {{ number_format($surplus - ($neraca['distribusi'] ?? 0),0,',','.') }}  {{-- ← ganti --}}
+    </td>
 </tr>
 <tr>
     <td class="total-aset">Total Aset</td>
-    <td class="total-val">{{ number_format($balance->total_aset,0,',','.') }}</td>
+    <td class="total-val">{{ number_format($totalAset,0,',','.') }}</td>  {{-- ← ganti --}}
     <td class="total-aset">Total Kewajiban + Ekuitas</td>
-    <td class="total-val">{{ number_format($balance->total_kewajiban_ekuitas,0,',','.') }}</td>
+    <td class="total-val">{{ number_format($totalKewEkuitas,0,',','.') }}</td>  {{-- ← ganti --}}
 </tr>
 </tbody>
 </table>

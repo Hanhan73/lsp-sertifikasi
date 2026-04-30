@@ -33,20 +33,20 @@
     <div class="col-sm-4">
         <div class="card border-0 shadow-sm text-center p-3" style="border-left:4px solid #11998e !important;">
             <div class="text-muted small">Pendapatan</div>
-            <div class="fw-bold text-success fs-5">Rp {{ number_format($balance->pendapatan,0,',','.') }}</div>
+            <div class="fw-bold text-success fs-5">Rp {{ number_format($summary['pendapatan'],0,',','.') }}</div>
         </div>
     </div>
     <div class="col-sm-4">
         <div class="card border-0 shadow-sm text-center p-3" style="border-left:4px solid #f5576c !important;">
             <div class="text-muted small">Total Beban</div>
-            <div class="fw-bold text-danger fs-5">Rp {{ number_format($balance->beban_honor + $balance->beban_operasional,0,',','.') }}</div>
+            <div class="fw-bold text-danger fs-5">Rp {{ number_format($summary['beban_honor'] + $summary['beban_ops'],0,',','.') }}</div>
         </div>
     </div>
     <div class="col-sm-4">
         <div class="card border-0 shadow-sm text-center p-3" style="border-left:4px solid #f7971e !important;">
             <div class="text-muted small">Surplus / Defisit</div>
-            <div class="fw-bold fs-5 {{ $balance->surplus >= 0 ? 'text-success' : 'text-danger' }}">
-                Rp {{ number_format($balance->surplus,0,',','.') }}
+            <div class="fw-bold fs-5 {{ $summary['surplus'] >= 0 ? 'text-success' : 'text-danger' }}">
+                Rp {{ number_format($summary['surplus'],0,',','.') }}
             </div>
         </div>
     </div>

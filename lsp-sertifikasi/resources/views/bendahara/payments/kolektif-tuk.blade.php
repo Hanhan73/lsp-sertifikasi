@@ -68,6 +68,7 @@
                             <input type="checkbox" id="checkAll" class="form-check-input">
                             @endif
                         </th>
+                        <th>Batch ID</th>
                         <th>Skema</th>
                         <th class="text-center">Asesi</th>
                         <th>Status Invoice</th>
@@ -81,13 +82,17 @@
                         <td class="text-center">
                             @if($bisaInvoice)
                             <input type="checkbox" name="batch_ids[]"
-                                   value="{{ $b->collective_batch_id }}"
-                                   class="form-check-input batch-check"
-                                   data-skema="{{ $b->skema_names->implode(', ') }}"
-                                   data-jumlah="{{ $b->jumlah_asesi }}">
+                                value="{{ $b->collective_batch_id }}"
+                                class="form-check-input batch-check"
+                                data-batch-id="{{ $b->collective_batch_id }}"
+                                data-skema="{{ $b->skema_names->implode(', ') }}"
+                                data-jumlah="{{ $b->jumlah_asesi }}">
                             @else
                             <i class="bi bi-check-circle-fill text-success" title="Sudah ada invoice"></i>
                             @endif
+                        </td>
+                        <td>
+                            {{ $b->collective_batch_id }}
                         </td>
                         <td>
                             @foreach($b->skema_names as $sn)
@@ -265,6 +270,7 @@ if (btnBulk) {
         let html = '<ul class="list-group">';
         checked.forEach(cb => {
             html += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>${cb.dataset.batchId}</span>
                 <span>${cb.dataset.skema}</span>
                 <span class="badge bg-primary">${cb.dataset.jumlah} asesi</span>
             </li>`;

@@ -112,6 +112,12 @@ class HonorAsesorController extends Controller
                 'dibuat_oleh'      => Auth::id(),
             ]);
 
+            try {
+                app(JournalService::class)->jurnalHonorDibuat($honor->fresh(['asesor']));
+            } catch (\Exception $e) {
+                \Log::warning('Gagal buat jurnal honor dibuat: ' . $e->getMessage());
+            }
+
             foreach ($details as $d) {
                 HonorPaymentDetail::create(array_merge(['honor_payment_id' => $honor->id], $d));
             }
@@ -198,16 +204,23 @@ class HonorAsesorController extends Controller
     {
         abort_unless($honor->bukti_transfer_path, 404, 'Bukti transfer belum diupload.');
 
-        $disk = app()->environment('production')
-            ? 'public_html'
-            : 'private';
-
-        $path = Storage::disk($disk)->path($honor->bukti_transfer_path);
+        $path = storage_path('app/private/' . $honor->bukti_transfer_path);
         abort_unless(file_exists($path), 404, 'File tidak ditemukan.');
 
-        return $request->boolean('download')
-            ? response()->download($path, $honor->bukti_transfer_name)
-            : response()->file($path);
+        $ext     = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
+        $isImage = in_array($ext, ['jpg','jpeg','png']);
+        $filename = $honor->bukti_transfer_name ?? 'bukti-honor.' . $ext;
+
+        if ($request->boolean('download')) {
+            return response()->download($path, $filename);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => $isImage
+                ? 'image/' . ($ext === 'jpg' ? 'jpeg' : $ext)
+                : 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
     }
 
     /**

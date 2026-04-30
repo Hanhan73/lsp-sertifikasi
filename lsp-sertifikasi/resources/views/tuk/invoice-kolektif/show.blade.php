@@ -32,12 +32,12 @@
 
 {{-- Stat cards --}}
 @php
-    $totalLunas  = $payments->where('status','verified')->sum('amount');
+    $totalLunas   = $payments->where('status','verified')->sum('amount');
     $totalPending = $payments->where('status','pending')->sum('amount');
-    $sisaTagihan = $invoice->total_amount - $totalLunas;
-    $jumlahAng   = $payments->count();
-    $pct         = $invoice->total_amount > 0 ? min(100, round($totalLunas / $invoice->total_amount * 100)) : 0;
-    $bisaTambah  = $jumlahAng < 3 && $sisaTagihan > 0 && $invoice->status !== 'draft';
+    $sisaTagihan  = $invoice->total_amount - $totalLunas;
+    $jumlahAng    = $payments->count();
+    $pct          = $invoice->total_amount > 0 ? min(100, round($totalLunas / $invoice->total_amount * 100)) : 0;
+    $bisaTambah   = $jumlahAng < 3 && $sisaTagihan > 0 && $invoice->status !== 'draft';
 @endphp
 
 <div class="row g-3 mb-4">
@@ -172,8 +172,12 @@
         </p>
         @else
         @foreach($payments as $cp)
-        <div class="card border mb-3
-            {{ $cp->status === 'verified' ? 'border-success' : ($cp->status === 'rejected' ? 'border-danger' : 'border-warning') }}">
+        @php
+            $ext     = strtolower(pathinfo($cp->proof_path ?? '', PATHINFO_EXTENSION));
+            $isImage = in_array($ext, ['jpg','jpeg','png']);
+            $fileUrl = $cp->proof_path ? route('tuk.invoice-kolektif.bukti', $cp) : null;
+        @endphp
+        <div class="card border mb-3 {{ $cp->status === 'verified' ? 'border-success' : ($cp->status === 'rejected' ? 'border-danger' : 'border-warning') }}">
             <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">
                     Angsuran ke-{{ $cp->installment_number }}
@@ -182,64 +186,131 @@
                 </span>
                 <span class="badge bg-{{ $cp->status_badge }}">{{ $cp->status_label }}</span>
             </div>
-            <div class="card-body py-2">
-                <div class="row g-2 align-items-start">
+            <div class="card-body py-3">
+                <div class="row g-3 align-items-start">
+
+                    {{-- Kolom 1: Info --}}
                     <div class="col-md-4">
                         @if($cp->due_date)
-                        <small class="text-muted d-block">Jatuh Tempo:</small>
-                        <div>{{ $cp->due_date->translatedFormat('d M Y') }}</div>
+                        <small class="text-muted d-block">Tanggal Transfer:</small>
+                        <div class="mb-1">{{ $cp->due_date->translatedFormat('d M Y') }}</div>
                         @endif
                         @if($cp->notes)
-                        <small class="text-muted">Catatan: {{ $cp->notes }}</small>
+                        <small class="text-muted d-block">Catatan:</small>
+                        <div class="small mb-1">{{ $cp->notes }}</div>
                         @endif
                         <small class="text-muted d-block mt-1">
                             Diupload: {{ $cp->proof_uploaded_at?->translatedFormat('d M Y H:i') ?? '-' }}
                         </small>
                     </div>
+
+                    {{-- Kolom 2: Status verifikasi --}}
                     <div class="col-md-4">
                         @if($cp->status === 'verified')
                         <div class="text-success">
-                            <i class="bi bi-check-circle-fill me-1"></i> Terverifikasi<br>
+                            <i class="bi bi-check-circle-fill me-1"></i>
+                            <strong>Terverifikasi</strong><br>
                             <small>{{ $cp->verified_at?->translatedFormat('d M Y') }}</small>
                         </div>
                         @elseif($cp->status === 'rejected')
                         <div class="text-danger">
-                            <i class="bi bi-x-circle-fill me-1"></i> Ditolak<br>
+                            <i class="bi bi-x-circle-fill me-1"></i>
+                            <strong>Ditolak</strong><br>
                             @if($cp->rejection_notes)
                             <small>Alasan: {{ $cp->rejection_notes }}</small>
                             @endif
                         </div>
                         @else
                         <div class="text-warning">
-                            <i class="bi bi-clock me-1"></i> Menunggu verifikasi bendahara
+                            <i class="bi bi-clock me-1"></i>
+                            Menunggu verifikasi bendahara
                         </div>
                         @endif
                     </div>
+
+                   {{-- Kolom 3: Bukti bayar --}}
                     <div class="col-md-4">
                         @if($cp->status === 'rejected')
-                        {{-- Upload ulang kalau ditolak --}}
                         <form action="{{ route('tuk.invoice-kolektif.upload-bukti', $cp) }}"
-                              method="POST" enctype="multipart/form-data">
+                            method="POST" enctype="multipart/form-data">
                             @csrf
                             <label class="form-label small fw-semibold mb-1 text-danger">
-                                Upload Ulang Bukti Bayar
+                                <i class="bi bi-arrow-clockwise me-1"></i>Upload Ulang Bukti
                             </label>
                             <div class="input-group input-group-sm">
                                 <input type="file" name="proof" class="form-control form-control-sm"
-                                       accept=".jpg,.jpeg,.png,.pdf" required>
+                                    accept=".jpg,.jpeg,.png,.pdf" required>
                                 <button type="submit" class="btn btn-danger btn-sm">
                                     <i class="bi bi-upload"></i>
                                 </button>
                             </div>
                             <small class="text-muted">JPG/PNG/PDF, maks 5MB</small>
                         </form>
-                        @elseif($cp->proof_path)
-                        <a href="{{ Storage::url($cp->proof_path) }}" target="_blank"
-                           class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-eye"></i> Lihat Bukti
-                        </a>
+
+                        @elseif($fileUrl)
+                        @if($isImage)
+                        {{-- Inline preview + klik zoom --}}
+                        <div class="border rounded-3 overflow-hidden">
+                            <div style="cursor:zoom-in;"
+                                onclick="bukaZoomBukti('{{ $fileUrl }}', 'Bukti Angsuran ke-{{ $cp->installment_number }}', '{{ $fileUrl }}?download=1')">
+                                <img src="{{ $fileUrl }}"
+                                    class="w-100"
+                                    style="max-height:160px;object-fit:cover;transition:opacity .2s;"
+                                    onmouseover="this.style.opacity='.85'"
+                                    onmouseout="this.style.opacity='1'"
+                                    alt="Bukti Angsuran ke-{{ $cp->installment_number }}">
+                            </div>
+                            <div class="px-2 py-1 bg-light d-flex align-items-center justify-content-between"
+                                style="font-size:.75rem;">
+                                <span class="text-muted">
+                                    <i class="bi bi-image me-1"></i>Bukti ke-{{ $cp->installment_number }}
+                                </span>
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-outline-secondary py-0 px-1"
+                                            style="font-size:.7rem;"
+                                            onclick="bukaZoomBukti('{{ $fileUrl }}', 'Bukti Angsuran ke-{{ $cp->installment_number }}', '{{ $fileUrl }}?download=1')"
+                                            title="Zoom">
+                                        <i class="bi bi-zoom-in"></i>
+                                    </button>
+                                    <a href="{{ $fileUrl }}?download=1"
+                                    class="btn btn-outline-primary py-0 px-1"
+                                    style="font-size:.7rem;"
+                                    title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        @else
+                        {{-- PDF --}}
+                        <div class="d-flex align-items-center gap-2 p-2 border rounded-3"
+                            style="background:#fff5f5">
+                            <i class="bi bi-file-earmark-pdf text-danger fs-3 flex-shrink-0"></i>
+                            <div class="flex-grow-1">
+                                <div class="small fw-semibold">Bukti Bayar (PDF)</div>
+                                <small class="text-muted">Angsuran ke-{{ $cp->installment_number }}</small>
+                            </div>
+                            <div class="d-flex flex-column gap-1">
+                                <a href="{{ $fileUrl }}" target="_blank"
+                                class="btn btn-sm btn-outline-secondary py-0 px-2"
+                                style="font-size:.75rem;">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ $fileUrl }}?download=1"
+                                class="btn btn-sm btn-outline-primary py-0 px-2"
+                                style="font-size:.75rem;">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                        @endif
+
+                        @else
+                        <span class="text-muted small fst-italic">Belum ada bukti bayar</span>
                         @endif
                     </div>
+
                 </div>
             </div>
         </div>
@@ -308,11 +379,16 @@
                     </label>
                     <div class="input-group">
                         <span class="input-group-text">Rp</span>
-                        <input type="number" name="amount" class="form-control"
-                               max="{{ $sisaTagihan }}" min="1" step="1000"
-                               value="{{ $sisaTagihan }}" required>
+                        <input type="text" id="amount_display"
+                               class="form-control"
+                               value="{{ number_format($sisaTagihan, 0, ',', '.') }}"
+                               placeholder="0"
+                               inputmode="numeric"
+                               autocomplete="off">
+                        <input type="hidden" name="amount" id="amount_hidden"
+                               value="{{ $sisaTagihan }}">
                     </div>
-                    <div class="form-text">Maks. Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
+                    <div class="form-text">Maks: Rp {{ number_format($sisaTagihan, 0, ',', '.') }}</div>
                 </div>
 
                 <div class="mb-3">
@@ -347,4 +423,93 @@
 </div>
 @endif
 
+{{-- Modal Zoom Bukti --}}
+<div class="modal fade" id="modalZoomBukti" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 bg-transparent shadow-none">
+            <div class="modal-header border-0 pb-1 px-0">
+                <span class="text-white fw-semibold" id="zoomBuktiLabel" style="font-size:.9rem;"></span>
+                <button type="button" class="btn-close btn-close-white ms-auto"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="zoomBuktiImg" src="" alt="Bukti Bayar"
+                     class="img-fluid rounded-3 shadow"
+                     style="max-height:85vh;object-fit:contain;">
+            </div>
+            <div class="modal-footer border-0 justify-content-center pt-2">
+                <a id="zoomBuktiDownload" href="#"
+                   class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-download me-1"></i> Unduh
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary"
+                        data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#modalZoomBukti .modal-dialog { max-width: 90vw; }
+#modalZoomBukti { background: rgba(0,0,0,.85); }
+</style>
+
 @endsection
+
+@push('scripts')
+<script>
+// ── Format rupiah otomatis ────────────────────────────────────────────────
+const amountDisplay = document.getElementById('amount_display');
+const amountHidden  = document.getElementById('amount_hidden');
+const maxAmount     = {{ $sisaTagihan }};
+
+if (amountDisplay) {
+    amountDisplay.addEventListener('input', function () {
+        let raw = this.value.replace(/\D/g, '');
+        let num = parseInt(raw) || 0;
+        if (num > maxAmount) num = maxAmount;
+        this.value         = num.toLocaleString('id-ID');
+        amountHidden.value = num;
+    });
+
+    amountDisplay.addEventListener('focus', function () {
+        let raw = this.value.replace(/\D/g, '');
+        this.value = raw ? parseInt(raw).toLocaleString('id-ID') : '';
+    });
+
+    amountDisplay.addEventListener('blur', function () {
+        let num = parseInt(amountHidden.value) || 0;
+        this.value = num.toLocaleString('id-ID');
+    });
+}
+
+// ── Zoom bukti bayar ─────────────────────────────────────────────────────
+const modalZoom     = new bootstrap.Modal(document.getElementById('modalZoomBukti'));
+const zoomImg       = document.getElementById('zoomBuktiImg');
+const zoomDownload  = document.getElementById('zoomBuktiDownload');
+const zoomLabel     = document.getElementById('zoomBuktiLabel');
+
+document.querySelectorAll('.bukti-preview').forEach(function (img) {
+    img.addEventListener('click', function () {
+        const url      = this.dataset.url;
+        const filename = this.dataset.filename;
+
+        zoomImg.src              = url;
+        zoomDownload.href        = url + '?download=1';
+        zoomDownload.download    = filename;
+        zoomLabel.textContent    = filename;
+
+        modalZoom.show();
+    });
+});
+
+function bukaZoomBukti(src, label, downloadUrl) {
+    document.getElementById('zoomBuktiImg').src         = src;
+    document.getElementById('zoomBuktiLabel').textContent = label;
+    document.getElementById('zoomBuktiDownload').href   = downloadUrl;
+    bootstrap.Modal.getOrCreateInstance(
+        document.getElementById('modalZoomBukti')
+    ).show();
+}
+</script>
+@endpush

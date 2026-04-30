@@ -43,7 +43,7 @@
             <i class="bi bi-info-circle me-1"></i>
             Isian di bawah adalah data yang <strong>tidak bisa dihitung otomatis</strong> dari sistem —
             seperti kas fisik, saldo bank, aset perlengkapan, dan kewajiban di luar sistem.
-            Data lain seperti piutang asesi, utang honor, dan surplus dihitung otomatis.
+            Data lain seperti pendapatan, beban, dan surplus dihitung otomatis dari jurnal.
         </div>
 
         <form action="{{ route('bendahara.laporan-keuangan.update-saldo') }}" method="POST">
@@ -65,15 +65,37 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Bank (Saldo Rekening)</label>
+                <label class="form-label">Saldo Awal Bank <span class="text-danger">*</span></label>
                 <div class="input-group">
                     <span class="input-group-text">Rp</span>
-                    <input type="text" class="form-control" id="bank_display"
-                           value="{{ number_format($balance->bank, 0, ',', '.') }}"
-                           placeholder="0" inputmode="numeric">
-                    <input type="hidden" name="bank" id="bank" value="{{ $balance->bank }}">
+                    <input type="text" class="form-control" id="saldo_awal_bank_display"
+                        value="{{ number_format($balance->saldo_awal_bank ?? 0, 0, ',', '.') }}"
+                        placeholder="0" inputmode="numeric">
+                    <input type="hidden" name="saldo_awal_bank" id="saldo_awal_bank"
+                        value="{{ $balance->saldo_awal_bank ?? 0 }}">
                 </div>
-                <div class="form-text">Saldo rekening bank LSP.</div>
+                <div class="form-text">
+                    Saldo rekening bank LSP <strong>sebelum sistem ini digunakan</strong>.
+                    Diisi sekali saat setup awal, tidak perlu diubah lagi.
+                </div>
+            </div>
+
+            {{-- Info saldo bank otomatis --}}
+            @php
+                $mutasiBankInfo = \App\Models\JournalEntryLine::whereHas('akun', fn($q) => $q->where('kode','1-002'))
+                    ->whereHas('entry', fn($q) => $q->whereYear('tanggal', $tahun))
+                    ->selectRaw('SUM(debit) as td, SUM(kredit) as tk')->first();
+                $mutasiInfo = (int)($mutasiBankInfo->td ?? 0) - (int)($mutasiBankInfo->tk ?? 0);
+                $saldoBankOtomatis = ($balance->saldo_awal_bank ?? 0) + $mutasiInfo;
+            @endphp
+            <div class="alert alert-secondary small py-2 mb-4">
+                <i class="bi bi-info-circle me-1"></i>
+                Saldo bank otomatis tahun {{ $tahun }}:
+                <strong>Rp {{ number_format($saldoBankOtomatis, 0, ',', '.') }}</strong>
+                <span class="text-muted">
+                    (saldo awal Rp {{ number_format($balance->saldo_awal_bank ?? 0,0,',','.') }}
+                    + mutasi jurnal Rp {{ number_format($mutasiInfo,0,',','.') }})
+                </span>
             </div>
 
             <div class="mb-4">
@@ -116,38 +138,76 @@
                 <div class="form-text">Akumulasi saldo dana LSP dari tahun-tahun sebelumnya.</div>
             </div>
 
-            {{-- Auto-computed (readonly info) --}}
+            {{-- Auto-computed dari jurnal (readonly info) --}}
             <div class="card bg-light border-0 mb-4">
                 <div class="card-body">
-                    <h6 class="fw-semibold mb-3 text-muted"><i class="bi bi-cpu me-1"></i> Dihitung Otomatis Sistem</h6>
+                    <h6 class="fw-semibold mb-1 text-muted">
+                        <i class="bi bi-cpu me-1"></i> Dihitung Otomatis dari Jurnal
+                    </h6>
+                    <p class="text-muted mb-3" style="font-size:.78rem;">
+                        Angka di bawah bersumber dari <code>journal_entry_lines</code>.
+                        Pastikan jurnal sudah ter-inject sebelum membaca laporan.
+                    </p>
                     <div class="row g-2" style="font-size:.875rem;">
                         <div class="col-6">
-                            <span class="text-muted">Piutang Asesi:</span>
-                            <strong class="float-end text-primary">Rp {{ number_format($balance->piutang_asesi,0,',','.') }}</strong>
-                        </div>
-                        <div class="col-6">
-                            <span class="text-muted">Utang Honor Asesor:</span>
-                            <strong class="float-end text-danger">Rp {{ number_format($balance->utang_honor,0,',','.') }}</strong>
-                        </div>
-                        <div class="col-6">
-                            <span class="text-muted">Pendapatan:</span>
-                            <strong class="float-end text-success">Rp {{ number_format($balance->pendapatan,0,',','.') }}</strong>
-                        </div>
-                        <div class="col-6">
-                            <span class="text-muted">Beban Honor:</span>
-                            <strong class="float-end text-danger">Rp {{ number_format($balance->beban_honor,0,',','.') }}</strong>
-                        </div>
-                        <div class="col-6">
-                            <span class="text-muted">Beban Operasional:</span>
-                            <strong class="float-end text-danger">Rp {{ number_format($balance->beban_operasional,0,',','.') }}</strong>
-                        </div>
-                        <div class="col-6">
-                            <span class="text-muted">Surplus/Defisit:</span>
-                            <strong class="float-end {{ $balance->surplus >= 0 ? 'text-success' : 'text-danger' }}">
-                                Rp {{ number_format($balance->surplus,0,',','.') }}
+                            <span class="text-muted">Pendapatan (4-001):</span>
+                            <strong class="float-end text-success">
+                                Rp {{ number_format($summary['pendapatan'],0,',','.') }}
                             </strong>
                         </div>
+                        <div class="col-6">
+                            <span class="text-muted">Beban Honor (5-001):</span>
+                            <strong class="float-end text-danger">
+                                Rp {{ number_format($summary['beban_honor'],0,',','.') }}
+                            </strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Beban Operasional (5-002):</span>
+                            <strong class="float-end text-danger">
+                                Rp {{ number_format($summary['beban_ops'],0,',','.') }}
+                            </strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Distribusi Yayasan:</span>
+                            <strong class="float-end text-warning">
+                                Rp {{ number_format($summary['distribusi'],0,',','.') }}
+                            </strong>
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-2">
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Piutang Asesi (belum lunas):</span>
+                            <strong class="float-end text-primary">
+                                Rp {{ number_format($balance->piutang_asesi,0,',','.') }}
+                            </strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-muted">Utang Honor (menunggu):</span>
+                            <strong class="float-end text-danger">
+                                Rp {{ number_format(\App\Models\HonorPayment::where('status','menunggu_pembayaran')->whereYear('created_at',$tahun)->sum('total'),0,',','.') }}
+                            </strong>
+                        </div>
+                        <div class="col-12">
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-semibold">Surplus / Defisit Tahun {{ $tahun }}:</span>
+                                <strong class="{{ $summary['surplus'] >= 0 ? 'text-success' : 'text-danger' }} fs-6">
+                                    Rp {{ number_format($summary['surplus'],0,',','.') }}
+                                </strong>
+                            </div>
+                        </div>
                     </div>
+
+                    {{-- Warning kalau jurnal masih kosong --}}
+                    @if($summary['pendapatan'] == 0 && $summary['beban_honor'] == 0)
+                    <div class="alert alert-warning small mt-3 mb-0">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Belum ada jurnal untuk tahun {{ $tahun }}.
+                        Gunakan <a href="{{ route('debug.journal') }}" target="_blank">Journal Testing Lab</a>
+                        untuk men-trigger jurnal dari transaksi yang ada.
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -170,7 +230,6 @@
 
 @push('scripts')
 <script>
-// Format rupiah input
 function setupRupiahInput(displayId, hiddenId) {
     const display = document.getElementById(displayId);
     const hidden  = document.getElementById(hiddenId);
@@ -180,6 +239,7 @@ function setupRupiahInput(displayId, hiddenId) {
         this.value = raw ? raw.toLocaleString('id-ID') : '';
     });
 }
+setupRupiahInput('saldo_awal_bank_display', 'saldo_awal_bank');
 setupRupiahInput('kas_display', 'kas');
 setupRupiahInput('bank_display', 'bank');
 setupRupiahInput('perlengkapan_display', 'perlengkapan');

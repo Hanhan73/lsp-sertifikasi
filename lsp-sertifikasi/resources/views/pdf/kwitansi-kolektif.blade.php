@@ -4,188 +4,283 @@
 <meta charset="UTF-8">
 <title>Kwitansi {{ $invoice->invoice_number }}</title>
 <style>
-@page { size: A4; margin: 0; }
+@page { size: A4 landscape; margin: 0; }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
     font-family: 'DejaVu Sans', Arial, sans-serif;
     font-size: 11pt;
     color: #000;
-    padding: 1.5cm 2cm;
+    padding: 28px 36px;
 }
 
-/* ── KOP ─────────────────────────────────────────────────────── */
-.kop-img    { width: 100%; height: auto; display: block; }
-.kop-border { border-bottom: 3pt solid #000; margin-bottom: 16pt; }
+.page      { page-break-after: always; }
+.page-last { page-break-after: auto; }
 
-/* ── Kotak kwitansi ──────────────────────────────────────────── */
-.kwitansi-box {
-    border: 1.5pt solid #000;
-    padding: 20pt 24pt;
-    margin-top: 10pt;
+/* ── Frame kwitansi ──────────────────────────────────────────── */
+.kwitansi-frame {
+    border: 2px solid #000;
+    padding: 20px 24px;
 }
 
-/* ── Nomor kwitansi ──────────────────────────────────────────── */
-.no-kwitansi { font-size: 10pt; margin-bottom: 14pt; }
+/* ── Layout utama: logo | konten ─────────────────────────────── */
+.main-table { width: 100%; border-collapse: collapse; }
+.col-logo {
+    width: 90px;
+    vertical-align: top;
+    padding-top: 2px;
+    padding-right: 18px;
+}
+.col-logo img {
+    width: 130px;
+    height: 130px;
+    object-fit: contain;
+}
+.col-content { vertical-align: top; }
 
 /* ── Baris data ──────────────────────────────────────────────── */
-.data-table { width: 100%; border: none; border-collapse: collapse; }
-.data-table td { padding: 3pt 0; font-size: 11pt; vertical-align: top; }
-.data-label { width: 130pt; }
-.data-colon { width: 12pt; }
-.data-value { }
+.body-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+.body-table td { padding: 4px 3px; vertical-align: top; font-size: 11pt; }
+.col-label  { width: 148px; }
+.col-colon  { width: 12px; }
 
-/* ── Jumlah uang box ─────────────────────────────────────────── */
-.jumlah-box {
-    border: 1pt solid #000;
-    padding: 5pt 10pt;
+/* ── Terbilang box ───────────────────────────────────────────── */
+.terbilang-box {
+    display: inline-block;
+    border: 1.5px solid #555;
+    background-color: #d7e7f1;
+    padding: 3px 10px;
     font-style: italic;
     font-weight: bold;
-    font-size: 11.5pt;
-    display: inline-block;
-    min-width: 260pt;
+    font-size: 11pt;
 }
 
-/* ── TTD ─────────────────────────────────────────────────────── */
-.ttd-table { width: 100%; border: none; border-collapse: collapse; margin-top: 24pt; }
-.ttd-left  { width: 50%; vertical-align: top; font-size: 10.5pt; }
-.ttd-right {
-    width: 50%;
-    text-align: center;
-    vertical-align: top;
-    font-size: 10.5pt;
-}
-.ttd-box  { height: 70pt; text-align: center; }
-.ttd-box img { max-height: 65pt; max-width: 160pt; }
-.ttd-name {
-    border-top: 1pt solid #000;
+/* ── Item list ───────────────────────────────────────────────── */
+.detail-list { width: 100%; border-collapse: collapse; margin: 5px 0 3px 0; }
+.detail-list td { padding: 2px 3px; font-size: 11pt; vertical-align: top; }
+.detail-list .no-col { width: 22px; }
+
+/* ── Footer TTD ──────────────────────────────────────────────── */
+.footer-table { width: 100%; border-collapse: collapse; margin-top: 28px; }
+.footer-table td { vertical-align: top; }
+.col-jumlah { width: 46%; padding-top: 10px; }
+.col-ttd    { width: 54%; text-align: center; }
+
+.jumlah-label { font-style: italic; font-size: 11pt; margin-bottom: 5px; }
+.jumlah-box {
     display: inline-block;
-    min-width: 150pt;
-    padding-top: 3pt;
+    border: 2px solid #000;
+    background-color: #d7e7f1;
+    padding: 5px 16px;
     font-weight: bold;
+    font-size: 12.5pt;
+    min-width: 150px;
+    text-align: center;
 }
+
+.ttd-garis {
+    border-bottom: 1px solid #000;
+    width: 200px;
+    margin: 0 auto 4px;
+}
+
+/* ── Halaman 2 ───────────────────────────────────────────────── */
+.bukti-judul { font-size: 13pt; font-weight: bold; margin-bottom: 16px; }
 </style>
 </head>
 <body>
 
 @php
-    \Carbon\Carbon::setLocale('id');
+\Carbon\Carbon::setLocale('id');
 
-    $kopPath = public_path('images/kop_surat.png');
-    $kopSrc  = file_exists($kopPath)
-        ? 'data:image/png;base64,' . base64_encode(file_get_contents($kopPath))
-        : null;
+$kopPath = public_path('images/icon-lsp.png');
+$kopSrc  = file_exists($kopPath) ? $kopPath : null;
 
-    // Versi berisi: tampilkan TTD + stempel
-    $ttdSrc     = null;
-    $stempelSrc = null;
-    if ($versi === 'berisi') {
-        $ttdPath = storage_path('app/private/mankeu/ttd.png');
-        if (file_exists($ttdPath)) {
-            $ttdSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($ttdPath));
-        }
-        $stempelPath = storage_path('app/private/mankeu/stempel.png');
-        if (file_exists($stempelPath)) {
-            $stempelSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($stempelPath));
-        }
+// TTD + stempel hanya untuk versi berisi
+$ttdSrc     = null;
+$stempelSrc = null;
+if ($versi === 'berisi') {
+    $ttdPath = storage_path('app/private/mankeu/ttd.png');
+    if (file_exists($ttdPath)) {
+        $ttdSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($ttdPath));
     }
-
-    // Tentukan nominal & keterangan angsuran
-    if ($collectivePayment) {
-        $nominal      = $collectivePayment->amount;
-        $angsuranInfo = ' (Angsuran ke-' . $collectivePayment->installment_number . ')';
-        $tanggal      = $collectivePayment->verified_at ?? $collectivePayment->updated_at ?? now();
-    } else {
-        $nominal      = $invoice->total_amount;
-        $angsuranInfo = '';
-        $tanggal      = $invoice->issued_at ?? now();
+    $stempelPath = storage_path('app/private/mankeu/stempel.png');
+    if (file_exists($stempelPath)) {
+        $stempelSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($stempelPath));
     }
+}
 
-    $terbilang = \App\Helpers\TerbilangHelper::convert((int) $nominal);
+// Nominal & tanggal
+if ($collectivePayment) {
+    $nominal      = $collectivePayment->amount;
+    $angsuranInfo = ' (Angsuran ke-' . $collectivePayment->installment_number . ')';
+    $tanggal      = $collectivePayment->verified_at ?? $collectivePayment->updated_at ?? now();
+} else {
+    $nominal      = $invoice->total_amount;
+    $angsuranInfo = '';
+    $tanggal      = $invoice->issued_at ?? now();
+}
+
+$terbilang = ucwords(\App\Helpers\TerbilangHelper::convert((int) $nominal)) . ' Rupiah';
+$adaBukti  = $collectivePayment && $collectivePayment->proof_path;
 @endphp
 
-{{-- ── KOP ────────────────────────────────────────────────────── --}}
-@if($kopSrc)
-<div class="kop-border">
-    <img src="{{ $kopSrc }}" class="kop-img" alt="Kop LSP KAP">
+{{-- ═══════════════════════════════════════════════════════════ --}}
+{{-- HALAMAN 1 — Kwitansi                                       --}}
+{{-- ═══════════════════════════════════════════════════════════ --}}
+<div class="{{ $adaBukti ? 'page' : 'page-last' }}">
+<div class="kwitansi-frame">
+<table class="main-table">
+<tr>
+
+    {{-- Logo --}}
+    <td class="col-logo">
+        @if($kopSrc)
+        <img src="{{ $kopSrc }}" alt="Logo LSP KAP">
+        @endif
+    </td>
+
+    {{-- Konten --}}
+    <td class="col-content">
+        <table class="body-table">
+            <tr>
+                <td class="col-label">No.</td>
+                <td class="col-colon">:</td>
+                <td>{{ $invoice->invoice_number }}{{ $angsuranInfo }}</td>
+            </tr>
+            <tr>
+                <td class="col-label">Telah diterima dari</td>
+                <td class="col-colon">:</td>
+                <td><strong>{{ $invoice->tuk->name ?? $invoice->recipient_name }}</strong></td>
+            </tr>
+            <tr>
+                <td class="col-label" style="padding-top:5px;">Uang sejumlah</td>
+                <td class="col-colon" style="padding-top:5px;">:</td>
+                <td style="padding-top:5px;">
+                    <span class="terbilang-box">{{ $terbilang }}</span>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-label" style="padding-top:8px;">Untuk pembayaran</td>
+                <td class="col-colon" style="padding-top:8px;">:</td>
+                <td style="padding-top:8px;">
+                    @if($invoice->notes_kwitansi)
+                    <div style="margin-bottom:6px;">{{ $invoice->notes_kwitansi }}</div>
+                    @endif
+                    <table class="detail-list">
+                        @foreach($invoice->items as $idx => $item)
+                        <tr>
+                            <td class="no-col">{{ $idx + 1 }}.</td>
+                            <td>
+                                {{ $item['skema_name'] }},
+                                sebanyak {{ $item['jumlah'] }} orang
+                                @Rp. {{ number_format($item['harga_satuan'], 0, ',', '.') }}
+                                = Rp. {{ number_format($item['subtotal'], 0, ',', '.') }},-
+                            </td>
+                        </tr>
+                        @endforeach
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        {{-- Footer: Jumlah + TTD --}}
+        <table class="footer-table">
+            <tr>
+                <td class="col-jumlah">
+                    <div class="jumlah-label"><em>Jumlah :</em></div>
+                    <div class="jumlah-box">Rp {{ number_format($nominal, 0, ',', '.') }}</div>
+                </td>
+                <td class="col-ttd">
+                    <div style="font-size:11pt;margin-bottom:3px;">
+                        Jakarta, {{ $tanggal->translatedFormat('d F Y') }}
+                    </div>
+                    <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
+
+                    {{-- TTD + Stempel --}}
+                    <div style="height:72px;text-align:center;position:relative;">
+                        @if($ttdSrc)
+                        <img src="{{ $ttdSrc }}"
+                             style="max-height:68px;max-width:160px;position:absolute;left:50%;transform:translateX(-50%);">
+                        @endif
+                        @if($stempelSrc)
+                        <img src="{{ $stempelSrc }}"
+                             style="max-height:60px;max-width:60px;position:absolute;left:55%;top:4px;">
+                        @endif
+                    </div>
+
+                    <div style="font-size:11pt;font-weight:bold;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
+                    <div style="font-size:10pt;">Manajer Keuangan</div>
+                </td>
+            </tr>
+        </table>
+    </td>
+
+</tr>
+</table>
 </div>
-@else
-<div class="kop-border" style="padding-bottom:8pt;">
-    <table style="width:100%;border:none;border-collapse:collapse;">
+</div>
+
+{{-- ═══════════════════════════════════════════════════════════ --}}
+{{-- HALAMAN 2 — Bukti Transfer (kiri) + TTD (kanan)           --}}
+{{-- ═══════════════════════════════════════════════════════════ --}}
+@if($adaBukti)
+@php
+$proofPath = storage_path('app/private/' . $collectivePayment->proof_path);
+$proofExt  = strtolower(pathinfo($collectivePayment->proof_path, PATHINFO_EXTENSION));
+$isImage   = in_array($proofExt, ['jpg','jpeg','png']);
+$proofSrc  = null;
+if ($isImage && file_exists($proofPath)) {
+    $mime    = $proofExt === 'jpg' ? 'jpeg' : $proofExt;
+    $proofSrc = 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($proofPath));
+}
+@endphp
+
+<div class="page-last">
+    <div class="bukti-judul">Bukti Pembayaran</div>
+
+    <table style="width:100%;border-collapse:collapse;">
         <tr>
-            <td style="width:70pt;vertical-align:middle;text-align:center;">
-                <div style="width:55pt;height:55pt;border:2pt solid #cc0000;border-radius:28pt;text-align:center;font-size:8pt;font-weight:bold;color:#cc0000;padding-top:16pt;">LSP<br>KAP</div>
-            </td>
-            <td style="vertical-align:middle;border-left:2pt solid #333;padding-left:10pt;">
-                <div style="font-size:14pt;font-weight:bold;">LSP Kompetensi Administrasi Perkantoran</div>
-                <div style="font-size:9pt;margin-top:2pt;">
-                    Graha DLA Lt. 2 Suite 06, Jl. Oto Iskandar Dinata, Nyengseret Astana Anyar, Kota Bandung – Jawa Barat
+            {{-- Kiri: Foto bukti transfer --}}
+            <td style="width:60%;vertical-align:top;padding-right:20px;">
+                @if($proofSrc)
+                <img src="{{ $proofSrc }}"
+                     style="max-width:100%;max-height:460px;width:auto;height:auto;display:block;">
+                @elseif($proofExt === 'pdf')
+                <div style="border:1px solid #ccc;padding:16px;color:#666;font-style:italic;">
+                    Bukti transfer disimpan dalam format PDF.
                 </div>
+                @else
+                <div style="border:1px solid #ccc;padding:16px;color:#666;font-style:italic;">
+                    Bukti transfer tidak dapat ditampilkan.
+                </div>
+                @endif
+            </td>
+
+            {{-- Kanan: TTD --}}
+            <td style="width:40%;text-align:center;vertical-align:bottom;">
+                <div style="font-size:11pt;margin-bottom:6px;">
+                    Jakarta, {{ ($collectivePayment->verified_at ?? now())->translatedFormat('d F Y') }}
+                </div>
+                <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
+
+                <div style="height:72px;text-align:center;position:relative;">
+                    @if($ttdSrc)
+                    <img src="{{ $ttdSrc }}"
+                         style="max-height:68px;max-width:160px;position:absolute;left:50%;transform:translateX(-50%);">
+                    @endif
+                    @if($stempelSrc)
+                    <img src="{{ $stempelSrc }}"
+                         style="max-height:60px;max-width:60px;position:absolute;left:55%;top:4px;">
+                    @endif
+                </div>
+
+                <div style="font-size:11pt;font-weight:bold;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
+                <div style="font-size:10pt;">Manajer Keuangan</div>
             </td>
         </tr>
     </table>
 </div>
 @endif
-
-{{-- ── Kotak Kwitansi ──────────────────────────────────────────── --}}
-<div class="kwitansi-box">
-
-    <div class="no-kwitansi">No. : {{ $invoice->invoice_number }}{{ $angsuranInfo ? str_replace('/', '-', $angsuranInfo) : '' }}</div>
-
-    <table class="data-table">
-        <tr>
-            <td class="data-label">Telah diterima dari</td>
-            <td class="data-colon">:</td>
-            <td class="data-value"><b>{{ $invoice->tuk->name ?? $invoice->recipient_name }}</b></td>
-        </tr>
-        <tr>
-            <td class="data-label">Uang sejumlah</td>
-            <td class="data-colon">:</td>
-            <td class="data-value">
-                <div class="jumlah-box">{{ ucfirst($terbilang) }}</div>
-            </td>
-        </tr>
-        <tr>
-            <td class="data-label" style="padding-top:8pt;">Untuk pembayaran</td>
-            <td class="data-colon" style="padding-top:8pt;">:</td>
-            <td class="data-value" style="padding-top:8pt;">
-                Biaya Asesmen Kompetensi
-                @foreach($invoice->items as $idx => $item)
-                    {{ $item['skema_name'] }}
-                    ({{ $item['jumlah'] }} orang @ Rp {{ number_format($item['harga_satuan'], 0, ',', '.') }}){{ !$idx == count($invoice->items) - 1 ? ',' : '' }}
-                @endforeach
-                {{ $angsuranInfo }}
-            </td>
-        </tr>
-    </table>
-
-    {{-- ── TTD ───────────────────────────────────────────────────── --}}
-    <table class="ttd-table">
-        <tr>
-            <td class="ttd-left">
-                <b>Jumlah :</b>
-                <div style="border:1pt solid #000;display:inline-block;padding:4pt 14pt;font-weight:bold;font-style:italic;font-size:11pt;min-width:140pt;">
-                    Rp {{ number_format($nominal, 0, ',', '.') }}
-                </div>
-            </td>
-            <td class="ttd-right">
-                Jakarta, {{ $tanggal->translatedFormat('d F Y') }}<br>
-                Penerima<br>
-                <div class="ttd-box">
-                    @if($ttdSrc)
-                        <img src="{{ $ttdSrc }}" alt="TTD">
-                    @endif
-                    @if($stempelSrc)
-                        <img src="{{ $stempelSrc }}" alt="Stempel"
-                             style="max-height:60pt;max-width:60pt;position:relative;margin-left:-25pt;">
-                    @endif
-                </div>
-                <span class="ttd-name">Dr. Marsofiyati, S.Pd., M.Pd.</span><br>
-                <span style="font-size:10pt;">Manajer Keuangan</span>
-            </td>
-        </tr>
-    </table>
-
-</div>
 
 </body>
 </html>

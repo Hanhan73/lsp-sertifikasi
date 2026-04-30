@@ -71,4 +71,8 @@ class ChartOfAccount extends Model
     {
         return self::subTipeList()[$this->sub_tipe] ?? '-';
     }
+    public function lines()
+    {
+        return $this->hasMany(JournalEntryLine::class, 'chart_of_account_id');
+    }
 }

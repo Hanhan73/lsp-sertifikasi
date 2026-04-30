@@ -107,8 +107,124 @@ class JournalService
     }
 
     /**
-     * Honor asesor dibayar (bukti upload)
-     * Dr. 5-001 Beban Honor Asesor
+     * Piutang asesi timbul saat payment dibuat
+     * Dr. 1-003 Piutang Asesi
+     *     Cr. 4-001 Pendapatan Sertifikasi
+     */
+    public function jurnalPiutangAsesi(Payment $payment): JournalEntry
+    {
+        $nama  = $payment->asesmen->full_name ?? 'Asesi';
+        $skema = $payment->asesmen->skema->name ?? '-';
+
+        return $this->createJournal(
+            tanggal:    now()->toDateString(),
+            keterangan: "Piutang sertifikasi — {$nama} ({$skema})",
+            lines: [
+                ['akun' => '1-003', 'debit' => $payment->amount, 'kredit' => 0,
+                'ket'  => "Piutang dari {$nama}"],
+                ['akun' => '4-001', 'debit' => 0, 'kredit' => $payment->amount,
+                'ket'  => "Pendapatan sertifikasi {$skema}"],
+            ],
+            refType: Payment::class . '_piutang',
+            refId:   $payment->id,
+        );
+    }
+
+
+/**
+ * Piutang TUK timbul saat invoice kolektif dikirim
+ * Dr. 1-003 Piutang Asesi (digunakan juga untuk piutang TUK)
+ *     Cr. 4-001 Pendapatan Sertifikasi
+ */
+public function jurnalPiutangInvoice(\App\Models\Invoice $invoice): JournalEntry
+{
+    return $this->createJournal(
+        tanggal:    now()->toDateString(),
+        keterangan: "Piutang kolektif — {$invoice->recipient_name} ({$invoice->invoice_number})",
+        lines: [
+            ['akun' => '1-003', 'debit' => (int)$invoice->total_amount, 'kredit' => 0,
+             'ket'  => "Piutang dari {$invoice->recipient_name}"],
+            ['akun' => '4-001', 'debit' => 0, 'kredit' => (int)$invoice->total_amount,
+             'ket'  => "Pendapatan sertifikasi kolektif {$invoice->invoice_number}"],
+        ],
+        refType: \App\Models\Invoice::class . '_piutang',
+        refId:   $invoice->id,
+    );
+}
+
+/**
+ * Piutang TUK lunas saat angsuran diverifikasi
+ * Dr. 1-002 Bank
+ *     Cr. 1-003 Piutang Asesi
+ */
+public function jurnalPiutangInvoiceLunas(\App\Models\CollectivePayment $payment): JournalEntry
+{
+    $invoice = $payment->invoice;
+
+    return $this->createJournal(
+        tanggal:    now()->toDateString(),
+        keterangan: "Pelunasan angsuran ke-{$payment->installment_number} — {$invoice->invoice_number}",
+        lines: [
+            ['akun' => '1-002', 'debit' => (int)$payment->amount, 'kredit' => 0,
+             'ket'  => "Angsuran ke-{$payment->installment_number} {$invoice->invoice_number}"],
+            ['akun' => '1-003', 'debit' => 0, 'kredit' => (int)$payment->amount,
+             'ket'  => "Piutang lunas {$invoice->invoice_number}"],
+        ],
+        refType: \App\Models\CollectivePayment::class,
+        refId:   $payment->id,
+    );
+}
+
+    /**
+     * Piutang asesi lunas saat payment verified
+     * Dr. 1-002 Bank
+     *     Cr. 1-003 Piutang Asesi
+     */
+    public function jurnalPiutangLunas(Payment $payment): JournalEntry
+    {
+        $nama = $payment->asesmen->full_name ?? 'Asesi';
+
+        return $this->createJournal(
+            tanggal:    now()->toDateString(),
+            keterangan: "Pelunasan piutang sertifikasi — {$nama}",
+            lines: [
+                ['akun' => '1-002', 'debit' => $payment->amount, 'kredit' => 0,
+                'ket'  => "Kas masuk dari {$nama}"],
+                ['akun' => '1-003', 'debit' => 0, 'kredit' => $payment->amount,
+                'ket'  => "Piutang lunas {$nama}"],
+            ],
+            refType: Payment::class,
+            refId:   $payment->id,
+        );
+    }
+
+
+    /**
+     * Honor payment dibuat → catat utang honor
+     * Dr. 5-001 Beban Honor
+     *     Cr. 2-001 Utang Honor Asesor
+     */
+    public function jurnalHonorDibuat(HonorPayment $honor): JournalEntry
+    {
+        $nama = $honor->asesor->nama ?? 'Asesor';
+
+        return $this->createJournal(
+            tanggal:    now()->toDateString(),
+            keterangan: "Pengakuan beban honor asesor — {$nama} ({$honor->nomor_kwitansi})",
+            lines: [
+                ['akun' => '5-001', 'debit' => $honor->total, 'kredit' => 0,
+                'ket'  => "Beban honor {$nama}"],
+                ['akun' => '2-001', 'debit' => 0, 'kredit' => $honor->total,
+                'ket'  => "Utang honor {$honor->nomor_kwitansi}"],
+            ],
+            refType: HonorPayment::class . '_dibuat',
+            refId:   $honor->id,
+        );
+    }
+
+    /**
+     * Honor dibayar → lunasi utang honor
+     * Dr. 2-001 Utang Honor Asesor
      *     Cr. 1-002 Bank
      */
     public function jurnalHonorDibayar(HonorPayment $honor): JournalEntry
@@ -116,24 +232,16 @@ class JournalService
         $nama = $honor->asesor->nama ?? 'Asesor';
 
         return $this->createJournal(
-            tanggal: $honor->dibayar_at->toDateString(),
-            keterangan: "Pembayaran honor asesor — {$nama} ({$honor->nomor_kwitansi})",
+            tanggal:    $honor->dibayar_at->toDateString(),
+            keterangan: "Pelunasan honor asesor — {$nama} ({$honor->nomor_kwitansi})",
             lines: [
-                [
-                    'akun' => '5-001',
-                    'debit' => $honor->total,
-                    'kredit' => 0,
-                    'ket'  => "Beban honor {$nama}"
-                ],
-                [
-                    'akun' => '1-002',
-                    'debit' => 0,
-                    'kredit' => $honor->total,
-                    'ket'  => "Transfer honor {$honor->nomor_kwitansi}"
-                ],
+                ['akun' => '2-001', 'debit' => $honor->total, 'kredit' => 0,
+                'ket'  => "Lunasi utang honor {$nama}"],
+                ['akun' => '1-002', 'debit' => 0, 'kredit' => $honor->total,
+                'ket'  => "Transfer honor {$honor->nomor_kwitansi}"],
             ],
             refType: HonorPayment::class,
-            refId: $honor->id,
+            refId:   $honor->id,
         );
     }
 

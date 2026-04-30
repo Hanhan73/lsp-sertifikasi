@@ -1,5 +1,5 @@
 @php
-    $buktiPath = $honor->bukti_path ?? null;
+    $buktiPath = $honor->bukti_transfer_path ?? null;
     $ext = $buktiPath ? strtolower(pathinfo($buktiPath, PATHINFO_EXTENSION)) : null;
     $isPdf = $ext === 'pdf';
 

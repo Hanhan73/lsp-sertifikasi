@@ -16,183 +16,135 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class RekapPendapatanController extends Controller
 {
     public function index(Request $request)
-    {
-        $tahun = (int) ($request->get('tahun', now()->year));
-        $data  = $this->buildData($tahun);
-        extract($data);
+{
+    $tahun = (int)($request->get('tahun', now()->year));
 
-            $totalPemasukan = array_sum($dataPemasukan);
+    // Angka utama dari jurnal via buildData
+    $data  = $this->buildData($tahun);
+    extract($data);
+
+    $totalPemasukan = array_sum($dataPemasukan);
     $totalHonor     = array_sum($dataHonor);
     $totalBiayaOps  = array_sum($dataBiayaOps);
     $totalSaldo     = $totalPemasukan - $totalHonor - $totalBiayaOps;
 
-        // ── 1. Pemasukan per bulan (dari payments verified) ───────────────
-        $pemasukanPerBulan = Payment::query()
-            ->selectRaw('MONTH(verified_at) as bulan, SUM(amount) as total')
+    // Rincian per bulan (detail transaksi untuk collapse)
+    $rincianPerBulan = [];
+    for ($m = 1; $m <= 12; $m++) {
+        $pemasukanDetail = Payment::with(['asesmen.tuk', 'asesmen.skema'])
             ->where('status', 'verified')
             ->whereYear('verified_at', $tahun)
-            ->groupByRaw('MONTH(verified_at)')
-            ->pluck('total', 'bulan')
-            ->toArray();
+            ->whereMonth('verified_at', $m)
+            ->get()
+            ->map(fn($p) => [
+                'tipe'       => 'pemasukan',
+                'tanggal'    => $p->verified_at?->format('d/m/Y'),
+                'keterangan' => ($p->asesmen->full_name ?? '-') . ' — ' . ($p->asesmen->skema->name ?? '-'),
+                'sub'        => $p->asesmen->tuk->name ?? '-',
+                'jumlah'     => (int)$p->amount,
+            ]);
 
-        // ── 2. Honor asesor per bulan ─────────────────────────────────────
-        $honorPerBulan = DB::table('honor_payments')
-            ->selectRaw('MONTH(dibayar_at) as bulan, SUM(total) as total')
-            ->whereYear('dibayar_at', $tahun)
-            ->whereNotNull('dibayar_at')
-            ->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])
-            ->groupByRaw('MONTH(dibayar_at)')
-            ->pluck('total', 'bulan')
-            ->toArray();
+        $invoiceDetail = \App\Models\Invoice::whereIn('status', ['sent', 'paid'])
+            ->whereYear('issued_at', $tahun)
+            ->whereMonth('issued_at', $m)
+            ->get()
+            ->map(fn($inv) => [
+                'tipe'       => 'pemasukan',
+                'tanggal'    => $inv->issued_at->format('d/m/Y'),
+                'keterangan' => 'Invoice Kolektif — ' . $inv->recipient_name,
+                'sub'        => $inv->invoice_number,
+                'jumlah'     => (int)$inv->total_amount,
+            ]);
 
-        // ── 3. Biaya operasional per bulan ────────────────────────────────
-        $biayaOpsPerBulan = BiayaOperasional::query()
-            ->selectRaw('MONTH(tanggal) as bulan, SUM(total) as total')
-            ->whereYear('tanggal', $tahun)
-            ->groupByRaw('MONTH(tanggal)')
-            ->pluck('total', 'bulan')
-            ->toArray();
+        $honorDetail = DB::table('honor_payments')
+            ->join('asesors', 'asesors.id', '=', 'honor_payments.asesor_id')
+            ->select('honor_payments.dibayar_at', 'honor_payments.nomor_kwitansi',
+                     'honor_payments.total', 'asesors.nama')
+            ->whereIn('honor_payments.status', ['sudah_dibayar', 'dikonfirmasi'])
+            ->whereYear('honor_payments.dibayar_at', $tahun)
+            ->whereMonth('honor_payments.dibayar_at', $m)
+            ->get()
+            ->map(fn($r) => [
+                'tipe'       => 'honor',
+                'tanggal'    => \Carbon\Carbon::parse($r->dibayar_at)->format('d/m/Y'),
+                'keterangan' => 'Honor Asesor — ' . $r->nama,
+                'sub'        => $r->nomor_kwitansi,
+                'jumlah'     => (int)$r->total,
+            ]);
 
-            // ── 4. Rincian per bulan ──────────────────────────────────────────
-            $rincianPerBulan = [];
+        $biayaOpsDetail = BiayaOperasional::whereYear('tanggal', $tahun)
+            ->whereMonth('tanggal', $m)
+            ->get()
+            ->map(fn($b) => [
+                'tipe'       => 'biaya_ops',
+                'tanggal'    => $b->tanggal->format('d/m/Y'),
+                'keterangan' => $b->uraian,
+                'sub'        => 'Penerima: ' . $b->nama_penerima,
+                'jumlah'     => (int)$b->total,
+            ]);
 
-            for ($m = 1; $m <= 12; $m++) {
-                // Pemasukan: payments verified bulan ini
-                $pemasukanDetail = Payment::with(['asesmen.tuk', 'asesmen.skema'])
-                    ->where('status', 'verified')
-                    ->whereYear('verified_at', $tahun)
-                    ->whereMonth('verified_at', $m)
-                    ->get()
-                    ->map(fn($p) => [
-                        'tipe'        => 'pemasukan',
-                        'tanggal'     => $p->verified_at?->format('d/m/Y'),
-                        'keterangan'  => ($p->asesmen->full_name ?? '-') . ' — ' . ($p->asesmen->skema->name ?? '-'),
-                        'sub'         => $p->asesmen->tuk->name ?? '-',
-                        'jumlah'      => (int) $p->amount,
-                    ]);
-
-                // Honor: dibayar bulan ini
-                $honorDetail = DB::table('honor_payments')
-                    ->join('asesors', 'asesors.id', '=', 'honor_payments.asesor_id')
-                    ->select('honor_payments.dibayar_at', 'honor_payments.nomor_kwitansi',
-                            'honor_payments.total', 'asesors.nama')
-                    ->whereIn('honor_payments.status', ['sudah_dibayar', 'dikonfirmasi'])
-                    ->whereYear('honor_payments.dibayar_at', $tahun)
-                    ->whereMonth('honor_payments.dibayar_at', $m)
-                    ->get()
-                    ->map(fn($r) => [
-                        'tipe'        => 'honor',
-                        'tanggal'     => \Carbon\Carbon::parse($r->dibayar_at)->format('d/m/Y'),
-                        'keterangan'  => 'Honor Asesor — ' . $r->nama,
-                        'sub'         => $r->nomor_kwitansi,
-                        'jumlah'      => (int) $r->total,
-                    ]);
-
-                // Biaya operasional bulan ini
-                $biayaOpsDetail = BiayaOperasional::whereYear('tanggal', $tahun)
-                    ->whereMonth('tanggal', $m)
-                    ->get()
-                    ->map(fn($b) => [
-                        'tipe'        => 'biaya_ops',
-                        'tanggal'     => $b->tanggal->format('d/m/Y'),
-                        'keterangan'  => $b->uraian,
-                        'sub'         => 'Penerima: ' . $b->nama_penerima,
-                        'jumlah'      => (int) $b->total,
-                    ]);
-
-                $rincianPerBulan[$m] = $pemasukanDetail
-                    ->concat($honorDetail)
-                    ->concat($biayaOpsDetail)
-                    ->sortBy('tanggal')
-                    ->values();
-            }
-                    // ── 4. Bangun array 12 bulan ──────────────────────────────────────
-        $bulanLabels   = [];
-        $dataPemasukan = [];
-        $dataHonor     = [];
-        $dataBiayaOps  = [];
-        $dataSaldo     = [];
-
-        for ($m = 1; $m <= 12; $m++) {
-            $bulanLabels[]   = \Carbon\Carbon::create()->month($m)->translatedFormat('M');
-            $pemasukan       = $pemasukanPerBulan[$m] ?? 0;
-            $honor           = $honorPerBulan[$m] ?? 0;
-            $biayaOps        = $biayaOpsPerBulan[$m] ?? 0;
-            $dataPemasukan[] = (int) $pemasukan;
-            $dataHonor[]     = (int) $honor;
-            $dataBiayaOps[]  = (int) $biayaOps;
-            $dataSaldo[]     = (int) ($pemasukan - $honor - $biayaOps);
-        }
-
-        // ── 5. Totals keseluruhan tahun ───────────────────────────────────
-        $totalPemasukan = array_sum($dataPemasukan);
-        $totalHonor     = array_sum($dataHonor);
-        $totalBiayaOps  = array_sum($dataBiayaOps);
-        $totalSaldo     = $totalPemasukan - $totalHonor - $totalBiayaOps;
-
-        // ── 6. Breakdown pemasukan: mandiri vs kolektif ───────────────────
-        $breakdownJenis = Payment::query()
-            ->selectRaw('
-                SUM(CASE WHEN asesmens.is_collective = 0 THEN payments.amount ELSE 0 END) as mandiri,
-                SUM(CASE WHEN asesmens.is_collective = 1 THEN payments.amount ELSE 0 END) as kolektif,
-                COUNT(*) as total_transaksi
-            ')
-            ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
-            ->where('payments.status', 'verified')
-            ->whereYear('payments.verified_at', $tahun)
-            ->first();
-
-        // ── 7. Breakdown per TUK ──────────────────────────────────────────
-        $breakdownTuk = Payment::query()
-            ->selectRaw('tuks.name as tuk_name, COUNT(*) as jumlah, SUM(payments.amount) as total')
-            ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
-            ->join('tuks', 'tuks.id', '=', 'asesmens.tuk_id')
-            ->where('payments.status', 'verified')
-            ->whereYear('payments.verified_at', $tahun)
-            ->groupBy('tuks.id', 'tuks.name')
-            ->orderByDesc('total')
-            ->get();
-
-        // ── 8. Breakdown per Skema ────────────────────────────────────────
-        $breakdownSkema = Payment::query()
-            ->selectRaw('skemas.name as skema_name, COUNT(*) as jumlah, SUM(payments.amount) as total')
-            ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
-            ->join('skemas', 'skemas.id', '=', 'asesmens.skema_id')
-            ->where('payments.status', 'verified')
-            ->whereYear('payments.verified_at', $tahun)
-            ->groupBy('skemas.id', 'skemas.name')
-            ->orderByDesc('total')
-            ->get();
-
-        // ── 9. Tabel transaksi terbaru (50 terakhir) ──────────────────────
-        $transaksiTerbaru = Payment::with(['asesmen.tuk', 'asesmen.skema', 'asesmen'])
-            ->where('status', 'verified')
-            ->whereYear('verified_at', $tahun)
-            ->orderByDesc('verified_at')
-            ->limit(50)
-            ->get();
-
-        // ── 10. Tahun tersedia (untuk dropdown) ───────────────────────────
-        $tahunList = Payment::selectRaw('YEAR(verified_at) as tahun')
-            ->where('status', 'verified')
-            ->whereNotNull('verified_at')
-            ->distinct()
-            ->orderByDesc('tahun')
-            ->pluck('tahun');
-
-        if ($tahunList->isEmpty()) {
-            $tahunList = collect([now()->year]);
-        }
-
-        return view('bendahara.rekap-pendapatan.index', compact(
-            'tahun', 'tahunList',
-            'bulanLabels', 'dataPemasukan', 'dataHonor', 'dataBiayaOps', 'dataSaldo',
-            'totalPemasukan', 'totalHonor', 'totalBiayaOps', 'totalSaldo',
-            'breakdownJenis', 'breakdownTuk', 'breakdownSkema',
-            'transaksiTerbaru', 'rincianPerBulan'
-        ));
-
+        $rincianPerBulan[$m] = $pemasukanDetail
+            ->concat($invoiceDetail)
+            ->concat($honorDetail)
+            ->concat($biayaOpsDetail)
+            ->sortBy('tanggal')
+            ->values();
     }
+
+    // Breakdown (masih dari payments — hanya untuk info tambahan)
+    $breakdownJenis = Payment::query()
+        ->selectRaw('
+            SUM(CASE WHEN asesmens.is_collective = 0 THEN payments.amount ELSE 0 END) as mandiri,
+            SUM(CASE WHEN asesmens.is_collective = 1 THEN payments.amount ELSE 0 END) as kolektif,
+            COUNT(*) as total_transaksi
+        ')
+        ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
+        ->where('payments.status', 'verified')
+        ->whereYear('payments.verified_at', $tahun)
+        ->first();
+
+    $breakdownTuk = Payment::query()
+        ->selectRaw('tuks.name as tuk_name, COUNT(*) as jumlah, SUM(payments.amount) as total')
+        ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
+        ->join('tuks', 'tuks.id', '=', 'asesmens.tuk_id')
+        ->where('payments.status', 'verified')
+        ->whereYear('payments.verified_at', $tahun)
+        ->groupBy('tuks.id', 'tuks.name')
+        ->orderByDesc('total')
+        ->get();
+
+    $breakdownSkema = Payment::query()
+        ->selectRaw('skemas.name as skema_name, COUNT(*) as jumlah, SUM(payments.amount) as total')
+        ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
+        ->join('skemas', 'skemas.id', '=', 'asesmens.skema_id')
+        ->where('payments.status', 'verified')
+        ->whereYear('payments.verified_at', $tahun)
+        ->groupBy('skemas.id', 'skemas.name')
+        ->orderByDesc('total')
+        ->get();
+
+    $transaksiTerbaru = Payment::with(['asesmen.tuk', 'asesmen.skema', 'asesmen'])
+        ->where('status', 'verified')
+        ->whereYear('verified_at', $tahun)
+        ->orderByDesc('verified_at')
+        ->limit(50)
+        ->get();
+
+    $tahunList = \App\Models\JournalEntry::selectRaw('YEAR(tanggal) as tahun')
+        ->distinct()->orderByDesc('tahun')->pluck('tahun');
+
+    if ($tahunList->isEmpty()) {
+        $tahunList = collect([now()->year]);
+    }
+
+    return view('bendahara.rekap-pendapatan.index', compact(
+        'tahun', 'tahunList',
+        'bulanLabels', 'dataPemasukan', 'dataHonor', 'dataBiayaOps', 'dataSaldo',
+        'totalPemasukan', 'totalHonor', 'totalBiayaOps', 'totalSaldo',
+        'breakdownJenis', 'breakdownTuk', 'breakdownSkema',
+        'transaksiTerbaru', 'rincianPerBulan'
+    ));
+}
 
      public function export(Request $request)
     {
@@ -210,46 +162,50 @@ class RekapPendapatanController extends Controller
     }
 
     // ── Shared data builder ───────────────────────────────────────────────
-    private function buildData(int $tahun): array
-    {
-        $pemasukanPerBulan = Payment::query()
-            ->selectRaw('MONTH(verified_at) as bulan, SUM(amount) as total')
-            ->where('status', 'verified')
-            ->whereYear('verified_at', $tahun)
-            ->groupByRaw('MONTH(verified_at)')
-            ->pluck('total', 'bulan')->toArray();
+ private function buildData(int $tahun): array
+{
+    $akunBank  = \App\Models\ChartOfAccount::where('kode', '1-002')->first();
+    $akun4001  = \App\Models\ChartOfAccount::where('kode', '4-001')->first();
 
-        $honorPerBulan = DB::table('honor_payments')
-            ->selectRaw('MONTH(dibayar_at) as bulan, SUM(total) as total')
-            ->whereYear('dibayar_at', $tahun)
-            ->whereNotNull('dibayar_at')
-            ->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])
-            ->groupByRaw('MONTH(dibayar_at)')
-            ->pluck('total', 'bulan')->toArray();
+    $bulanLabels = $dataPemasukan = $dataHonor = $dataBiayaOps = $dataSaldo = [];
 
-        $biayaOpsPerBulan = BiayaOperasional::query()
-            ->selectRaw('MONTH(tanggal) as bulan, SUM(total) as total')
-            ->whereYear('tanggal', $tahun)
-            ->groupByRaw('MONTH(tanggal)')
-            ->pluck('total', 'bulan')->toArray();
+    for ($m = 1; $m <= 12; $m++) {
+        $bulanLabels[] = \Carbon\Carbon::create()->month($m)->translatedFormat('F');
 
-        $bulanLabels = $dataPemasukan = $dataHonor = $dataBiayaOps = $dataSaldo = [];
+        // Pemasukan = kredit akun 4-001 bulan ini
+        $in = $akun4001 ? (int) \App\Models\JournalEntryLine::where('chart_of_account_id', $akun4001->id)
+            ->where('kredit', '>', 0)
+            ->whereHas('entry', fn($q) => $q->whereYear('tanggal', $tahun)->whereMonth('tanggal', $m))
+            ->sum('kredit') : 0;
 
-        for ($m = 1; $m <= 12; $m++) {
-            $bulanLabels[]   = \Carbon\Carbon::create()->month($m)->translatedFormat('F');
-            $in              = (int)($pemasukanPerBulan[$m] ?? 0);
-            $hon             = (int)($honorPerBulan[$m] ?? 0);
-            $ops             = (int)($biayaOpsPerBulan[$m] ?? 0);
-            $dataPemasukan[] = $in;
-            $dataHonor[]     = $hon;
-            $dataBiayaOps[]  = $ops;
-            $dataSaldo[]     = $in - $hon - $ops;
-        }
+        // Honor keluar = kredit 1-002 dari jurnal HonorPayment
+        $hon = $akunBank ? (int) \App\Models\JournalEntryLine::where('chart_of_account_id', $akunBank->id)
+            ->where('kredit', '>', 0)
+            ->whereHas('entry', fn($q) => $q
+                ->whereYear('tanggal', $tahun)
+                ->whereMonth('tanggal', $m)
+                ->where('ref_type', \App\Models\HonorPayment::class))
+            ->sum('kredit') : 0;
 
-        return compact(
-            'bulanLabels', 'dataPemasukan', 'dataHonor', 'dataBiayaOps', 'dataSaldo'
-        );
+        // Biaya ops keluar = kredit 1-002 dari jurnal BiayaOperasional
+        $ops = $akunBank ? (int) \App\Models\JournalEntryLine::where('chart_of_account_id', $akunBank->id)
+            ->where('kredit', '>', 0)
+            ->whereHas('entry', fn($q) => $q
+                ->whereYear('tanggal', $tahun)
+                ->whereMonth('tanggal', $m)
+                ->where('ref_type', \App\Models\BiayaOperasional::class))
+            ->sum('kredit') : 0;
+
+        $dataPemasukan[] = $in;
+        $dataHonor[]     = $hon;
+        $dataBiayaOps[]  = $ops;
+        $dataSaldo[]     = $in - $hon - $ops;
     }
+
+    return compact(
+        'bulanLabels', 'dataPemasukan', 'dataHonor', 'dataBiayaOps', 'dataSaldo'
+    );
+}
 
     // ── Export PDF ────────────────────────────────────────────────────────
     private function exportPdf(int $tahun, array $data)

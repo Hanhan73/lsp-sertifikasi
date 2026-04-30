@@ -200,6 +200,19 @@
                 <label class="form-label fw-semibold">Catatan</label>
                 <textarea name="notes" class="form-control" rows="2">{{ old('notes', $invoice->notes) }}</textarea>
             </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold">
+                    Keterangan Kwitansi
+                    <small class="text-muted fw-normal">(opsional)</small>
+                </label>
+                <textarea name="notes_kwitansi" class="form-control" rows="2"
+                        placeholder="Misal: Biaya Asesmen Kompetensi Keahlian Manajemen Perkantoran SMK..."
+                        >{{ old('notes_kwitansi', $invoice->notes_kwitansi) }}</textarea>
+                <div class="form-text">
+                    Teks ini tampil di bagian <strong>"Untuk pembayaran"</strong> sebelum rincian skema otomatis.
+                    Kosongkan jika tidak perlu — rincian skema tetap tampil otomatis.
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">
                 <i class="bi bi-save"></i> Simpan Perubahan
             </button>
@@ -261,13 +274,66 @@
                         <td><span class="badge bg-secondary">ke-{{ $cp->installment_number }}</span></td>
                         <td class="text-end fw-bold">Rp {{ number_format($cp->amount, 0, ',', '.') }}</td>
                         <td>{{ $cp->due_date ? $cp->due_date->translatedFormat('d M Y') : '-' }}</td>
-                        <td>
+                        <td style="min-width:160px;">
                             @if($cp->proof_path)
-                            <a href="{{ route('bendahara.payments.kolektif.angsuran.bukti', $cp) }}"
-                               target="_blank" class="btn btn-sm btn-outline-secondary">
-                                <i class="bi bi-file-earmark"></i> Lihat
-                            </a>
-                            <div class="small text-muted">{{ $cp->proof_uploaded_at?->translatedFormat('d M Y H:i') }}</div>
+                            @php
+                                $ext     = strtolower(pathinfo($cp->proof_path, PATHINFO_EXTENSION));
+                                $isImage = in_array($ext, ['jpg','jpeg','png']);
+                                $fileUrl = route('bendahara.payments.kolektif.angsuran.bukti', $cp);
+                            @endphp
+
+                            @if($isImage)
+                            <div class="border rounded-3 overflow-hidden" style="max-width:160px;">
+                                <div style="cursor:zoom-in;"
+                                    onclick="bukaZoomBukti('{{ $fileUrl }}', 'Bukti Angsuran ke-{{ $cp->installment_number }}', '{{ $fileUrl }}?download=1')">
+                                    <img src="{{ $fileUrl }}"
+                                        class="w-100"
+                                        style="max-height:100px;object-fit:cover;transition:opacity .2s;"
+                                        onmouseover="this.style.opacity='.85'"
+                                        onmouseout="this.style.opacity='1'"
+                                        alt="Bukti ke-{{ $cp->installment_number }}">
+                                </div>
+                                <div class="px-2 py-1 bg-light d-flex align-items-center justify-content-between"
+                                    style="font-size:.72rem;">
+                                    <span class="text-muted">{{ $cp->proof_uploaded_at?->translatedFormat('d M Y H:i') }}</span>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-outline-secondary py-0 px-1"
+                                                style="font-size:.68rem;"
+                                                onclick="bukaZoomBukti('{{ $fileUrl }}', 'Bukti Angsuran ke-{{ $cp->installment_number }}', '{{ $fileUrl }}?download=1')"
+                                                title="Zoom">
+                                            <i class="bi bi-zoom-in"></i>
+                                        </button>
+                                        <a href="{{ $fileUrl }}?download=1"
+                                        class="btn btn-outline-primary py-0 px-1"
+                                        style="font-size:.68rem;" title="Download">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            @else
+                            <div class="d-flex align-items-center gap-2 p-2 border rounded-3"
+                                style="background:#fff5f5;max-width:160px;">
+                                <i class="bi bi-file-earmark-pdf text-danger fs-4 flex-shrink-0"></i>
+                                <div class="flex-grow-1 overflow-hidden">
+                                    <div class="small fw-semibold text-truncate">Bukti PDF</div>
+                                    <small class="text-muted">ke-{{ $cp->installment_number }}</small>
+                                </div>
+                                <div class="d-flex flex-column gap-1">
+                                    <a href="{{ $fileUrl }}" target="_blank"
+                                    class="btn btn-outline-secondary py-0 px-1"
+                                    style="font-size:.7rem;" title="Lihat">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ $fileUrl }}?download=1"
+                                    class="btn btn-outline-primary py-0 px-1"
+                                    style="font-size:.7rem;" title="Download">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            @endif
+
                             @else
                             <span class="text-muted small">Belum ada bukti</span>
                             @endif
@@ -438,6 +504,37 @@
 </div>
 @endif
 
+{{-- Modal Zoom Bukti --}}
+<div class="modal fade" id="modalZoomBukti" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 bg-transparent shadow-none">
+            <div class="modal-header border-0 pb-1 px-0">
+                <span class="text-white fw-semibold" id="zoomBuktiLabel" style="font-size:.9rem;"></span>
+                <button type="button" class="btn-close btn-close-white ms-auto"
+                        data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="zoomBuktiImg" src="" alt="Bukti Bayar"
+                     class="img-fluid rounded-3 shadow"
+                     style="max-height:85vh;object-fit:contain;">
+            </div>
+            <div class="modal-footer border-0 justify-content-center pt-2">
+                <a id="zoomBuktiDownload" href="#"
+                   class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-download me-1"></i> Unduh
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary"
+                        data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#modalZoomBukti .modal-dialog { max-width:90vw; }
+#modalZoomBukti { background:rgba(0,0,0,.85); }
+</style>
+
 @endsection
 
 @push('scripts')
@@ -458,5 +555,14 @@ function recalc() {
     if (gt) gt.textContent = 'Rp ' + grand.toLocaleString('id-ID');
 }
 recalc();
+
+function bukaZoomBukti(src, label, downloadUrl) {
+    document.getElementById('zoomBuktiImg').src            = src;
+    document.getElementById('zoomBuktiLabel').textContent  = label;
+    document.getElementById('zoomBuktiDownload').href      = downloadUrl;
+    bootstrap.Modal.getOrCreateInstance(
+        document.getElementById('modalZoomBukti')
+    ).show();
+}   
 </script>
 @endpush

@@ -515,6 +515,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::prefix('invoice-kolektif')->name('invoice-kolektif.')->group(function () {
         Route::get('/',                                  [TukAngsuranController::class, 'index'])->name('index');
         Route::post('/angsuran/{payment}/upload-bukti',  [TukAngsuranController::class, 'uploadBukti'])->name('upload-bukti');
+        Route::get('/bukti/{payment}',                   [TukAngsuranController::class, 'downloadBukti'])->name('bukti'); // ← fix: hapus prefix duplikat
         Route::get('/{invoice}',                         [TukAngsuranController::class, 'show'])->name('show');
         Route::post('/{invoice}/angsuran',               [TukAngsuranController::class, 'storeAngsuran'])->name('angsuran.store');
         Route::get('/{invoice}/pdf',                     [TukAngsuranController::class, 'pdf'])->name('pdf');
@@ -896,6 +897,10 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/distribusi/jurnal-balik', [LaporanKeuanganController::class, 'jurnalBalik'])->name('jurnal-balik');
         Route::get('/transaksi-harian',    [LaporanKeuanganController::class, 'transaksiHarian'])->name('transaksi-harian');
         Route::get('/buku-besar',          [LaporanKeuanganController::class, 'bukuBesar'])->name('buku-besar');
+        Route::get('/transaksi-harian/export', [LaporanKeuanganController::class, 'exportTransaksiHarian'])
+            ->name('transaksi-harian.export');
+        Route::get('/buku-besar/export',       [LaporanKeuanganController::class, 'exportBukuBesar'])
+            ->name('buku-besar.export');
     });
 
     // ── Tarif Honor ───────────────────────────────────────────────────────
@@ -921,6 +926,13 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
 | Debug — hapus di production
 |--------------------------------------------------------------------------
 */
+
+if (app()->isLocal()) {
+    Route::middleware(['auth'])->prefix('debug')->name('debug.')->group(function () {
+        Route::get('/journal',  [\App\Http\Controllers\Debug\JournalTestController::class, 'index'])->name('journal');
+        Route::post('/journal', [\App\Http\Controllers\Debug\JournalTestController::class, 'test'])->name('journal.test');
+    });
+}
 
 Route::get('/debug-paths', function () {
     return [

@@ -101,7 +101,13 @@ class BendaharaController extends Controller
         ]);
 
         try {
-            app(JournalService::class)->jurnalPaymentVerified($payment->fresh(['asesmen.skema']));
+            $paymentFresh = $payment->fresh(['asesmen.skema']);
+            // Buat jurnal piutang dulu kalau belum ada (misal asesi belum upload bukti)
+            if (!\App\Models\JournalEntry::existsFor(\App\Models\Payment::class . '_piutang', $payment->id)) {
+                app(JournalService::class)->jurnalPiutangAsesi($paymentFresh);
+            }
+            // Jurnal pelunasan
+            app(JournalService::class)->jurnalPiutangLunas($paymentFresh);
         } catch (\Exception $e) {
             \Log::warning('Gagal buat jurnal payment: ' . $e->getMessage());
         }
@@ -511,6 +517,7 @@ class BendaharaController extends Controller
             'items.*.jumlah'         => 'required|integer|min:1',
             'items.*.harga_satuan'   => 'required|numeric|min:0',
             'notes'                  => 'nullable|string',
+            'notes_kwitansi'         => 'nullable|string|max:500', // ← tambah
         ]);
 
         $items = collect($request->items)->map(function ($item) {
@@ -524,16 +531,27 @@ class BendaharaController extends Controller
             'items'             => $items,
             'total_amount'      => collect($items)->sum('subtotal'),
             'notes'             => $request->notes,
+            'notes_kwitansi'    => $request->notes_kwitansi, // ← tambah
         ]);
 
         return redirect()->route('bendahara.payments.kolektif.detail', $invoice)
             ->with('success', 'Invoice berhasil diperbarui.');
     }
-
+    
     public function kolektifInvoiceSend(Invoice $invoice)
     {
         abort_if($invoice->status !== 'draft', 403);
         $invoice->update(['status' => 'sent']);
+
+        // Inject jurnal piutang kolektif
+        try {
+            if (!\App\Models\JournalEntry::existsFor(\App\Models\Invoice::class . '_piutang', $invoice->id)) {
+                app(JournalService::class)->jurnalPiutangInvoice($invoice);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Gagal buat jurnal piutang invoice: ' . $e->getMessage());
+        }
+
         return redirect()->route('bendahara.payments.kolektif.detail', $invoice)
             ->with('success', 'Invoice telah dikirim ke TUK.');
     }
@@ -602,6 +620,16 @@ class BendaharaController extends Controller
 
         if ($request->action === 'verify') {
             $payment->update(['status' => 'verified', 'verified_by' => Auth::id(), 'verified_at' => now()]);
+
+            // Inject jurnal pelunasan piutang
+            try {
+                if (!\App\Models\JournalEntry::existsFor(\App\Models\CollectivePayment::class, $payment->id)) {
+                    app(JournalService::class)->jurnalPiutangInvoiceLunas($payment->load('invoice'));
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Gagal buat jurnal pelunasan angsuran: ' . $e->getMessage());
+            }
+
             if ($payment->invoice->isFullyPaid()) {
                 $payment->invoice->update(['status' => 'paid']);
             }

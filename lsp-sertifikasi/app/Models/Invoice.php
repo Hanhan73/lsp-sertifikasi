@@ -15,6 +15,7 @@ class Invoice extends Model
         'invoice_year',
         'batch_ids',       // JSON array of batch IDs
         'tuk_id',
+        'notes_kwitansi',
         'issued_by',
         'issued_at',
         'recipient_name',

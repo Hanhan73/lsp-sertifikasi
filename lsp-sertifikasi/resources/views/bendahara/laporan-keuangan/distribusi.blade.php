@@ -32,10 +32,12 @@
                 Pencatatan Distribusi Tahun {{ $tahun }}
             </div>
             <div class="card-body">
+
+                {{-- Surplus dari jurnal (bukan dari $balance accessor) --}}
                 <div class="alert alert-info small">
-                    Surplus tahun {{ $tahun }}:
-                    <strong class="{{ $balance->surplus >= 0 ? 'text-success' : 'text-danger' }}">
-                        Rp {{ number_format($balance->surplus,0,',','.') }}
+                    Surplus tahun {{ $tahun }} (dari jurnal):
+                    <strong class="{{ $summary['surplus'] >= 0 ? 'text-success' : 'text-danger' }}">
+                        Rp {{ number_format($summary['surplus'],0,',','.') }}
                     </strong>
                 </div>
 
@@ -103,8 +105,14 @@
 
                 <div class="card bg-light border-0 mb-3 p-3" style="font-size:.85rem;">
                     <div><strong>Jurnal Distribusi:</strong></div>
-                    <div class="ms-3 text-success">Dr. Surplus Tahun Berjalan &nbsp;&nbsp; Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}</div>
-                    <div class="ms-5 text-danger">Cr. Hutang Distribusi Yayasan &nbsp;&nbsp; Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}</div>
+                    <div class="ms-3 text-success">
+                        Dr. Surplus Tahun Berjalan &nbsp;&nbsp;
+                        Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}
+                    </div>
+                    <div class="ms-5 text-danger">
+                        Cr. Hutang Distribusi Yayasan &nbsp;&nbsp;
+                        Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}
+                    </div>
                 </div>
 
                 @if($balance->jurnal_balik_done)

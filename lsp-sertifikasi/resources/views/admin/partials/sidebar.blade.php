@@ -96,12 +96,12 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
 
 <a href="{{ route('admin.surat.masuk.index') }}"
     class="nav-link {{ Str::startsWith($route, 'admin.surat.masuk') ? 'active' : '' }}">
-    <i class="bi bi-envelope-arrow-down"></i> Surat Masuk
+    <i class="bi bi-envelope-arrow-down-fill"></i> Surat Masuk
 </a>
 
 <a href="{{ route('admin.surat.keluar.index') }}"
     class="nav-link {{ Str::startsWith($route, 'admin.surat.keluar') ? 'active' : '' }}">
-    <i class="bi bi-envelope-arrow-up"></i> Surat Keluar
+    <i class="bi bi-envelope-arrow-up-fill"></i> Surat Keluar
 </a>
 
 {{-- Divider: MONITORING --}}

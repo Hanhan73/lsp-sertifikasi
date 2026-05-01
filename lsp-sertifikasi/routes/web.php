@@ -26,6 +26,7 @@ use App\Http\Controllers\Admin\FrAk01Controller as FrAk01AdminController;
 use App\Http\Controllers\Admin\FrAk04Controller as FrAk04AdminController;
 use App\Http\Controllers\Admin\AdminScheduleController;
 use App\Http\Controllers\Admin\AdminRejectController;
+use App\Http\Controllers\Admin\SuratController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -372,6 +373,34 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     });
     Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // alias lama
 
+    // ── Persuratan ─────────────────────────────────────────────────────────────
+    Route::prefix('surat')->name('surat.')->group(function () {
+        // Surat Masuk
+        Route::prefix('masuk')->name('masuk.')->group(function () {
+            Route::get('/',                         [SuratController::class, 'masukIndex'])   ->name('index');
+            Route::get('/create',                   [SuratController::class, 'masukCreate'])  ->name('create');
+            Route::post('/',                        [SuratController::class, 'masukStore'])   ->name('store');
+            Route::get('/{suratMasuk}/edit',        [SuratController::class, 'masukEdit'])    ->name('edit');
+            Route::put('/{suratMasuk}',             [SuratController::class, 'masukUpdate'])  ->name('update');
+            Route::delete('/{suratMasuk}',          [SuratController::class, 'masukDestroy']) ->name('destroy');
+            Route::get('/{suratMasuk}/download',    [SuratController::class, 'masukDownload'])->name('download');
+            Route::get('/{suratMasuk}/preview', [SuratController::class, 'masukPreview'])->name('preview');
+
+        });
+
+        // Surat Keluar
+        Route::prefix('keluar')->name('keluar.')->group(function () {
+            Route::get('/',                         [SuratController::class, 'keluarIndex'])   ->name('index');
+            Route::get('/create',                   [SuratController::class, 'keluarCreate'])  ->name('create');
+            Route::post('/',                        [SuratController::class, 'keluarStore'])   ->name('store');
+            Route::get('/{suratKeluar}/edit',       [SuratController::class, 'keluarEdit'])    ->name('edit');
+            Route::put('/{suratKeluar}',            [SuratController::class, 'keluarUpdate'])  ->name('update');
+            Route::delete('/{suratKeluar}',         [SuratController::class, 'keluarDestroy']) ->name('destroy');
+            Route::get('/{suratKeluar}/download',   [SuratController::class, 'keluarDownload'])->name('download');
+            Route::get('/{suratKeluar}/preview', [SuratController::class, 'keluarPreview'])->name('preview');
+
+        });
+    });
 });
 
 /*

@@ -89,6 +89,21 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     <i class="bi bi-calendar-event"></i> Jadwal Asesmen
 </a>
 
+{{-- Divider: PERSURATAN --}}
+<div class="sidebar-divider">
+    <span>PERSURATAN</span>
+</div>
+
+<a href="{{ route('admin.surat.masuk.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.surat.masuk') ? 'active' : '' }}">
+    <i class="bi bi-envelope-arrow-down"></i> Surat Masuk
+</a>
+
+<a href="{{ route('admin.surat.keluar.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.surat.keluar') ? 'active' : '' }}">
+    <i class="bi bi-envelope-arrow-up"></i> Surat Keluar
+</a>
+
 {{-- Divider: MONITORING --}}
 <div class="sidebar-divider">
     <span>MONITORING</span>

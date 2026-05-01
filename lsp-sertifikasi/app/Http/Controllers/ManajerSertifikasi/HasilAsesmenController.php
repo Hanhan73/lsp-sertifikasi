@@ -81,7 +81,7 @@ class HasilAsesmenController extends Controller
     public function showJadwal(Schedule $schedule)
     {
         $schedule->load([
-            'skema', 'tuk', 'asesor.user', 'asesmens',
+            'skema', 'tuk', 'asesor.user', 'asesmens.frAk03',
             'distribusiSoalObservasi.soalObservasi',
             'distribusiSoalObservasi.paketSoalObservasi',
             'distribusiPortofolio.portofolio',

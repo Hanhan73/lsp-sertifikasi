@@ -533,6 +533,45 @@
             </div>
             @endif
         </div>
+        {{-- FR.AK.03 Umpan Balik --}}
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-header bg-white d-flex align-items-center justify-content-between py-3">
+        <div class="fw-semibold">
+            <i class="bi bi-chat-square-text text-info me-2"></i>Umpan Balik Asesi
+            <span class="badge bg-secondary ms-1">
+                {{ $schedule->asesmens->filter(fn($a) => $a->frAk03?->isSubmitted())->count() }}/{{ $schedule->asesmens->count() }}
+            </span>
+        </div>
+    </div>
+    <div class="list-group list-group-flush">
+        @foreach($schedule->asesmens as $asesmen)
+        @php $frak03 = $asesmen->frAk03; @endphp
+        <div class="list-group-item px-4 py-3">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi {{ $frak03?->isSubmitted() ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted' }} fs-5 flex-shrink-0"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold small">{{ $asesmen->full_name }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">
+                        @if($frak03?->isSubmitted())
+                            Diisi {{ $frak03->submitted_at->translatedFormat('d M Y, H:i') }}
+                        @else
+                            Belum mengisi umpan balik
+                        @endif
+                    </div>
+                </div>
+                @if($frak03?->isSubmitted())
+                <a href="{{ route('manajer-sertifikasi.frak03.pdf', [$schedule, $asesmen]) }}?preview=1"
+                   target="_blank"
+                   class="btn btn-sm btn-outline-danger flex-shrink-0">
+                    <i class="bi bi-file-pdf"></i>
+                </a>
+                @endif
+            </div>
+        </div>
+        @endforeach
+    </div>
+</div>
+
 
     </div>
 </div>

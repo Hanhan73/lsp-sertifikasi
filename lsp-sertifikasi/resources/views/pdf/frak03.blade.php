@@ -153,25 +153,18 @@
 </head>
 <body>
 
-    {{-- KOP SURAT --}}
-    <table class="kop-table">
-        <tr>
-            <td class="kop-logo">
-                @if(file_exists(public_path('images/logo-lsp.png')))
-                    <img src="{{ public_path('images/logo-lsp.png') }}">
-                @endif
-            </td>
-            <td class="kop-text">
-                <div class="sub-lsp">LEMBAGA SERTIFIKASI PROFESI</div>
-                <div class="nama-lsp">LSP - KAP</div>
-                <div class="sub-lsp">Jl. Contoh No. 1, Jakarta | Telp. (021) 000-0000</div>
-            </td>
-            <td class="kop-kode">
-                <div><strong>FR.AK.03</strong></div>
-            </td>
-        </tr>
-    </table>
-    <hr class="kop-line">
+{{-- KOP SURAT --}}
+@php
+    $kopPath = storage_path('app/public/images/kop_surat.png');
+    $kopSrc  = file_exists($kopPath)
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($kopPath))
+        : null;
+@endphp
+
+@if($kopSrc)
+    <img src="{{ $kopSrc }}" style="width:100%;height:auto;display:block;" alt="Kop Surat">
+@endif
+
 
     {{-- JUDUL --}}
     <div class="judul-wrapper">
@@ -250,8 +243,8 @@
                 <tr>
                     <td class="no">{{ $i + 1 }}</td>
                     <td>{{ $p }}</td>
-                    <td class="col-hasil checked">{{ ($item['jawaban'] ?? '') === 'ya' ? '✓' : '' }}</td>
-                    <td class="col-hasil checked">{{ ($item['jawaban'] ?? '') === 'tidak' ? '✓' : '' }}</td>
+                    <td class="col-hasil checked">{{ ($item['jawaban'] ?? '') === 'ya' ? 'V' : '' }}</td>
+                    <td class="col-hasil checked">{{ ($item['jawaban'] ?? '') === 'tidak' ? 'V' : '' }}</td>
                     <td class="col-catatan" style="font-size:8.5pt">{{ $item['catatan'] ?? '' }}</td>
                 </tr>
             @endforeach
@@ -261,28 +254,6 @@
     {{-- CATATAN LAIN --}}
     <p style="font-size:9pt; margin-bottom:3px;"><strong>Catatan/komentar lainnya (apabila ada):</strong></p>
     <div class="catatan-box">{{ $frAk03->catatan_lain ?? '' }}</div>
-
-    {{-- TANDA TANGAN --}}
-    <table class="ttd-table">
-        <tr>
-            <td>
-                <div>Asesor,</div>
-                <div class="ttd-space"></div>
-                <div class="ttd-line">
-                    <strong>{{ $schedule->asesor->nama ?? '-' }}</strong><br>
-                    <small>No. Reg: {{ $schedule->asesor->no_reg_met ?? '-' }}</small>
-                </div>
-            </td>
-            <td>
-                <div>Asesi,</div>
-                <div class="ttd-space"></div>
-                <div class="ttd-line">
-                    <strong>{{ $asesmen->full_name }}</strong><br>
-                    <small>NIK: {{ $asesmen->nik ?? '-' }}</small>
-                </div>
-            </td>
-        </tr>
-    </table>
 
 </body>
 </html>

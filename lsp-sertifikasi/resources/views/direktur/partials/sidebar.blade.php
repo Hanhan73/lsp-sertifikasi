@@ -26,11 +26,63 @@
     @endif
 </a>
 
-<a href="{{ route('direktur.rekap-pendapatan') }}"
-    class="nav-link {{ request()->routeIs('direktur.rekap-pendapatan') ? 'active' : '' }}">
+{{-- ── KEUANGAN ────────────────────────────────────────────────────── --}}
+<div class="sidebar-divider">
+    <span>KEUANGAN</span>
+</div>
+
+<a href="{{ route('direktur.keuangan.index') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.index') ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-spreadsheet"></i>
+    Laporan Keuangan
+</a>
+
+<a href="{{ route('direktur.keuangan.pembayaran-kolektif') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.pembayaran-kolektif*') ? 'active' : '' }}">
+    <i class="bi bi-people"></i>
+    Pembayaran Kolektif
+</a>
+
+<a href="{{ route('direktur.keuangan.pembayaran-mandiri') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.pembayaran-mandiri') ? 'active' : '' }}">
+    <i class="bi bi-person"></i>
+    Pembayaran Individu
+</a>
+
+<a href="{{ route('direktur.keuangan.honor') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.honor*') ? 'active' : '' }}">
+    <i class="bi bi-person-badge"></i>
+    Honor Asesor
+</a>
+
+<a href="{{ route('direktur.keuangan.rekap-pendapatan') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.rekap-pendapatan') ? 'active' : '' }}">
     <i class="bi bi-graph-up-arrow"></i>
     Rekap Pendapatan
 </a>
+
+<a href="{{ route('direktur.keuangan.biaya-operasional') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.biaya-operasional') ? 'active' : '' }}">
+    <i class="bi bi-cash-stack"></i>
+    Biaya Operasional
+</a>
+
+<a href="{{ route('direktur.keuangan.transaksi-harian') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.transaksi-harian') ? 'active' : '' }}">
+    <i class="bi bi-calendar-day"></i>
+    Transaksi Harian
+</a>
+
+<a href="{{ route('direktur.keuangan.buku-besar') }}"
+    class="nav-link {{ request()->routeIs('direktur.keuangan.buku-besar') ? 'active' : '' }}">
+    <i class="bi bi-journal-bookmark"></i>
+    Buku Besar
+</a>
+
+{{-- ── AKUN ────────────────────────────────────────────────────────── --}}
+<div class="sidebar-divider">
+    <span>AKUN</span>
+</div>
 
 <a href="{{ route('profile.show') }}" class="nav-link {{ request()->routeIs('profile.*') ? 'active' : '' }}">
     <i class="bi bi-person-circle"></i>

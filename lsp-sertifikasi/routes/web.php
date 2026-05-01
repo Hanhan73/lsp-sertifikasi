@@ -49,6 +49,7 @@ use App\Http\Controllers\Asesor\HonorController;
 use App\Http\Controllers\Direktur\DirekturScheduleController;
 use App\Http\Controllers\Direktur\DirekturDashboardController;
 use App\Http\Controllers\Direktur\DirekturSkUjikomController;
+use App\Http\Controllers\Direktur\DirekturKeuanganController;
 
 // Manajer Sertifikasi
 use App\Http\Controllers\ManajerSertifikasi\DashboardController as ManajerDashboardController;
@@ -688,6 +689,95 @@ Route::prefix('direktur')
 
         Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])
             ->name('rekap-pendapatan');
+
+            
+Route::prefix('keuangan')
+    ->name('keuangan.')
+    ->group(function () {
+ 
+        $ctrl = DirekturKeuanganController::class;
+ 
+        // ── Dashboard ──────────────────────────────────────────────────────
+        Route::get('/', [$ctrl, 'index'])->name('index');
+ 
+        // ── Laporan Keuangan ───────────────────────────────────────────────
+        Route::get('/laba-rugi',       [$ctrl, 'labaRugi'])->name('laba-rugi');
+        Route::get('/neraca',          [$ctrl, 'neraca'])->name('neraca');
+        Route::get('/arus-kas',        [$ctrl, 'arusKas'])->name('arus-kas');
+        Route::get('/perubahan-modal', [$ctrl, 'perubahanModal'])->name('perubahan-modal');
+        Route::get('/distribusi',      [$ctrl, 'distribusi'])->name('distribusi');
+ 
+        // ── Jurnal (export HARUS sebelum non-export) ───────────────────────
+        Route::get('/transaksi-harian/export', [$ctrl, 'exportTransaksiHarian'])->name('transaksi-harian.export');
+        Route::get('/transaksi-harian',        [$ctrl, 'transaksiHarian'])->name('transaksi-harian');
+        Route::get('/buku-besar/export',       [$ctrl, 'exportBukuBesar'])->name('buku-besar.export');
+        Route::get('/buku-besar',              [$ctrl, 'bukuBesar'])->name('buku-besar');
+ 
+        // ── CoA ────────────────────────────────────────────────────────────
+        Route::get('/coa', [$ctrl, 'coa'])->name('coa');
+ 
+        // ── Rekap & Biaya ──────────────────────────────────────────────────
+        Route::get('/rekap-pendapatan',  [$ctrl, 'rekapPendapatan'])->name('rekap-pendapatan');
+        Route::get('/biaya-operasional', [$ctrl, 'biayaOperasional'])->name('biaya-operasional');
+ 
+        // ── Pembayaran Mandiri ─────────────────────────────────────────────
+        Route::get('/pembayaran-mandiri', [$ctrl, 'pembayaranMandiri'])->name('pembayaran-mandiri');
+ 
+        // ── Pembayaran Kolektif (static sebelum wildcard) ──────────────────
+        Route::get('/pembayaran-kolektif',            [$ctrl, 'pembayaranKolektif'])->name('pembayaran-kolektif');
+        Route::get('/pembayaran-kolektif/tuk/{tuk}',  [$ctrl, 'pembayaranKolektifTuk'])->name('pembayaran-kolektif.tuk');
+        Route::get('/pembayaran-kolektif/{invoice}',  [$ctrl, 'pembayaranKolektifDetail'])->name('pembayaran-kolektif.detail');
+ 
+        // ── Honor (payment HARUS sebelum {asesor} wildcard) ───────────────
+        Route::get('/honor',                  [$ctrl, 'honor'])->name('honor');
+        Route::get('/honor/payment/{honor}',  [$ctrl, 'honorPayment'])->name('honor.payment');
+        Route::get('/honor/{asesor}',          [$ctrl, 'honorDetail'])->name('honor.detail');
+ 
+        // ══════════════════════════════════════════════════════════════════
+        // DOWNLOAD PASSTHROUGH
+        // Semua download via route direktur agar tidak kena middleware bendahara
+        // ══════════════════════════════════════════════════════════════════
+ 
+        // ── Pembayaran Mandiri ─────────────────────────────────────────────
+        Route::get('/download/bukti-mandiri/{payment}',
+            [BendaharaController::class, 'downloadBukti'])
+            ->name('download.bukti-mandiri');
+ 
+        Route::get('/download/invoice-mandiri/{payment}',
+            [BendaharaController::class, 'downloadInvoiceIndividu'])
+            ->name('download.invoice-mandiri');
+ 
+        Route::get('/download/kwitansi-mandiri/{payment}',
+            [BendaharaController::class, 'kwitansiIndividu'])
+            ->name('download.kwitansi-mandiri');
+ 
+        // ── Pembayaran Kolektif ────────────────────────────────────────────
+        Route::get('/download/invoice-kolektif/{invoice}',
+            [BendaharaController::class, 'kolektifInvoicePdf'])
+            ->name('download.invoice-kolektif');
+ 
+        Route::get('/download/kwitansi-kolektif/{invoice}',
+            [BendaharaController::class, 'kolektifKwitansi'])
+            ->name('download.kwitansi-kolektif');
+ 
+        Route::get('/download/bukti-angsuran/{payment}',
+            [BendaharaController::class, 'kolektifBuktiBayar'])
+            ->name('download.bukti-angsuran');
+ 
+        // ── Honor ──────────────────────────────────────────────────────────
+        Route::get('/download/bukti-honor/{honor}',
+            [HonorAsesorController::class, 'downloadBukti'])
+            ->name('download.bukti-honor');
+ 
+        Route::get('/download/kwitansi-honor/{honor}',
+            [HonorAsesorController::class, 'pdfKwitansi'])
+            ->name('download.kwitansi-honor');
+ 
+        // ── Rekap Pendapatan ───────────────────────────────────────────────
+        Route::get('/download/rekap-pendapatan',
+            [RekapPendapatanController::class, 'export'])
+            ->name('download.rekap-pendapatan');
+    });
     });
 
 

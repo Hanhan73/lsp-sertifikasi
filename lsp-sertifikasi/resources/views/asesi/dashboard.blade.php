@@ -559,7 +559,22 @@ default => 0,
     </div>
     @endif
     @endif
+    @php
+    $schedule = $asesmen->schedule;
+    $teoriCount = $asesmen->soalTeoriAsesi()->count();
+    $teoriSelesai = $asesmen->soalTeoriAsesi()->whereNotNull('submitted_at')->count();
+    $pakaiObs = $schedule?->distribusiSoalObservasi()->exists();
+    $pakaiPorto = $schedule?->distribusiPortofolio()->exists();
     
+    \Log::info('[DEBUG FR.AK.03]', [
+        'status'        => $asesmen->status,
+        'schedule_id'   => $asesmen->schedule_id,
+        'teoriCount'    => $teoriCount,
+        'teoriSelesai'  => $teoriSelesai,
+        'pakaiObs'      => $pakaiObs,
+        'pakaiPorto'    => $pakaiPorto,
+    ]);
+@endphp
     {{-- FR.AK.03 Umpan Balik --}}
     @if($asesmen->canShowFrAk03())
     <div class="card border-0 shadow-sm mb-4 border-info" style="border-left:4px solid #0ea5e9 !important;">

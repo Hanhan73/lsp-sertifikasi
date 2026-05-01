@@ -402,7 +402,7 @@ class Asesmen extends Model
             ->whereNotNull('gdrive_link')
             ->count();
 
-        return $sudahIsi >= $totalPaket;
+        return $sudahIsi >= 1;
     }
  
     if ($pakaiPortofolio) {

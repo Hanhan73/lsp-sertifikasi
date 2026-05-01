@@ -1,5 +1,5 @@
 {{-- resources/views/asesi/frak03/form.blade.php --}}
-@extends('layouts.asesi')
+@extends('layouts.app')
 
 @section('title', 'FR.AK.03 - Umpan Balik Asesmen')
 

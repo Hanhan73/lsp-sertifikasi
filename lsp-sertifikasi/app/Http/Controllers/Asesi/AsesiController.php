@@ -37,6 +37,10 @@ class AsesiController extends Controller
             'soalTeoriAsesi',
             'jawabanObservasi',
             'schedule.distribusiSoalObservasi.soalObservasi.paket',
+            'frAk03',
+            'schedule.distribusiSoalObservasi',
+            'schedule.distribusiPortofolio',
+            'schedule.hasilPortofolio',
         ])
         ->where('user_id', $user->id)
         ->first();

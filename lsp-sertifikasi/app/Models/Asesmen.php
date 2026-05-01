@@ -203,6 +203,11 @@ class Asesmen extends Model
         return $this->hasOne(\App\Models\FrAk01::class, 'asesmen_id');
     }
 
+    public function frAk03(): \Illuminate\Database\Eloquent\Relations\HasOne
+{
+    return $this->hasOne(\App\Models\FrAk03UmpanBalik::class, 'asesmen_id');
+}
+
     public function frak04()
     {
         return $this->hasOne(\App\Models\FrAk04::class, 'asesmen_id');
@@ -363,6 +368,51 @@ class Asesmen extends Model
         if ($phase1Paid)               return 'phase_1_paid';
         return 'not_paid';
     }
+
+    public function canShowFrAk03(): bool
+{
+    $schedule = $this->schedule;
+    if (!$schedule) return false;
+ 
+    // Teori wajib selalu selesai dulu
+    $teoriCount = $this->soalTeoriAsesi()->count();
+    if ($teoriCount === 0) return false;
+ 
+    $teoriSelesai = $this->soalTeoriAsesi()
+        ->whereNotNull('submitted_at')
+        ->count() === $teoriCount;
+ 
+    if (!$teoriSelesai) return false;
+ 
+    // Deteksi metode dari distribusi schedule
+    $pakaiObservasi  = $schedule->distribusiSoalObservasi()->exists();
+    $pakaiPortofolio = $schedule->distribusiPortofolio()->exists();
+ 
+    if ($pakaiObservasi) {
+        // Hitung total paket yang harus diisi
+        $totalPaket = \App\Models\PaketSoalObservasi::whereHas('soalObservasi', function ($q) use ($schedule) {
+            $q->whereHas('distribusiObservasi', function ($q2) use ($schedule) {
+                $q2->where('schedule_id', $schedule->id);
+            });
+        })->count();
+ 
+        if ($totalPaket === 0) return false;
+ 
+        $sudahIsi = \App\Models\JawabanObservasiAsesi::where('asesmen_id', $this->id)
+            ->whereNotNull('gdrive_link')
+            ->count();
+ 
+        return $sudahIsi >= $totalPaket;
+    }
+ 
+    if ($pakaiPortofolio) {
+        return $schedule->hasilPortofolio()
+            ->whereNotNull('file_path')
+            ->exists();
+    }
+ 
+    return false;
+}
 
     // =========================================================================
     // Status helpers

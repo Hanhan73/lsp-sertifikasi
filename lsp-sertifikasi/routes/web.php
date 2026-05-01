@@ -458,6 +458,12 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/frak01/pdf',   [FrAk01AsesiController::class, 'asesiPdf'])->name('frak01.pdf');
         Route::post('/frak01/bukti/save', [FrAk01AsesiController::class, 'saveBukti'])->name('frak01.bukti.save');
 
+        // FR.AK.03 Umpan Balik
+        Route::get('/umpan-balik', [\App\Http\Controllers\Asesi\FrAk03Controller::class, 'index'])
+            ->name('frak03.index');
+        Route::post('/umpan-balik', [\App\Http\Controllers\Asesi\FrAk03Controller::class, 'submit'])
+            ->name('frak03.submit');
+
         // FR.AK.04 — Banding Asesmen (opsional)
         Route::get('/frak04',        [FrAk04AsesiController::class, 'showAsesi'])->name('frak04');
         Route::post('/frak04/submit', [FrAk04AsesiController::class, 'submitAsesi'])->name('frak04.submit');
@@ -940,6 +946,15 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
             Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
         });
+
+            Route::prefix('umpan-balik')->name('frak03.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'index'])
+                    ->name('index');
+                Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'detail'])
+                    ->name('detail');
+                Route::get('/jadwal/{schedule}/asesi/{asesmen}/pdf', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'exportPdf'])
+                    ->name('pdf');
+            });
     });
 
 

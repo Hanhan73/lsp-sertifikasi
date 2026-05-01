@@ -558,6 +558,33 @@ default => 0,
         </div>
     </div>
     @endif
+
+    {{-- FR.AK.03 Umpan Balik --}}
+    @if($asesmen->canShowFrAk03())
+    <div class="card border-0 shadow-sm mb-4 border-info" style="border-left:4px solid #0ea5e9 !important;">
+        <div class="card-body d-flex align-items-center gap-3 py-3">
+            <i class="bi bi-chat-square-text-fill text-info fs-4 flex-shrink-0"></i>
+            <div>
+                <div class="fw-semibold" style="font-size:.875rem;">Umpan Balik Asesmen</div>
+                <div style="font-size:.75rem; color:#64748b;">
+                    @if($asesmen->frAk03?->isSubmitted())
+                        Sudah diisi pada {{ $asesmen->frAk03->submitted_at->translatedFormat('d M Y') }}
+                    @else
+                        Silakan isi form umpan balik FR.AK.03
+                    @endif
+                </div>
+            </div>
+            <a href="{{ route('asesi.frak03.index') }}"
+            class="btn btn-sm {{ $asesmen->frAk03?->isSubmitted() ? 'btn-outline-success' : 'btn-info text-white' }} ms-auto flex-shrink-0">
+                @if($asesmen->frAk03?->isSubmitted())
+                    <i class="bi bi-check-circle me-1"></i>Lihat
+                @else
+                    <i class="bi bi-pencil-square me-1"></i>Isi Sekarang
+                @endif
+            </a>
+        </div>
+    </div>
+    @endif
     @endif
         {{-- Aksi cepat --}}
         @if(in_array($asesmen->status, ['pra_asesmen_started']))

@@ -559,20 +559,18 @@ default => 0,
     </div>
     @endif
     @endif
-    @php
+@php
     $schedule = $asesmen->schedule;
-    $teoriCount = $asesmen->soalTeoriAsesi()->count();
-    $teoriSelesai = $asesmen->soalTeoriAsesi()->whereNotNull('submitted_at')->count();
-    $pakaiObs = $schedule?->distribusiSoalObservasi()->exists();
-    $pakaiPorto = $schedule?->distribusiPortofolio()->exists();
-    
-    \Log::info('[DEBUG FR.AK.03]', [
-        'status'        => $asesmen->status,
-        'schedule_id'   => $asesmen->schedule_id,
-        'teoriCount'    => $teoriCount,
-        'teoriSelesai'  => $teoriSelesai,
-        'pakaiObs'      => $pakaiObs,
-        'pakaiPorto'    => $pakaiPorto,
+    $distribusiIds = \App\Models\DistribusiSoalObservasi::where('schedule_id', $schedule->id)
+        ->pluck('soal_observasi_id');
+    $totalPaket = \App\Models\PaketSoalObservasi::whereIn('soal_observasi_id', $distribusiIds)->count();
+    $sudahIsi = \App\Models\JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
+        ->whereNotNull('gdrive_link')->count();
+
+    \Log::info('[DEBUG FR.AK.03 OBS]', [
+        'distribusiIds' => $distribusiIds->toArray(),
+        'totalPaket'    => $totalPaket,
+        'sudahIsi'      => $sudahIsi,
     ]);
 @endphp
     {{-- FR.AK.03 Umpan Balik --}}

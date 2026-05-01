@@ -124,7 +124,7 @@ hr.kop-line {
 @endphp
 
 @if($kopSrc)
-    <img src="{{ $kopSrc }}" style="width:100%;height:auto;display:block;object-fit:contain;" alt="Kop Surat">
+    <img src="{{ $kopSrc }}" style="width:100%;height:auto;display:block;object-fit:contain; padding-top: 18px;" alt="Kop Surat">
 @endif
 
 

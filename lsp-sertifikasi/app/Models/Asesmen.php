@@ -389,19 +389,19 @@ class Asesmen extends Model
     $pakaiPortofolio = $schedule->distribusiPortofolio()->exists();
  
     if ($pakaiObservasi) {
-        // Hitung total paket yang harus diisi
-        $totalPaket = \App\Models\PaketSoalObservasi::whereHas('soalObservasi', function ($q) use ($schedule) {
-            $q->whereHas('distribusiObservasi', function ($q2) use ($schedule) {
-                $q2->where('schedule_id', $schedule->id);
-            });
-        })->count();
- 
+        // Hitung total paket dari distribusi schedule ini
+        $distribusiIds = \App\Models\DistribusiSoalObservasi::where('schedule_id', $schedule->id)
+            ->pluck('soal_observasi_id');
+
+        $totalPaket = \App\Models\PaketSoalObservasi::whereIn('soal_observasi_id', $distribusiIds)
+            ->count();
+
         if ($totalPaket === 0) return false;
- 
+
         $sudahIsi = \App\Models\JawabanObservasiAsesi::where('asesmen_id', $this->id)
             ->whereNotNull('gdrive_link')
             ->count();
- 
+
         return $sudahIsi >= $totalPaket;
     }
  

@@ -468,64 +468,6 @@ public function storeData(Request $request)
         return redirect()->route('asesi.dashboard');
     }
 
-    public function downloadInvoice()
-    {
-        $user = auth()->user();
-
-        $asesmen = Asesmen::with(['payment', 'payments', 'skema', 'tuk'])
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
-        if (!$asesmen->payment && $asesmen->payments->isEmpty()) {
-            return redirect()->route('asesi.dashboard')
-                ->with('error', 'Belum ada pembayaran yang terverifikasi');
-        }
-
-        if ($asesmen->is_collective && $asesmen->payment_phases === 'two_phase') {
-            $payment = $asesmen->payments()
-                ->where('status', 'verified')
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            if (!$payment) {
-                return redirect()->route('asesi.dashboard')
-                    ->with('error', 'Belum ada pembayaran yang terverifikasi');
-            }
-        } else {
-            $payment = $asesmen->payment;
-
-            if (!$payment || $payment->status !== 'verified') {
-                return redirect()->route('asesi.dashboard')
-                    ->with('error', 'Pembayaran belum terverifikasi');
-            }
-        }
-
-        $invoiceNumber = 'INV-' . str_pad($asesmen->id, 6, '0', STR_PAD_LEFT) . '-' . date('Ymd');
-        $isCollective = $asesmen->is_collective;
-        $phase = $payment->payment_phase ?? 'full';
-        $batchId = $asesmen->collective_batch_id;
-        $tuk = $asesmen->tuk;
-        $asesmens = collect([$asesmen]);
-
-        // ✅ Generate PDF tanpa public path dependency
-        $pdf = Pdf::loadView('pdf.invoice', compact(
-            'payment',
-            'invoiceNumber',
-            'isCollective',
-            'phase',
-            'asesmen',
-            'asesmens',
-            'batchId',
-            'tuk'
-        ))->setPaper('a4', 'portrait');
-
-        
-        $filename = 'Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf';
-
-        // ✅ Use stream with attachment
-        return $pdf->stream($filename, ['Attachment' => true]);
-    }
-
     public function paymentStatus()
     {
         $user = auth()->user();

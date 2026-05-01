@@ -558,7 +558,8 @@ default => 0,
         </div>
     </div>
     @endif
-
+    @endif
+    
     {{-- FR.AK.03 Umpan Balik --}}
     @if($asesmen->canShowFrAk03())
     <div class="card border-0 shadow-sm mb-4 border-info" style="border-left:4px solid #0ea5e9 !important;">
@@ -584,7 +585,6 @@ default => 0,
             </a>
         </div>
     </div>
-    @endif
     @endif
         {{-- Aksi cepat --}}
         @if(in_array($asesmen->status, ['pra_asesmen_started']))

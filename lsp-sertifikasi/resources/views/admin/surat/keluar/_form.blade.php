@@ -44,11 +44,17 @@
     <div class="col-12">
         <label class="form-label fw-semibold">Upload Dokumen/Surat</label>
         @if($surat?->file_path)
-        <div class="mb-2">
+        <div class="mb-2 d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-info btn-preview-form"
+                data-url="{{ route('admin.surat.keluar.preview', $surat) }}"
+                data-mime="{{ Storage::disk('public_html')->mimeType($surat->file_path) }}"
+                data-label="Surat Keluar #{{ $surat->nomor_urut }}">
+                <i class="bi bi-eye"></i> Preview
+            </button>
             <a href="{{ route('admin.surat.keluar.download', $surat) }}" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-file-earmark"></i> File saat ini
+                <i class="bi bi-download"></i> Download
             </a>
-            <small class="text-muted ms-2">Upload baru untuk mengganti</small>
+            <small class="text-muted">Upload baru untuk mengganti</small>
         </div>
         @endif
         <input type="file" name="file" class="form-control @error('file') is-invalid @enderror"

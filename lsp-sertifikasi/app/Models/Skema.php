@@ -44,6 +44,11 @@ class Skema extends Model
         return $this->hasMany(Schedule::class);
     }
 
+    public function honorTiers()
+    {
+        return $this->hasMany(SkemaHonorTier::class)->orderBy('amount');
+    }
+
     public function getJenisLabelAttribute()
     {
         return match($this->jenis_skema) {

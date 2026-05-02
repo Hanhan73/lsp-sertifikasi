@@ -559,20 +559,6 @@ default => 0,
     </div>
     @endif
     @endif
-@php
-    $schedule = $asesmen->schedule;
-    $distribusiIds = \App\Models\DistribusiSoalObservasi::where('schedule_id', $schedule->id)
-        ->pluck('soal_observasi_id');
-    $totalPaket = \App\Models\PaketSoalObservasi::whereIn('soal_observasi_id', $distribusiIds)->count();
-    $sudahIsi = \App\Models\JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
-        ->whereNotNull('gdrive_link')->count();
-
-    \Log::info('[DEBUG FR.AK.03 OBS]', [
-        'distribusiIds' => $distribusiIds->toArray(),
-        'totalPaket'    => $totalPaket,
-        'sudahIsi'      => $sudahIsi,
-    ]);
-@endphp
     {{-- FR.AK.03 Umpan Balik --}}
     @if($asesmen->canShowFrAk03())
     <div class="card border-0 shadow-sm mb-4 border-info" style="border-left:4px solid #0ea5e9 !important;">

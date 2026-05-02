@@ -94,6 +94,48 @@
                 </div>
             </div>
         </div>
+
+        {{-- Rekening Bank Asesor --}}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white d-flex align-items-center">
+                <i class="bi bi-credit-card me-1 text-success"></i>
+                <span class="fw-semibold">Rekening Bank Asesor</span>
+                <a href="{{ route('bendahara.rekening.show', $honor->asesor) }}"
+                    class="btn ms-auto" style="font-size:.75rem;padding:2px 8px;border:1px solid #ccc;">
+                    <i class="bi bi-pencil me-1"></i>Kelola
+                </a>
+            </div>
+            <div class="card-body">
+                @php $rekenings = $honor->asesor->rekenings; @endphp
+                @if($rekenings->isEmpty())
+                    <div class="alert alert-warning py-2 mb-0 small">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Asesor belum memiliki rekening bank tersimpan.
+                        <a href="{{ route('bendahara.rekening.show', $honor->asesor) }}" class="alert-link">Tambah sekarang</a>.
+                    </div>
+                @else
+                    <div class="row g-2">
+                        @foreach($rekenings as $rek)
+                        <div class="col-sm-6">
+                            <div class="border rounded px-3 py-2 h-100 {{ $rek->is_utama ? 'border-success bg-success-subtle' : 'bg-light' }}">
+                                <div class="fw-semibold small">
+                                    {{ $rek->nama_bank }}
+                                    @if($rek->is_utama)
+                                        <span class="badge bg-success ms-1" style="font-size:.65rem;">Utama</span>
+                                    @endif
+                                </div>
+                                <div class="font-monospace" style="font-size:.85rem;">{{ $rek->nomor_rekening }}</div>
+                                <div class="text-muted small">a.n. {{ $rek->nama_pemilik }}</div>
+                                @if($rek->cabang)
+                                    <div class="text-muted" style="font-size:.75rem;">{{ $rek->cabang }}</div>
+                                @endif
+                            </div>
+                        </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     {{-- Kanan: Upload bukti transfer --}}
@@ -181,8 +223,6 @@
         </div>
 
     </div>
-
-</div>
 
 </div>
 @endsection

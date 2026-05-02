@@ -21,7 +21,7 @@
 
 <div class="row g-4">
 
-    {{-- Kiri: Info Asesor + Pilih Jadwal --}}
+    {{-- Kiri: Info Asesor + Rekening + Pilih Jadwal --}}
     <div class="col-lg-7">
 
         {{-- Info Asesor --}}
@@ -30,7 +30,7 @@
                 <i class="bi bi-person-circle me-1 text-primary"></i>Informasi Asesor
             </div>
             <div class="card-body">
-                <div class="row g-2">
+                <div class="row g-2 mb-3">
                     <div class="col-6">
                         <div class="text-muted small">Nama</div>
                         <div class="fw-semibold">{{ $asesor->nama }}</div>
@@ -47,6 +47,50 @@
                         <div class="text-muted small">Telepon</div>
                         <div>{{ $asesor->telepon ?? '-' }}</div>
                     </div>
+                </div>
+
+                {{-- Rekening Bank --}}
+                <div class="border-top pt-3">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div class="small fw-semibold text-muted">
+                            <i class="bi bi-credit-card me-1"></i>Rekening Bank
+                        </div>
+                        <a href="{{ route('bendahara.rekening.show', $asesor) }}"
+                            class="btn btn-xs btn-outline-secondary" style="font-size:.75rem;padding:2px 8px;">
+                            <i class="bi bi-pencil me-1"></i>Kelola
+                        </a>
+                    </div>
+                    @if($asesor->rekenings->isEmpty())
+                        <div class="alert alert-warning py-2 mb-0 small">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            Asesor belum memiliki rekening bank tersimpan.
+                            <a href="{{ route('bendahara.rekening.show', $asesor) }}" class="alert-link">Tambah sekarang</a>.
+                        </div>
+                    @else
+                        <div class="row g-2">
+                            @foreach($asesor->rekenings as $rek)
+                            <div class="col-12">
+                                <div class="border rounded px-3 py-2 {{ $rek->is_utama ? 'border-success bg-success-subtle' : 'bg-light' }}">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <div class="fw-semibold small">
+                                                {{ $rek->nama_bank }}
+                                                @if($rek->is_utama)
+                                                    <span class="badge bg-success ms-1" style="font-size:.65rem;">Utama</span>
+                                                @endif
+                                            </div>
+                                            <div class="font-monospace" style="font-size:.85rem;">{{ $rek->nomor_rekening }}</div>
+                                            <div class="text-muted small">a.n. {{ $rek->nama_pemilik }}</div>
+                                            @if($rek->cabang)
+                                                <div class="text-muted" style="font-size:.75rem;">{{ $rek->cabang }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

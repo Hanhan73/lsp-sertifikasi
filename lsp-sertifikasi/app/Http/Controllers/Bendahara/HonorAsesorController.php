@@ -21,7 +21,6 @@ class HonorAsesorController extends Controller
      */
     public function index()
     {
-        // Asesor yang minimal punya 1 jadwal dengan berita acara terupload
         $asesors = Asesor::whereHas('schedules', function ($q) {
             $q->whereHas('beritaAcara');
         })
@@ -42,7 +41,8 @@ class HonorAsesorController extends Controller
      */
     public function show(Asesor $asesor)
     {
-        // Jadwal dengan berita acara tapi belum masuk honor payment yang dikonfirmasi/dibayar
+        $asesor->load('rekenings'); // ← tambah
+
         $jadwalTersedia = Schedule::where('asesor_id', $asesor->id)
             ->whereHas('beritaAcara')
             ->whereDoesntHave('honorPaymentDetails', function ($q) {
@@ -54,7 +54,6 @@ class HonorAsesorController extends Controller
             ->orderBy('assessment_date')
             ->get();
 
-        // Riwayat honor payment asesor ini
         $riwayat = HonorPayment::where('asesor_id', $asesor->id)
             ->with(['details.schedule.skema', 'details.schedule.tuk'])
             ->latest()
@@ -96,10 +95,10 @@ class HonorAsesorController extends Controller
                 $total        += $subtotal;
 
                 $details[] = [
-                    'schedule_id'    => $schedule->id,
-                    'jumlah_asesi'   => $jumlahAsesi,
+                    'schedule_id'     => $schedule->id,
+                    'jumlah_asesi'    => $jumlahAsesi,
                     'honor_per_asesi' => $honorPerAsesi,
-                    'subtotal'       => $subtotal,
+                    'subtotal'        => $subtotal,
                 ];
             }
 
@@ -140,6 +139,7 @@ class HonorAsesorController extends Controller
     {
         $honor->load([
             'asesor.user',
+            'asesor.rekenings', // ← tambah
             'details.schedule.skema',
             'details.schedule.tuk',
             'dibuatOleh',
@@ -184,7 +184,6 @@ class HonorAsesorController extends Controller
             \Log::warning('Gagal buat jurnal honor: ' . $e->getMessage());
         }
 
-        // Notifikasi ke asesor
         if ($honor->asesor) {
             $honor->asesor->notifications()->create([
                 'type'    => 'honor_dibayar',
@@ -207,8 +206,8 @@ class HonorAsesorController extends Controller
         $path = storage_path('app/private/' . $honor->bukti_transfer_path);
         abort_unless(file_exists($path), 404, 'File tidak ditemukan.');
 
-        $ext     = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
-        $isImage = in_array($ext, ['jpg','jpeg','png']);
+        $ext      = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
+        $isImage  = in_array($ext, ['jpg', 'jpeg', 'png']);
         $filename = $honor->bukti_transfer_name ?? 'bukti-honor.' . $ext;
 
         if ($request->boolean('download')) {

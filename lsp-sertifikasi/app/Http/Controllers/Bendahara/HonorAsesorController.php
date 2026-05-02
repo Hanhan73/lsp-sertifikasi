@@ -41,8 +41,8 @@ class HonorAsesorController extends Controller
      */
     public function show(Asesor $asesor)
     {
-        $asesor->load('rekenings'); // ← tambah
-
+        $asesor->load('rekenings');
+ 
         $jadwalTersedia = Schedule::where('asesor_id', $asesor->id)
             ->whereHas('beritaAcara')
             ->whereDoesntHave('honorPaymentDetails', function ($q) {
@@ -50,21 +50,23 @@ class HonorAsesorController extends Controller
                     $q2->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
                 });
             })
-            ->with(['skema', 'tuk', 'beritaAcara', 'asesmens'])
+            ->with([
+                'skema.honorTiers', // ← tambah
+                'tuk',
+                'beritaAcara',
+                'asesmens',
+            ])
             ->orderBy('assessment_date')
             ->get();
-
+ 
         $riwayat = HonorPayment::where('asesor_id', $asesor->id)
             ->with(['details.schedule.skema', 'details.schedule.tuk'])
             ->latest()
             ->get();
-
+ 
         return view('bendahara.honor.show', compact('asesor', 'jadwalTersedia', 'riwayat'));
     }
-
-    /**
-     * Buat honor payment baru (pilih jadwal-jadwal yang mau dibayar).
-     */
+ 
     public function store(Request $request, Asesor $asesor)
     {
         $request->validate([
@@ -74,34 +76,70 @@ class HonorAsesorController extends Controller
             'schedule_ids.required' => 'Pilih minimal 1 jadwal.',
             'schedule_ids.min'      => 'Pilih minimal 1 jadwal.',
         ]);
-
+ 
         DB::beginTransaction();
         try {
             $schedules = Schedule::whereIn('id', $request->schedule_ids)
                 ->where('asesor_id', $asesor->id)
                 ->whereHas('beritaAcara')
-                ->with(['skema', 'asesmens'])
+                ->with(['skema.honorTiers', 'asesmens'])
                 ->get();
-
+ 
             abort_if($schedules->isEmpty(), 422, 'Tidak ada jadwal valid yang dipilih.');
-
+ 
             $details = [];
             $total   = 0;
-
+ 
+            // tier_ids: [schedule_id => tier_id] (opsional, dari dropdown)
+            $tierIds      = $request->input('tier_ids', []);
+            // honor_amounts: [schedule_id => amount_string] (fallback manual)
+            $honorAmounts = $request->input('honor_amounts', []);
+ 
             foreach ($schedules as $schedule) {
-                $jumlahAsesi   = $schedule->asesmens()->count();
-                $honorPerAsesi = $schedule->skema->honor_per_asesi ?? 0;
-                $subtotal      = $jumlahAsesi * $honorPerAsesi;
-                $total        += $subtotal;
-
+                $jumlahAsesi = $schedule->asesmens()->count();
+ 
+                // Tentukan honor per asesi:
+                // Prioritas: tier dipilih → manual input → default tier → honor_per_asesi skema
+                $honorPerAsesi = 0;
+                $tierLabel     = null;
+ 
+                $tierId = $tierIds[$schedule->id] ?? null;
+                if ($tierId) {
+                    $tier = $schedule->skema->honorTiers->firstWhere('id', (int) $tierId);
+                    if ($tier) {
+                        $honorPerAsesi = $tier->amount;
+                        $tierLabel     = $tier->label;
+                    }
+                }
+ 
+                if (!$honorPerAsesi && isset($honorAmounts[$schedule->id])) {
+                    $honorPerAsesi = (int) str_replace(['.', ','], '', $honorAmounts[$schedule->id]);
+                }
+ 
+                if (!$honorPerAsesi) {
+                    $defaultTier = $schedule->skema->honorTiers->firstWhere('is_default', true)
+                                   ?? $schedule->skema->honorTiers->first();
+                    if ($defaultTier) {
+                        $honorPerAsesi = $defaultTier->amount;
+                        $tierLabel     = $defaultTier->label;
+                    } else {
+                        $honorPerAsesi = $schedule->skema->honor_per_asesi ?? 0;
+                    }
+                }
+ 
+                $subtotal = $jumlahAsesi * $honorPerAsesi;
+                $total   += $subtotal;
+ 
                 $details[] = [
                     'schedule_id'     => $schedule->id,
                     'jumlah_asesi'    => $jumlahAsesi,
                     'honor_per_asesi' => $honorPerAsesi,
                     'subtotal'        => $subtotal,
+                    // tier_label disimpan di notes opsional — bisa diabaikan kalau kolom belum ada
+                    // 'tier_label'   => $tierLabel,
                 ];
             }
-
+ 
             $honor = HonorPayment::create([
                 'asesor_id'        => $asesor->id,
                 'nomor_kwitansi'   => HonorPayment::generateNomor(),
@@ -110,19 +148,19 @@ class HonorAsesorController extends Controller
                 'status'           => 'menunggu_pembayaran',
                 'dibuat_oleh'      => Auth::id(),
             ]);
-
+ 
             try {
                 app(JournalService::class)->jurnalHonorDibuat($honor->fresh(['asesor']));
             } catch (\Exception $e) {
                 \Log::warning('Gagal buat jurnal honor dibuat: ' . $e->getMessage());
             }
-
+ 
             foreach ($details as $d) {
                 HonorPaymentDetail::create(array_merge(['honor_payment_id' => $honor->id], $d));
             }
-
+ 
             DB::commit();
-
+ 
             return redirect()
                 ->route('bendahara.honor.payment.show', $honor)
                 ->with('success', 'Kwitansi honor berhasil dibuat.');

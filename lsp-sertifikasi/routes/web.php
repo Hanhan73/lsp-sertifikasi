@@ -67,6 +67,7 @@ use App\Http\Controllers\Bendahara\BiayaOperasionalController;
 use App\Http\Controllers\Bendahara\RekapPendapatanController;
 use App\Http\Controllers\Bendahara\LaporanKeuanganController;
 use App\Http\Controllers\Bendahara\ChartOfAccountController;
+use App\Http\Controllers\Bendahara\TarifHonorController;
 
 
 /*
@@ -1056,9 +1057,6 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
             ->name('buku-besar.export');
     });
 
-    // ── Tarif Honor ───────────────────────────────────────────────────────
-    Route::get('/tarif-honor',           [BendaharaController::class, 'tarifHonorIndex'])->name('tarif-honor.index');
-    Route::patch('/tarif-honor/{skema}', [BendaharaController::class, 'tarifHonorUpdate'])->name('tarif-honor.update');
 
     Route::get('/rekap-pendapatan/export', [RekapPendapatanController::class, 'export'])
         ->name('rekap-pendapatan.export');
@@ -1074,12 +1072,20 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
     });
 
     Route::prefix('rekening')->name('rekening.')->group(function () {
-    Route::get('/',                              [AsesorRekeningController::class, 'bendaharaIndex'])->name('index');
-    Route::get('/{asesor}',                      [AsesorRekeningController::class, 'bendaharaShow'])->name('show');
-    Route::post('/{asesor}',                     [AsesorRekeningController::class, 'bendaharaStore'])->name('store');
-    Route::put('/{asesor}/{rekening}',           [AsesorRekeningController::class, 'bendaharaUpdate'])->name('update');
-    Route::delete('/{asesor}/{rekening}',        [AsesorRekeningController::class, 'bendaharaDestroy'])->name('destroy');
-});
+        Route::get('/',                              [AsesorRekeningController::class, 'bendaharaIndex'])->name('index');
+        Route::get('/{asesor}',                      [AsesorRekeningController::class, 'bendaharaShow'])->name('show');
+        Route::post('/{asesor}',                     [AsesorRekeningController::class, 'bendaharaStore'])->name('store');
+        Route::put('/{asesor}/{rekening}',           [AsesorRekeningController::class, 'bendaharaUpdate'])->name('update');
+        Route::delete('/{asesor}/{rekening}',        [AsesorRekeningController::class, 'bendaharaDestroy'])->name('destroy');
+    });
+
+    Route::prefix('tarif-honor')->name('tarif-honor.')->group(function () {
+        Route::get('/',                                    [TarifHonorController::class, 'index'])->name('index');
+        Route::get('/{skema}/tiers',                       [TarifHonorController::class, 'tiersForSkema'])->name('tiers');
+        Route::post('/{skema}/tiers',                      [TarifHonorController::class, 'store'])->name('tiers.store');
+        Route::put('/{skema}/tiers/{tier}',                [TarifHonorController::class, 'update'])->name('tiers.update');
+        Route::delete('/{skema}/tiers/{tier}',             [TarifHonorController::class, 'destroy'])->name('tiers.destroy');
+    });
 });
 
 /*

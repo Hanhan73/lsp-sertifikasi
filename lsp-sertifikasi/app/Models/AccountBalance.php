@@ -11,13 +11,15 @@ use Illuminate\Support\Facades\DB;
 
 class AccountBalance extends Model
 {
+ 
     protected $fillable = [
-        'tahun', 'kas', 'bank', 'perlengkapan',
+        'tahun', 'kas', 'bank', 'saldo_awal_bank', 'perlengkapan',
         'utang_operasional', 'saldo_dana',
         'distribusi_yayasan', 'hutang_distribusi',
         'tanggal_distribusi', 'catatan_distribusi',
         'jurnal_balik_done', 'dibuat_oleh', 'diupdate_oleh',
     ];
+ 
 
     protected $casts = [
         'tanggal_distribusi' => 'date',

@@ -184,7 +184,7 @@ class BendaharaController extends Controller
     public function tarifHonorIndex()
     {
         $skemas = \App\Models\Skema::where('is_active', true)
-            ->orderBy('name')
+            ->orderBy('code')
             ->get(['id', 'code', 'name', 'jenis_skema', 'honor_per_asesi']);
 
         return view('bendahara.tarif-honor.index', compact('skemas'));

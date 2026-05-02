@@ -360,15 +360,7 @@ document.getElementById('selectCoa').addEventListener('change', function () {
 // ── Modal Edit ───────────────────────────────────────────────────────────────
 // Data diisi via AJAX sederhana — ambil dari data-* di baris tabel
 // Tapi kita simpan data di JS object untuk kemudahan
-const rowData = @json($pendapatans->keyBy('id')->map(fn($i) => [
-    'id'        => $i->id,
-    'tanggal'   => $i->tanggal->format('Y-m-d'),
-    'uraian'    => $i->uraian,
-    'kategori'  => $i->kategori,
-    'jumlah'    => $i->jumlah,
-    'coa_id'    => $i->coa_id,
-    'catatan'   => $i->catatan,
-]));
+const rowData = @json($rowData);
 
 function openEdit(id, sudahJurnal) {
     const d = rowData[id];

@@ -49,8 +49,20 @@ class PendapatanLuarController extends Controller
             ->orderByDesc('tahun')
             ->pluck('tahun');
 
+        $rowData = $pendapatans->keyBy('id')->map(function ($i) {
+            return [
+                'id'       => $i->id,
+                'tanggal'  => $i->tanggal->format('Y-m-d'),
+                'uraian'   => $i->uraian,
+                'kategori' => $i->kategori,
+                'jumlah'   => $i->jumlah,
+                'coa_id'   => $i->coa_id,
+                'catatan'  => $i->catatan,
+            ];
+        })->values()->keyBy('id');
+
         return view('bendahara.pendapatan-luar.index', compact(
-            'pendapatans', 'totalFiltered', 'coaOptions', 'tahunList'
+            'pendapatans', 'totalFiltered', 'coaOptions', 'tahunList', 'rowData'
         ));
     }
 

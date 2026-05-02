@@ -62,6 +62,15 @@
     <i class="bi bi-cash-stack"></i> Biaya Operasional
 </a>
 
+<div class="sidebar-divider">
+    <span>PENDAPATAN LUAR</span>
+</div>
+
+<a href="{{ route('bendahara.pendapatan-luar.index') }}"
+    class="nav-link {{ str_starts_with($route, 'bendahara.pendapatan-luar') ? 'active' : '' }}">
+    <i class="bi bi-cash-stack"></i> Pendapatan Luar
+</a>
+
 {{-- ── LAPORAN ─────────────────────────────────────────────────────── --}}
 <div class="sidebar-divider">
     <span>LAPORAN</span>

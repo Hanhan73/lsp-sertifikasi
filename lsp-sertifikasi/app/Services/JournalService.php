@@ -130,6 +130,38 @@ class JournalService
         );
     }
 
+/**
+     * Pendapatan luar asesmen dicatat
+     * Dr. 1-002 Bank
+     *     Cr. {coa pilihan bendahara} Pendapatan Luar
+     */
+    public function jurnalPendapatanLuar(\App\Models\PendapatanLuar $pendapatan): \App\Models\JournalEntry
+    {
+        $coa = $pendapatan->coa;
+ 
+        return $this->createJournal(
+            tanggal:    $pendapatan->tanggal->toDateString(),
+            keterangan: "Pendapatan luar — {$pendapatan->uraian}" .
+                        ($pendapatan->kategori ? " ({$pendapatan->kategori})" : ''),
+            lines: [
+                [
+                    'akun'   => '1-002',
+                    'debit'  => $pendapatan->jumlah,
+                    'kredit' => 0,
+                    'ket'    => "Penerimaan: {$pendapatan->uraian}",
+                ],
+                [
+                    'akun'   => $coa->kode,
+                    'debit'  => 0,
+                    'kredit' => $pendapatan->jumlah,
+                    'ket'    => $pendapatan->uraian,
+                ],
+            ],
+            refType: \App\Models\PendapatanLuar::class,
+            refId:   $pendapatan->id,
+        );
+    }
+
 
 /**
  * Piutang TUK timbul saat invoice kolektif dikirim

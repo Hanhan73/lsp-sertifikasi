@@ -68,6 +68,7 @@ use App\Http\Controllers\Bendahara\RekapPendapatanController;
 use App\Http\Controllers\Bendahara\LaporanKeuanganController;
 use App\Http\Controllers\Bendahara\ChartOfAccountController;
 use App\Http\Controllers\Bendahara\TarifHonorController;
+use App\Http\Controllers\Bendahara\PendapatanLuarController;
 
 
 /*
@@ -1085,6 +1086,14 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/{skema}/tiers',                      [TarifHonorController::class, 'store'])->name('tiers.store');
         Route::put('/{skema}/tiers/{tier}',                [TarifHonorController::class, 'update'])->name('tiers.update');
         Route::delete('/{skema}/tiers/{tier}',             [TarifHonorController::class, 'destroy'])->name('tiers.destroy');
+    });
+
+    Route::prefix('pendapatan-luar')->name('pendapatan-luar.')->group(function () {
+        Route::get('/',              [PendapatanLuarController::class, 'index'])->name('index');
+        Route::post('/',             [PendapatanLuarController::class, 'store'])->name('store');
+        Route::put('/{pendapatanLuar}',     [PendapatanLuarController::class, 'update'])->name('update');
+        Route::delete('/{pendapatanLuar}',  [PendapatanLuarController::class, 'destroy'])->name('destroy');
+        Route::get('/{pendapatanLuar}/bukti', [PendapatanLuarController::class, 'downloadBukti'])->name('bukti');
     });
 });
 

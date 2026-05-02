@@ -47,19 +47,18 @@ class LaporanKeuanganController extends Controller
     public function updateSaldo(Request $request)
     {
         $tahun = (int)($request->get('tahun', now()->year));
-
+ 
         $validated = $request->validate([
             'kas'               => 'required|integer|min:0',
-            'bank'              => 'required|integer|min:0',
             'saldo_awal_bank'   => 'required|integer|min:0',
             'perlengkapan'      => 'required|integer|min:0',
             'utang_operasional' => 'required|integer|min:0',
             'saldo_dana'        => 'required|integer|min:0',
         ]);
-
+ 
         $balance = AccountBalance::forTahun($tahun);
         $balance->update(array_merge($validated, ['diupdate_oleh' => auth()->id()]));
-
+ 
         return redirect()->route('bendahara.laporan-keuangan.index', ['tahun' => $tahun])
             ->with('success', 'Saldo berhasil diperbarui.');
     }

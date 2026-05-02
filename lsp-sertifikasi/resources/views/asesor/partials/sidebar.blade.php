@@ -70,6 +70,13 @@ $currentRoute = request()->route()->getName();
             </a>
         </li>
 
+        <li class="nav-item">
+            <a href="{{ route('asesor.biaya-operasional.index') }}"
+            class="nav-link rounded {{ str_starts_with($currentRoute, 'asesor.biaya-operasional') ? 'active bg-primary text-white' : 'text-dark' }}">
+                <i class="bi bi-cash-stack me-2"></i>Biaya Operasional
+            </a>
+        </li>
+
         <li class="nav-item mt-3">
             <hr class="my-1">
         </li>

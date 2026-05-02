@@ -36,6 +36,45 @@
         @error('kepada')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
     <div class="col-12">
+        <label class="form-label fw-semibold">Kode Klasifikasi</label>
+        <div class="row g-2">
+            {{-- Step 1: Grup --}}
+            <div class="col-md-4">
+                <select id="selGrup" class="form-select" style="font-size:.85rem">
+                    <option value="">— Pilih Grup —</option>
+                    <option value="ADM">ADM — Administrasi</option>
+                    <option value="OG">OG — Keorganisasian</option>
+                    <option value="KU">KU — Keuangan</option>
+                    <option value="SER">SER — Sertifikasi</option>
+                    <option value="MT">MT — Mutu</option>
+                </select>
+            </div>
+            {{-- Step 2: Sub grup --}}
+            <div class="col-md-4">
+                <select id="selSub" class="form-select" style="font-size:.85rem" disabled>
+                    <option value="">— Pilih Sub —</option>
+                </select>
+            </div>
+            {{-- Step 3: Item --}}
+            <div class="col-md-4">
+                <select id="selItem" class="form-select" style="font-size:.85rem" disabled>
+                    <option value="">— Pilih Item (opsional) —</option>
+                </select>
+            </div>
+        </div>
+        {{-- Hasil kode --}}
+        <div class="mt-2 d-flex align-items-center gap-2">
+            <span class="text-muted small">Kode:</span>
+            <span id="kodePreview" class="badge px-3 py-2" style="background:#eff6ff;color:#1d4ed8;font-size:.85rem;min-width:80px">—</span>
+            <button type="button" id="btnResetKode" class="btn btn-sm btn-outline-secondary py-0 px-2" style="display:none">
+                <i class="bi bi-x"></i> Reset
+            </button>
+        </div>
+        <input type="hidden" name="kode_klasifikasi" id="inputKode"
+            value="{{ old('kode_klasifikasi', $surat->kode_klasifikasi ?? '') }}">
+        @error('kode_klasifikasi')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+    </div>
+    <div class="col-12">
         <label class="form-label fw-semibold">Isi Ringkas <span class="text-danger">*</span></label>
         <textarea name="isi_ringkas" rows="3" class="form-control @error('isi_ringkas') is-invalid @enderror"
             required>{{ old('isi_ringkas', $surat->isi_ringkas ?? '') }}</textarea>

@@ -85,7 +85,7 @@ class HasilAsesmenController extends Controller
             'distribusiSoalObservasi.soalObservasi',
             'distribusiSoalObservasi.paketSoalObservasi',
             'distribusiPortofolio.portofolio',
-            'beritaAcara.asesis',
+            'beritaAcara.asesis', 'asesmens.apldua', 'asesmens.apldua.jawabans',
         ]);
 
         $distribusiTeori = $schedule->distribusiSoalTeori()->with('soalAsesi.soalTeori')->first();

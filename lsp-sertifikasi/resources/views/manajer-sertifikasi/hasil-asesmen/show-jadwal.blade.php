@@ -88,6 +88,7 @@
                     <tr>
                         <th class="ps-4" style="width:36px;">#</th>
                         <th>Nama Asesi</th>
+                        <th class="text-center">Dok. Ujikom</th>
                         <th class="text-center">Hadir</th>
                         <th class="text-center">Nilai Teori</th>
                         @foreach($schedule->distribusiSoalObservasi as $distObs)
@@ -107,6 +108,7 @@
                     <tr class="table-light border-top-0" style="font-size:.7rem;color:#9ca3af;">
                         <th class="ps-4"></th>
                         <th></th>
+                        <th class="text-center fw-normal">GDrive Pra-Asesmen</th>
                         <th class="text-center fw-normal">Kehadiran</th>
                         <th class="text-center fw-normal">PG (Benar/Total)</th>
                         @foreach($schedule->distribusiSoalObservasi as $d)
@@ -121,21 +123,35 @@
                 <tbody>
                     @foreach($schedule->asesmens as $i => $asesmen)
                     @php
-                    $soalAsesi = $distribusiTeori ? $distribusiTeori->soalAsesi->where('asesmen_id', $asesmen->id) :
-                    collect();
-                    $totalSoal = $soalAsesi->count();
-                    $benarSoal = $soalAsesi->filter(fn($s) => $s->jawaban && $s->jawaban ===
-                    $s->soalTeori?->jawaban_benar)->count();
-                    $sudahSubmit = $soalAsesi->whereNotNull('submitted_at')->isNotEmpty();
-                    $nilaiPct = $totalSoal > 0 ? round($benarSoal / $totalSoal * 100) : 0;
-                    $rek = $rekomendasiMap[$asesmen->id] ?? null;
+                        $soalAsesi   = $distribusiTeori ? $distribusiTeori->soalAsesi->where('asesmen_id', $asesmen->id) : collect();
+                        $totalSoal   = $soalAsesi->count();
+                        $benarSoal   = $soalAsesi->filter(fn($s) => $s->jawaban && $s->jawaban === $s->soalTeori?->jawaban_benar)->count();
+                        $sudahSubmit = $soalAsesi->whereNotNull('submitted_at')->isNotEmpty();
+                        $nilaiPct    = $totalSoal > 0 ? round($benarSoal / $totalSoal * 100) : 0;
+                        $rek         = $rekomendasiMap[$asesmen->id] ?? null;
                     @endphp
                     <tr>
                         <td class="ps-4 text-muted">{{ $i + 1 }}</td>
+
+                        {{-- Nama --}}
                         <td>
                             <div class="fw-semibold">{{ $asesmen->full_name }}</div>
                             <div class="text-muted" style="font-size:.75rem;">{{ $asesmen->nik ?? '-' }}</div>
                         </td>
+
+                        {{-- Dok. Ujikom --}}
+                        <td class="text-center">
+                            @if($asesmen->apldua?->gdrive_ujikom)
+                            <a href="{{ $asesmen->apldua->gdrive_ujikom }}" target="_blank"
+                            class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>Drive
+                            </a>
+                            @else
+                            <span class="text-muted small">—</span>
+                            @endif
+                        </td>
+
+                        {{-- Hadir --}}
                         <td class="text-center">
                             @if($asesmen->hadir)
                             <span class="badge bg-success">Hadir</span>
@@ -143,14 +159,15 @@
                             <span class="badge bg-secondary">—</span>
                             @endif
                         </td>
+
+                        {{-- Nilai Teori --}}
                         <td class="text-center">
                             @if($totalSoal === 0)
                             <span class="text-muted small">Belum ada soal</span>
                             @elseif(!$sudahSubmit)
                             <span class="badge bg-warning text-dark" style="font-size:.7rem;">Belum Submit</span>
                             @else
-                            <div class="fw-bold {{ $nilaiPct >= 60 ? 'text-success' : 'text-danger' }}">
-                                {{ $nilaiPct }}</div>
+                            <div class="fw-bold {{ $nilaiPct >= 60 ? 'text-success' : 'text-danger' }}">{{ $nilaiPct }}</div>
                             <div class="progress mt-1" style="height:4px;width:60px;margin:0 auto;">
                                 <div class="progress-bar {{ $nilaiPct >= 60 ? 'bg-success' : 'bg-danger' }}"
                                     style="width:{{ $nilaiPct }}%"></div>
@@ -158,15 +175,19 @@
                             <div style="font-size:.68rem;color:#6b7280;">{{ $benarSoal }}/{{ $totalSoal }}</div>
                             @endif
                         </td>
+
+                        {{-- Observasi per distribusi --}}
                         @foreach($schedule->distribusiSoalObservasi as $distObs)
                         @php
-                        $jwb = $jawabanObservasi->where('asesmen_id', $asesmen->id)
-                        ->where('distribusi_soal_observasi_id', $distObs->id)->first();
+                            $jwb = $jawabanObservasi
+                                ->where('asesmen_id', $asesmen->id)
+                                ->where('distribusi_soal_observasi_id', $distObs->id)
+                                ->first();
                         @endphp
                         <td class="text-center">
-                            @if($jwb && $jwb->gdrive_link)
+                            @if($jwb?->gdrive_link)
                             <a href="{{ $jwb->gdrive_link }}" target="_blank"
-                                class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
+                            class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
                                 <i class="bi bi-box-arrow-up-right me-1"></i>Drive
                             </a>
                             @else
@@ -174,13 +195,13 @@
                             @endif
                         </td>
                         @endforeach
+
+                        {{-- Portofolio per distribusi --}}
                         @foreach($schedule->distribusiPortofolio as $distPorto)
-                        @php $hasil = $hasilPortofolio->where('portofolio_id', $distPorto->portofolio_id)->first();
-                        @endphp
+                        @php $hasil = $hasilPortofolio->where('portofolio_id', $distPorto->portofolio_id)->first(); @endphp
                         <td class="text-center">
                             @if($hasil)
-                            <span class="badge bg-success-subtle text-success border border-success-subtle"
-                                style="font-size:.68rem;">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.68rem;">
                                 <i class="bi bi-check-lg me-1"></i>Diupload
                             </span>
                             @else
@@ -188,6 +209,8 @@
                             @endif
                         </td>
                         @endforeach
+
+                        {{-- Rekomendasi --}}
                         <td class="text-center pe-4">
                             @if($rek === 'K')
                             <span class="badge bg-success px-3">Kompeten</span>

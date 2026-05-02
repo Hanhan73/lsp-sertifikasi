@@ -123,6 +123,16 @@ in_array($frak01Status, ['submitted', 'verified', 'approved']),
     @endif
 </a>
 
+<a href="{{ route('asesi.ujikom.index') }}"
+   class="nav-link {{ $currentRoute === 'asesi.ujikom.index' ? 'active' : '' }}">
+    <i class="bi bi-google"></i> Dok. Ujikom
+    @if($asesmen->apldua?->gdrive_ujikom)
+    <span class="badge bg-success ms-1" style="font-size:.65rem;">✓</span>
+    @else
+    <span class="badge bg-secondary ms-1" style="font-size:.65rem;">Belum</span>
+    @endif
+</a>
+
 <hr class="my-2 mx-3" style="border-color: rgba(255,255,255,0.2);;">
 @endif
 
@@ -140,7 +150,8 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
 
 <a href="{{ route('asesi.schedule') }}" class="nav-link {{ in_array($currentRoute, [
         'asesi.schedule',
-        'asesi.apl01', 'asesi.apldua', 'asesi.frak01', 'asesi.frak04', 'asesi.documents',
+        'asesi.apl01', 'asesi.apldua', 'asesi.frak01', 'asesi.frak04',
+        'asesi.ujikom.index',  {{-- ← tambah ini --}}
         'asesi.soal.teori.intro', 'asesi.soal.teori.index',
         'asesi.soal.observasi.index',
     ]) ? 'active' : '' }}">

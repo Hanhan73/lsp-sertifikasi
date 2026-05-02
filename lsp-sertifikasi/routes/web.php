@@ -41,6 +41,7 @@ use App\Http\Controllers\Tuk\TukAngsuranController;
 
 // Asesor
 use App\Http\Controllers\Asesor\AsesorController;
+use App\Http\Controllers\Asesor\BiayaOperasionalAsesorController;
 use App\Http\Controllers\Asesor\FrAk01Controller;
 use App\Http\Controllers\Asesor\FrAk04Controller as FrAk04AsesorController;
 use App\Http\Controllers\Asesor\HasilPenilaianController;
@@ -380,6 +381,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             Route::get('/',                         [SuratController::class, 'masukIndex'])   ->name('index');
             Route::get('/create',                   [SuratController::class, 'masukCreate'])  ->name('create');
             Route::post('/',                        [SuratController::class, 'masukStore'])   ->name('store');
+                        Route::get('/rekap/export',       [SuratController::class, 'masukRekapExport'])      ->name('rekap.export');
+            Route::get('/rekap/export-bulan', [SuratController::class, 'masukRekapExportBulan']) ->name('rekap.export-bulan');
             Route::get('/{suratMasuk}/edit',        [SuratController::class, 'masukEdit'])    ->name('edit');
             Route::put('/{suratMasuk}',             [SuratController::class, 'masukUpdate'])  ->name('update');
             Route::delete('/{suratMasuk}',          [SuratController::class, 'masukDestroy']) ->name('destroy');
@@ -393,14 +396,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             Route::get('/',                         [SuratController::class, 'keluarIndex'])   ->name('index');
             Route::get('/create',                   [SuratController::class, 'keluarCreate'])  ->name('create');
             Route::post('/',                        [SuratController::class, 'keluarStore'])   ->name('store');
+                            Route::get('/rekap/export',       [SuratController::class, 'keluarRekapExport'])      ->name('rekap.export');
+    Route::get('/rekap/export-bulan', [SuratController::class, 'keluarRekapExportBulan']) ->name('rekap.export-bulan');
             Route::get('/{suratKeluar}/edit',       [SuratController::class, 'keluarEdit'])    ->name('edit');
             Route::put('/{suratKeluar}',            [SuratController::class, 'keluarUpdate'])  ->name('update');
             Route::delete('/{suratKeluar}',         [SuratController::class, 'keluarDestroy']) ->name('destroy');
             Route::get('/{suratKeluar}/download',   [SuratController::class, 'keluarDownload'])->name('download');
             Route::get('/{suratKeluar}/preview', [SuratController::class, 'keluarPreview'])->name('preview');
 
+
         });
     });
+
+
 });
 
 /*
@@ -469,6 +477,9 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::post('/frak04/submit', [FrAk04AsesiController::class, 'submitAsesi'])->name('frak04.submit');
         Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])->name('frak04.pdf');
 
+        Route::get('/dokumen-ujikom',        [AsesiController::class, 'ujikomIndex'])->name('ujikom.index');
+        Route::post('/dokumen-ujikom/simpan',[AsesiController::class, 'ujikomSimpan'])->name('ujikom.simpan');
+        
         Route::get('/documents', [AsesiController::class, 'documents'])->name('documents');
 
         Route::prefix('soal')->name('soal.')->group(function () {
@@ -680,6 +691,8 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/{honor}/bukti/download',    [HonorController::class, 'downloadBukti'])->name('bukti.download');
         Route::get('/{honor}/kwitansi',          [HonorController::class, 'downloadKwitansi'])->name('kwitansi');
     });
+
+    Route::get('/biaya-operasional', [BiayaOperasionalAsesorController::class, 'index'])->name('biaya-operasional.index');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin

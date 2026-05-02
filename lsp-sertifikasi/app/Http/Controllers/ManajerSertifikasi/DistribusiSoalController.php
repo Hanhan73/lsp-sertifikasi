@@ -471,6 +471,8 @@ public function importSoalTeori(Request $request, Skema $skema): RedirectRespons
             'distribusiSoalObservasi.paketSoalObservasi',
             'distribusiSoalTeori.soalAsesi',
             'distribusiPortofolio.portofolio',
+            'asesmens.apldua',
+            'asesmens.user',
         ]);
 
         $skemaId = $schedule->skema_id;
@@ -639,7 +641,7 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
             ->where('soal_observasi_id', $request->soal_observasi_id)
             ->firstOrFail();
 
-        DistribusiSoalObservasi::updateOrCreate(
+        $distribusi = DistribusiSoalObservasi::updateOrCreate(
             [
                 'schedule_id'       => $request->schedule_id,
                 'soal_observasi_id' => $request->soal_observasi_id,
@@ -649,6 +651,31 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
                 'didistribusikan_oleh'    => Auth::id(),
             ]
         );
+
+        // ── PREFILL GDrive ujikom ke jawaban observasi ─────────────────────
+        // Ambil semua asesi di jadwal ini yang punya gdrive_ujikom
+        $asesmens = \App\Models\Asesmen::with('apldua')
+            ->where('schedule_id', $request->schedule_id)
+            ->get();
+
+        foreach ($asesmens as $asesmen) {
+            $gdriveUjikom = $asesmen->apldua?->gdrive_ujikom;
+            if (!$gdriveUjikom) continue;
+
+            // Hanya prefill kalau belum punya link (tidak overwrite yang sudah diisi manual)
+            \App\Models\JawabanObservasiAsesi::firstOrCreate(
+                [
+                    'asesmen_id'              => $asesmen->id,
+                    'paket_soal_observasi_id' => $paket->id,
+                ],
+                [
+                    'distribusi_soal_observasi_id' => $distribusi->id,
+                    'gdrive_link'                  => $gdriveUjikom,
+                    'uploaded_at'                  => now(),
+                ]
+            );
+        }
+        // ──────────────────────────────────────────────────────────────────
 
         return back()->with('success', "Soal observasi '{$paket->soalObservasi->judul}' — Paket {$paket->kode_paket} berhasil didistribusikan.");
     }

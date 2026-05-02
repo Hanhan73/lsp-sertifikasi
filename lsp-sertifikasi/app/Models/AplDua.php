@@ -15,7 +15,7 @@ class AplDua extends Model
         'ttd_asesi', 'nama_ttd_asesi', 'tanggal_ttd_asesi',
         'ttd_asesor', 'nama_ttd_asesor', 'tanggal_ttd_asesor',
         'rekomendasi_asesor', 'catatan_asesor',
-        'submitted_at', 'verified_at', 'verified_by',
+        'submitted_at', 'verified_at', 'verified_by', 'gdrive_ujikom',
     ];
 
     protected $casts = [

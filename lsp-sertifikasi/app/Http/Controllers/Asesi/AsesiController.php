@@ -17,6 +17,9 @@ use App\Models\AplSatu;
 use App\Models\AplSatuBukti;
 use App\Models\AplDua;
 use App\Models\AplDuaJawaban;
+use Illuminate\Http\JsonResponse;
+use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 
 class AsesiController extends Controller
 {
@@ -963,4 +966,51 @@ public function aplsatuBuktiSave(Request $request)
         return $pdf->download('Invoice_' . $asesmen->id . '_' . date('Ymd') . '.pdf');
     }
 
+    public function ujikomIndex(): View|RedirectResponse
+    {
+        $user    = auth()->user();
+        $asesmen = $user->asesmens()->latest()->first();
+
+        if (!$asesmen || !in_array($asesmen->status, [
+            'pra_asesmen_started', 'scheduled', 'asesmen_started', 'assessed', 'certified'
+        ])) {
+            return redirect()->route('asesi.dashboard')
+                ->with('info', 'Belum bisa mengakses halaman ini.');
+        }
+
+        $apldua = $asesmen->apldua;
+
+        return view('asesi.ujikom', compact('asesmen', 'apldua'));
+    }
+
+    public function ujikomSimpan(Request $request): JsonResponse
+    {
+        $request->validate([
+            'gdrive_ujikom' => [
+                'nullable', 'string', 'max:500',
+                function ($attr, $value, $fail) {
+                    if ($value && !preg_match('/^https?:\/\/(drive|docs)\.google\.com\//i', $value)) {
+                        $fail('Link harus berupa URL Google Drive yang valid.');
+                    }
+                },
+            ],
+        ]);
+
+        $asesmen = auth()->user()->asesmens()->latest()->firstOrFail();
+        $apldua  = $asesmen->apldua;
+
+        if (!$apldua) {
+            return response()->json([
+                'success' => false,
+                'message' => 'APL-02 belum dibuat. Isi APL-02 terlebih dahulu.',
+            ], 404);
+        }
+
+        $apldua->update(['gdrive_ujikom' => $request->gdrive_ujikom ?: null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $request->gdrive_ujikom ? 'Link berhasil disimpan.' : 'Link dihapus.',
+        ]);
+    }
 }

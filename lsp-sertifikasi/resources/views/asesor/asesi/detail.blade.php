@@ -108,6 +108,14 @@
         </button>
     </li>
     <li class="nav-item">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-ujikom">
+            <i class="bi bi-google me-1"></i>Dok. Ujikom
+            @if($apldua?->gdrive_ujikom)
+            <i class="bi bi-check-circle-fill text-success ms-1" style="font-size:.72rem;"></i>
+            @endif
+        </button>
+    </li>
+    <li class="nav-item">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-docs">
             <i class="bi bi-folder2-open me-1"></i>Dokumen
         </button>
@@ -664,6 +672,42 @@
             <i class="bi bi-megaphone" style="font-size:2.5rem;opacity:.4;"></i>
             <p class="mt-3 fw-semibold">Tidak Ada Banding</p>
             <p class="small">Asesi tidak mengajukan banding asesmen.</p>
+        </div>
+        @endif
+    </div>
+
+    {{-- TAB DOK. UJIKOM --}}
+    <div class="tab-pane fade" id="tab-ujikom">
+        @if($apldua?->gdrive_ujikom)
+        <div class="card border-0 shadow-sm">
+            <div class="card-header" style="background:#eff6ff;">
+                <h6 class="fw-bold mb-0 text-primary">
+                    <i class="bi bi-google me-2"></i>Dokumen Hasil Ujikom / Portofolio
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info small mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Dokumen ini diunggah peserta sebagai bukti hasil ujian kompetensi untuk verifikasi awal sebelum asesmen.
+                </div>
+                <div class="d-flex align-items-center gap-3 p-3 rounded-3 border bg-light">
+                    <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png"
+                        style="width:28px;height:28px;" alt="GDrive">
+                    <div class="flex-grow-1 text-truncate small font-monospace text-muted">
+                        {{ $apldua->gdrive_ujikom }}
+                    </div>
+                    <a href="{{ $apldua->gdrive_ujikom }}" target="_blank"
+                    class="btn btn-primary btn-sm flex-shrink-0">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Buka GDrive
+                    </a>
+                </div>
+            </div>
+        </div>
+        @else
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-google" style="font-size:3rem;opacity:.2;display:block;margin-bottom:.75rem"></i>
+            <p class="fw-semibold mb-0">Belum ada dokumen ujikom</p>
+            <small>Peserta belum melampirkan link Google Drive</small>
         </div>
         @endif
     </div>

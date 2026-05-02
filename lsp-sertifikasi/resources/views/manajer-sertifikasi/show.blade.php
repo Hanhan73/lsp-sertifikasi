@@ -70,6 +70,7 @@
                 <div style="font-size:1.3rem;font-weight:800;color:#7c3aed">{{ $countPortofolio }}</div>
                 <div style="font-size:.68rem;color:#6b7280;font-weight:600">Portofolio</div>
             </div>
+            
         </div>
     </div>
 </div>
@@ -114,6 +115,17 @@
                     <i class="bi bi-briefcase me-1"></i> Portofolio
                     @if($countPortofolio)
                         <span class="badge bg-success ms-1" style="font-size:.6rem">{{ $countPortofolio }}</span>
+                    @endif
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ujikom">
+                    <i class="bi bi-google me-1"></i> Dok. Ujikom
+                    @php
+                        $ujikomCount = $schedule->asesmens->filter(fn($a) => $a->apldua?->gdrive_ujikom)->count();
+                    @endphp
+                    @if($ujikomCount)
+                    <span class="badge bg-success ms-1" style="font-size:.6rem">{{ $ujikomCount }}</span>
                     @endif
                 </button>
             </li>
@@ -677,6 +689,70 @@
                     @endif
                 </div>
             </div>
+        </div>
+        {{-- ================================================================
+            TAB 4: DOKUMEN UJIKOM PESERTA
+        ================================================================ --}}
+        <div class="tab-pane fade p-4" id="pane-ujikom">
+            <h6 class="fw-bold mb-1">Dokumen Hasil Ujikom / Portofolio Peserta</h6>
+            <p class="text-muted small mb-4">
+                Link Google Drive yang dilampirkan peserta sebagai bukti hasil ujian kompetensi untuk verifikasi awal.
+            </p>
+
+            @if($schedule->asesmens->isEmpty())
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-person-x" style="font-size:2.5rem;opacity:.3;display:block;margin-bottom:.75rem"></i>
+                <p class="fw-semibold mb-0">Belum ada peserta</p>
+            </div>
+            @else
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead class="table-light" style="font-size:.78rem;">
+                        <tr>
+                            <th class="ps-3" width="40">#</th>
+                            <th>Nama Peserta</th>
+                            <th>Status</th>
+                            <th class="text-center">Dok. Ujikom</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($schedule->asesmens as $i => $asesi)
+                        <tr>
+                            <td class="ps-3 text-muted">{{ $i + 1 }}</td>
+                            <td>
+                                <div class="fw-semibold" style="font-size:.875rem">{{ $asesi->full_name }}</div>
+                                <small class="text-muted">{{ $asesi->user->email ?? '-' }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ $asesi->status_badge }}">
+                                    {{ $asesi->status_label }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                @if($asesi->apldua?->gdrive_ujikom)
+                                <a href="{{ $asesi->apldua->gdrive_ujikom }}" target="_blank"
+                                class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right me-1"></i>Buka
+                                </a>
+                                @else
+                                <span class="badge bg-secondary" style="font-size:.7rem;">Belum diisi</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Summary --}}
+            @php $totalUjikom = $schedule->asesmens->filter(fn($a) => $a->apldua?->gdrive_ujikom)->count(); @endphp
+            <div class="mt-3 p-3 rounded-3 border {{ $totalUjikom === $schedule->asesmens->count() ? 'bg-success-subtle border-success' : 'bg-warning-subtle border-warning' }}">
+                <small class="{{ $totalUjikom === $schedule->asesmens->count() ? 'text-success' : 'text-warning' }} fw-semibold">
+                    <i class="bi bi-{{ $totalUjikom === $schedule->asesmens->count() ? 'check-circle-fill' : 'exclamation-triangle-fill' }} me-1"></i>
+                    {{ $totalUjikom }} dari {{ $schedule->asesmens->count() }} peserta sudah melampirkan dokumen ujikom
+                </small>
+            </div>
+            @endif
         </div>
 
     </div>{{-- /tab-content --}}

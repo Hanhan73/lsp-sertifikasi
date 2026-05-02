@@ -210,41 +210,60 @@ public function teoriSubmit(Request $request): JsonResponse
     public function observasiIndex(): View|RedirectResponse
     {
         $user    = auth()->user();
-        $asesmen = Asesmen::with(['schedule'])->where('user_id', $user->id)->firstOrFail();
- 
+        $asesmen = Asesmen::with(['schedule', 'apldua'])->where('user_id', $user->id)->firstOrFail();
+
         if (!$asesmen->schedule_id) {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Belum ada jadwal asesmen.');
         }
- 
-        // Distribusi soal observasi untuk jadwal asesi ini
-        $distribusiObservasi = DistribusiSoalObservasi::with([
-            'soalObservasi.paket',
-        ])
-        ->where('schedule_id', $asesmen->schedule_id)
-        ->get();
- 
+
+        $distribusiObservasi = DistribusiSoalObservasi::with(['soalObservasi.paket'])
+            ->where('schedule_id', $asesmen->schedule_id)
+            ->get();
+
         if ($distribusiObservasi->isEmpty()) {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Soal observasi belum didistribusikan.');
         }
- 
-        // Map jawaban (gdrive link) asesi ini per paket
+
         $jawabanMap = JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
             ->get()
             ->keyBy('paket_soal_observasi_id');
- 
-        // Apakah form bisa diisi? Cek window reopen
-        $reopenUntil  = $asesmen->observasi_reopen_until
+
+        // Pre-fill dari gdrive_ujikom APL-02 kalau paket belum punya link
+        $gdriveUjikom = $asesmen->apldua?->gdrive_ujikom;
+        if ($gdriveUjikom) {
+            foreach ($distribusiObservasi as $dist) {
+                foreach ($dist->soalObservasi->paket ?? [] as $paket) {
+                    if (!isset($jawabanMap[$paket->id]) || !$jawabanMap[$paket->id]->hasLink()) {
+                        $jawaban = JawabanObservasiAsesi::firstOrCreate(
+                            [
+                                'asesmen_id'              => $asesmen->id,
+                                'paket_soal_observasi_id' => $paket->id,
+                            ],
+                            [
+                                'distribusi_soal_observasi_id' => $dist->id,
+                                'gdrive_link'                  => $gdriveUjikom,
+                                'uploaded_at'                  => now(),
+                            ]
+                        );
+                        $jawabanMap[$paket->id] = $jawaban;
+                    }
+                }
+            }
+        }
+
+        // Reopen window
+        $reopenUntil    = $asesmen->observasi_reopen_until
             ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
             : null;
         $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
- 
-        // Hitung paket yang belum diisi link
-        $totalPaket  = $distribusiObservasi->sum(fn($d) => $d->soalObservasi->paket->count());
-        $sudahIsi    = $jawabanMap->filter(fn($j) => $j->hasLink())->count();
-        $belumIsi    = $totalPaket - $sudahIsi;
- 
+
+        // Hitung paket belum diisi
+        $totalPaket = $distribusiObservasi->sum(fn($d) => $d->soalObservasi->paket->count());
+        $sudahIsi   = $jawabanMap->filter(fn($j) => $j->hasLink())->count();
+        $belumIsi   = $totalPaket - $sudahIsi;
+
         return view('asesi.soal.observasi', compact(
             'asesmen', 'distribusiObservasi', 'jawabanMap',
             'reopenUntil', 'isReopenActive', 'belumIsi', 'totalPaket'
@@ -340,4 +359,5 @@ public function teoriSubmit(Request $request): JsonResponse
     return \Illuminate\Support\Facades\Storage::disk('private')
         ->download($paket->lampiran_path, $paket->lampiran_name);
 }
+
 }

@@ -323,6 +323,14 @@
                     @endif
                 </button>
             </li>
+            <li class="nav-item">
+                <button class="nav-link py-3" data-bs-toggle="tab" data-bs-target="#tab-ujikom">
+                    <i class="bi bi-google me-1"></i>Dok. Ujikom
+                    @if($asesmen->apldua?->gdrive_ujikom)
+                    <i class="bi bi-check-circle-fill text-success ms-1" style="font-size:.72rem;"></i>
+                    @endif
+                </button>
+            </li>
         </ul>
     </div>
 
@@ -894,6 +902,30 @@
                         </div>
                         @endif
                     </div>
+                </div>
+                @endif
+            </div>
+
+            {{-- TAB DOK. UJIKOM --}}
+            <div class="tab-pane fade" id="tab-ujikom">
+                @if($asesmen->apldua?->gdrive_ujikom)
+                <div class="d-flex align-items-center gap-3 p-4 rounded-3 border bg-primary-subtle">
+                    <img src="https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png"
+                        style="width:32px;height:32px;" alt="GDrive">
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Dokumen Hasil Ujikom / Portofolio</div>
+                        <div class="small text-muted mt-1 font-monospace">{{ $asesmen->apldua->gdrive_ujikom }}</div>
+                    </div>
+                    <a href="{{ $asesmen->apldua->gdrive_ujikom }}" target="_blank"
+                    class="btn btn-primary flex-shrink-0">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Buka GDrive
+                    </a>
+                </div>
+                @else
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-google" style="font-size:3rem;opacity:.2;display:block;margin-bottom:.75rem"></i>
+                    <p class="fw-semibold mb-0">Belum ada dokumen ujikom</p>
+                    <small>Peserta belum melampirkan link Google Drive</small>
                 </div>
                 @endif
             </div>

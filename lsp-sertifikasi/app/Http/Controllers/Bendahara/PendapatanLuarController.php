@@ -66,31 +66,35 @@ class PendapatanLuarController extends Controller
         ));
     }
 
-    public function store(Request $request)
+      public function store(Request $request)
     {
+        $modeBaru = $request->filled('coa_baru_kode') && $request->filled('coa_baru_nama');
+ 
         $request->validate([
-            'tanggal'  => 'required|date',
-            'uraian'   => 'required|string|max:255',
-            'kategori' => 'nullable|string|max:100',
-            'jumlah'   => 'required|integer|min:1',
-            'coa_id'   => 'required|integer|exists:chart_of_accounts,id',
-            'bukti'    => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'catatan'  => 'nullable|string|max:1000',
-            // Kalau bendahara mau buat CoA baru sekaligus:
-            'coa_baru_kode' => 'nullable|string|max:20|unique:chart_of_accounts,kode',
-            'coa_baru_nama' => 'nullable|string|max:255',
+            'tanggal'       => 'required|date',
+            'uraian'        => 'required|string|max:255',
+            'kategori'      => 'nullable|string|max:100',
+            'jumlah'        => 'required|integer|min:1',
+            // coa_id wajib HANYA kalau tidak mode baru
+            'coa_id'        => $modeBaru ? 'nullable' : 'required|integer|exists:chart_of_accounts,id',
+            'bukti'         => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'catatan'       => 'nullable|string|max:1000',
+            'coa_baru_kode' => $modeBaru ? 'required|string|max:20|unique:chart_of_accounts,kode' : 'nullable',
+            'coa_baru_nama' => $modeBaru ? 'required|string|max:255' : 'nullable',
         ], [
-            'bukti.required' => 'Bukti dokumen wajib diupload.',
-            'bukti.mimes'    => 'Format file harus jpg, png, atau pdf.',
-            'coa_baru_kode.unique' => 'Kode akun sudah digunakan.',
+            'bukti.required'        => 'Bukti dokumen wajib diupload.',
+            'bukti.mimes'           => 'Format file harus jpg, png, atau pdf.',
+            'coa_id.required'       => 'Pilih akun pendapatan.',
+            'coa_baru_kode.unique'  => 'Kode akun sudah digunakan.',
+            'coa_baru_kode.required'=> 'Kode akun baru wajib diisi.',
+            'coa_baru_nama.required'=> 'Nama akun baru wajib diisi.',
         ]);
-
+ 
         DB::beginTransaction();
         try {
             $coaId = (int) $request->coa_id;
-
-            // Kalau pilih "buat akun baru"
-            if ($request->filled('coa_baru_kode') && $request->filled('coa_baru_nama')) {
+ 
+            if ($modeBaru) {
                 $newCoa = ChartOfAccount::create([
                     'kode'      => $request->coa_baru_kode,
                     'nama'      => $request->coa_baru_nama,
@@ -102,10 +106,10 @@ class PendapatanLuarController extends Controller
                 ]);
                 $coaId = $newCoa->id;
             }
-
+ 
             $file = $request->file('bukti');
             $path = $file->store('pendapatan-luar/' . now()->format('Y/m'), 'private');
-
+ 
             $pendapatan = PendapatanLuar::create([
                 'tanggal'    => $request->tanggal,
                 'uraian'     => $request->uraian,
@@ -117,12 +121,11 @@ class PendapatanLuarController extends Controller
                 'catatan'    => $request->catatan,
                 'created_by' => auth()->id(),
             ]);
-
-            // Jurnal langsung saat simpan
+ 
             app(JournalService::class)->jurnalPendapatanLuar($pendapatan->load('coa'));
-
+ 
             DB::commit();
-
+ 
             return redirect()->route('bendahara.pendapatan-luar.index')
                 ->with('success', 'Pendapatan berhasil dicatat dan jurnal telah dibuat.');
         } catch (\Exception $e) {

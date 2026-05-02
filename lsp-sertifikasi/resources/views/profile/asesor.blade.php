@@ -131,6 +131,9 @@
             </div>
         </div>
 
+        {{-- Form rekening asesor --}}
+        @include('profile.partials.rekening-asesor')
+        
         {{-- Form Password --}}
         @include('profile.partials.form-password')
 

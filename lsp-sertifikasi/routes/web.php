@@ -10,6 +10,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SignatureController;
+use App\Http\Controllers\AsesorRekeningController;
 
 // Admin
 use App\Http\Controllers\Admin\AdminController;
@@ -693,6 +694,11 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     });
 
     Route::get('/biaya-operasional', [BiayaOperasionalAsesorController::class, 'index'])->name('biaya-operasional.index');
+    Route::prefix('rekening')->name('rekening.')->group(function () {
+    Route::post('/',             [AsesorRekeningController::class, 'asesorStore'])->name('store');
+    Route::put('/{rekening}',    [AsesorRekeningController::class, 'asesorUpdate'])->name('update');
+    Route::delete('/{rekening}', [AsesorRekeningController::class, 'asesorDestroy'])->name('destroy');
+});
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -1066,6 +1072,14 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::put('/{coa}',       [ChartOfAccountController::class, 'update'])->name('update');
         Route::delete('/{coa}',    [ChartOfAccountController::class, 'destroy'])->name('destroy');
     });
+
+    Route::prefix('rekening')->name('rekening.')->group(function () {
+    Route::get('/',                              [AsesorRekeningController::class, 'bendaharaIndex'])->name('index');
+    Route::get('/{asesor}',                      [AsesorRekeningController::class, 'bendaharaShow'])->name('show');
+    Route::post('/{asesor}',                     [AsesorRekeningController::class, 'bendaharaStore'])->name('store');
+    Route::put('/{asesor}/{rekening}',           [AsesorRekeningController::class, 'bendaharaUpdate'])->name('update');
+    Route::delete('/{asesor}/{rekening}',        [AsesorRekeningController::class, 'bendaharaDestroy'])->name('destroy');
+});
 });
 
 /*

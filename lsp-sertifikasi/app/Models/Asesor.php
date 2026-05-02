@@ -71,6 +71,16 @@ class Asesor extends Model
         return $this->unreadNotifications()->count();
     }
 
+    public function rekenings()
+    {
+        return $this->hasMany(AsesorRekening::class);
+    }
+
+    public function utamaRekening()
+    {
+        return $this->hasOne(AsesorRekening::class)->where('is_utama', true);
+    }
+
     // Accessor: label status
     public function getStatusLabelAttribute()
     {

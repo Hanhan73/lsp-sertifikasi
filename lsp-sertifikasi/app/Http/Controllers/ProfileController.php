@@ -27,6 +27,8 @@ class ProfileController extends Controller
 
         if ($user->isAsesor()) {
             $user->load('asesor');
+            $user->load('asesor.rekenings');
+            $user->load('asesor.rekeningUtama');
             return view('profile.asesor', compact('user'));
         }
 

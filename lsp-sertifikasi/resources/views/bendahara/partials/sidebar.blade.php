@@ -42,6 +42,11 @@
     <i class="bi bi-sliders"></i> Tarif Honor Skema
 </a>
 
+<a href="{{ route('bendahara.rekening.index') }}"
+    class="nav-link {{ str_starts_with($route, 'bendahara.rekening') ? 'active' : '' }}">
+    <i class="bi bi-graph-up-arrow"></i> Rekening Asesor
+</a>
+
 <a href="{{ route('bendahara.rekap-pendapatan') }}"
     class="nav-link {{ str_starts_with($route, 'bendahara.rekap-pendapatan') ? 'active' : '' }}">
     <i class="bi bi-graph-up-arrow"></i> Rekap Pendapatan

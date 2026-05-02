@@ -138,42 +138,49 @@ class LaporanKeuanganController extends Controller
         $balance   = AccountBalance::forTahun($tahun);
         $tahunList = $this->tahunList();
         $summary   = $this->summaryDariJurnal($tahun, $balance);
+ 
         $saldoAwalBank = (int)$balance->saldo_awal_bank;
         $mutasiBank    = $this->saldoAkun('1-002', $tahun);
         $bank          = $saldoAwalBank + $mutasiBank;
-
+ 
         $piutangAsesi = $this->saldoAkun('1-003', $tahun);
-
-        // Utang honor dari jurnal akun 2-001
-        $utangHonor = $this->saldoAkun('2-001', $tahun);
-
-        // Surplus = pendapatan - beban (dari jurnal)
+        $utangHonor   = $this->saldoAkun('2-001', $tahun);
+ 
         $surplus = $summary['pendapatan'] - $summary['beban_honor'] - $summary['beban_ops'];
-
-        // Total aset = manual (kas+bank+perlengkapan) + piutang dari jurnal
+ 
+        // ── ASET ──────────────────────────────────────────────────────────
         $totalAset = $balance->kas + $bank + $balance->perlengkapan + $piutangAsesi;
-
-        // Total kewajiban = utang honor + utang ops manual + hutang distribusi
+ 
+        // ── KEWAJIBAN ─────────────────────────────────────────────────────
         $totalKewajiban = $utangHonor + $balance->utang_operasional;
-        // Total ekuitas = saldo dana + surplus - distribusi
-        $totalEkuitas = $balance->saldo_dana + $surplus - $summary['distribusi'];
-
+ 
+        // ── EKUITAS ───────────────────────────────────────────────────────
+        // saldo_dana = modal awal yang diinput manual
+        // saldo_awal_bank = bagian dari modal awal (kas/bank yang sudah ada sebelum sistem)
+        //   → harus masuk ekuitas agar neraca balance
+        // Hindari double-count: kalau saldo_dana sudah include saldo_awal_bank, jangan tambah lagi.
+        // Konvensi: saldo_dana = ekuitas non-kas, saldo_awal_bank = ekuitas berbentuk kas bank
+        $ekuitasModal   = $balance->saldo_dana + $saldoAwalBank;
+        $totalEkuitas   = $ekuitasModal + $surplus - $summary['distribusi'];
+ 
         $totalKewEkuitas = $totalKewajiban + $totalEkuitas;
-
+ 
         if ($request->get('export') === 'pdf') {
             return $this->exportNeracaPdf($tahun, $balance, compact(
                 'piutangAsesi', 'utangHonor',
                 'surplus', 'totalAset', 'totalKewajiban',
-                'totalEkuitas', 'totalKewEkuitas', 'bank'
+                'totalEkuitas', 'totalKewEkuitas', 'bank',
+                'ekuitasModal', 'saldoAwalBank'
             ));
         }
-
+ 
         return view('bendahara.laporan-keuangan.neraca', compact(
             'tahun', 'tahunList', 'balance', 'summary',
             'piutangAsesi', 'utangHonor',
             'surplus', 'totalAset', 'totalKewajiban',
             'totalEkuitas', 'totalKewEkuitas',
-            'bank', 'mutasiBank', 'saldoAwalBank' // tambah ini
+            'bank', 'mutasiBank', 'saldoAwalBank',
+            'ekuitasModal' // ← tambah ini untuk tampilan view
         ));
     }
 

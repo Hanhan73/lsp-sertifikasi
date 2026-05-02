@@ -421,24 +421,57 @@ public function arusKas(Request $request)
      */
     private function summaryDariJurnal(int $tahun, ?AccountBalance $balance = null): array
     {
-        $pendapatan = $this->saldoAkun('4-001', $tahun);
+        // Pendapatan asesmen (4-001)
+        $pendapatanAsesmen = $this->saldoAkun('4-001', $tahun);
+ 
+        // Pendapatan luar — semua akun tipe 'pendapatan' KECUALI 4-001
+        $pendapatanLuar = $this->saldoSemuaAkunTipe('pendapatan', $tahun, ['4-001']);
+ 
+        $pendapatan = $pendapatanAsesmen + $pendapatanLuar;
+ 
         $bebanHonor = $this->saldoAkun('5-001', $tahun);
         $bebanOps   = $this->saldoAkun('5-002', $tahun);
-
-        // Gunakan balance yang sudah diambil caller, atau query baru kalau belum ada
+ 
         $balance    = $balance ?? AccountBalance::forTahun($tahun);
         $distribusi = (int)$balance->distribusi_yayasan;
-
+ 
         $surplus = $pendapatan - $bebanHonor - $bebanOps;
-
+ 
         return [
-            'pendapatan'  => $pendapatan,
-            'beban_honor' => $bebanHonor,
-            'beban_ops'   => $bebanOps,
-            'distribusi'  => $distribusi,
-            'surplus'     => $surplus,
+            'pendapatan'         => $pendapatan,
+            'pendapatan_asesmen' => $pendapatanAsesmen,   // breakdown kalau perlu di view
+            'pendapatan_luar'    => $pendapatanLuar,       // breakdown kalau perlu di view
+            'beban_honor'        => $bebanHonor,
+            'beban_ops'          => $bebanOps,
+            'distribusi'         => $distribusi,
+            'surplus'            => $surplus,
         ];
     }
+
+    private function saldoSemuaAkunTipe(string $tipe, int $tahun, array $excludeKode = []): int
+    {
+        $akuns = ChartOfAccount::where('tipe', $tipe)
+            ->where('is_active', true)
+            ->when(!empty($excludeKode), fn($q) => $q->whereNotIn('kode', $excludeKode))
+            ->get();
+ 
+        $total = 0;
+        foreach ($akuns as $akun) {
+            $totals = JournalEntryLine::where('chart_of_account_id', $akun->id)
+                ->whereHas('entry', fn($q) => $q->whereYear('tanggal', $tahun))
+                ->selectRaw('SUM(debit) as total_debit, SUM(kredit) as total_kredit')
+                ->first();
+ 
+            $d = (int)($totals->total_debit ?? 0);
+            $k = (int)($totals->total_kredit ?? 0);
+ 
+            // Pendapatan = normal kredit
+            $total += $k - $d;
+        }
+ 
+        return $total;
+    }
+ 
 
     /**
      * Hitung saldo bersih satu akun dari journal_entry_lines untuk tahun tertentu.

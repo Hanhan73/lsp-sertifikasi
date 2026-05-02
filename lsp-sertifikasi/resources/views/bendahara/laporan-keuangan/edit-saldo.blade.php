@@ -241,7 +241,6 @@ function setupRupiahInput(displayId, hiddenId) {
 }
 setupRupiahInput('saldo_awal_bank_display', 'saldo_awal_bank');
 setupRupiahInput('kas_display', 'kas');
-setupRupiahInput('bank_display', 'bank');
 setupRupiahInput('perlengkapan_display', 'perlengkapan');
 setupRupiahInput('utang_operasional_display', 'utang_operasional');
 setupRupiahInput('saldo_dana_display', 'saldo_dana');

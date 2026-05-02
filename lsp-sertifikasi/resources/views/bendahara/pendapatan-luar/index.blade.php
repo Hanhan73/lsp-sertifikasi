@@ -67,7 +67,7 @@
                     <div class="mb-1">
                         <label class="form-label small fw-semibold">Akun Pendapatan <span class="text-danger">*</span></label>
                         <select name="coa_id" id="selectCoa"
-                                class="form-select @error('coa_id') is-invalid @enderror" required>
+                                class="form-select @error('coa_id') is-invalid @enderror">
                             <option value="">-- Pilih Akun --</option>
                             @foreach($coaOptions as $coa)
                             <option value="{{ $coa->id }}" {{ old('coa_id') == $coa->id ? 'selected' : '' }}>
@@ -339,24 +339,60 @@ function fmtRupiah(el) {
 fmtRupiah(document.getElementById('inputJumlah'));
 fmtRupiah(document.getElementById('editJumlah'));
 
-// Sebelum submit form tambah, konversi jumlah ke integer
-document.getElementById('formTambah').addEventListener('submit', function () {
-    const el  = document.getElementById('inputJumlah');
-    const raw = el.value.replace(/\D/g, '');
-    el.value  = raw || '0';
-});
 
-// ── Toggle panel CoA baru ────────────────────────────────────────────────────
+let modeBaru = false;
+ 
 document.getElementById('selectCoa').addEventListener('change', function () {
     const panel = document.getElementById('panelCoaBaru');
     if (this.value === '__baru__') {
+        modeBaru = true;
         panel.classList.remove('d-none');
-        this.value = ''; // reset agar tidak kirim '__baru__'
+        this.value        = '';              // kosongkan value select
+        this.required     = false;           // matikan required HTML5
+        this.name         = '_coa_id_skip';  // ganti name agar tidak dikirim
     } else {
+        modeBaru = false;
         panel.classList.add('d-none');
+        this.required = true;
+        this.name     = 'coa_id';
     }
 });
-
+ 
+document.getElementById('formTambah').addEventListener('submit', function (e) {
+    // Konversi jumlah
+    const jumlahEl  = document.getElementById('inputJumlah');
+    const raw = jumlahEl.value.replace(/\D/g, '');
+    jumlahEl.value  = raw || '0';
+ 
+    // Validasi manual kalau mode baru
+    if (modeBaru) {
+        const kode = document.querySelector('[name="coa_baru_kode"]').value.trim();
+        const nama = document.querySelector('[name="coa_baru_nama"]').value.trim();
+        if (!kode || !nama) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                text: 'Kode dan nama akun baru wajib diisi.',
+                toast: true, position: 'top-end',
+                timer: 2500, showConfirmButton: false,
+            });
+            return;
+        }
+    } else {
+        // Validasi select normal
+        const sel = document.getElementById('selectCoa');
+        if (!sel.value) {
+            e.preventDefault();
+            Swal.fire({
+                icon: 'warning',
+                text: 'Pilih akun pendapatan terlebih dahulu.',
+                toast: true, position: 'top-end',
+                timer: 2500, showConfirmButton: false,
+            });
+            return;
+        }
+    }
+});
 // ── Modal Edit ───────────────────────────────────────────────────────────────
 // Data diisi via AJAX sederhana — ambil dari data-* di baris tabel
 // Tapi kita simpan data di JS object untuk kemudahan

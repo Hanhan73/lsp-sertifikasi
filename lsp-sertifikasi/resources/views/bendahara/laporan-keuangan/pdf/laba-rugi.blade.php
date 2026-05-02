@@ -74,7 +74,7 @@ th,td { padding:5px 8px; border:1px solid #ddd; }
     </tr>
     @if($summary['distribusi'] > 0)
     <tr>
-        <td class="indent1">Distribusi ke Yayasan</td>
+        <td class="indent1">Distribusi ke PT</td>
         <td class="text-right red">
             (Rp {{ number_format($summary['distribusi'],0,',','.') }})
         </td>

@@ -52,7 +52,7 @@
             </tr>
             @if($pembayaranDistr > 0)
             <tr>
-                <td class="ps-5">Distribusi ke Yayasan</td>
+                <td class="ps-5">Distribusi ke PT</td>
                 <td class="text-end pe-3 text-danger">− Rp {{ number_format($pembayaranDistr,0,',','.') }}</td>
             </tr>
             @endif

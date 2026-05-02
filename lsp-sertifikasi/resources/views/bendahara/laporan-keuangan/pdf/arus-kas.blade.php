@@ -52,7 +52,7 @@ th, td { padding:6px 10px; border:1px solid #ddd; }
     </tr>
     @if($pembayaranDistr > 0)
     <tr>
-        <td class="indent">Distribusi ke Yayasan</td>
+        <td class="indent">Distribusi ke PT</td>
         <td class="text-right red">− Rp {{ number_format($pembayaranDistr,0,',','.') }}</td>
     </tr>
     @endif

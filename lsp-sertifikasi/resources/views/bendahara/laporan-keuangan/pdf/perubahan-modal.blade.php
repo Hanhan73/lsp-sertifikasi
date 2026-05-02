@@ -39,7 +39,7 @@ th, td { padding:6px 10px; border:1px solid #ddd; }
     </tr>
     @if($distribusi > 0)
     <tr class="minus-row">
-        <td class="indent">Dikurangi: Distribusi ke Yayasan</td>
+        <td class="indent">Dikurangi: Distribusi ke PT</td>
         <td class="text-right red">− Rp {{ number_format($distribusi,0,',','.') }}</td>
     </tr>
     @endif
@@ -66,7 +66,7 @@ th, td { padding:6px 10px; border:1px solid #ddd; }
     </tr>
     @if($distribusi > 0)
     <tr>
-        <td>Dikurangi: Distribusi ke Yayasan</td>
+        <td>Dikurangi: Distribusi ke PT</td>
         <td class="text-right red">(Rp {{ number_format($distribusi,0,',','.') }})</td>
     </tr>
     @endif

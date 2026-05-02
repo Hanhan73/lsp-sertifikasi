@@ -168,7 +168,7 @@
                             </strong>
                         </div>
                         <div class="col-6">
-                            <span class="text-muted">Distribusi Yayasan:</span>
+                            <span class="text-muted">Distribusi PT:</span>
                             <strong class="float-end text-warning">
                                 Rp {{ number_format($summary['distribusi'],0,',','.') }}
                             </strong>

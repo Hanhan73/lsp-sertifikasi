@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Distribusi ke Yayasan')
-@section('page-title', 'Distribusi ke Yayasan')
+@section('title', 'Distribusi ke PT')
+@section('page-title', 'Distribusi ke PT')
 @section('sidebar')
 @include('bendahara.partials.sidebar')
 @endsection
@@ -45,7 +45,7 @@
                     @csrf
 
                     <div class="mb-3">
-                        <label class="form-label">Jumlah Distribusi ke Yayasan <span class="text-danger">*</span></label>
+                        <label class="form-label">Jumlah Distribusi ke PT <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">Rp</span>
                             <input type="text" class="form-control" id="distribusi_display"
@@ -66,7 +66,7 @@
                             <input type="hidden" name="hutang_distribusi" id="hutang_distribusi"
                                    value="{{ $balance->hutang_distribusi }}">
                         </div>
-                        <div class="form-text">Bagian distribusi yang belum ditransfer ke yayasan.</div>
+                        <div class="form-text">Bagian distribusi yang belum ditransfer ke PT.</div>
                     </div>
 
                     <div class="mb-3">
@@ -99,7 +99,7 @@
             <div class="card-body">
                 <p class="small text-muted mb-3">
                     Jurnal balik dilakukan di awal tahun berikutnya untuk memindahkan saldo distribusi
-                    ke akun <strong>Hutang Distribusi Yayasan</strong>, sehingga surplus tahun berjalan
+                    ke akun <strong>Hutang Distribusi PT</strong>, sehingga surplus tahun berjalan
                     kembali ke nol dan dicatat sebagai kewajiban yang harus dilunasi.
                 </p>
 
@@ -110,7 +110,7 @@
                         Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}
                     </div>
                     <div class="ms-5 text-danger">
-                        Cr. Hutang Distribusi Yayasan &nbsp;&nbsp;
+                        Cr. Hutang Distribusi PT &nbsp;&nbsp;
                         Rp {{ number_format($balance->distribusi_yayasan,0,',','.') }}
                     </div>
                 </div>
@@ -145,7 +145,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold border-bottom">
                 <i class="bi bi-exclamation-circle text-danger me-2"></i>
-                Hutang Distribusi ke Yayasan
+                Hutang Distribusi ke PT
             </div>
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">

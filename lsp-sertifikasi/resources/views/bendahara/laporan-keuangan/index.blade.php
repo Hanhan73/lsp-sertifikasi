@@ -68,7 +68,7 @@
         ['icon'=>'bi-graph-up-arrow','color'=>'warning','title'=>'Perubahan Modal',
          'desc'=>'Mutasi saldo dana dan surplus ekuitas.',
          'route'=>route('bendahara.laporan-keuangan.perubahan-modal', ['tahun'=>$tahun])],
-        ['icon'=>'bi-send-arrow-down','color'=>'danger','title'=>'Distribusi ke Yayasan',
+        ['icon'=>'bi-send-arrow-down','color'=>'danger','title'=>'Distribusi ke PT',
          'desc'=>'Pencatatan distribusi surplus dan jurnal balik.',
          'route'=>route('bendahara.laporan-keuangan.distribusi', ['tahun'=>$tahun])],
         ['icon'=>'bi-clock-history','color'=>'secondary','title'=>'Transaksi Harian',

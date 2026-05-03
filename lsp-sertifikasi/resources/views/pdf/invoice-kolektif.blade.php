@@ -142,39 +142,6 @@
         vertical-align: top;
         font-size: 10pt;
     }
-
-    .ttd-img-wrap {
-        position: relative;
-        height: 68pt;
-        text-align: center;
-    }
-
-    .ttd-img-wrap img.ttd {
-        position: absolute;
-        max-height: 60pt;
-        max-width: 140pt;
-        left: 50%;
-        transform: translateX(-50%);
-        top: 4pt;
-    }
-
-    .ttd-img-wrap img.stempel {
-        position: absolute;
-        max-height: 55pt;
-        max-width: 55pt;
-        left: 55%;
-        top: 8pt;
-        opacity: 0.85;
-    }
-
-    .ttd-name {
-        border-top: 1pt solid #000;
-        display: inline-block;
-        min-width: 155pt;
-        padding-top: 2pt;
-        font-weight: bold;
-        font-size: 10.5pt;
-    }
     </style>
 </head>
 
@@ -183,12 +150,14 @@
     @php
     \Carbon\Carbon::setLocale('id');
     $kopPath = public_path('images/icon-lsp.png');
-    $kopSrc = file_exists($kopPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($kopPath)) : null;
-    $ttdPath = storage_path('app/private/mankeu/ttd.png');
-    $ttdSrc = file_exists($ttdPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($ttdPath)) : null;
-    $stempelPath = storage_path('app/private/mankeu/stempel.png');
-    $stempelSrc = file_exists($stempelPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($stempelPath)) :
-    null;
+    $kopSrc  = file_exists($kopPath) ? 'data:image/png;base64,'.base64_encode(file_get_contents($kopPath)) : null;
+
+    $ttdStempelSrc  = null;
+    $ttdStempelPath = storage_path('app/private/mankeu/ttd-stempel.png');
+    if (file_exists($ttdStempelPath)) {
+        $ttdStempelSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($ttdStempelPath));
+    }
+
     $issuedAt = $invoice->issued_at ?? now();
     @endphp
 
@@ -281,13 +250,17 @@
             <td class="ttd-left"></td>
             <td class="ttd-right">
                 Jakarta, {{ $issuedAt->translatedFormat('d F Y') }}<br>
-                Manajer Keuangan,<br>
-                <div class="ttd-img-wrap">
-                    @if($stempelSrc)<img src="{{ $stempelSrc }}" class="stempel" alt="Stempel">@endif
-                    @if($ttdSrc)<img src="{{ $ttdSrc }}" class="ttd" alt="TTD">@endif
-                </div>
-                <span class="ttd-name">Dr. Marsofiyati, S.Pd., M.Pd.</span><br>
-                <span style="font-size:10pt;">Manajer Keuangan</span>
+                <div style="font-size:11pt;">Manajer Keuangan,</div>
+
+                @if($ttdStempelSrc)
+                <img src="{{ $ttdStempelSrc }}"
+                     style="width:200px;height:auto;display:block;margin:-18px auto -22px;">
+                @else
+                <div style="height:60px;"></div>
+                @endif
+
+                <div style="font-size:11pt;font-weight:bold;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
+                <div style="font-size:10pt;">Manajer Keuangan</div>
             </td>
         </tr>
     </table>

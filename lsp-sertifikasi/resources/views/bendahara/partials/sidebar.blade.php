@@ -52,9 +52,9 @@
     <i class="bi bi-graph-up-arrow"></i> Rekap Pendapatan
 </a>
 
-{{-- ── BIAYA OPERASIONAL ──────────────────────────────────────────── --}}
+{{-- ── PENGELUARAN ────────────────────────────────────────────────── --}}
 <div class="sidebar-divider">
-    <span>BIAYA OPERASIONAL</span>
+    <span>PENGELUARAN</span>
 </div>
 
 <a href="{{ route('bendahara.biaya-operasional.index') }}"
@@ -69,6 +69,11 @@
 <a href="{{ route('bendahara.pendapatan-luar.index') }}"
     class="nav-link {{ str_starts_with($route, 'bendahara.pendapatan-luar') ? 'active' : '' }}">
     <i class="bi bi-cash-stack"></i> Pendapatan Luar
+</a>
+
+<a href="{{ route('bendahara.other-receivables.index') }}"
+    class="nav-link {{ str_starts_with($route, 'bendahara.other-receivables') ? 'active' : '' }}">
+    <i class="bi bi-cart"></i> Piutang Lainnya
 </a>
 
 {{-- ── LAPORAN ─────────────────────────────────────────────────────── --}}

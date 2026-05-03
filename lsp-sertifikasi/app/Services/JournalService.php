@@ -8,6 +8,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalEntryLine;
 use App\Models\Payment;
 use App\Models\HonorPayment;
+use App\Models\OtherReceivable;
 use App\Models\BiayaOperasional;
 use Illuminate\Support\Facades\DB;
 
@@ -161,6 +162,54 @@ class JournalService
             refId:   $pendapatan->id,
         );
     }
+
+
+    /**
+ * Saat piutang lainnya dicatat:
+ * Dr. Piutang Lainnya (coa_id asesi) / Cr. Pendapatan atau akun lawan
+ * 
+ * Untuk piutang (bukan pendapatan), lawan debitnya adalah akun Bank (1-002).
+ * Artinya: LSP sudah keluarkan kas → jadi piutang.
+ * Dr. Piutang Lainnya / Cr. Kas-Bank (1-002)
+ */
+public function jurnalPiutangLainnya(OtherReceivable $piutang): JournalEntry
+{
+    $akunPiutang = $piutang->coa;
+
+    if ($piutang->jenis === 'pinjaman') {
+        $akunLawan = ChartOfAccount::where('kode', '1-002')->firstOrFail();
+    } else {
+        $akunLawan = ChartOfAccount::where('kode', '4-002')->firstOrFail();
+    }
+
+    return $this->createJournal(
+        tanggal    : $piutang->tanggal,
+        keterangan : 'Piutang ' . ucfirst($piutang->jenis) . ' — ' . $piutang->nama_pihak . ': ' . $piutang->uraian,
+        refType    : OtherReceivable::class,
+        refId      : $piutang->id,
+        lines      : [
+            ['akun' => $akunPiutang, 'debit' => $piutang->jumlah, 'kredit' => 0],
+            ['akun' => $akunLawan,   'debit' => 0,                'kredit' => $piutang->jumlah],
+        ]
+    );
+}
+
+public function jurnalPiutangLainnyaLunas(OtherReceivable $piutang): JournalEntry
+{
+    $akunPiutang = $piutang->coa;
+    $akunBank    = ChartOfAccount::where('kode', '1-002')->firstOrFail();
+
+    return $this->createJournal(
+        tanggal    : $piutang->tanggal_lunas,
+        keterangan : 'Pelunasan Piutang — ' . $piutang->nama_pihak . ': ' . $piutang->uraian,
+        refType    : OtherReceivable::class . '_lunas',
+        refId      : $piutang->id,
+        lines      : [
+            ['akun' => $akunBank,    'debit' => $piutang->jumlah_lunas, 'kredit' => 0],
+            ['akun' => $akunPiutang, 'debit' => 0, 'kredit' => $piutang->jumlah_lunas],
+        ]
+    );
+}
 
 
 /**

@@ -16,13 +16,11 @@ body {
 .page      { page-break-after: always; }
 .page-last { page-break-after: auto; }
 
-/* ── Frame kwitansi ──────────────────────────────────────────── */
 .kwitansi-frame {
     border: 2px solid #000;
     padding: 20px 24px;
 }
 
-/* ── Layout utama: logo | konten ─────────────────────────────── */
 .main-table { width: 100%; border-collapse: collapse; }
 .col-logo {
     width: 90px;
@@ -37,13 +35,11 @@ body {
 }
 .col-content { vertical-align: top; }
 
-/* ── Baris data ──────────────────────────────────────────────── */
 .body-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
 .body-table td { padding: 4px 3px; vertical-align: top; font-size: 11pt; }
 .col-label  { width: 148px; }
 .col-colon  { width: 12px; }
 
-/* ── Terbilang box ───────────────────────────────────────────── */
 .terbilang-box {
     display: inline-block;
     border: 1.5px solid #555;
@@ -54,12 +50,10 @@ body {
     font-size: 11pt;
 }
 
-/* ── Item list ───────────────────────────────────────────────── */
 .detail-list { width: 100%; border-collapse: collapse; margin: 5px 0 3px 0; }
 .detail-list td { padding: 2px 3px; font-size: 11pt; vertical-align: top; }
 .detail-list .no-col { width: 22px; }
 
-/* ── Footer TTD ──────────────────────────────────────────────── */
 .footer-table { width: 100%; border-collapse: collapse; margin-top: 28px; }
 .footer-table td { vertical-align: top; }
 .col-jumlah { width: 46%; padding-top: 10px; }
@@ -77,13 +71,6 @@ body {
     text-align: center;
 }
 
-.ttd-garis {
-    border-bottom: 1px solid #000;
-    width: 200px;
-    margin: 0 auto 4px;
-}
-
-/* ── Halaman 2 ───────────────────────────────────────────────── */
 .bukti-judul { font-size: 13pt; font-weight: bold; margin-bottom: 16px; }
 </style>
 </head>
@@ -95,17 +82,12 @@ body {
 $kopPath = public_path('images/icon-lsp.png');
 $kopSrc  = file_exists($kopPath) ? $kopPath : null;
 
-// TTD + stempel hanya untuk versi berisi
-$ttdSrc     = null;
-$stempelSrc = null;
+// TTD+Stempel gabungan — satu file
+$ttdStempelSrc = null;
 if ($versi === 'berisi') {
-    $ttdPath = storage_path('app/private/mankeu/ttd.png');
-    if (file_exists($ttdPath)) {
-        $ttdSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($ttdPath));
-    }
-    $stempelPath = storage_path('app/private/mankeu/stempel.png');
-    if (file_exists($stempelPath)) {
-        $stempelSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($stempelPath));
+    $ttdStempelPath = storage_path('app/private/mankeu/ttd-stempel.png');
+    if (file_exists($ttdStempelPath)) {
+        $ttdStempelSrc = 'data:image/png;base64,' . base64_encode(file_get_contents($ttdStempelPath));
     }
 }
 
@@ -124,22 +106,18 @@ $terbilang = ucwords(\App\Helpers\TerbilangHelper::convert((int) $nominal)) . ' 
 $adaBukti  = $collectivePayment && $collectivePayment->proof_path;
 @endphp
 
-{{-- ═══════════════════════════════════════════════════════════ --}}
-{{-- HALAMAN 1 — Kwitansi                                       --}}
-{{-- ═══════════════════════════════════════════════════════════ --}}
+{{-- HALAMAN 1 — Kwitansi --}}
 <div class="{{ $adaBukti ? 'page' : 'page-last' }}">
 <div class="kwitansi-frame">
 <table class="main-table">
 <tr>
 
-    {{-- Logo --}}
     <td class="col-logo">
         @if($kopSrc)
         <img src="{{ $kopSrc }}" alt="Logo LSP KAP">
         @endif
     </td>
 
-    {{-- Konten --}}
     <td class="col-content">
         <table class="body-table">
             <tr>
@@ -183,7 +161,6 @@ $adaBukti  = $collectivePayment && $collectivePayment->proof_path;
             </tr>
         </table>
 
-        {{-- Footer: Jumlah + TTD --}}
         <table class="footer-table">
             <tr>
                 <td class="col-jumlah">
@@ -191,26 +168,20 @@ $adaBukti  = $collectivePayment && $collectivePayment->proof_path;
                     <div class="jumlah-box">Rp {{ number_format($nominal, 0, ',', '.') }}</div>
                 </td>
                 <td class="col-ttd">
-                    <div style="font-size:11pt;margin-bottom:3px;">
+                    <div style="font-size:11pt;margin-bottom:2px;">
                         Jakarta, {{ $tanggal->translatedFormat('d F Y') }}
                     </div>
-                    <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
-
-                    {{-- TTD + Stempel --}}
-                    <div style="height:72px;text-align:center;position:relative;">
-                        @if($ttdSrc)
-                        <img src="{{ $ttdSrc }}"
-                             style="max-height:68px;max-width:160px;position:absolute;left:50%;transform:translateX(-50%);">
-                        @endif
-                        @if($stempelSrc)
-                        <img src="{{ $stempelSrc }}"
-                             style="max-height:60px;max-width:60px;position:absolute;left:55%;top:4px;">
-                        @endif
-                    </div>
-
-                    <div style="font-size:11pt;font-weight:bold;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
+                   <div style="font-size:11pt;">Penerima,</div>
+ 
+                    @if($ttdStempelSrc)
+                    <img src="{{ $ttdStempelSrc }}"
+                         style="width:200px;height:auto;display:block;margin:-18px auto -22px;">
+                    @else
+                    <div style="height:60px;"></div>
+                    @endif
+ 
+                    <div style="font-size:11pt;font-weight:bold; margin-top:-20px;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
                     <div style="font-size:10pt;">Manajer Keuangan</div>
-                </td>
             </tr>
         </table>
     </td>
@@ -220,9 +191,7 @@ $adaBukti  = $collectivePayment && $collectivePayment->proof_path;
 </div>
 </div>
 
-{{-- ═══════════════════════════════════════════════════════════ --}}
-{{-- HALAMAN 2 — Bukti Transfer (kiri) + TTD (kanan)           --}}
-{{-- ═══════════════════════════════════════════════════════════ --}}
+{{-- HALAMAN 2 — Bukti Transfer + TTD --}}
 @if($adaBukti)
 @php
 $proofPath = storage_path('app/private/' . $collectivePayment->proof_path);
@@ -230,7 +199,7 @@ $proofExt  = strtolower(pathinfo($collectivePayment->proof_path, PATHINFO_EXTENS
 $isImage   = in_array($proofExt, ['jpg','jpeg','png']);
 $proofSrc  = null;
 if ($isImage && file_exists($proofPath)) {
-    $mime    = $proofExt === 'jpg' ? 'jpeg' : $proofExt;
+    $mime     = $proofExt === 'jpg' ? 'jpeg' : $proofExt;
     $proofSrc = 'data:image/' . $mime . ';base64,' . base64_encode(file_get_contents($proofPath));
 }
 @endphp
@@ -240,7 +209,6 @@ if ($isImage && file_exists($proofPath)) {
 
     <table style="width:100%;border-collapse:collapse;">
         <tr>
-            {{-- Kiri: Foto bukti transfer --}}
             <td style="width:60%;vertical-align:top;padding-right:20px;">
                 @if($proofSrc)
                 <img src="{{ $proofSrc }}"
@@ -256,25 +224,20 @@ if ($isImage && file_exists($proofPath)) {
                 @endif
             </td>
 
-            {{-- Kanan: TTD --}}
             <td style="width:40%;text-align:center;vertical-align:bottom;">
-                <div style="font-size:11pt;margin-bottom:6px;">
+                <div style="font-size:11pt;margin-bottom:2px;">
                     Jakarta, {{ ($collectivePayment->verified_at ?? now())->translatedFormat('d F Y') }}
                 </div>
-                <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
-
-                <div style="height:72px;text-align:center;position:relative;">
-                    @if($ttdSrc)
-                    <img src="{{ $ttdSrc }}"
-                         style="max-height:68px;max-width:160px;position:absolute;left:50%;transform:translateX(-50%);">
-                    @endif
-                    @if($stempelSrc)
-                    <img src="{{ $stempelSrc }}"
-                         style="max-height:60px;max-width:60px;position:absolute;left:55%;top:4px;">
-                    @endif
-                </div>
-
-                <div style="font-size:11pt;font-weight:bold;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
+                <div style="font-size:11pt;">Penerima,</div>
+ 
+                @if($ttdStempelSrc)
+                <img src="{{ $ttdStempelSrc }}"
+                     style="width:200px;height:auto;display:block;margin:-18px auto -22px;">
+                @else
+                <div style="height:60px;"></div>
+                @endif
+ 
+                <div style="font-size:11pt;font-weight:bold; margin-top:-20px;">Dr. Marsofiyati, S.Pd., M.Pd.</div>
                 <div style="font-size:10pt;">Manajer Keuangan</div>
             </td>
         </tr>

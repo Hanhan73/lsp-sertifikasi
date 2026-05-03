@@ -69,7 +69,7 @@ use App\Http\Controllers\Bendahara\LaporanKeuanganController;
 use App\Http\Controllers\Bendahara\ChartOfAccountController;
 use App\Http\Controllers\Bendahara\TarifHonorController;
 use App\Http\Controllers\Bendahara\PendapatanLuarController;
-
+use App\Http\Controllers\Bendahara\OtherReceivableController;
 
 /*
 |--------------------------------------------------------------------------
@@ -411,7 +411,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         });
     });
 
-
+    Route::prefix('invoice-kolektif')->name('invoice-kolektif.')->group(function () {
+        Route::get('/',                                  [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'index'])->name('index');
+        Route::get('/{invoice}',                         [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'show'])->name('show');
+        Route::post('/angsuran/{payment}/upload-bukti',  [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'uploadBukti'])->name('upload-bukti');
+        Route::get('/bukti/{payment}',                   [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'downloadBukti'])->name('bukti');
+        Route::get('/{invoice}/pdf',                     [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'pdf'])->name('pdf');
+    });
 });
 
 /*
@@ -1094,6 +1100,14 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::put('/{pendapatanLuar}',     [PendapatanLuarController::class, 'update'])->name('update');
         Route::delete('/{pendapatanLuar}',  [PendapatanLuarController::class, 'destroy'])->name('destroy');
         Route::get('/{pendapatanLuar}/bukti', [PendapatanLuarController::class, 'downloadBukti'])->name('bukti');
+    });
+
+    Route::prefix('piutang-lainnya')->name('other-receivables.')->group(function () {
+        Route::get('/',                    [OtherReceivableController::class, 'index'])->name('index');
+        Route::post('/',                   [OtherReceivableController::class, 'store'])->name('store');
+        Route::post('/{receivable}/lunas', [OtherReceivableController::class, 'markLunas'])->name('lunas');
+        Route::delete('/{receivable}',     [OtherReceivableController::class, 'destroy'])->name('destroy');
+        Route::get('/{receivable}/bukti',  [OtherReceivableController::class, 'downloadBukti'])->name('bukti');
     });
 });
 

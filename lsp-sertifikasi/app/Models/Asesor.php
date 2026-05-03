@@ -76,7 +76,7 @@ class Asesor extends Model
         return $this->hasMany(AsesorRekening::class);
     }
 
-    public function utamaRekening()
+    public function rekeningUtama()
     {
         return $this->hasOne(AsesorRekening::class)->where('is_utama', true);
     }

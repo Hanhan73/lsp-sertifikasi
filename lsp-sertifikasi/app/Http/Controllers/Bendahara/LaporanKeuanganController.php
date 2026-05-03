@@ -69,68 +69,71 @@ class LaporanKeuanganController extends Controller
         $tahun     = (int)($request->get('tahun', now()->year));
         $tahunList = $this->tahunList();
         $balance   = AccountBalance::forTahun($tahun);
+        $summary   = $this->summaryDariJurnal($tahun, $balance);
 
-        $summary = $this->summaryDariJurnal($tahun, $balance);
-
-        // Breakdown pendapatan per skema (masih dari payments karena jurnal tidak menyimpan skema)
+        // Breakdown pendapatan asesmen per skema
         $pendapatanIndividu = Payment::selectRaw('skemas.name as skema, SUM(payments.amount) as total')
             ->join('asesmens', 'asesmens.id', '=', 'payments.asesmen_id')
             ->join('skemas', 'skemas.id', '=', 'asesmens.skema_id')
             ->where('payments.status', 'verified')
             ->whereYear('payments.verified_at', $tahun)
             ->groupBy('skemas.id', 'skemas.name')
-            ->get()
-            ->keyBy('skema');
+            ->get()->keyBy('skema');
 
-        // Pendapatan kolektif per skema (invoice sent/paid)
         $pendapatanKolektif = \App\Models\Invoice::whereIn('status', ['sent', 'paid'])
-            ->whereYear('issued_at', $tahun)
-            ->get()
+            ->whereYear('issued_at', $tahun)->get()
             ->flatMap(fn($inv) => collect($inv->items))
             ->groupBy('skema_name')
-            ->map(fn($items, $nama) => (object)[
-                'skema' => $nama,
-                'total' => $items->sum('subtotal'),
-            ]);
+            ->map(fn($items, $nama) => (object)['skema' => $nama, 'total' => $items->sum('subtotal')]);
 
-        // Gabung kolektif + individu
         $pendapatanSkema = $pendapatanKolektif->map(function ($kol) use ($pendapatanIndividu) {
             $ind = $pendapatanIndividu->get($kol->skema);
-            return (object)[
-                'skema' => $kol->skema,
-                'total' => $kol->total + ($ind ? $ind->total : 0),
-            ];
+            return (object)['skema' => $kol->skema, 'total' => $kol->total + ($ind ? $ind->total : 0)];
         });
-
-        // Tambah skema individu yang tidak ada di kolektif
         foreach ($pendapatanIndividu as $nama => $ind) {
             if (!$pendapatanSkema->has($nama)) {
                 $pendapatanSkema->put($nama, (object)['skema' => $nama, 'total' => $ind->total]);
             }
         }
-
         $pendapatanSkema = $pendapatanSkema->sortByDesc('total')->values();
 
-        // Breakdown beban ops per item
-        $bebanOpsDetail = BiayaOperasional::whereYear('tanggal', $tahun)
-            ->orderByDesc('total')->get();
+        // Pendapatan luar detail — per COA
+        $pendapatanLuarDetail = \App\Models\PendapatanLuar::with('coa')
+            ->whereYear('tanggal', $tahun)
+            ->orderByDesc('jumlah')
+            ->get()
+            ->groupBy(fn($p) => $p->coa->nama ?? 'Lainnya')
+            ->map(fn($group, $nama) => (object)[
+                'nama'  => $nama,
+                'total' => $group->sum('jumlah'),
+            ])->values();
 
-        // Breakdown per bulan dari jurnal
+        // Piutang lainnya outstanding
+        $piutangLainnyaDetail = \App\Models\OtherReceivable::with('coa')
+            ->where('status', 'outstanding')
+            ->whereYear('tanggal', $tahun)
+            ->get();
+
+        $bebanOpsDetail = BiayaOperasional::whereYear('tanggal', $tahun)->orderByDesc('total')->get();
+
         $pendapatanPerBulan = $this->saldoAkunPerBulan('4-001', $tahun);
         $honorPerBulan      = $this->saldoAkunPerBulan('5-001', $tahun);
         $opsPerBulan        = $this->saldoAkunPerBulan('5-002', $tahun);
 
         if ($request->get('export') === 'pdf') {
-            return $this->exportLabaRugiPdf($tahun, $summary, $pendapatanSkema, $bebanOpsDetail);
+            return $this->exportLabaRugiPdf(
+                $tahun, $summary, $pendapatanSkema, $bebanOpsDetail,
+                $pendapatanLuarDetail, $piutangLainnyaDetail
+            );
         }
 
         return view('bendahara.laporan-keuangan.laba-rugi', compact(
             'tahun', 'tahunList', 'balance', 'summary',
             'pendapatanSkema', 'bebanOpsDetail',
-            'pendapatanPerBulan', 'honorPerBulan', 'opsPerBulan'
+            'pendapatanPerBulan', 'honorPerBulan', 'opsPerBulan',
+            'pendapatanLuarDetail', 'piutangLainnyaDetail'
         ));
     }
-
     // ── Neraca — dari jurnal + manual ─────────────────────────────────────
     public function neraca(Request $request)
     {
@@ -145,12 +148,17 @@ class LaporanKeuanganController extends Controller
  
         $piutangAsesi = $this->saldoAkun('1-003', $tahun);
         $utangHonor   = $this->saldoAkun('2-001', $tahun);
- 
+        // Piutang lainnya — outstanding saja, group by COA
+        $piutangLainnya      = \App\Models\OtherReceivable::where('status', 'outstanding')
+            ->whereYear('tanggal', $tahun)
+            ->with('coa')
+            ->get();
+        $totalPiutangLainnya = (int) $piutangLainnya->sum('jumlah');
         $surplus = $summary['pendapatan'] - $summary['beban_honor'] - $summary['beban_ops'];
  
         // ── ASET ──────────────────────────────────────────────────────────
-        $totalAset = $balance->kas + $bank + $balance->perlengkapan + $piutangAsesi;
- 
+        $totalAset = $balance->kas + $bank + $balance->perlengkapan 
+                + $piutangAsesi + $totalPiutangLainnya; 
         // ── KEWAJIBAN ─────────────────────────────────────────────────────
         $totalKewajiban = $utangHonor + $balance->utang_operasional;
  
@@ -170,7 +178,7 @@ class LaporanKeuanganController extends Controller
                 'piutangAsesi', 'utangHonor',
                 'surplus', 'totalAset', 'totalKewajiban',
                 'totalEkuitas', 'totalKewEkuitas', 'bank',
-                'ekuitasModal', 'saldoAwalBank'
+                'ekuitasModal', 'saldoAwalBank', 'piutangLainnya', 'totalPiutangLainnya'
             ));
         }
  
@@ -180,7 +188,7 @@ class LaporanKeuanganController extends Controller
             'surplus', 'totalAset', 'totalKewajiban',
             'totalEkuitas', 'totalKewEkuitas',
             'bank', 'mutasiBank', 'saldoAwalBank',
-            'ekuitasModal' // ← tambah ini untuk tampilan view
+            'ekuitasModal', 'piutangLainnya', 'totalPiutangLainnya'
         ));
     }
 
@@ -421,33 +429,34 @@ public function arusKas(Request $request)
      */
     private function summaryDariJurnal(int $tahun, ?AccountBalance $balance = null): array
     {
-        // Pendapatan asesmen (4-001)
         $pendapatanAsesmen = $this->saldoAkun('4-001', $tahun);
- 
-        // Pendapatan luar — semua akun tipe 'pendapatan' KECUALI 4-001
-        $pendapatanLuar = $this->saldoSemuaAkunTipe('pendapatan', $tahun, ['4-001']);
- 
-        $pendapatan = $pendapatanAsesmen + $pendapatanLuar;
- 
+        $pendapatanLuar    = $this->saldoSemuaAkunTipe('pendapatan', $tahun, ['4-001']);
+        $pendapatan        = $pendapatanAsesmen + $pendapatanLuar;
+
         $bebanHonor = $this->saldoAkun('5-001', $tahun);
         $bebanOps   = $this->saldoAkun('5-002', $tahun);
- 
+
         $balance    = $balance ?? AccountBalance::forTahun($tahun);
         $distribusi = (int)$balance->distribusi_yayasan;
- 
+
         $surplus = $pendapatan - $bebanHonor - $bebanOps;
- 
+
+        // Piutang lainnya outstanding tahun ini
+        $piutangLainnyaTotal = (int) \App\Models\OtherReceivable::where('status', 'outstanding')
+            ->whereYear('tanggal', $tahun)
+            ->sum('jumlah');
+
         return [
-            'pendapatan'         => $pendapatan,
-            'pendapatan_asesmen' => $pendapatanAsesmen,   // breakdown kalau perlu di view
-            'pendapatan_luar'    => $pendapatanLuar,       // breakdown kalau perlu di view
-            'beban_honor'        => $bebanHonor,
-            'beban_ops'          => $bebanOps,
-            'distribusi'         => $distribusi,
-            'surplus'            => $surplus,
+            'pendapatan'            => $pendapatan,
+            'pendapatan_asesmen'    => $pendapatanAsesmen,
+            'pendapatan_luar'       => $pendapatanLuar,
+            'beban_honor'           => $bebanHonor,
+            'beban_ops'             => $bebanOps,
+            'distribusi'            => $distribusi,
+            'surplus'               => $surplus,
+            'piutang_lainnya'       => $piutangLainnyaTotal,
         ];
     }
-
     private function saldoSemuaAkunTipe(string $tipe, int $tahun, array $excludeKode = []): int
     {
         $akuns = ChartOfAccount::where('tipe', $tipe)
@@ -575,14 +584,16 @@ public function arusKas(Request $request)
 
     // ── PDF exports ───────────────────────────────────────────────────────
 
-    private function exportLabaRugiPdf($tahun, $summary, $pendapatanSkema, $bebanOpsDetail)
-    {
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-            'bendahara.laporan-keuangan.pdf.laba-rugi',
-            compact('tahun', 'summary', 'pendapatanSkema', 'bebanOpsDetail')
-        )->setPaper('A4', 'portrait');
-        return $pdf->download("Laporan_Laba_Rugi_{$tahun}.pdf");
-    }
+        private function exportLabaRugiPdf($tahun, $summary, $pendapatanSkema, $bebanOpsDetail,
+            $pendapatanLuarDetail = null, $piutangLainnyaDetail = null)
+        {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+                'bendahara.laporan-keuangan.pdf.laba-rugi',
+                compact('tahun', 'summary', 'pendapatanSkema', 'bebanOpsDetail',
+                        'pendapatanLuarDetail', 'piutangLainnyaDetail')
+            )->setPaper('A4', 'portrait');
+            return $pdf->download("Laporan_Laba_Rugi_{$tahun}.pdf");
+        }
 
     private function exportNeracaPdf($tahun, $balance, $neraca)
     {

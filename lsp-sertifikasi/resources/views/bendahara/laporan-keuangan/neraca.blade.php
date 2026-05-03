@@ -7,13 +7,13 @@
 
 @push('styles')
 <style>
-.neraca-header { background:#1a5276; color:#fff; text-align:center; padding:10px; font-weight:700; }
-.neraca-sub    { background:#2e86c1; color:#fff; text-align:center; padding:6px; font-size:.85rem; }
-.neraca-label  { padding:8px 12px; }
-.neraca-val    { padding:8px 12px; text-align:right; font-weight:600; color:#e67e22; }
-.neraca-total  { background:#1a5276; color:#fff; font-weight:700; padding:10px 12px; }
+.neraca-header    { background:#1a5276; color:#fff; text-align:center; padding:10px; font-weight:700; }
+.neraca-sub       { background:#2e86c1; color:#fff; text-align:center; padding:6px; font-size:.85rem; }
+.neraca-label     { padding:8px 12px; }
+.neraca-val       { padding:8px 12px; text-align:right; font-weight:600; color:#e67e22; }
+.neraca-total     { background:#1a5276; color:#fff; font-weight:700; padding:10px 12px; }
 .neraca-total-val { background:#1a5276; color:#fff; font-weight:700; padding:10px 12px; text-align:right; }
-.divider-row td { height:8px; background:#f8f9fa; border:0; }
+.neraca-piutang   { background:#eaf4fb; }
 </style>
 @endpush
 
@@ -32,12 +32,13 @@
 
 {{-- Cek balance --}}
 @php
-    $selisih = $totalAset - $totalKewEkuitas;
-    $kasManualKosong = $balance->kas == 0 && $mutasiBank > 0;
-    $bankBelumDiinput = $saldoAwalBank == 0 && $mutasiBank > 0;
-    $surplusNegatif = $surplus < 0;
+    $selisih           = $totalAset - $totalKewEkuitas;
+    $kasManualKosong   = $balance->kas == 0 && $mutasiBank > 0;
+    $bankBelumDiinput  = $saldoAwalBank == 0 && $mutasiBank > 0;
+    $surplusNegatif    = $surplus < 0;
     $piutangBelumLunas = $piutangAsesi > 0;
-    $utangHonorAda = $utangHonor > 0;
+    $utangHonorAda     = $utangHonor > 0;
+    $adaPiutangLainnya = isset($piutangLainnya) && $piutangLainnya->count() > 0;
 @endphp
 
 @if(abs($selisih) > 0)
@@ -57,7 +58,8 @@
         </tr>
         <tr>
             <td class="text-muted">Selisih</td>
-            <td class="fw-semibold text-danger">Rp {{ number_format(abs($selisih),0,',','.') }}
+            <td class="fw-semibold text-danger">
+                Rp {{ number_format(abs($selisih),0,',','.') }}
                 ({{ $totalAset > $totalKewEkuitas ? 'Aset lebih besar' : 'Kew+Ekuitas lebih besar' }})
             </td>
         </tr>
@@ -70,36 +72,34 @@
         <li>
             <strong>Saldo awal bank belum diinput.</strong>
             Mutasi bank dari jurnal = <strong class="text-warning">Rp {{ number_format($mutasiBank,0,',','.') }}</strong>,
-            tapi saldo awal = 0. Saldo bank di neraca hanya Rp {{ number_format($bank,0,',','.') }}.
-            <a href="{{ route('bendahara.laporan-keuangan.edit-saldo', ['tahun'=>$tahun]) }}"
-               class="alert-link">→ Isi saldo awal bank</a>
+            tapi saldo awal = 0.
+            <a href="{{ route('bendahara.laporan-keuangan.edit-saldo', ['tahun'=>$tahun]) }}" class="alert-link">→ Isi saldo awal bank</a>
         </li>
         @endif
         @if($kasManualKosong)
-        <li>
-            <strong>Kas = 0</strong> padahal ada transaksi masuk ke bank.
-            Pastikan saldo kas sudah diinput dengan benar, atau memang seluruh penerimaan langsung ke rekening bank.
-        </li>
+        <li><strong>Kas = 0</strong> padahal ada transaksi masuk ke bank.</li>
         @endif
         @if($surplusNegatif)
         <li>
             <strong>Surplus negatif</strong> — beban melebihi pendapatan.
             Surplus: <span class="text-danger">Rp {{ number_format($surplus,0,',','.') }}</span>.
-            Periksa data honor asesor dan biaya operasional.
         </li>
         @endif
     </ul>
     @endif
 
-    @if($utangHonorAda || $piutangBelumLunas)
+    @if($utangHonorAda || $piutangBelumLunas || $adaPiutangLainnya)
     <div class="mt-2 small text-muted border-top pt-2">
         <strong>Catatan (bukan penyebab tidak balance):</strong>
         <ul class="mb-0 mt-1">
             @if($utangHonorAda)
-            <li>Utang honor asesor <strong>Rp {{ number_format($utangHonor,0,',','.') }}</strong> belum dilunasi — ini normal dan sudah masuk sisi kewajiban.</li>
+            <li>Utang honor asesor <strong>Rp {{ number_format($utangHonor,0,',','.') }}</strong> belum dilunasi — sudah masuk sisi kewajiban.</li>
             @endif
             @if($piutangBelumLunas)
             <li>Piutang asesi <strong>Rp {{ number_format($piutangAsesi,0,',','.') }}</strong> belum diterima — sudah masuk sisi aset.</li>
+            @endif
+            @if($adaPiutangLainnya)
+            <li>Piutang lainnya <strong>Rp {{ number_format($totalPiutangLainnya,0,',','.') }}</strong> masih outstanding — sudah masuk sisi aset.</li>
             @endif
         </ul>
     </div>
@@ -138,15 +138,15 @@
             </thead>
             <tbody>
 
-            {{-- Row 1 --}}
+            {{-- Kas | Utang Honor --}}
             <tr>
                 <td class="neraca-label">Kas</td>
                 <td class="neraca-val">{{ number_format($balance->kas,0,',','.') }}</td>
                 <td class="neraca-label">Utang Honor Asesor</td>
-                <td class="neraca-val">{{ number_format($utangHonor,0,',','.') }}</td>  {{-- ← ganti --}}
+                <td class="neraca-val">{{ number_format($utangHonor,0,',','.') }}</td>
             </tr>
 
-            {{-- Row 2: Bank (otomatis dari jurnal) --}}
+            {{-- Bank | Utang Operasional --}}
             <tr>
                 <td class="neraca-label">
                     Bank
@@ -160,7 +160,7 @@
                 <td class="neraca-val">{{ number_format($balance->utang_operasional,0,',','.') }}</td>
             </tr>
 
-            {{-- Row 3 --}}
+            {{-- Piutang Asesi | Saldo Dana --}}
             <tr>
                 <td class="neraca-label">Piutang Asesi</td>
                 <td class="neraca-val">{{ number_format($piutangAsesi,0,',','.') }}</td>
@@ -168,10 +168,28 @@
                 <td class="neraca-val" style="background:#fef9e7">{{ number_format($balance->saldo_dana,0,',','.') }}</td>
             </tr>
 
-            {{-- Row 4 --}}
-            <tr>
-                <td class="neraca-label">Perlengkapan</td>
-                <td class="neraca-val">{{ number_format($balance->perlengkapan,0,',','.') }}</td>
+            {{-- Piutang Lainnya — selalu tampil, detail kalau ada isi --}}
+            <tr class="{{ $adaPiutangLainnya ? 'neraca-piutang' : '' }}">
+                <td class="neraca-label">
+                    Piutang Lainnya
+                    @if($adaPiutangLainnya)
+                    <small class="d-block text-muted mt-1" style="font-size:.75rem;">
+                        @foreach($piutangLainnya as $pr)
+                        <span class="d-block">
+                            <i class="bi bi-dash me-1"></i>{{ $pr->nama_pihak }}
+                            <span class="badge {{ $pr->jenis === 'pinjaman' ? 'bg-warning text-dark' : 'bg-info text-dark' }} ms-1" style="font-size:.6rem;">{{ $pr->jenis_label }}</span>
+                            — Rp {{ number_format($pr->jumlah,0,',','.') }}
+                        </span>
+                        @endforeach
+                    </small>
+                    @else
+                    <small class="text-muted d-block" style="font-size:.75rem;">Tidak ada</small>
+                    @endif
+                </td>
+                <td class="neraca-val {{ $adaPiutangLainnya ? 'neraca-piutang' : '' }}">
+                    {{ number_format($totalPiutangLainnya,0,',','.') }}
+                </td>
+                {{-- Surplus selalu di baris ini --}}
                 <td class="neraca-label fw-semibold text-warning" style="background:#fef9e7">
                     Surplus Tahun Berjalan
                     @if($summary['distribusi'] > 0)
@@ -181,16 +199,23 @@
                     @endif
                 </td>
                 <td class="neraca-val {{ $surplus >= 0 ? '' : 'text-danger' }}" style="background:#fef9e7">
-                    {{ number_format($surplus - $summary['distribusi'],0,',','.') }}  {{-- ← ganti --}}
+                    {{ number_format($surplus - $summary['distribusi'],0,',','.') }}
                 </td>
+            </tr>
+
+            {{-- Perlengkapan | kosong --}}
+            <tr>
+                <td class="neraca-label">Perlengkapan</td>
+                <td class="neraca-val">{{ number_format($balance->perlengkapan,0,',','.') }}</td>
+                <td style="background:#fef9e7" colspan="2"></td>
             </tr>
 
             {{-- Total --}}
             <tr>
                 <td class="neraca-total">Total Aset</td>
-                <td class="neraca-total-val">{{ number_format($totalAset,0,',','.') }}</td>  {{-- ← ganti --}}
+                <td class="neraca-total-val">{{ number_format($totalAset,0,',','.') }}</td>
                 <td class="neraca-total">Total Kewajiban + Ekuitas</td>
-                <td class="neraca-total-val">{{ number_format($totalKewEkuitas,0,',','.') }}</td>  {{-- ← ganti --}}
+                <td class="neraca-total-val">{{ number_format($totalKewEkuitas,0,',','.') }}</td>
             </tr>
 
             </tbody>
@@ -199,7 +224,7 @@
 </div>
 
 <div class="text-muted small text-center">
-    * Piutang Asesi dan Utang Honor dihitung otomatis dari data sistem.
+    * Piutang Asesi, Piutang Lainnya, dan Utang Honor dihitung otomatis dari sistem.
     Kas, Bank, Perlengkapan, Utang Operasional, dan Saldo Dana diinput manual.
 </div>
 

@@ -117,6 +117,15 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     @endif
 </a>
 
+<a href="{{ route('admin.invoice-kolektif.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.invoice-kolektif') ? 'active' : '' }}">
+    <i class="bi bi-receipt"></i> Invoice Kolektif
+    @php $pendingInvoice = \App\Models\CollectivePayment::where('status','pending')->whereNotNull('proof_path')->count(); @endphp
+    @if($pendingInvoice > 0)
+    <span class="badge bg-warning ms-auto">{{ $pendingInvoice }}</span>
+    @endif
+</a>
+
 {{-- Divider: DATA & LAPORAN --}}
 <div class="sidebar-divider">
     <span>DATA & LAPORAN</span>

@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        
     @page {
         margin: 0;
         size: A4 landscape;
@@ -165,9 +166,29 @@
         font-size: 11pt;
     }
     </style>
+    @if($isDraft)
+        <style>
+        .watermark-draft {
+            position: fixed;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 80px;
+            font-weight: 900;
+            color: rgba(200, 0, 0, 0.08);
+            letter-spacing: 8px;
+            white-space: nowrap;
+            z-index: 0;
+            pointer-events: none;
+        }
+        </style>
+    @endif
 </head>
 
 <body>
+    @if($isDraft)
+    <div class="watermark-draft">DRAFT</div>
+    @endif
 
     @php
     $grouped = [];
@@ -264,7 +285,13 @@
                                         {{ optional($honor->tanggal_kwitansi)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
                                     </div>
                                     <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
-                                    @if($honor->isDikonfirmasi() && !empty($ttdAsesor ?? null))
+                                    @if($isDraft)
+                                        {{-- Belum dikonfirmasi: TTD kosong --}}
+                                        <div style="height:60px;border-bottom:1px solid #999;width:150px;margin-top:4px;"></div>
+                                        <div style="font-size:9pt;color:#999;margin-top:2px;font-style:italic;">
+                                            (Belum ditandatangani)
+                                        </div>
+                                    @elseif($honor->isDikonfirmasi() && !empty($ttdAsesor ?? null))
                                     <img src="{{ $ttdAsesor }}" style="height:68px;margin:6px 0 2px;"><br>
                                     @else
                                     <div style="height:76px;"></div>

@@ -125,20 +125,29 @@
                 </div>
 
                 {{-- Aksi: Preview/Download kwitansi --}}
-                <div class="d-flex gap-2 mt-2">
+                <div class="d-flex gap-2 mt-2 flex-wrap">
                     @if($honor->isDikonfirmasi())
-                    <a href="{{ route('bendahara.honor.payment.kwitansi', ['honor' => $honor, 'preview' => 1]) }}"
-                        target="_blank" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-eye me-1"></i>Preview Kwitansi
-                    </a>
-                    <a href="{{ route('bendahara.honor.payment.kwitansi', $honor) }}" class="btn btn-sm btn-primary">
-                        <i class="bi bi-download me-1"></i>Download Kwitansi PDF
-                    </a>
+                        {{-- Final: kwitansi dengan TTD --}}
+                        <a href="{{ route('bendahara.honor.payment.kwitansi', ['honor' => $honor, 'preview' => 1]) }}"
+                            target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>Preview Kwitansi
+                        </a>
+                        <a href="{{ route('bendahara.honor.payment.kwitansi', $honor) }}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-download me-1"></i>Download Kwitansi PDF
+                        </a>
                     @else
-                    <span class="text-muted small fst-italic">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Kwitansi tersedia setelah asesor konfirmasi penerimaan.
-                    </span>
+                        {{-- Draft: kwitansi tanpa TTD, ada watermark DRAFT --}}
+                        <a href="{{ route('bendahara.honor.payment.kwitansi', ['honor' => $honor, 'preview' => 1]) }}"
+                            target="_blank" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-eye me-1"></i>Preview Draft Kwitansi
+                        </a>
+                        <a href="{{ route('bendahara.honor.payment.kwitansi', $honor) }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-download me-1"></i>Download Draft
+                        </a>
+                        <span class="text-muted small fst-italic align-self-center">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Kwitansi final tersedia setelah asesor konfirmasi.
+                        </span>
                     @endif
                 </div>
             </div>

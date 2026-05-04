@@ -266,19 +266,38 @@ class HonorAsesorController extends Controller
      */
     public function pdfKwitansi(HonorPayment $honor)
     {
-        abort_if($honor->isMenunggu(), 422, 'Kwitansi hanya bisa digenerate setelah pembayaran dikonfirmasi asesor.');
-
         $honor->load([
             'asesor.user',
             'details.schedule.skema',
             'details.schedule.tuk',
         ]);
 
+        $isDraft = !$honor->isDikonfirmasi();
+
+        // Load TTD asesor hanya jika sudah dikonfirmasi
+        $ttdAsesor = null;
+        if (!$isDraft) {
+            $ttdPath = $honor->asesor->user?->ttd_path ?? null;
+            if ($ttdPath) {
+                $fullPath = storage_path('app/private/' . $ttdPath);
+                if (file_exists($fullPath)) {
+                    $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+                    $mime     = in_array($ext, ['png']) ? 'image/png' : 'image/jpeg';
+                    $ttdAsesor = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
+                }
+            }
+        }
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.honor-kwitansi', [
-            'honor' => $honor,
-        ])->setPaper('A4', 'portrait');
+            'honor'    => $honor,
+            'isDraft'  => $isDraft,
+            'ttdAsesor' => $ttdAsesor,
+        ])->setPaper('A4', 'landscape');
 
         $filename = 'Kwitansi_Honor_' . str_replace('/', '-', $honor->nomor_kwitansi) . '.pdf';
+        if ($isDraft) {
+            $filename = 'DRAFT_' . $filename;
+        }
 
         return request()->boolean('preview')
             ? $pdf->stream($filename)

@@ -524,7 +524,7 @@
                                             @endif
                                         </td>
                                         @endforeach
- 
+
                                         {{-- Kolom Aksi Reopen --}}
                                         <td class="text-center">
                                             @if($isReopenActive)
@@ -640,10 +640,8 @@
                                             <i class="bi bi-file-earmark-pdf me-1"></i>Soal
                                         </a>
                                         @endif
-                                        @php $paketAktif = $dist->paketSoalObservasi; 
-                                        @endphp
+                                        @php $paketAktif = $dist->paketSoalObservasi; @endphp
                                         @if($paketAktif?->lampiran_path)
-                                        
                                         <a href="{{ route('asesor.observasi.download-lampiran', $paketAktif) }}"
                                         class="btn btn-sm btn-outline-info" title="Download panduan soal">
                                             <i class="bi bi-book me-1"></i> Lampiran Format Formulir
@@ -788,6 +786,7 @@
                         </div>
                     </div>
                     @endif
+
                     {{-- Foto Dokumentasi --}}
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
@@ -906,6 +905,16 @@
                     @php
                         $ba       = $schedule->beritaAcara;
                         $baLocked = $ba && $ba->isSigned();
+
+                        // Cek apakah form berita acara perlu dikunci karena belum ada hasil upload
+                        $adaDistribusiBA = $schedule->distribusiSoalObservasi->isNotEmpty()
+                            || $schedule->distribusiPortofolio->isNotEmpty();
+                        $adaHasilBA = $schedule->hasilObservasi->isNotEmpty()
+                            || $schedule->hasilPortofolio->isNotEmpty();
+                        $baFormLocked = $adaDistribusiBA && !$adaHasilBA;
+
+                        // Input K/BK di-disable jika salah satu kondisi berikut terpenuhi
+                        $rekDisabled = !$apl02Ak01Ready || $baFormLocked;
                     @endphp
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
@@ -986,14 +995,8 @@
                             @endif
 
                             @if(!$baLocked)
-                            @php
-                                $adaDistribusiBA = $schedule->distribusiSoalObservasi->isNotEmpty()
-                                    || $schedule->distribusiPortofolio->isNotEmpty();
-                                $adaHasilBA = $schedule->hasilObservasi->isNotEmpty()
-                                    || $schedule->hasilPortofolio->isNotEmpty();
-                                $baFormLocked = $adaDistribusiBA && !$adaHasilBA;
-                            @endphp
 
+                            {{-- Warning jika form dikunci karena belum upload hasil --}}
                             @if($baFormLocked)
                             <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.82rem;">
                                 <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
@@ -1011,34 +1014,40 @@
                                     <input type="date" name="tanggal_pelaksanaan"
                                            class="form-control form-control-sm"
                                            value="{{ $ba?->tanggal_pelaksanaan?->translatedFormat('Y-m-d') ?? $schedule->assessment_date->translatedFormat('Y-m-d') }}"
-                                           required>
+                                           {{ $rekDisabled ? 'disabled' : 'required' }}>
                                 </div>
                                 <div class="mb-2">
                                     <label class="form-label fw-semibold small">
                                         Rekomendasi per Asesi
+                                        @if($rekDisabled)
+                                        <span class="ms-1 text-muted fw-normal"><i class="bi bi-lock-fill" style="font-size:.7rem;"></i></span>
+                                        @else
                                         <span class="text-muted fw-normal">(edit jika perlu)</span>
+                                        @endif
                                     </label>
                                     <div class="d-flex flex-column gap-1">
                                         @foreach($schedule->asesmens as $asesmen)
                                         @php $rek = $rekomendasiMap[$asesmen->id] ?? null; @endphp
                                         <div class="d-flex align-items-center gap-2 px-2 py-1 border rounded-2
-                                            {{ $rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light') }}"
+                                            {{ $rekDisabled ? 'bg-light opacity-75' : ($rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light')) }}"
                                              style="font-size:.8rem;">
-                                            <div class="flex-grow-1 fw-semibold">{{ $asesmen->full_name }}</div>
+                                            <div class="flex-grow-1 fw-semibold {{ $rekDisabled ? 'text-muted' : '' }}">{{ $asesmen->full_name }}</div>
                                             <div class="d-flex gap-2 flex-shrink-0">
                                                 <div class="form-check mb-0">
                                                     <input class="form-check-input" type="radio"
                                                            name="rekomendasi[{{ $asesmen->id }}]"
                                                            id="k_{{ $asesmen->id }}" value="K"
-                                                           {{ $rek === 'K' ? 'checked' : '' }} required>
-                                                    <label class="form-check-label fw-bold text-success" for="k_{{ $asesmen->id }}">K</label>
+                                                           {{ $rek === 'K' ? 'checked' : '' }}
+                                                           {{ $rekDisabled ? 'disabled' : 'required' }}>
+                                                    <label class="form-check-label fw-bold {{ $rekDisabled ? 'text-muted' : 'text-success' }}" for="k_{{ $asesmen->id }}">K</label>
                                                 </div>
                                                 <div class="form-check mb-0">
                                                     <input class="form-check-input" type="radio"
                                                            name="rekomendasi[{{ $asesmen->id }}]"
                                                            id="bk_{{ $asesmen->id }}" value="BK"
-                                                           {{ $rek === 'BK' ? 'checked' : '' }}>
-                                                    <label class="form-check-label fw-bold text-danger" for="bk_{{ $asesmen->id }}">BK</label>
+                                                           {{ $rek === 'BK' ? 'checked' : '' }}
+                                                           {{ $rekDisabled ? 'disabled' : '' }}>
+                                                    <label class="form-check-label fw-bold {{ $rekDisabled ? 'text-muted' : 'text-danger' }}" for="bk_{{ $asesmen->id }}">BK</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -1048,12 +1057,13 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold small">Catatan</label>
                                     <textarea name="catatan" class="form-control form-control-sm" rows="2"
-                                              placeholder="Opsional...">{{ $ba?->catatan }}</textarea>
+                                              placeholder="Opsional..."
+                                              {{ $rekDisabled ? 'disabled' : '' }}>{{ $ba?->catatan }}</textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary btn-sm w-100"
-                                        {{ (!$apl02Ak01Ready || $baFormLocked) ? 'disabled' : '' }}>
+                                        {{ $rekDisabled ? 'disabled' : '' }}>
                                     <i class="bi bi-save me-1"></i>Simpan Berita Acara
-                                    @if(!$apl02Ak01Ready || $baFormLocked)<i class="bi bi-lock ms-1"></i>@endif
+                                    @if($rekDisabled)<i class="bi bi-lock ms-1"></i>@endif
                                 </button>
                                 @if(!$apl02Ak01Ready)
                                 <div class="text-muted small mt-1 text-center">
@@ -1075,6 +1085,7 @@
                                 <i class="bi bi-pen-fill me-1"></i>Tanda Tangan & Kunci Berita Acara
                             </button>
                             @endif
+
                             @else
                             {{-- Jika sudah locked: tampilkan read-only --}}
                             <div class="mb-2">
@@ -1108,7 +1119,6 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        {{-- Rekap kehadiran --}}
                         <div class="border rounded-3 overflow-hidden mb-4">
                             <div class="px-3 py-2 bg-light fw-semibold small border-bottom d-flex align-items-center justify-content-between">
                                 <span><i class="bi bi-people me-2 text-primary"></i>Rekap Kehadiran</span>
@@ -1579,24 +1589,24 @@ async function mulaiSingle(asesmenId, nama) {
 
 // ── Reopen Observasi ──
 let _reopenUrl = null;
- 
+
 function showReopenModal(btn) {
     _reopenUrl = btn.dataset.reopenUrl;
     document.getElementById('reopenAsesiName').textContent = btn.dataset.asesiName;
     document.getElementById('reopenDurasiJam').value = 24;
     new bootstrap.Modal(document.getElementById('modalReopenObservasi')).show();
 }
- 
+
 document.getElementById('btnKonfirmasiReopen')?.addEventListener('click', async function () {
     const durasi = parseInt(document.getElementById('reopenDurasiJam').value);
     if (!durasi || durasi < 1 || durasi > 72) {
         Swal.fire('Durasi tidak valid', 'Isi durasi antara 1–72 jam.', 'warning');
         return;
     }
- 
+
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
- 
+
     try {
         const res  = await fetch(_reopenUrl, {
             method : 'POST',
@@ -1604,9 +1614,9 @@ document.getElementById('btnKonfirmasiReopen')?.addEventListener('click', async 
             body   : JSON.stringify({ durasi_jam: durasi }),
         });
         const data = await res.json();
- 
+
         bootstrap.Modal.getInstance(document.getElementById('modalReopenObservasi'))?.hide();
- 
+
         if (data.success) {
             await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 2500, showConfirmButton: false });
             window.location.reload();
@@ -1620,10 +1630,10 @@ document.getElementById('btnKonfirmasiReopen')?.addEventListener('click', async 
         this.innerHTML = '<i class="bi bi-check2 me-1"></i>Buka Sekarang';
     }
 });
- 
+
 async function closeReopenObservasi(btn, asesiName) {
     const url = btn.dataset.closeUrl;
- 
+
     const conf = await Swal.fire({
         title: 'Tutup akses?',
         text: `Link observasi ${asesiName} akan langsung ditutup.`,
@@ -1633,7 +1643,7 @@ async function closeReopenObservasi(btn, asesiName) {
         cancelButtonText: 'Batal',
     });
     if (!conf.isConfirmed) return;
- 
+
     const res  = await fetch(url, {
         method : 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },

@@ -986,6 +986,24 @@
                             @endif
 
                             @if(!$baLocked)
+                            @php
+                                $adaDistribusiBA = $schedule->distribusiSoalObservasi->isNotEmpty()
+                                    || $schedule->distribusiPortofolio->isNotEmpty();
+                                $adaHasilBA = $schedule->hasilObservasi->isNotEmpty()
+                                    || $schedule->hasilPortofolio->isNotEmpty();
+                                $baFormLocked = $adaDistribusiBA && !$adaHasilBA;
+                            @endphp
+
+                            @if($baFormLocked)
+                            <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.82rem;">
+                                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                                <div>
+                                    <strong>Form belum bisa diisi.</strong><br>
+                                    Upload minimal satu file hasil asesmen (observasi atau portofolio) terlebih dahulu.
+                                </div>
+                            </div>
+                            @endif
+
                             <form method="POST" action="{{ route('asesor.jadwal.berita-acara.simpan', $schedule) }}">
                                 @csrf
                                 <div class="mb-2">
@@ -1032,13 +1050,18 @@
                                     <textarea name="catatan" class="form-control form-control-sm" rows="2"
                                               placeholder="Opsional...">{{ $ba?->catatan }}</textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-sm w-100" {{ !$apl02Ak01Ready ? 'disabled' : '' }}>
+                                <button type="submit" class="btn btn-primary btn-sm w-100"
+                                        {{ (!$apl02Ak01Ready || $baFormLocked) ? 'disabled' : '' }}>
                                     <i class="bi bi-save me-1"></i>Simpan Berita Acara
-                                    @if(!$apl02Ak01Ready)<i class="bi bi-lock ms-1"></i>@endif
+                                    @if(!$apl02Ak01Ready || $baFormLocked)<i class="bi bi-lock ms-1"></i>@endif
                                 </button>
                                 @if(!$apl02Ak01Ready)
                                 <div class="text-muted small mt-1 text-center">
                                     <i class="bi bi-info-circle me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
+                                </div>
+                                @elseif($baFormLocked)
+                                <div class="text-muted small mt-1 text-center">
+                                    <i class="bi bi-info-circle me-1"></i>Upload hasil observasi/portofolio terlebih dahulu.
                                 </div>
                                 @endif
                             </form>

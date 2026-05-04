@@ -21,8 +21,31 @@
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white d-flex align-items-center">
                 <i class="bi bi-file-earmark-text me-1 text-primary"></i>
-                <span class="fw-semibold">{{ $honor->nomor_kwitansi }}</span>
-                <span class="badge bg-{{ $honor->status_badge }} ms-auto">{{ $honor->status_label }}</span>
+                    <span class="fw-semibold font-monospace" id="nomorKwitansiDisplay">{{ $honor->nomor_kwitansi }}</span>
+                    <button class="btn btn-outline-secondary ms-2"
+                            style="font-size:.7rem;padding:2px 6px;"
+                            onclick="toggleEditNomor()"
+                            id="btnEditNomor"
+                            title="Edit nomor kwitansi">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+
+                    {{-- Form inline edit --}}
+                    <div id="formEditNomor" class="d-none d-flex align-items-center gap-1 ms-1">
+                        <input type="text"
+                            id="inputNomorKwitansi"
+                            class="form-control form-control-sm font-monospace"
+                            style="max-width:240px;font-size:.85rem;"
+                            value="{{ $honor->nomor_kwitansi }}"
+                            placeholder="001/LSP-KAP/KEU.KK/IV/2026">
+                        <button class="btn btn-sm btn-success" onclick="simpanNomor()" title="Simpan">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" onclick="toggleEditNomor()" title="Batal">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>                
+                    <span class="badge bg-{{ $honor->status_badge }} ms-auto">{{ $honor->status_label }}</span>
             </div>
             <div class="card-body">
                 <div class="row g-3 mb-3">
@@ -45,6 +68,7 @@
                                 <th>Skema</th>
                                 <th>TUK</th>
                                 <th>Tanggal</th>
+                                <th>Batch</th>
                                 <th class="text-center">Asesi</th>
                                 <th class="text-end">@Rp</th>
                                 <th class="text-end">Subtotal</th>
@@ -52,23 +76,48 @@
                         </thead>
                         <tbody>
                             @foreach($honor->details as $i => $detail)
+                            @php
+                                $asesmens   = $detail->schedule->asesmens ?? collect();
+                                $batches    = $asesmens->where('is_collective', true)
+                                                    ->pluck('collective_batch_id')
+                                                    ->filter()->unique()->values();
+                                $adaMandiri = $asesmens->where('is_collective', false)->isNotEmpty();
+                            @endphp
                             <tr>
                                 <td class="text-muted small">{{ $i+1 }}</td>
                                 <td class="small fw-semibold">{{ $detail->schedule->skema->name }}</td>
                                 <td class="small">{{ $detail->schedule->tuk->name ?? '-' }}</td>
                                 <td class="small">
-                                    {{ optional($detail->schedule->assessment_date)->translatedFormat('d M Y') }}</td>
-                                <td class="text-center small">{{ $detail->jumlah_asesi }}</td>
-                                <td class="text-end small">{{ number_format($detail->honor_per_asesi, 0, ',', '.') }}
+                                    {{ optional($detail->schedule->assessment_date)->translatedFormat('d M Y') }}
                                 </td>
-                                <td class="text-end small fw-semibold">
-                                    {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                <td class="small">
+                                    @forelse($batches as $batch)
+                                        <span class="badge bg-primary bg-opacity-75 font-monospace"
+                                            style="font-size:.65rem;letter-spacing:.3px;">
+                                            <i class="bi bi-people-fill me-1"></i>{{ $batch }}
+                                        </span>
+                                        @if(!$loop->last)<br>@endif
+                                    @empty
+                                        {{-- tidak ada batch kolektif --}}
+                                    @endforelse
+                                    @if($adaMandiri)
+                                        <span class="badge bg-success bg-opacity-75" style="font-size:.65rem;">
+                                            <i class="bi bi-person me-1"></i>Mandiri
+                                        </span>
+                                    @endif
+                                    @if($batches->isEmpty() && !$adaMandiri)
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td class="text-center small">{{ $detail->jumlah_asesi }}</td>
+                                <td class="text-end small">{{ number_format($detail->honor_per_asesi, 0, ',', '.') }}</td>
+                                <td class="text-end small fw-semibold">{{ number_format($detail->subtotal, 0, ',', '.') }}</td>
                             </tr>
                             @endforeach
                         </tbody>
                         <tfoot>
                             <tr class="table-primary">
-                                <td colspan="6" class="fw-bold text-end">Total Honor</td>
+                                <td colspan="7" class="fw-bold text-end">Total Honor</td>
                                 <td class="text-end fw-bold">Rp {{ number_format($honor->total, 0, ',', '.') }}</td>
                             </tr>
                         </tfoot>
@@ -226,3 +275,67 @@
 
 </div>
 @endsection
+
+@push('scripts')
+    
+
+<script>
+function toggleEditNomor() {
+    const display = document.getElementById('nomorKwitansiDisplay');
+    const btnEdit = document.getElementById('btnEditNomor');
+    const form    = document.getElementById('formEditNomor');
+    const input   = document.getElementById('inputNomorKwitansi');
+
+    const editing = !form.classList.contains('d-none');
+    form.classList.toggle('d-none', editing);
+    display.classList.toggle('d-none', !editing);
+    btnEdit.classList.toggle('d-none', !editing);
+
+    if (!editing) {
+        input.value = display.textContent.trim();
+        input.focus();
+        input.select();
+    }
+}
+
+async function simpanNomor() {
+    const nomor = document.getElementById('inputNomorKwitansi').value.trim();
+    if (!nomor) return;
+
+    try {
+        const res = await fetch('{{ route("bendahara.honor.payment.nomor.update", $honor) }}', {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ nomor_kwitansi: nomor }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            document.getElementById('nomorKwitansiDisplay').textContent = data.nomor;
+            toggleEditNomor();
+            Swal.fire({
+                icon: 'success', title: 'Tersimpan',
+                text: data.message, timer: 1800, showConfirmButton: false,
+            });
+        } else {
+            const errMsg = data.errors?.nomor_kwitansi?.[0]
+                        ?? data.message
+                        ?? 'Terjadi kesalahan.';
+            Swal.fire({ icon: 'error', title: 'Gagal', text: errMsg });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+    }
+}
+
+// Simpan dengan Enter, batal dengan Escape
+document.getElementById('inputNomorKwitansi')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  simpanNomor();
+    if (e.key === 'Escape') toggleEditNomor();
+});
+</script>
+@endpush

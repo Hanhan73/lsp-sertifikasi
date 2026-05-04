@@ -96,9 +96,19 @@ class HonorPayment extends Model
             7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
         ];
 
-        $bulan  = now()->month;
-        $tahun  = now()->year;
-        $urutan = static::whereYear('created_at', $tahun)->count() + 1;
+        $tahun = now()->year;
+
+        // Ambil nomor urut tertinggi dari semua kwitansi tahun ini
+        $last = static::whereYear('created_at', $tahun)
+            ->orderByDesc('id')
+            ->value('nomor_kwitansi');
+
+        $urutan = 1;
+        if ($last && preg_match('/^(\d+)/', $last, $m)) {
+            $urutan = (int) $m[1] + 1;
+        }
+
+        $bulan = now()->month;
 
         return sprintf('%03d/LSP-KAP/KEU.KK/%s/%d', $urutan, $bulanRomawi[$bulan], $tahun);
     }

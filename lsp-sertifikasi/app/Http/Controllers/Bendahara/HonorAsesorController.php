@@ -177,9 +177,10 @@ class HonorAsesorController extends Controller
     {
         $honor->load([
             'asesor.user',
-            'asesor.rekenings', // ← tambah
+            'asesor.rekenings',
             'details.schedule.skema',
             'details.schedule.tuk',
+            'details.schedule.asesmens', // ← tambah ini
             'dibuatOleh',
             'dibayarOleh',
         ]);
@@ -282,5 +283,27 @@ class HonorAsesorController extends Controller
         return request()->boolean('preview')
             ? $pdf->stream($filename)
             : $pdf->download($filename);
+    }
+
+    public function updateNomor(Request $request, HonorPayment $honor)
+    {
+        $request->validate([
+            'nomor_kwitansi' => [
+                'required', 'string', 'max:100',
+                \Illuminate\Validation\Rule::unique('honor_payments', 'nomor_kwitansi')
+                    ->ignore($honor->id),
+            ],
+        ], [
+            'nomor_kwitansi.required' => 'Nomor kwitansi wajib diisi.',
+            'nomor_kwitansi.unique'   => 'Nomor sudah digunakan kwitansi lain.',
+        ]);
+
+        $honor->update(['nomor_kwitansi' => $request->nomor_kwitansi]);
+
+        return response()->json([
+            'success' => true,
+            'nomor'   => $honor->nomor_kwitansi,
+            'message' => 'Nomor kwitansi berhasil diperbarui.',
+        ]);
     }
 }

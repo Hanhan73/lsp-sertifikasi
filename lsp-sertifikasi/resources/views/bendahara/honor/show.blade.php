@@ -147,7 +147,7 @@
                                             <span class="badge bg-success bg-opacity-75" style="font-size:.6rem;">
                                                 <i class="bi bi-person me-1"></i>Mandiri
                                             </span>
-                                        @endforeach
+                                        @endif
                                     </div>
                                 </label>
                             </div>

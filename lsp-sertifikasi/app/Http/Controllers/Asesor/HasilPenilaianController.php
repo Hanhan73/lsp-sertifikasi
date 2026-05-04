@@ -195,14 +195,15 @@ class HasilPenilaianController extends Controller
         return Storage::disk('private')->download($paket->file_path, $paket->file_name);
     }
 
-    
+
     public function downloadTemplatePortofolio(Schedule $schedule, Portofolio $portofolio)
     {
         $this->authorizeSchedule($schedule);
 
         abort_unless(
             $portofolio->file_path && Storage::disk('private')->exists($portofolio->file_path),
-            404, 'File template tidak ditemukan.'
+            404,
+            'File template tidak ditemukan.'
         );
 
         $inputPath  = Storage::disk('private')->path($portofolio->file_path);
@@ -237,7 +238,8 @@ class HasilPenilaianController extends Controller
 
         abort_unless(
             $dist->form_penilaian_path && Storage::disk('private')->exists($dist->form_penilaian_path),
-            404, 'Form penilaian belum diupload oleh Manajer Sertifikasi.'
+            404,
+            'Form penilaian belum diupload oleh Manajer Sertifikasi.'
         );
 
         $ext     = strtolower(pathinfo($dist->form_penilaian_name, PATHINFO_EXTENSION));
@@ -273,7 +275,9 @@ class HasilPenilaianController extends Controller
         $this->authorizeSchedule($schedule);
 
         $schedule->load([
-            'skema', 'tuk', 'asesmens.user',
+            'skema',
+            'tuk',
+            'asesmens.user',
             'beritaAcara.asesis.asesmen.user',
         ]);
 
@@ -287,7 +291,9 @@ class HasilPenilaianController extends Controller
         }
 
         return view('asesor.penilaian.berita-acara', compact(
-            'schedule', 'beritaAcara', 'rekomendasiMap'
+            'schedule',
+            'beritaAcara',
+            'rekomendasiMap'
         ));
     }
 
@@ -332,14 +338,22 @@ class HasilPenilaianController extends Controller
     public function simpanBeritaAcara(Request $request, Schedule $schedule)
     {
         $this->authorizeSchedule($schedule);
-        if (!$this->isApl02Ak01Ready($schedule)) {
-            return back()->with('error', 'APL-02 dan FR.AK.01 minimal 1 asesi harus sudah diverifikasi sebelum upload.');
+
+        // ── Cek: minimal 1 hasil asesmen sudah diupload ──────────────────────
+        $schedule->load(['distribusiSoalObservasi', 'distribusiPortofolio', 'hasilObservasi', 'hasilPortofolio']);
+
+        $adaDistribusi = $schedule->distribusiSoalObservasi->isNotEmpty()
+            || $schedule->distribusiPortofolio->isNotEmpty();
+
+        $adaHasil = $schedule->hasilObservasi->isNotEmpty()
+            || $schedule->hasilPortofolio->isNotEmpty();
+
+        if ($adaDistribusi && !$adaHasil) {
+            return back()->withErrors([
+                'berita_acara' => 'Berita acara hanya bisa diinput setelah minimal satu file hasil asesmen (observasi/portofolio) diupload.',
+            ]);
         }
-        // Guard: tidak bisa diubah jika sudah TTD
-        $ba = $schedule->beritaAcara;
-        if ($ba && $ba->isSigned()) {
-            return back()->with('error', 'Berita acara sudah ditandatangani dan tidak dapat diubah.');
-        }
+
         $request->validate([
             'tanggal_pelaksanaan' => 'required|date',
             'catatan'             => 'nullable|string|max:1000',
@@ -367,13 +381,12 @@ class HasilPenilaianController extends Controller
             foreach ($schedule->asesmens as $asesmen) {
                 if ($asesmen->hadir == 0) {
                     continue;
-                } else{
+                } else {
                     $asesmen->update([
                         'status' => 'assessed',
                     ]);
                 }
             }
-
         });
 
         return back()->with('success', 'Berita acara berhasil disimpan.');
@@ -439,7 +452,9 @@ class HasilPenilaianController extends Controller
         abort_unless($ba, 404, 'Berita acara belum diisi.');
 
         $schedule->load([
-            'skema', 'tuk', 'asesor.user',
+            'skema',
+            'tuk',
+            'asesor.user',
             'asesmens',
             'beritaAcara.asesis.asesmen',
         ]);
@@ -570,53 +585,54 @@ class HasilPenilaianController extends Controller
         return "Berita Acara otomatis terbaca: {$matched}/" . count($data['peserta']) . " peserta berhasil dicocokkan.";
     }
 
-private function isApl02Ak01Ready(Schedule $schedule): bool
-{
-    $schedule->loadMissing(['asesmens.apldua', 'asesmens.frak01']);
+    private function isApl02Ak01Ready(Schedule $schedule): bool
+    {
+        $schedule->loadMissing(['asesmens.apldua', 'asesmens.frak01']);
 
-    if ($schedule->asesmens->isEmpty()) return false;
+        if ($schedule->asesmens->isEmpty()) return false;
 
-    foreach ($schedule->asesmens as $asesmen) {
-        $apl02 = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
-        $ak01  = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
-        if (!$apl02 || !$ak01) return false;  // ← 1 saja belum ready → false
+        foreach ($schedule->asesmens as $asesmen) {
+            $apl02 = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
+            $ak01  = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
+            if (!$apl02 || !$ak01) return false;  // ← 1 saja belum ready → false
+        }
+        return true;
     }
-    return true;
-}
 
-public function resetSubmitTeori(Schedule $schedule, Asesmen $asesmen)
-{
-    $this->authorizeSchedule($schedule);
+    public function resetSubmitTeori(Schedule $schedule, Asesmen $asesmen)
+    {
+        $this->authorizeSchedule($schedule);
 
-    // Pastikan asesi ini memang ada di jadwal ini
-    abort_unless(
-        $schedule->asesmens->contains($asesmen),
-        403, 'Asesi tidak ada di jadwal ini.'
-    );
+        // Pastikan asesi ini memang ada di jadwal ini
+        abort_unless(
+            $schedule->asesmens->contains($asesmen),
+            403,
+            'Asesi tidak ada di jadwal ini.'
+        );
 
-    $updated = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
-        ->whereNotNull('submitted_at')
-        ->update([
-            'submitted_at' => null,
-            'started_at' => null
-        ]);  // jawaban tetap, hanya submitted_at di-null
+        $updated = SoalTeoriAsesi::where('asesmen_id', $asesmen->id)
+            ->whereNotNull('submitted_at')
+            ->update([
+                'submitted_at' => null,
+                'started_at' => null
+            ]);  // jawaban tetap, hanya submitted_at di-null
 
-    if ($updated === 0) {
+        if ($updated === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian belum disubmit atau sudah direset sebelumnya.',
+            ], 400);
+        }
+
+        \Log::info('[RESET-SUBMIT-TEORI] Asesor reset submit', [
+            'schedule_id' => $schedule->id,
+            'asesmen_id'  => $asesmen->id,
+            'by'          => auth()->id(),
+        ]);
+
         return response()->json([
-            'success' => false,
-            'message' => 'Ujian belum disubmit atau sudah direset sebelumnya.',
-        ], 400);
+            'success' => true,
+            'message' => "Submit ujian {$asesmen->full_name} berhasil direset. Asesi bisa submit ulang.",
+        ]);
     }
-
-    \Log::info('[RESET-SUBMIT-TEORI] Asesor reset submit', [
-        'schedule_id' => $schedule->id,
-        'asesmen_id'  => $asesmen->id,
-        'by'          => auth()->id(),
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => "Submit ujian {$asesmen->full_name} berhasil direset. Asesi bisa submit ulang.",
-    ]);
-}
 }

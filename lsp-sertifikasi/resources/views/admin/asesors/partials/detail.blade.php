@@ -148,6 +148,33 @@
             </tr>
         </table>
 
+        {{-- REKENING BANK --}}
+        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">
+            <i class="bi bi-bank"></i> Rekening Bank
+        </h6>
+        @if($asesor->rekenings->isEmpty())
+        <p class="text-muted small">Belum ada rekening terdaftar.</p>
+        @else
+        <div class="d-flex flex-column gap-2 mb-3">
+            @foreach($asesor->rekenings as $rek)
+            <div class="p-2 border rounded-2 {{ $rek->is_utama ? 'border-success bg-success-subtle' : 'bg-light' }}">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="fw-semibold small">{{ $rek->nama_bank }}</span>
+                    @if($rek->is_utama)
+                    <span class="badge bg-success" style="font-size:.65rem;">Utama</span>
+                    @endif
+                </div>
+                <div class="font-monospace small">{{ $rek->nomor_rekening }}</div>
+                <div class="text-muted small">{{ $rek->nama_pemilik }}{{ $rek->cabang ? ' · ' . $rek->cabang : '' }}</div>
+            </div>
+            @endforeach
+        </div>
+        @endif
+        <div class="alert alert-light border mb-0 py-2 small">
+            <i class="bi bi-info-circle text-primary me-1"></i>
+            Rekening dikelola oleh asesor atau bendahara.
+        </div>
+
         {{-- KETERANGAN --}}
         @if($asesor->keterangan)
         <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">

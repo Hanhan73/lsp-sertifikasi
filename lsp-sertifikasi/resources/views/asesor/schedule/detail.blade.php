@@ -47,13 +47,12 @@
                 </a>
                 @endif
 
-                {{-- Tombol Mulai Asesmen — hanya muncul hari-H jika ada asesi yang siap --}}
                 @if($schedule->assessment_date->isToday() && $canStartAsesmen)
                     @if ($schedule->assessment_start)
                         <button type="button" class="btn btn-sm btn-success fw-semibold" disabled>
                             <i class="bi bi-play-fill me-1"></i>Asesmen Telah Dimulai
                         </button>
-                        @else
+                    @else
                         <button type="button" class="btn btn-sm btn-danger fw-semibold"
                                 onclick="konfirmasiMulaiAsesmen()"
                                 id="btn-mulai-asesmen">
@@ -64,10 +63,8 @@
                 <button type="button" class="btn btn-sm btn-secondary fw-semibold" disabled>
                     <i class="bi bi-play-fill me-1"></i>Mulai Asesmen
                 </button>
-
                 @endif
 
-                {{-- Daftar Hadir — tombol header (hanya untuk download setelah dikunci) --}}
                 @if($schedule->isDaftarHadirSigned())
                 <a href="{{ route('asesor.schedule.daftar-hadir', $schedule) }}"
                    target="_blank" class="btn btn-sm btn-outline-info">
@@ -182,7 +179,7 @@
         <div class="tab-pane fade show active" id="tab-peserta" role="tabpanel">
 
             @php
-                $hadirCount      = $asesmens->filter(fn($a) => ($a->hadir ?? true) !== false)->count();
+                $hadirCount        = $asesmens->filter(fn($a) => ($a->hadir ?? true) !== false)->count();
                 $daftarHadirLocked = $schedule->isDaftarHadirSigned();
             @endphp
             <div class="px-4 pt-3 pb-2 border-bottom d-flex align-items-center gap-3 flex-wrap">
@@ -237,7 +234,6 @@
                         <div class="text-muted small">NIK: {{ $asesmen->nik }}</div>
                     </div>
 
-                    {{-- Toggle Hadir — dikunci jika daftar hadir sudah ditandatangani --}}
                     @if($daftarHadirLocked)
                     <button type="button"
                             class="btn btn-sm {{ $isHadir ? 'btn-success' : 'btn-outline-danger' }}"
@@ -264,7 +260,7 @@
                         @if($aplsatu)
                         <span class="badge bg-{{ $aplsatu->status === 'verified' ? 'success' : ($aplsatu->status === 'submitted' ? 'info' : 'secondary') }}"
                               style="font-size:.7rem;">
-                            APL-01: {{ ucfirst($aplsatu->status_label ) }}
+                            APL-01: {{ ucfirst($aplsatu->status_label) }}
                         </span>
                         @else
                         <span class="badge bg-light text-muted border" style="font-size:.7rem;">APL-01: Belum Ada</span>
@@ -284,6 +280,7 @@
                         <span class="badge bg-light text-muted border" style="font-size:.7rem;">APL-02: Belum Ada</span>
                         @endif
                     </div>
+
                     @if($schedule->assessment_start && $asesmen->status === 'scheduled')
                     @php
                         $bisaMulaiSingle = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified','approved'])
@@ -454,7 +451,7 @@
                     @else
                     @foreach($distribusiObservasi as $dist)
                     @php
-                        $obs      = $dist->soalObservasi;
+                        $obs       = $dist->soalObservasi;
                         $paketDist = $dist->paketSoalObservasi;
                         $paketList = $paketDist ? collect([$paketDist]) : $obs->paket;
                     @endphp
@@ -524,8 +521,7 @@
                                             @endif
                                         </td>
                                         @endforeach
- 
-                                        {{-- Kolom Aksi Reopen --}}
+
                                         <td class="text-center">
                                             @if($isReopenActive)
                                             <div class="d-flex flex-column align-items-center gap-1">
@@ -640,12 +636,10 @@
                                             <i class="bi bi-file-earmark-pdf me-1"></i>Soal
                                         </a>
                                         @endif
-                                        @php $paketAktif = $dist->paketSoalObservasi; 
-                                        @endphp
+                                        @php $paketAktif = $dist->paketSoalObservasi; @endphp
                                         @if($paketAktif?->lampiran_path)
-                                        
                                         <a href="{{ route('asesor.observasi.download-lampiran', $paketAktif) }}"
-                                        class="btn btn-sm btn-outline-info" title="Download panduan soal">
+                                           class="btn btn-sm btn-outline-info" title="Download panduan soal">
                                             <i class="bi bi-book me-1"></i> Lampiran Format Formulir
                                         </a>
                                         @endif
@@ -788,7 +782,8 @@
                         </div>
                     </div>
                     @endif
-                    {{-- Foto Dokumentasi --}}
+
+                    {{-- ── Foto Dokumentasi ── --}}
                     <div class="card border-0 shadow-sm mb-4">
                         <div class="card-header bg-white fw-semibold small py-2 d-flex align-items-center justify-content-between">
                             <div><i class="bi bi-camera text-info me-2"></i>Foto Dokumentasi</div>
@@ -806,39 +801,64 @@
                                 <i class="bi bi-lock me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
                             </div>
                             @else
+
+                            {{-- Preview foto --}}
                             <div class="row g-3 mb-3">
                                 @foreach([1, 2] as $slot)
                                 @php $col = "foto_dokumentasi_{$slot}"; $ada = $schedule->$col; @endphp
                                 <div class="col-6">
-                                    <div class="border rounded-3 overflow-hidden {{ $ada ? 'border-success' : '' }}" style="min-height:140px;">
-                                        @if($ada)
-                                        <img src="{{ route('asesor.schedule.foto-dokumentasi.preview', [$schedule, $slot]) }}"
-                                            class="w-100" style="max-height:180px;object-fit:cover;" alt="Foto {{ $slot }}">
-                                        <div class="d-flex justify-content-between align-items-center px-2 py-1 bg-success-subtle">
-                                            <small class="text-success fw-semibold"><i class="bi bi-check-circle me-1"></i>Foto {{ $slot }}</small>
-                                            <form method="POST" action="{{ route('asesor.schedule.foto-dokumentasi.hapus', [$schedule, $slot]) }}"
-                                                onsubmit="return confirm('Hapus foto ini?')">
-                                                @csrf @method('DELETE')
-                                                <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:.75rem;">
-                                                    <i class="bi bi-trash3"></i>
-                                                </button>
-                                            </form>
+                                    @if($ada)
+                                    <div class="border rounded-3 overflow-hidden border-success">
+                                        <div style="cursor:zoom-in;"
+                                             onclick="bukaFotoDokModal('{{ route('asesor.schedule.foto-dokumentasi.preview', [$schedule, $slot]) }}', 'Foto {{ $slot }}')">
+                                            <img src="{{ route('asesor.schedule.foto-dokumentasi.preview', [$schedule, $slot]) }}"
+                                                 class="w-100"
+                                                 style="max-height:180px;object-fit:cover;transition:opacity .2s;"
+                                                 onmouseover="this.style.opacity='.85'"
+                                                 onmouseout="this.style.opacity='1'"
+                                                 alt="Foto {{ $slot }}">
                                         </div>
-                                        @else
+                                        <div class="d-flex justify-content-between align-items-center px-2 py-1 bg-success-subtle">
+                                            <small class="text-success fw-semibold">
+                                                <i class="bi bi-check-circle me-1"></i>Foto {{ $slot }}
+                                            </small>
+                                            <div class="d-flex gap-1">
+                                                <button type="button"
+                                                        class="btn btn-sm btn-outline-secondary py-0 px-1"
+                                                        style="font-size:.7rem;"
+                                                        onclick="bukaFotoDokModal('{{ route('asesor.schedule.foto-dokumentasi.preview', [$schedule, $slot]) }}', 'Foto {{ $slot }}')"
+                                                        title="Zoom foto">
+                                                    <i class="bi bi-zoom-in"></i>
+                                                </button>
+                                                <form method="POST"
+                                                      action="{{ route('asesor.schedule.foto-dokumentasi.hapus', [$schedule, $slot]) }}"
+                                                      onsubmit="return confirm('Hapus foto ini?')"
+                                                      class="d-inline">
+                                                    @csrf @method('DELETE')
+                                                    <button class="btn btn-sm btn-outline-danger py-0 px-1" style="font-size:.7rem;">
+                                                        <i class="bi bi-trash3"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    @else
+                                    <div class="border rounded-3 overflow-hidden" style="min-height:140px;">
                                         <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted flex-column"
-                                            style="min-height:140px;">
+                                             style="min-height:140px;">
                                             <i class="bi bi-image" style="font-size:2rem;opacity:.3;"></i>
                                             <small class="mt-1">Foto {{ $slot }} belum diupload</small>
                                         </div>
-                                        @endif
                                     </div>
+                                    @endif
                                 </div>
                                 @endforeach
                             </div>
 
+                            {{-- Form upload --}}
                             <form method="POST"
-                                action="{{ route('asesor.schedule.foto-dokumentasi.upload', $schedule) }}"
-                                enctype="multipart/form-data">
+                                  action="{{ route('asesor.schedule.foto-dokumentasi.upload', $schedule) }}"
+                                  enctype="multipart/form-data">
                                 @csrf
                                 <div class="row g-2">
                                     <div class="col-6">
@@ -901,11 +921,19 @@
                     @endif
                 </div>
 
-                {{-- Berita Acara --}}
+                {{-- ── Berita Acara ── --}}
                 <div class="col-lg-5">
                     @php
                         $ba       = $schedule->beritaAcara;
                         $baLocked = $ba && $ba->isSigned();
+
+                        $adaDistribusiBA = $schedule->distribusiSoalObservasi->isNotEmpty()
+                            || $schedule->distribusiPortofolio->isNotEmpty();
+                        $adaHasilBA = $schedule->hasilObservasi->isNotEmpty()
+                            || $schedule->hasilPortofolio->isNotEmpty();
+                        $baFormLocked = $adaDistribusiBA && !$adaHasilBA;
+
+                        $rekDisabled = !$apl02Ak01Ready || $baFormLocked;
                     @endphp
                     <div class="card border-0 shadow-sm">
                         <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
@@ -933,7 +961,6 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            {{-- Info locked --}}
                             @if($baLocked)
                             <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.82rem;">
                                 <i class="bi bi-lock-fill flex-shrink-0"></i>
@@ -986,6 +1013,17 @@
                             @endif
 
                             @if(!$baLocked)
+
+                            @if($baFormLocked)
+                            <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" style="font-size:.82rem;">
+                                <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+                                <div>
+                                    <strong>Form belum bisa diisi.</strong><br>
+                                    Upload minimal satu file hasil asesmen (observasi atau portofolio) terlebih dahulu.
+                                </div>
+                            </div>
+                            @endif
+
                             <form method="POST" action="{{ route('asesor.jadwal.berita-acara.simpan', $schedule) }}">
                                 @csrf
                                 <div class="mb-2">
@@ -993,34 +1031,40 @@
                                     <input type="date" name="tanggal_pelaksanaan"
                                            class="form-control form-control-sm"
                                            value="{{ $ba?->tanggal_pelaksanaan?->translatedFormat('Y-m-d') ?? $schedule->assessment_date->translatedFormat('Y-m-d') }}"
-                                           required>
+                                           {{ $rekDisabled ? 'disabled' : 'required' }}>
                                 </div>
                                 <div class="mb-2">
                                     <label class="form-label fw-semibold small">
                                         Rekomendasi per Asesi
+                                        @if($rekDisabled)
+                                        <span class="ms-1 text-muted fw-normal"><i class="bi bi-lock-fill" style="font-size:.7rem;"></i></span>
+                                        @else
                                         <span class="text-muted fw-normal">(edit jika perlu)</span>
+                                        @endif
                                     </label>
                                     <div class="d-flex flex-column gap-1">
                                         @foreach($schedule->asesmens as $asesmen)
                                         @php $rek = $rekomendasiMap[$asesmen->id] ?? null; @endphp
                                         <div class="d-flex align-items-center gap-2 px-2 py-1 border rounded-2
-                                            {{ $rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light') }}"
+                                            {{ $rekDisabled ? 'bg-light opacity-75' : ($rek === 'K' ? 'border-success bg-success-subtle' : ($rek === 'BK' ? 'border-danger bg-danger-subtle' : 'bg-light')) }}"
                                              style="font-size:.8rem;">
-                                            <div class="flex-grow-1 fw-semibold">{{ $asesmen->full_name }}</div>
+                                            <div class="flex-grow-1 fw-semibold {{ $rekDisabled ? 'text-muted' : '' }}">{{ $asesmen->full_name }}</div>
                                             <div class="d-flex gap-2 flex-shrink-0">
                                                 <div class="form-check mb-0">
                                                     <input class="form-check-input" type="radio"
                                                            name="rekomendasi[{{ $asesmen->id }}]"
                                                            id="k_{{ $asesmen->id }}" value="K"
-                                                           {{ $rek === 'K' ? 'checked' : '' }} required>
-                                                    <label class="form-check-label fw-bold text-success" for="k_{{ $asesmen->id }}">K</label>
+                                                           {{ $rek === 'K' ? 'checked' : '' }}
+                                                           {{ $rekDisabled ? 'disabled' : 'required' }}>
+                                                    <label class="form-check-label fw-bold {{ $rekDisabled ? 'text-muted' : 'text-success' }}" for="k_{{ $asesmen->id }}">K</label>
                                                 </div>
                                                 <div class="form-check mb-0">
                                                     <input class="form-check-input" type="radio"
                                                            name="rekomendasi[{{ $asesmen->id }}]"
                                                            id="bk_{{ $asesmen->id }}" value="BK"
-                                                           {{ $rek === 'BK' ? 'checked' : '' }}>
-                                                    <label class="form-check-label fw-bold text-danger" for="bk_{{ $asesmen->id }}">BK</label>
+                                                           {{ $rek === 'BK' ? 'checked' : '' }}
+                                                           {{ $rekDisabled ? 'disabled' : '' }}>
+                                                    <label class="form-check-label fw-bold {{ $rekDisabled ? 'text-muted' : 'text-danger' }}" for="bk_{{ $asesmen->id }}">BK</label>
                                                 </div>
                                             </div>
                                         </div>
@@ -1030,20 +1074,25 @@
                                 <div class="mb-3">
                                     <label class="form-label fw-semibold small">Catatan</label>
                                     <textarea name="catatan" class="form-control form-control-sm" rows="2"
-                                              placeholder="Opsional...">{{ $ba?->catatan }}</textarea>
+                                              placeholder="Opsional..."
+                                              {{ $rekDisabled ? 'disabled' : '' }}>{{ $ba?->catatan }}</textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary btn-sm w-100" {{ !$apl02Ak01Ready ? 'disabled' : '' }}>
+                                <button type="submit" class="btn btn-primary btn-sm w-100"
+                                        {{ $rekDisabled ? 'disabled' : '' }}>
                                     <i class="bi bi-save me-1"></i>Simpan Berita Acara
-                                    @if(!$apl02Ak01Ready)<i class="bi bi-lock ms-1"></i>@endif
+                                    @if($rekDisabled)<i class="bi bi-lock ms-1"></i>@endif
                                 </button>
                                 @if(!$apl02Ak01Ready)
                                 <div class="text-muted small mt-1 text-center">
                                     <i class="bi bi-info-circle me-1"></i>Verifikasi APL-02 & FR.AK.01 minimal 1 asesi terlebih dahulu.
                                 </div>
+                                @elseif($baFormLocked)
+                                <div class="text-muted small mt-1 text-center">
+                                    <i class="bi bi-info-circle me-1"></i>Upload hasil observasi/portofolio terlebih dahulu.
+                                </div>
                                 @endif
                             </form>
 
-                            {{-- Tombol TTD Berita Acara (hanya tampil jika data sudah ada) --}}
                             @if($ba && $ba->asesis->isNotEmpty())
                             <hr class="my-3">
                             <button type="button"
@@ -1052,8 +1101,8 @@
                                 <i class="bi bi-pen-fill me-1"></i>Tanda Tangan & Kunci Berita Acara
                             </button>
                             @endif
+
                             @else
-                            {{-- Jika sudah locked: tampilkan read-only --}}
                             <div class="mb-2">
                                 <label class="form-label fw-semibold small text-muted">Tanggal Pelaksanaan</label>
                                 <div class="form-control form-control-sm bg-light" style="pointer-events:none;">
@@ -1085,7 +1134,6 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        {{-- Rekap kehadiran --}}
                         <div class="border rounded-3 overflow-hidden mb-4">
                             <div class="px-3 py-2 bg-light fw-semibold small border-bottom d-flex align-items-center justify-content-between">
                                 <span><i class="bi bi-people me-2 text-primary"></i>Rekap Kehadiran</span>
@@ -1208,7 +1256,6 @@
     </div>
 </div>
 
-
 {{-- Modal Reopen Observasi --}}
 <div class="modal fade" id="modalReopenObservasi" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
@@ -1238,11 +1285,32 @@
     </div>
 </div>
 
+{{-- ── Modal Lightbox Foto Dokumentasi ── --}}
+<div class="modal fade" id="modalFotoDok" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content border-0 bg-transparent shadow-none">
+            <div class="modal-header border-0 pb-1 px-0">
+                <span class="text-white fw-semibold" id="modalFotoDokLabel" style="font-size:.9rem;"></span>
+                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="modalFotoDokImg" src="" alt="Foto Dokumentasi"
+                     class="img-fluid rounded-3 shadow"
+                     style="max-height:85vh;object-fit:contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#modalFotoDok .modal-dialog { max-width: 90vw; }
+#modalFotoDok { background: rgba(0,0,0,.85); }
+</style>
 
 @push('scripts')
 <script>
-const CSRF         = document.querySelector('meta[name="csrf-token"]')?.content;
-const TOTAL_ASESI  = {{ $totalAsesi }};
+const CSRF        = document.querySelector('meta[name="csrf-token"]')?.content;
+const TOTAL_ASESI = {{ $totalAsesi }};
 
 document.addEventListener('DOMContentLoaded', function () {
     const hash = window.location.hash;
@@ -1261,6 +1329,12 @@ document.addEventListener('DOMContentLoaded', function () {
     SigPadManager.init('asesor-ttd',       @json($asesor?->user?->signature_image));
 });
 
+// ── Foto Dokumentasi Modal ──
+function bukaFotoDokModal(src, label) {
+    document.getElementById('modalFotoDokImg').src = src;
+    document.getElementById('modalFotoDokLabel').textContent = label;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFotoDok')).show();
+}
 
 async function resetSubmitTeori(asesmenId, namaAsesi) {
     const result = await Swal.fire({
@@ -1273,7 +1347,6 @@ async function resetSubmitTeori(asesmenId, namaAsesi) {
         confirmButtonColor: '#f59e0b',
         reverseButtons: true,
     });
-
     if (!result.isConfirmed) return;
 
     try {
@@ -1283,13 +1356,9 @@ async function resetSubmitTeori(asesmenId, namaAsesi) {
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
         });
         const data = await res.json();
-
         if (data.success) {
-            Swal.fire({
-                icon: 'success', title: 'Berhasil!',
-                text: data.message,
-                timer: 2500, showConfirmButton: false,
-            }).then(() => location.reload());
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 2500, showConfirmButton: false })
+                .then(() => location.reload());
         } else {
             Swal.fire('Gagal', data.message, 'error');
         }
@@ -1298,25 +1367,21 @@ async function resetSubmitTeori(asesmenId, namaAsesi) {
     }
 }
 
-// ── Toggle Hadir (tombol dinamis) ──
 async function toggleHadirBtn(btn) {
     const asesmenId = btn.dataset.id;
     const isHadir   = btn.dataset.hadir === '1';
-    const newHadir  = !isHadir;
-
     btn.disabled = true;
 
     try {
         const res  = await fetch(`/asesor/asesmen/${asesmenId}/hadir`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ hadir: newHadir }),
+            body: JSON.stringify({ hadir: !isHadir }),
         });
         const data = await res.json();
 
         if (data.success) {
             btn.dataset.hadir = data.hadir ? '1' : '0';
-
             if (data.hadir) {
                 btn.className = 'btn btn-sm hadir-toggle-btn btn-success';
                 btn.querySelector('.hadir-label').textContent = 'Hadir';
@@ -1326,7 +1391,6 @@ async function toggleHadirBtn(btn) {
                 btn.querySelector('.hadir-label').textContent = 'Tidak Hadir';
                 btn.querySelector('i').className = 'bi bi-person-x-fill me-1';
             }
-
             const hadirCount = document.querySelectorAll('.hadir-toggle-btn[data-hadir="1"]').length;
             document.getElementById('badge-hadir').textContent       = hadirCount + ' Hadir';
             document.getElementById('badge-tidak-hadir').textContent = (TOTAL_ASESI - hadirCount) + ' Tidak Hadir';
@@ -1340,12 +1404,8 @@ async function toggleHadirBtn(btn) {
     }
 }
 
-// ── Modal TTD Universal ──
 function bukaModalTtd(konteks) {
-    const titles = {
-        'daftar-hadir': 'Tanda Tangan untuk Daftar Hadir',
-        'berita-acara': 'Tanda Tangan untuk Berita Acara',
-    };
+    const titles = { 'daftar-hadir': 'Tanda Tangan untuk Daftar Hadir', 'berita-acara': 'Tanda Tangan untuk Berita Acara' };
     document.getElementById('modalTtdTitle').textContent = titles[konteks] ?? 'Tanda Tangan Asesor';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdAsesor')).show();
 }
@@ -1355,9 +1415,7 @@ async function simpanTtdAsesor() {
         Swal.fire({ icon: 'warning', title: 'Tanda Tangan Kosong', text: 'Gambar atau upload tanda tangan dulu.' });
         return;
     }
-
     const dataURL = await SigPadManager.prepareAndGet('asesor-ttd');
-
     try {
         const res  = await fetch('/user/signature', {
             method: 'POST',
@@ -1367,11 +1425,8 @@ async function simpanTtdAsesor() {
         const data = await res.json();
         if (data.success) {
             bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdAsesor')).hide();
-            Swal.fire({
-                icon: 'success', title: 'Tanda tangan disimpan!',
-                text: 'Tanda tangan akan muncul di Daftar Hadir dan Berita Acara PDF.',
-                timer: 2000, showConfirmButton: false,
-            }).then(() => location.reload());
+            Swal.fire({ icon: 'success', title: 'Tanda tangan disimpan!', text: 'Tanda tangan akan muncul di Daftar Hadir dan Berita Acara PDF.', timer: 2000, showConfirmButton: false })
+                .then(() => location.reload());
         } else {
             Swal.fire('Gagal', data.message, 'error');
         }
@@ -1380,7 +1435,6 @@ async function simpanTtdAsesor() {
     }
 }
 
-// ── Modal Verifikasi Daftar Hadir ──
 const _ttdHadirUrl = '{{ route("asesor.schedule.daftar-hadir.sign", $schedule) }}';
 
 function bukaModalVerifikasiHadir() {
@@ -1389,39 +1443,23 @@ function bukaModalVerifikasiHadir() {
 
 async function confirmTtdDaftarHadir() {
     if (SigPadManager.isEmpty('daftar-hadir-ttd')) {
-        Swal.fire({
-            icon: 'warning', title: 'Tanda Tangan Diperlukan',
-            text: 'Silakan tanda tangan terlebih dahulu.',
-            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
-        });
+        Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Silakan tanda tangan terlebih dahulu.', toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 });
         return;
     }
-
     const btn = document.getElementById('btn-confirm-ttd-hadir');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-
     try {
         const dataURL = await SigPadManager.prepareAndGet('daftar-hadir-ttd');
-
         const res = await fetch(_ttdHadirUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
             body: JSON.stringify({ signature: dataURL }),
         });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.');
-        }
-
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.'); }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalVerifikasiHadir')).hide();
-        Swal.fire({
-            icon: 'success', title: 'Daftar hadir ditandatangani!',
-            text: 'Kehadiran telah dikunci dan PDF siap didownload.',
-            timer: 2000, showConfirmButton: false,
-        }).then(() => location.reload());
-
+        Swal.fire({ icon: 'success', title: 'Daftar hadir ditandatangani!', text: 'Kehadiran telah dikunci dan PDF siap didownload.', timer: 2000, showConfirmButton: false })
+            .then(() => location.reload());
     } catch (err) {
         Swal.fire('Gagal', err.message, 'error');
         btn.disabled = false;
@@ -1429,7 +1467,6 @@ async function confirmTtdDaftarHadir() {
     }
 }
 
-// ── Modal TTD Berita Acara ──
 const _ttdBaUrl = '{{ route("asesor.jadwal.berita-acara.tanda-tangan", $schedule) }}';
 
 function bukaModalTtdBeritaAcara() {
@@ -1438,39 +1475,23 @@ function bukaModalTtdBeritaAcara() {
 
 async function confirmTtdBeritaAcara() {
     if (SigPadManager.isEmpty('ba-asesor-ttd')) {
-        Swal.fire({
-            icon: 'warning', title: 'Tanda Tangan Diperlukan',
-            text: 'Silakan tanda tangan terlebih dahulu.',
-            toast: true, position: 'top-end', showConfirmButton: false, timer: 2500,
-        });
+        Swal.fire({ icon: 'warning', title: 'Tanda Tangan Diperlukan', text: 'Silakan tanda tangan terlebih dahulu.', toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 });
         return;
     }
-
     const btn = document.getElementById('btn-confirm-ttd-ba');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-
     try {
         const dataURL = await SigPadManager.prepareAndGet('ba-asesor-ttd');
-
         const res = await fetch(_ttdBaUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
             body: JSON.stringify({ signature: dataURL }),
         });
-
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.');
-        }
-
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message ?? 'Gagal menyimpan tanda tangan.'); }
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTtdBeritaAcara')).hide();
-        Swal.fire({
-            icon: 'success', title: 'Berita acara ditandatangani!',
-            text: 'Data berita acara telah dikunci.',
-            timer: 2000, showConfirmButton: false,
-        }).then(() => location.reload());
-
+        Swal.fire({ icon: 'success', title: 'Berita acara ditandatangani!', text: 'Data berita acara telah dikunci.', timer: 2000, showConfirmButton: false })
+            .then(() => location.reload());
     } catch (err) {
         Swal.fire('Gagal', err.message, 'error');
         btn.disabled = false;
@@ -1478,38 +1499,27 @@ async function confirmTtdBeritaAcara() {
     }
 }
 
-// ── Mulai Asesmen ──
 async function konfirmasiMulaiAsesmen() {
     const result = await Swal.fire({
         title: 'Mulai Asesmen?',
         html: 'Semua asesi yang FR.AK.01 dan APL-02-nya sudah diverifikasi akan diubah statusnya menjadi <strong>Sedang Diases</strong>.',
-        icon: 'question',
-        showCancelButton: true,
+        icon: 'question', showCancelButton: true,
         confirmButtonText: '<i class="bi bi-play-fill me-1"></i>Ya, Mulai',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#dc3545',
-        reverseButtons: true,
+        cancelButtonText: 'Batal', confirmButtonColor: '#dc3545', reverseButtons: true,
     });
-
     if (!result.isConfirmed) return;
 
     const btn = document.getElementById('btn-mulai-asesmen');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Memulai...';
-
     try {
         const res  = await fetch('{{ route("asesor.schedule.mulai", $schedule) }}', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
         });
         const data = await res.json();
-
         if (data.success) {
-            Swal.fire({
-                icon: 'success', title: 'Asesmen Dimulai!',
-                text: data.message,
-                showConfirmButton: false, timer: 2000,
-            }).then(() => location.reload());
+            Swal.fire({ icon: 'success', title: 'Asesmen Dimulai!', text: data.message, showConfirmButton: false, timer: 2000 })
+                .then(() => location.reload());
         } else {
             Swal.fire('Tidak Bisa Dimulai', data.message, 'warning');
             btn.disabled = false;
@@ -1524,25 +1534,17 @@ async function konfirmasiMulaiAsesmen() {
 
 async function mulaiSingle(asesmenId, nama) {
     const result = await Swal.fire({
-        title: 'Mulai Asesmen?',
-        html: `Mulai asesmen untuk <strong>${nama}</strong>?`,
-        icon: 'question',
-        showCancelButton: true,
+        title: 'Mulai Asesmen?', html: `Mulai asesmen untuk <strong>${nama}</strong>?`,
+        icon: 'question', showCancelButton: true,
         confirmButtonText: '<i class="bi bi-play-fill me-1"></i>Ya, Mulai',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#f59e0b',
-        reverseButtons: true,
+        cancelButtonText: 'Batal', confirmButtonColor: '#f59e0b', reverseButtons: true,
     });
     if (!result.isConfirmed) return;
-
     try {
         const res = await fetch(`{{ url('asesor/jadwal/' . $schedule->id . '/asesi') }}/${asesmenId}/mulai`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({}),
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify({}),
         });
         const data = await res.json();
-
         if (data.success) {
             await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 1800, showConfirmButton: false });
             location.reload();
@@ -1554,76 +1556,44 @@ async function mulaiSingle(asesmenId, nama) {
     }
 }
 
-// ── Reopen Observasi ──
 let _reopenUrl = null;
- 
+
 function showReopenModal(btn) {
     _reopenUrl = btn.dataset.reopenUrl;
     document.getElementById('reopenAsesiName').textContent = btn.dataset.asesiName;
     document.getElementById('reopenDurasiJam').value = 24;
     new bootstrap.Modal(document.getElementById('modalReopenObservasi')).show();
 }
- 
+
 document.getElementById('btnKonfirmasiReopen')?.addEventListener('click', async function () {
     const durasi = parseInt(document.getElementById('reopenDurasiJam').value);
-    if (!durasi || durasi < 1 || durasi > 72) {
-        Swal.fire('Durasi tidak valid', 'Isi durasi antara 1–72 jam.', 'warning');
-        return;
-    }
- 
+    if (!durasi || durasi < 1 || durasi > 72) { Swal.fire('Durasi tidak valid', 'Isi durasi antara 1–72 jam.', 'warning'); return; }
     this.disabled = true;
     this.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
- 
     try {
-        const res  = await fetch(_reopenUrl, {
-            method : 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body   : JSON.stringify({ durasi_jam: durasi }),
-        });
+        const res  = await fetch(_reopenUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify({ durasi_jam: durasi }) });
         const data = await res.json();
- 
         bootstrap.Modal.getInstance(document.getElementById('modalReopenObservasi'))?.hide();
- 
         if (data.success) {
             await Swal.fire({ icon: 'success', title: 'Berhasil!', text: data.message, timer: 2500, showConfirmButton: false });
             window.location.reload();
         } else {
             Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
         }
-    } catch {
-        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
-    } finally {
-        this.disabled = false;
-        this.innerHTML = '<i class="bi bi-check2 me-1"></i>Buka Sekarang';
-    }
+    } catch { Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error'); }
+    finally { this.disabled = false; this.innerHTML = '<i class="bi bi-check2 me-1"></i>Buka Sekarang'; }
 });
- 
+
 async function closeReopenObservasi(btn, asesiName) {
-    const url = btn.dataset.closeUrl;
- 
-    const conf = await Swal.fire({
-        title: 'Tutup akses?',
-        text: `Link observasi ${asesiName} akan langsung ditutup.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, tutup',
-        cancelButtonText: 'Batal',
-    });
+    const conf = await Swal.fire({ title: 'Tutup akses?', text: `Link observasi ${asesiName} akan langsung ditutup.`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, tutup', cancelButtonText: 'Batal' });
     if (!conf.isConfirmed) return;
- 
-    const res  = await fetch(url, {
-        method : 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-        body   : JSON.stringify({}),
-    });
+    const res  = await fetch(btn.dataset.closeUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify({}) });
     const data = await res.json();
     if (data.success) {
-        Swal.fire({ icon: 'success', title: 'Ditutup', timer: 1500, showConfirmButton: false })
-            .then(() => window.location.reload());
+        Swal.fire({ icon: 'success', title: 'Ditutup', timer: 1500, showConfirmButton: false }).then(() => window.location.reload());
     }
 }
 
-// ── Catatan Asesor ──
 const _catatanUrl = '{{ route("asesor.schedule.catatan-asesor.simpan", $schedule) }}';
 
 document.getElementById('catatan-asesor-input')?.addEventListener('input', function () {
@@ -1633,16 +1603,10 @@ document.getElementById('catatan-asesor-input')?.addEventListener('input', funct
 async function simpanCatatanAsesor() {
     const val = document.getElementById('catatan-asesor-input')?.value ?? '';
     const btn = document.getElementById('btn-simpan-catatan');
-
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
-
     try {
-        const res  = await fetch(_catatanUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
-            body: JSON.stringify({ catatan_asesor: val }),
-        });
+        const res  = await fetch(_catatanUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify({ catatan_asesor: val }) });
         const data = await res.json();
         if (data.success) {
             Swal.fire({ icon: 'success', title: 'Tersimpan!', text: data.message, timer: 1800, showConfirmButton: false, toast: true, position: 'top-end' });

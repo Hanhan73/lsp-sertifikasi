@@ -92,18 +92,52 @@
                                 </td>
                                 <td class="small">
                                     @forelse($batches as $batch)
-                                        <span class="badge bg-primary bg-opacity-75 font-monospace"
-                                            style="font-size:.65rem;letter-spacing:.3px;">
-                                            <i class="bi bi-people-fill me-1"></i>{{ $batch }}
-                                        </span>
-                                        @if(!$loop->last)<br>@endif
+                                        @php
+                                            $institutions = $asesmens
+                                                ->where('is_collective', true)
+                                                ->where('collective_batch_id', $batch)
+                                                ->pluck('institution')
+                                                ->filter()->unique()->values();
+                                            $batchCount = $asesmens
+                                                ->where('is_collective', true)
+                                                ->where('collective_batch_id', $batch)
+                                                ->count();
+                                        @endphp
+                                        <div class="mb-1">
+                                            <span class="badge bg-primary bg-opacity-75 font-monospace"
+                                                style="font-size:.62rem;letter-spacing:.3px;">
+                                                <i class="bi bi-people-fill me-1"></i>{{ $batch }}
+                                            </span>
+                                            <span class="text-muted" style="font-size:.72rem;">
+                                                {{ $batchCount }} asesi
+                                            </span>
+                                            @if($institutions->isNotEmpty())
+                                            <div style="font-size:.7rem;color:#555;margin-left:2px;margin-top:1px;">
+                                                <i class="bi bi-building me-1" style="font-size:.65rem;"></i>{{ $institutions->implode(', ') }}
+                                            </div>
+                                            @endif
+                                        </div>
+                                        @if(!$loop->last)<hr class="my-1">@endif
                                     @empty
-                                        {{-- tidak ada batch kolektif --}}
                                     @endforelse
                                     @if($adaMandiri)
-                                        <span class="badge bg-success bg-opacity-75" style="font-size:.65rem;">
-                                            <i class="bi bi-person me-1"></i>Mandiri
-                                        </span>
+                                        @php
+                                            $mandiriCount = $asesmens->where('is_collective', false)->count();
+                                            $mandiriInstitutions = $asesmens
+                                                ->where('is_collective', false)
+                                                ->pluck('institution')
+                                                ->filter()->unique()->values();
+                                        @endphp
+                                        <div>
+                                            <span class="badge bg-success bg-opacity-75" style="font-size:.62rem;">
+                                                <i class="bi bi-person me-1"></i>Mandiri · {{ $mandiriCount }} asesi
+                                            </span>
+                                            @if($mandiriInstitutions->isNotEmpty())
+                                            <div style="font-size:.7rem;color:#555;margin-left:2px;margin-top:1px;">
+                                                <i class="bi bi-building me-1" style="font-size:.65rem;"></i>{{ $mandiriInstitutions->implode(', ') }}
+                                            </div>
+                                            @endif
+                                        </div>
                                     @endif
                                     @if($batches->isEmpty() && !$adaMandiri)
                                         <span class="text-muted">-</span>

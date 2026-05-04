@@ -138,13 +138,33 @@
                                     <div class="small mt-1 text-muted d-flex align-items-center gap-1 flex-wrap">
                                         {{ $jumlah }} asesi
                                         @foreach($batchIds as $bid)
+                                            @php
+                                                $bidInstitutions = $jadwal->asesmens
+                                                    ->where('is_collective', true)
+                                                    ->where('collective_batch_id', $bid)
+                                                    ->pluck('institution')
+                                                    ->filter()->unique()->values();
+                                                $bidCount = $jadwal->asesmens
+                                                    ->where('is_collective', true)
+                                                    ->where('collective_batch_id', $bid)
+                                                    ->count();
+                                            @endphp
                                             <span class="badge bg-primary bg-opacity-75 font-monospace"
-                                                style="font-size:.6rem;">
-                                                <i class="bi bi-people-fill me-1"></i>{{ $bid }}
+                                                style="font-size:.6rem;"
+                                                title="{{ $bidInstitutions->isNotEmpty() ? $bidInstitutions->implode(', ') : 'Tanpa instansi' }}">
+                                                <i class="bi bi-people-fill me-1"></i>{{ $bid }} · {{ $bidCount }}
                                             </span>
                                         @endforeach
                                         @if($adaMandiri)
-                                            <span class="badge bg-success bg-opacity-75" style="font-size:.6rem;">
+                                            @php
+                                                $mandiriInst = $jadwal->asesmens
+                                                    ->where('is_collective', false)
+                                                    ->pluck('institution')
+                                                    ->filter()->unique()->values();
+                                            @endphp
+                                            <span class="badge bg-success bg-opacity-75"
+                                                style="font-size:.6rem;"
+                                                title="{{ $mandiriInst->isNotEmpty() ? $mandiriInst->implode(', ') : 'Tanpa instansi' }}">
                                                 <i class="bi bi-person me-1"></i>Mandiri
                                             </span>
                                         @endif

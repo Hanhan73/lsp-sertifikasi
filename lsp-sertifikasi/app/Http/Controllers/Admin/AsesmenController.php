@@ -816,9 +816,7 @@ public function impersonate(Asesmen $asesmen)
             ->first();
  
         $tglUji      = $firstSchedule?->assessment_date;
-        $nomorAsesor = $firstSchedule?->asesor?->registration_number
-            ?? $firstSchedule?->asesor?->nomor_registrasi
-            ?? '';
+        $nomorAsesor = $firstSchedule?->asesor?->no_reg_met ?? '';
  
         // ── Spreadsheet ───────────────────────────────────────
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

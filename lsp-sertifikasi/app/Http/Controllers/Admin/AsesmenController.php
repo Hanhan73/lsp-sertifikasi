@@ -769,29 +769,42 @@ public function impersonate(Asesmen $asesmen)
     }
 
 
+ // =========================================================
+    // EXPORT BLANKO PENGAJUAN BATCH
+    // =========================================================
+
     /**
      * Export blanko pengajuan BNSP semua peserta batch ke format Excel.
-     * Kolom sesuai template resmi + kolom tambahan ASAL SEKOLAH/LEMBAGA di paling kanan.
-     * Kode Jadwal & Kode Kementerian dikosongkan (diisi manual).
+     * - NIK diformat sebagai teks (tidak scientific notation)
+     * - K/BK dari BeritaAcara > frak04 > result
+     * - Kode Jadwal & Kementerian dikosongkan (isi manual)
+     * - Kolom ASAL SEKOLAH/LEMBAGA di paling kanan
      */
     public function exportBatchBlanko(string $batchId)
     {
-        $asesmens = Asesmen::with(['user', 'tuk', 'skema', 'schedule.asesor', 'frak04'])
+        $asesmens = Asesmen::with([
+            'user',
+            'tuk',
+            'skema',
+            'schedule.asesor',
+            'schedule.beritaAcara.asesis',
+            'frak04',
+        ])
             ->where('collective_batch_id', $batchId)
             ->orderBy('full_name')
             ->get();
- 
+
         abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
- 
+
         if (!class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class)) {
             abort(500, 'PhpSpreadsheet tidak tersedia. Hubungi administrator.');
         }
- 
+
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Blanko Pengajuan');
- 
-        // ── Header Row ───────────────────────────────────────
+
+        // ── Header ───────────────────────────────────────────
         $headers = [
             'No',
             'NAMA ASESI',
@@ -806,167 +819,149 @@ public function impersonate(Asesmen $asesmen)
             'EMAIL',
             'KODE PENDIDIKAN',
             'KODE PEKERJAAN',
-            'KODE JADWAL',            // dikosongkan, isi manual
+            'KODE JADWAL',
             'TANGGAL UJI (hh/bb/yyyy)',
             'NOMOR REGISTRASI ASESOR',
             'KODE SUMBER ANGGARAN',
-            'KODE KEMENTERIAN',        // dikosongkan, isi manual
+            'KODE KEMENTERIAN',
             'K/BK',
-            'ASAL SEKOLAH/LEMBAGA',   // kolom tambahan paling kanan
+            'ASAL SEKOLAH/LEMBAGA',
         ];
- 
-        $totalCols = count($headers); // 20
+
+        $totalCols = count($headers);
         $lastCol   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
- 
+
         $sheet->fromArray($headers, null, 'A1');
- 
-        // Style header: bold, background biru gelap, teks putih, center
+
         $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'name' => 'Arial', 'size' => 10],
             'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1F4E79']],
             'alignment' => ['horizontal' => 'center', 'vertical' => 'center', 'wrapText' => true],
-            'borders'   => [
-                'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'CCCCCC']],
-            ],
+            'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'CCCCCC']]],
         ]);
- 
-        // Kolom tambahan (ASAL SEKOLAH) → header background sedikit berbeda
-        $sheet->getStyle("T1")->applyFromArray([
-            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '2E75B6']],
-        ]);
- 
+        // Kolom T (Asal Sekolah) — biru sedikit lebih terang
+        $sheet->getStyle('T1')->getFill()->setFillType('solid')->getStartColor()->setRGB('2E75B6');
         $sheet->getRowDimension(1)->setRowHeight(32);
- 
-        // ── Data Rows ────────────────────────────────────────
-        $first    = $asesmens->first();
-        $schedule = $first->schedule;
-        $asesor   = $schedule?->asesor;
-        $tglUji   = $schedule?->assessment_date;
- 
-        // Nomor registrasi asesor
-        $nomorAsesor = $asesor?->registration_number
-            ?? $asesor?->nomor_registrasi
-            ?? '';
- 
+
+        // ── Shared data ───────────────────────────────────────
+        $first       = $asesmens->first();
+        $schedule    = $first->schedule;
+        $asesor      = $schedule?->asesor;
+        $tglUji      = $schedule?->assessment_date;
+        $nomorAsesor = $asesor?->registration_number ?? $asesor?->nomor_registrasi ?? '';
+
+        // Bangun map: asesmen_id → rekomendasi dari BeritaAcara
+        // BeritaAcara → BeritaAcaraAsesi (rekomendasi 'K' | 'BK')
+        $beritaAcaraMap = collect();
+        if ($schedule && $schedule->beritaAcara) {
+            $beritaAcaraMap = $schedule->beritaAcara->asesis
+                ->keyBy('asesmen_id')
+                ->map(fn($baa) => strtoupper(trim($baa->rekomendasi)));
+        }
+
+        // ── Data Rows ─────────────────────────────────────────
         foreach ($asesmens as $i => $a) {
             $row = $i + 2;
- 
-            // K/BK: dari frak04 dulu, fallback result asesmen
-            $result = '';
-            if ($a->frak04 && isset($a->frak04->rekomendasi)) {
-                $result = strtoupper($a->frak04->rekomendasi) === 'K' ? 'K' : 'BK';
+
+            // K/BK: prioritas BeritaAcara → frak04 → result asesmen
+            if ($beritaAcaraMap->has($a->id)) {
+                $kbk = $beritaAcaraMap->get($a->id); // sudah 'K' atau 'BK'
+            } elseif ($a->frak04 && isset($a->frak04->rekomendasi)) {
+                $kbk = strtoupper($a->frak04->rekomendasi) === 'K' ? 'K' : 'BK';
             } elseif ($a->result) {
-                $result = $a->result === 'kompeten' ? 'K' : 'BK';
+                $kbk = $a->result === 'kompeten' ? 'K' : 'BK';
+            } else {
+                $kbk = '';
             }
- 
-            $rowData = [
-                $i + 1,                                                  // A  No
-                strtoupper($a->full_name ?? $a->user->name ?? ''),       // B  Nama
-                $a->nik ?? '',                                           // C  NIK
-                strtoupper($a->birth_place ?? ''),                       // D  Tempat Lahir
-                $a->birth_date ? $a->birth_date->format('d/m/Y') : '',  // E  Tgl Lahir
-                $a->gender ?? '',                                        // F  L/P
-                $a->address ?? '',                                       // G  Tempat Tinggal
-                $a->city_code ?? '',                                     // H  Kode Kota
-                $a->province_code ?? '',                                 // I  Kode Provinsi
-                $a->phone ?? '',                                         // J  Telp
-                $a->email ?? $a->user->email ?? '',                      // K  Email
-                $a->education ?? '',                                     // L  Kode Pendidikan
-                $a->occupation ?? '',                                    // M  Kode Pekerjaan
-                '',                                                      // N  Kode Jadwal (kosong)
-                $tglUji ? $tglUji->format('d/m/Y') : '',                // O  Tanggal Uji
-                $nomorAsesor,                                            // P  No Reg Asesor
-                $a->budget_source ?? '',                                 // Q  Kode Sumber Anggaran
-                '',                                                      // R  Kode Kementerian (kosong)
-                $result,                                                 // S  K/BK
-                $a->institution ?? '',                                   // T  Asal Sekolah/Lembaga
-            ];
- 
-            $sheet->fromArray($rowData, null, "A{$row}");
- 
-            // Zebra striping kolom A-S (standar BNSP)
+
+            // ── Isi sel satu per satu untuk kontrol format ────
+            $sheet->setCellValue("A{$row}", $i + 1);
+            $sheet->setCellValue("B{$row}", strtoupper($a->full_name ?? $a->user->name ?? ''));
+
+            // NIK: paksa teks agar tidak jadi scientific notation
+            $sheet->setCellValueExplicit(
+                "C{$row}",
+                $a->nik ?? '',
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+
+            $sheet->setCellValue("D{$row}", strtoupper($a->birth_place ?? ''));
+            $sheet->setCellValue("E{$row}", $a->birth_date ? $a->birth_date->format('d/m/Y') : '');
+            $sheet->setCellValue("F{$row}", $a->gender ?? '');
+            $sheet->setCellValue("G{$row}", $a->address ?? '');
+
+            // Kode Kota & Provinsi juga sebagai teks (bisa ada leading zero)
+            $sheet->setCellValueExplicit(
+                "H{$row}",
+                $a->city_code ?? '',
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+            $sheet->setCellValueExplicit(
+                "I{$row}",
+                $a->province_code ?? '',
+                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+            );
+
+            $sheet->setCellValue("J{$row}", $a->phone ?? '');
+            $sheet->setCellValue("K{$row}", $a->email ?? $a->user->email ?? '');
+            $sheet->setCellValue("L{$row}", $a->education ?? '');
+            $sheet->setCellValue("M{$row}", $a->occupation ?? '');
+            $sheet->setCellValue("N{$row}", '');                                        // Kode Jadwal — kosong
+            $sheet->setCellValue("O{$row}", $tglUji ? $tglUji->format('d/m/Y') : '');
+            $sheet->setCellValue("P{$row}", $nomorAsesor);
+            $sheet->setCellValue("Q{$row}", $a->budget_source ?? '');
+            $sheet->setCellValue("R{$row}", '');                                        // Kode Kementerian — kosong
+            $sheet->setCellValue("S{$row}", $kbk);
+            $sheet->setCellValue("T{$row}", $a->institution ?? '');
+
+            // Style baris A–S
             $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
             $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
                 'font'      => ['name' => 'Arial', 'size' => 10],
                 'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => $bgColor]],
                 'alignment' => ['vertical' => 'center'],
-                'borders'   => [
-                    'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']],
-                ],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
             ]);
- 
-            // Kolom T (Asal Sekolah) — background kuning muda, kolom tambahan
+
+            // Style kolom T (Asal Sekolah)
             $sheet->getStyle("T{$row}")->applyFromArray([
                 'font'      => ['name' => 'Arial', 'size' => 10],
                 'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFDE7']],
                 'alignment' => ['vertical' => 'center'],
-                'borders'   => [
-                    'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']],
-                ],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
             ]);
         }
- 
-        // ── Post-style per kolom ──────────────────────────────
+
+        // ── Post-style ────────────────────────────────────────
         $totalRows = $asesmens->count() + 1;
- 
-        // K/BK (S) — bold + center
+
         $sheet->getStyle("S2:S{$totalRows}")->applyFromArray([
             'font'      => ['bold' => true],
             'alignment' => ['horizontal' => 'center'],
         ]);
- 
-        // Tgl Uji (O) + No Reg Asesor (P) — bold
-        $sheet->getStyle("O2:P{$totalRows}")->applyFromArray([
-            'font' => ['bold' => true],
-        ]);
- 
-        // No (A) — center
-        $sheet->getStyle("A2:A{$totalRows}")->applyFromArray([
-            'alignment' => ['horizontal' => 'center'],
-        ]);
- 
-        // JK (F) — center
-        $sheet->getStyle("F2:F{$totalRows}")->applyFromArray([
-            'alignment' => ['horizontal' => 'center'],
-        ]);
- 
-        // ── Lebar kolom ──────────────────────────────────────
+        $sheet->getStyle("O2:P{$totalRows}")->applyFromArray(['font' => ['bold' => true]]);
+        $sheet->getStyle("A2:A{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("F2:F{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
+
+        // ── Lebar kolom ───────────────────────────────────────
         $widthMap = [
-            'A' => 5,    // No
-            'B' => 32,   // Nama
-            'C' => 22,   // NIK
-            'D' => 18,   // Tempat Lahir
-            'E' => 16,   // Tgl Lahir
-            'F' => 8,    // JK
-            'G' => 42,   // Alamat
-            'H' => 12,   // Kode Kota
-            'I' => 12,   // Kode Provinsi
-            'J' => 16,   // Telp
-            'K' => 28,   // Email
-            'L' => 14,   // Kode Pendidikan
-            'M' => 14,   // Kode Pekerjaan
-            'N' => 16,   // Kode Jadwal (kosong)
-            'O' => 18,   // Tgl Uji
-            'P' => 26,   // No Reg Asesor
-            'Q' => 18,   // Kode Sumber Anggaran
-            'R' => 16,   // Kode Kementerian (kosong)
-            'S' => 8,    // K/BK
-            'T' => 35,   // Asal Sekolah/Lembaga
+            'A' => 5,  'B' => 32, 'C' => 22, 'D' => 18, 'E' => 16,
+            'F' => 8,  'G' => 42, 'H' => 12, 'I' => 12, 'J' => 16,
+            'K' => 28, 'L' => 14, 'M' => 14, 'N' => 16, 'O' => 18,
+            'P' => 26, 'Q' => 18, 'R' => 16, 'S' => 8,  'T' => 35,
         ];
         foreach ($widthMap as $col => $width) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
- 
-        // Freeze baris header
+
         $sheet->freezePane('A2');
- 
-        // ── Simpan & kirim ────────────────────────────────────
+
+        // ── Simpan & download ─────────────────────────────────
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'blanko_pengajuan_' . $batchId . '_' . date('Ymd') . '.xlsx';
         $tmpPath  = storage_path('app/tmp_blanko_' . $filename);
- 
         $writer->save($tmpPath);
- 
+
         return response()->download($tmpPath, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);

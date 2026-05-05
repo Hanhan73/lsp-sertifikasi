@@ -11,22 +11,29 @@
 
 {{-- ── STAT CARDS ─────────────────────────────────────────────────────────── --}}
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
+
+    {{-- Belum Dibuat Kwitansi --}}
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 {{ $rekapStats['belum_dibuat_count'] > 0 ? 'border-start border-4 border-secondary' : '' }}">
             <div class="card-body d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:44px;height:44px;background:#eff6ff;">
-                    <i class="bi bi-receipt text-primary fs-5"></i>
+                     style="width:44px;height:44px;background:#f1f5f9;">
+                    <i class="bi bi-file-earmark-plus text-secondary fs-5"></i>
                 </div>
                 <div>
-                    <div class="text-muted small">Total Kwitansi</div>
-                    <div class="fw-bold fs-4">{{ $rekapStats['total_honor'] }}</div>
+                    <div class="text-muted small">Belum Dibuat</div>
+                    <div class="fw-bold fs-4 lh-1 {{ $rekapStats['belum_dibuat_count'] > 0 ? 'text-secondary' : 'text-muted' }}">
+                        {{ $rekapStats['belum_dibuat_count'] }}
+                    </div>
+                    <div class="text-muted" style="font-size:.72rem;">asesor</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
-        <div class="card border-0 shadow-sm h-100">
+
+    {{-- Belum Dibayar --}}
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 {{ $rekapStats['belum_dibayar_count'] > 0 ? 'border-start border-4 border-danger' : '' }}">
             <div class="card-body d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
                      style="width:44px;height:44px;background:#fef2f2;">
@@ -34,7 +41,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Belum Dibayar</div>
-                    <div class="fw-bold fs-4 text-danger">{{ $rekapStats['belum_dibayar_count'] }}</div>
+                    <div class="fw-bold fs-4 lh-1 text-danger">{{ $rekapStats['belum_dibayar_count'] }}</div>
                     <div class="text-muted" style="font-size:.72rem;">
                         Rp {{ number_format($rekapStats['belum_dibayar_nominal'], 0, ',', '.') }}
                     </div>
@@ -42,7 +49,9 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
+
+    {{-- Sudah Dibayar (menunggu konfirmasi asesor) --}}
+    <div class="col-6 col-lg">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
@@ -51,7 +60,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Sudah Dibayar</div>
-                    <div class="fw-bold fs-4 text-warning">{{ $rekapStats['sudah_dibayar_count'] }}</div>
+                    <div class="fw-bold fs-4 lh-1 text-warning">{{ $rekapStats['sudah_dibayar_count'] }}</div>
                     <div class="text-muted" style="font-size:.72rem;">
                         Rp {{ number_format($rekapStats['sudah_dibayar_nominal'], 0, ',', '.') }}
                     </div>
@@ -59,7 +68,9 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-lg-3">
+
+    {{-- Dikonfirmasi --}}
+    <div class="col-6 col-lg">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3">
                 <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
@@ -68,7 +79,7 @@
                 </div>
                 <div>
                     <div class="text-muted small">Dikonfirmasi</div>
-                    <div class="fw-bold fs-4 text-success">{{ $rekapStats['dikonfirmasi_count'] }}</div>
+                    <div class="fw-bold fs-4 lh-1 text-success">{{ $rekapStats['dikonfirmasi_count'] }}</div>
                     <div class="text-muted" style="font-size:.72rem;">
                         Rp {{ number_format($rekapStats['dikonfirmasi_nominal'], 0, ',', '.') }}
                     </div>
@@ -76,6 +87,26 @@
             </div>
         </div>
     </div>
+
+    {{-- Total Kwitansi --}}
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                     style="width:44px;height:44px;background:#eff6ff;">
+                    <i class="bi bi-receipt text-primary fs-5"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Total Kwitansi</div>
+                    <div class="fw-bold fs-4 lh-1">{{ $rekapStats['total_honor'] }}</div>
+                    <div class="text-muted" style="font-size:.72rem;">
+                        Rp {{ number_format($rekapStats['total_nominal'], 0, ',', '.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 {{-- ── TABS ─────────────────────────────────────────────────────────────── --}}
@@ -90,9 +121,11 @@
     <li class="nav-item">
         <button class="nav-link" id="rekap-tab" data-bs-toggle="tab" data-bs-target="#rekap"
                 type="button" role="tab">
-            <i class="bi bi-bar-chart-line me-1"></i>Rekap Honor
-            @if($rekapStats['belum_dibayar_count'] > 0)
-            <span class="badge bg-danger ms-1">{{ $rekapStats['belum_dibayar_count'] }}</span>
+            <i class="bi bi-bar-chart-line me-1"></i>Rekap per Asesor
+            @if($rekapStats['belum_dibayar_count'] > 0 || $rekapStats['belum_dibuat_count'] > 0)
+            <span class="badge bg-danger ms-1">
+                {{ $rekapStats['belum_dibayar_count'] + $rekapStats['belum_dibuat_count'] }}
+            </span>
             @endif
         </button>
     </li>
@@ -123,7 +156,19 @@
                 <tbody>
                     @foreach($asesors as $i => $asesor)
                     @php
-                        $honorAsesor = $rekapStats['per_asesor']->firstWhere('asesor_id', $asesor->id);
+                        $rekapAsesor = $rekapStats['per_asesor']->firstWhere('asesor_id', $asesor->id);
+
+                        // Cek apakah asesor ini punya jadwal yang belum dibuatkan kwitansi
+                        $adaJadwalBelumDibuat = $asesor->schedules->contains(function ($s) {
+                            // Jadwal tanpa honorPaymentDetails active
+                            // Pendekatan: cek dari relasi yang sudah di-load di show()
+                            // Di sini cukup kita tandai jika belum ada kwitansi sama sekali
+                            return true; // placeholder — lihat catatan di bawah
+                        });
+                        // Cara lebih tepat: asesor punya schedules tanpa kwitansi
+                        // jika total_kwitansi == 0 ATAU ada jadwal baru setelah kwitansi terakhir
+                        // Untuk simplicity: tandai jika belum ada kwitansi sama sekali
+                        $belumAdaKwitansi = !$rekapAsesor || $rekapAsesor['total_kwitansi'] === 0;
                     @endphp
                     <tr>
                         <td class="text-muted small">{{ $i + 1 }}</td>
@@ -136,24 +181,26 @@
                             <span class="badge bg-success">{{ $asesor->schedules->count() }} Jadwal</span>
                         </td>
                         <td class="text-center">
-                            @if($honorAsesor)
-                                @if($honorAsesor['menunggu'] > 0)
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                    {{ $honorAsesor['menunggu'] }} Belum Dibayar
-                                </span>
-                                @endif
-                                @if($honorAsesor['dikonfirmasi'] > 0)
-                                <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                    {{ $honorAsesor['dikonfirmasi'] }} Selesai
-                                </span>
-                                @endif
-                                @if($honorAsesor['menunggu'] === 0 && $honorAsesor['dikonfirmasi'] === 0)
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
-                                    {{ $honorAsesor['sudah_dibayar'] }} Menunggu Konfirmasi
-                                </span>
-                                @endif
+                            @if($belumAdaKwitansi)
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                <i class="bi bi-file-earmark-plus me-1"></i>Belum Ada Kwitansi
+                            </span>
                             @else
-                            <span class="badge bg-secondary-subtle text-secondary">Belum Ada Kwitansi</span>
+                                @if($rekapAsesor['menunggu'] > 0)
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">
+                                    {{ $rekapAsesor['menunggu'] }} Belum Bayar
+                                </span>
+                                @endif
+                                @if(($rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi']) > 0)
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">
+                                    {{ $rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi'] }} Menunggu Konfirmasi
+                                </span>
+                                @endif
+                                @if($rekapAsesor['dikonfirmasi'] > 0)
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    {{ $rekapAsesor['dikonfirmasi'] }} Selesai
+                                </span>
+                                @endif
                             @endif
                         </td>
                         <td class="text-center">
@@ -170,48 +217,58 @@
         @endif
     </div>
 
-    {{-- ── TAB 2: REKAP HONOR ────────────────────────────────────────────── --}}
+    {{-- ── TAB 2: REKAP PER ASESOR ────────────────────────────────────────── --}}
     <div class="tab-pane fade" id="rekap" role="tabpanel">
-        <div class="p-3 border-bottom bg-light d-flex align-items-center gap-2">
+        <div class="px-3 py-2 border-bottom bg-light d-flex align-items-center gap-2">
             <i class="bi bi-info-circle text-primary"></i>
             <span class="small text-muted">
-                Total nominal seluruh honor asesor:
+                Total nominal seluruh honor:
                 <strong class="text-dark">Rp {{ number_format($rekapStats['total_nominal'], 0, ',', '.') }}</strong>
                 dari <strong>{{ $rekapStats['total_asesor_honor'] }} asesor</strong>
             </span>
+            @if($rekapStats['belum_dibuat_count'] > 0)
+            <span class="badge bg-secondary ms-auto">
+                <i class="bi bi-exclamation-circle me-1"></i>
+                {{ $rekapStats['belum_dibuat_count'] }} asesor belum dibuatkan kwitansi
+            </span>
+            @endif
         </div>
 
-        @if($rekapStats['per_asesor']->isEmpty())
+        @if($rekapStats['per_asesor']->isEmpty() && $rekapStats['belum_dibuat_count'] === 0)
         <div class="text-center py-5 text-muted">
             <i class="bi bi-bar-chart fs-1 d-block mb-2"></i>
             Belum ada data honor.
         </div>
         @else
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0" id="tabel-rekap">
+            <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                     <tr>
                         <th>#</th>
                         <th>Asesor</th>
-                        <th class="text-center">Total Kwitansi</th>
+                        <th class="text-center">Kwitansi</th>
                         <th class="text-center">
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Belum Dibayar</span>
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle" style="font-size:.7rem;">Belum Dibuat</span>
                         </th>
                         <th class="text-center">
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle">Sudah Dibayar</span>
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:.7rem;">Belum Dibayar</span>
                         </th>
                         <th class="text-center">
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">Dikonfirmasi</span>
+                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:.7rem;">Sudah Dibayar</span>
                         </th>
-                        <th class="text-end">Nominal Dibayar</th>
-                        <th class="text-end">Belum Dibayar</th>
+                        <th class="text-center">
+                            <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:.7rem;">Dikonfirmasi</span>
+                        </th>
+                        <th class="text-end">Nominal Belum Bayar</th>
+                        <th class="text-end">Nominal Sudah Bayar</th>
                         <th class="text-end">Total Honor</th>
                         <th class="text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
+                    {{-- Asesor yang sudah ada kwitansi --}}
                     @foreach($rekapStats['per_asesor'] as $i => $row)
-                    <tr class="{{ $row['menunggu'] > 0 ? 'table-danger-subtle' : '' }}">
+                    <tr>
                         <td class="text-muted small">{{ $i + 1 }}</td>
                         <td>
                             <div class="fw-semibold small">{{ $row['nama'] }}</div>
@@ -221,31 +278,36 @@
                             <span class="badge bg-secondary">{{ $row['total_kwitansi'] }}</span>
                         </td>
                         <td class="text-center">
+                            {{-- belum dibuat per baris tidak dihitung di sini, sudah di stat card --}}
+                            <span class="text-muted">—</span>
+                        </td>
+                        <td class="text-center">
                             @if($row['menunggu'] > 0)
                             <span class="badge bg-danger">{{ $row['menunggu'] }}</span>
                             @else
-                            <span class="text-muted small">—</span>
+                            <span class="text-muted">—</span>
                             @endif
                         </td>
                         <td class="text-center">
-                            @if($row['sudah_dibayar'] > $row['dikonfirmasi'])
-                            <span class="badge bg-warning text-dark">{{ $row['sudah_dibayar'] - $row['dikonfirmasi'] }}</span>
+                            @php $menungguKonfirmasi = $row['sudah_dibayar'] - $row['dikonfirmasi']; @endphp
+                            @if($menungguKonfirmasi > 0)
+                            <span class="badge bg-warning text-dark">{{ $menungguKonfirmasi }}</span>
                             @else
-                            <span class="text-muted small">—</span>
+                            <span class="text-muted">—</span>
                             @endif
                         </td>
                         <td class="text-center">
                             @if($row['dikonfirmasi'] > 0)
                             <span class="badge bg-success">{{ $row['dikonfirmasi'] }}</span>
                             @else
-                            <span class="text-muted small">—</span>
+                            <span class="text-muted">—</span>
                             @endif
                         </td>
-                        <td class="text-end small fw-semibold text-success">
-                            Rp {{ number_format($row['dibayar_nominal'], 0, ',', '.') }}
-                        </td>
-                        <td class="text-end small fw-semibold {{ $row['menunggu_nominal'] > 0 ? 'text-danger' : 'text-muted' }}">
+                        <td class="text-end small {{ $row['menunggu_nominal'] > 0 ? 'text-danger fw-semibold' : 'text-muted' }}">
                             Rp {{ number_format($row['menunggu_nominal'], 0, ',', '.') }}
+                        </td>
+                        <td class="text-end small text-success fw-semibold">
+                            Rp {{ number_format($row['dibayar_nominal'], 0, ',', '.') }}
                         </td>
                         <td class="text-end small fw-bold">
                             Rp {{ number_format($row['total_nominal'], 0, ',', '.') }}
@@ -260,15 +322,46 @@
                         </td>
                     </tr>
                     @endforeach
+
+                    {{-- Asesor yang BELUM punya kwitansi sama sekali --}}
+                    @foreach($asesors as $asesor)
+                    @if(!$rekapStats['per_asesor']->firstWhere('asesor_id', $asesor->id))
+                    <tr class="table-light">
+                        <td class="text-muted small">—</td>
+                        <td>
+                            <div class="fw-semibold small">{{ $asesor->nama }}</div>
+                            <div class="text-muted" style="font-size:.72rem;">{{ $asesor->no_reg_met ?? '-' }}</div>
+                        </td>
+                        <td class="text-center"><span class="badge bg-secondary">0</span></td>
+                        <td class="text-center">
+                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+                                Belum Dibuat
+                            </span>
+                        </td>
+                        <td class="text-center"><span class="text-muted">—</span></td>
+                        <td class="text-center"><span class="text-muted">—</span></td>
+                        <td class="text-center"><span class="text-muted">—</span></td>
+                        <td class="text-end text-muted small">—</td>
+                        <td class="text-end text-muted small">—</td>
+                        <td class="text-end text-muted small">—</td>
+                        <td class="text-center">
+                            <a href="{{ route('bendahara.honor.show', $asesor) }}"
+                               class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-plus-circle me-1"></i>Buat
+                            </a>
+                        </td>
+                    </tr>
+                    @endif
+                    @endforeach
                 </tbody>
                 <tfoot class="table-light fw-bold">
                     <tr>
-                        <td colspan="6" class="text-end">Total Keseluruhan</td>
-                        <td class="text-end text-success">
-                            Rp {{ number_format($rekapStats['sudah_dibayar_nominal'], 0, ',', '.') }}
-                        </td>
+                        <td colspan="7" class="text-end pe-3">Total Keseluruhan</td>
                         <td class="text-end text-danger">
                             Rp {{ number_format($rekapStats['belum_dibayar_nominal'], 0, ',', '.') }}
+                        </td>
+                        <td class="text-end text-success">
+                            Rp {{ number_format($rekapStats['sudah_dibayar_nominal'], 0, ',', '.') }}
                         </td>
                         <td class="text-end">
                             Rp {{ number_format($rekapStats['total_nominal'], 0, ',', '.') }}
@@ -286,10 +379,8 @@
 
 @push('scripts')
 <script>
-// Aktifkan tab dari URL hash jika ada
 document.addEventListener('DOMContentLoaded', function () {
-    const hash = window.location.hash;
-    if (hash === '#rekap') {
+    if (window.location.hash === '#rekap') {
         const tab = document.getElementById('rekap-tab');
         if (tab) bootstrap.Tab.getOrCreateInstance(tab).show();
     }

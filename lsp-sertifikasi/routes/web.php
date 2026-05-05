@@ -1005,7 +1005,7 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::get('/kolektif/angsuran/{payment}/bukti',    [BendaharaController::class, 'kolektifBuktiBayar'])->name('kolektif.angsuran.bukti');
         Route::post('/kolektif/tuk/{tuk}/invoice/bulk',     [BendaharaController::class, 'kolektifInvoiceStoreBulk'])->name('kolektif.invoice.bulk');
         Route::patch('/kolektif/invoice/{invoice}/update-nomor', [BendaharaController::class, 'kolektifInvoiceUpdateNomor'])
-                ->name('bendahara.payments.kolektif.invoice.update-nomor');
+                ->name('kolektif.invoice.update-nomor');
         Route::get('/kolektif',           [BendaharaController::class, 'kolektif'])->name('kolektif');
         Route::get('/kolektif/tuk/{tuk}', [BendaharaController::class, 'kolektifTuk'])->name('kolektif.tuk');
         Route::get('/kolektif/{invoice}', [BendaharaController::class, 'kolektifDetail'])->name('kolektif.detail');

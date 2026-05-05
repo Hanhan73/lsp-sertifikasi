@@ -203,9 +203,14 @@
             // Format: NAMA-SEKOLAH-TUKCODE-SUFFIX → buang 2 segmen terakhir
             $parts = explode('-', $batchId);
             if (count($parts) > 2) {
-                $namaSekolah = ucwords(strtolower(
-                    implode(' ', array_slice($parts, 0, count($parts) - 2))
-                ));
+                $filtered = array_filter(
+                    array_slice($parts, 0, count($parts) - 2),
+                    function ($word) {
+                        return strtoupper($word) !== 'TUK';
+                    }
+                );
+
+                $namaSekolah = ucwords(strtolower(implode(' ', $filtered)));
             } else {
                 // fallback jika format tidak standard
                 $namaSekolah = ucwords(strtolower(str_replace('-', ' ', $batchId)));

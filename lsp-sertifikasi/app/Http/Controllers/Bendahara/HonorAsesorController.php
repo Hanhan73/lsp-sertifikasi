@@ -18,6 +18,7 @@ class HonorAsesorController extends Controller
 {
     /**
      * List asesor yang punya berita acara (jadwal selesai).
+     * Sekaligus hitung rekap statistik honor untuk tab Rekap.
      */
     public function index()
     {
@@ -33,7 +34,45 @@ class HonorAsesorController extends Controller
             ->orderBy('nama')
             ->get();
 
-        return view('bendahara.honor.index', compact('asesors'));
+        // ── Rekap statistik honor ─────────────────────────────────────────────
+        $allHonors = HonorPayment::with(['asesor', 'details'])->get();
+
+        $rekapStats = [
+            'total_honor'           => $allHonors->count(),
+            'total_asesor_honor'    => $allHonors->pluck('asesor_id')->unique()->count(),
+            'total_nominal'         => $allHonors->sum('total'),
+
+            // Belum dibayar = menunggu_pembayaran
+            'belum_dibayar_count'   => $allHonors->where('status', 'menunggu_pembayaran')->count(),
+            'belum_dibayar_nominal' => $allHonors->where('status', 'menunggu_pembayaran')->sum('total'),
+
+            // Sudah dibayar (termasuk dikonfirmasi)
+            'sudah_dibayar_count'   => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
+            'sudah_dibayar_nominal' => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
+
+            // Dikonfirmasi asesor
+            'dikonfirmasi_count'    => $allHonors->where('status', 'dikonfirmasi')->count(),
+            'dikonfirmasi_nominal'  => $allHonors->where('status', 'dikonfirmasi')->sum('total'),
+
+            // Per asesor — untuk tabel rekap
+            'per_asesor' => $allHonors->groupBy('asesor_id')->map(function ($honors) {
+                $asesor = $honors->first()->asesor;
+                return [
+                    'asesor_id'       => $asesor?->id,
+                    'nama'            => $asesor?->nama ?? '-',
+                    'no_reg_met'      => $asesor?->no_reg_met ?? '-',
+                    'total_kwitansi'  => $honors->count(),
+                    'menunggu'        => $honors->where('status', 'menunggu_pembayaran')->count(),
+                    'sudah_dibayar'   => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
+                    'dikonfirmasi'    => $honors->where('status', 'dikonfirmasi')->count(),
+                    'total_nominal'   => $honors->sum('total'),
+                    'dibayar_nominal' => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
+                    'menunggu_nominal'=> $honors->where('status', 'menunggu_pembayaran')->sum('total'),
+                ];
+            })->sortByDesc('total_nominal')->values(),
+        ];
+
+        return view('bendahara.honor.index', compact('asesors', 'rekapStats'));
     }
 
     /**
@@ -51,7 +90,7 @@ class HonorAsesorController extends Controller
                 });
             })
             ->with([
-                'skema.honorTiers', // ← tambah
+                'skema.honorTiers',
                 'tuk',
                 'beritaAcara',
                 'asesmens',
@@ -90,16 +129,12 @@ class HonorAsesorController extends Controller
             $details = [];
             $total   = 0;
  
-            // tier_ids: [schedule_id => tier_id] (opsional, dari dropdown)
             $tierIds      = $request->input('tier_ids', []);
-            // honor_amounts: [schedule_id => amount_string] (fallback manual)
             $honorAmounts = $request->input('honor_amounts', []);
  
             foreach ($schedules as $schedule) {
                 $jumlahAsesi = $schedule->asesmens()->count();
  
-                // Tentukan honor per asesi:
-                // Prioritas: tier dipilih → manual input → default tier → honor_per_asesi skema
                 $honorPerAsesi = 0;
                 $tierLabel     = null;
  
@@ -135,8 +170,6 @@ class HonorAsesorController extends Controller
                     'jumlah_asesi'    => $jumlahAsesi,
                     'honor_per_asesi' => $honorPerAsesi,
                     'subtotal'        => $subtotal,
-                    // tier_label disimpan di notes opsional — bisa diabaikan kalau kolom belum ada
-                    // 'tier_label'   => $tierLabel,
                 ];
             }
  
@@ -180,7 +213,7 @@ class HonorAsesorController extends Controller
             'asesor.rekenings',
             'details.schedule.skema',
             'details.schedule.tuk',
-            'details.schedule.asesmens', // ← tambah ini
+            'details.schedule.asesmens',
             'dibuatOleh',
             'dibayarOleh',
         ]);
@@ -274,23 +307,22 @@ class HonorAsesorController extends Controller
 
         $isDraft = !$honor->isDikonfirmasi();
 
-        // Load TTD asesor hanya jika sudah dikonfirmasi
         $ttdAsesor = null;
         if (!$isDraft) {
             $ttdPath = $honor->asesor->user?->ttd_path ?? null;
             if ($ttdPath) {
                 $fullPath = storage_path('app/private/' . $ttdPath);
                 if (file_exists($fullPath)) {
-                    $ext      = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-                    $mime     = in_array($ext, ['png']) ? 'image/png' : 'image/jpeg';
+                    $ext       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+                    $mime      = in_array($ext, ['png']) ? 'image/png' : 'image/jpeg';
                     $ttdAsesor = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
                 }
             }
         }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.honor-kwitansi', [
-            'honor'    => $honor,
-            'isDraft'  => $isDraft,
+            'honor'     => $honor,
+            'isDraft'   => $isDraft,
             'ttdAsesor' => $ttdAsesor,
         ])->setPaper('A4', 'landscape');
 

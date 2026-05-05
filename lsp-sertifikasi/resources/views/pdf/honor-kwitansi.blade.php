@@ -83,6 +83,7 @@
         font-size: 11pt;
     }
 
+    /* Tabel list jadwal — lebih kompak */
     .detail-list {
         width: 100%;
         border-collapse: collapse;
@@ -91,23 +92,26 @@
 
     .detail-list td {
         padding: 2px 3px;
-        font-size: 11pt;
+        font-size: 10.5pt;
         vertical-align: top;
     }
 
     .detail-list .no-col {
         width: 22px;
+        font-weight: bold;
     }
 
-    .tuk-line {
-        font-size: 11pt;
-        margin-top: 4px;
+    /* Jadwal sub-info (lokasi, tanggal) */
+    .jadwal-info {
+        font-size: 9.5pt;
+        color: #444;
+        margin-top: 1px;
     }
 
     .footer-table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 32px;
+        margin-top: 28px;
     }
 
     .footer-table td {
@@ -141,29 +145,10 @@
         text-align: center;
     }
 
-    .ttd-garis {
-        border-bottom: 1px solid #000;
-        width: 200px;
-        margin: 0 auto 4px;
-    }
-
     .bukti-judul {
         font-size: 13pt;
         font-weight: bold;
         margin-bottom: 16px;
-    }
-
-    .bukti-img {
-        max-width: 100%;
-        max-height: 500px;
-        display: block;
-        margin: 0 auto;
-    }
-
-    .bukti-footer {
-        text-align: right;
-        margin-top: 32px;
-        font-size: 11pt;
     }
     </style>
     @if($isDraft)
@@ -191,31 +176,33 @@
     @endif
 
     @php
-    $grouped = [];
+    /*
+     * Susun data per-JADWAL (bukan per-skema).
+     * Setiap detail → satu baris jadwal lengkap dengan lokasi & tanggal.
+     */
+    $jadwalRows = [];
     foreach ($honor->details as $detail) {
-    $sid = $detail->schedule->skema_id;
-    if (!isset($grouped[$sid])) {
-    $grouped[$sid] = [
-    'nama' => $detail->schedule->skema->name,
-    'honor_per_asesi' => $detail->honor_per_asesi,
-    'jumlah_asesi' => 0,
-    'tanggals' => [],
-    'tuks' => [],
-    ];
-    }
-    $grouped[$sid]['jumlah_asesi'] += $detail->jumlah_asesi;
+        $schedule          = $detail->schedule;
+        $tgl               = optional($schedule->assessment_date)->translatedFormat('d F Y') ?? '-';
+        $waktu             = trim(($schedule->start_time ?? '') . ($schedule->end_time ? ' – ' . $schedule->end_time : ''));
+        $lokasi            = $schedule->location ?? '-';
+        $tukName           = $schedule->tuk->name ?? '-';
+        $skemaName         = $schedule->skema->name ?? '-';
+        $honorPerAsesi     = $detail->honor_per_asesi;
+        $jumlahAsesi       = $detail->jumlah_asesi;
+        $subtotal          = $honorPerAsesi * $jumlahAsesi;
 
-    $tgl = optional($detail->schedule->assessment_date)->translatedFormat('d F Y');
-    if ($tgl && !in_array($tgl, $grouped[$sid]['tanggals'])) {
-    $grouped[$sid]['tanggals'][] = $tgl;
+        $jadwalRows[] = [
+            'tgl'           => $tgl,
+            'waktu'         => $waktu,
+            'lokasi'        => $lokasi,
+            'tuk'           => $tukName,
+            'skema'         => $skemaName,
+            'jumlah_asesi'  => $jumlahAsesi,
+            'honor_per'     => $honorPerAsesi,
+            'subtotal'      => $subtotal,
+        ];
     }
-    $tuk = $detail->schedule->tuk->name ?? '-';
-    if (!in_array($tuk, $grouped[$sid]['tuks'])) {
-    $grouped[$sid]['tuks'][] = $tuk;
-    }
-    }
-    $allTuks = collect($grouped)->pluck('tuks')->flatten()->unique()->implode(', ');
-    $allTanggals = collect($grouped)->pluck('tanggals')->flatten()->unique()->implode(', ');
     @endphp
 
     <div class="{{ ($honor->isDikonfirmasi() && $honor->bukti_transfer_path) ? 'page' : 'page-last' }}">
@@ -254,21 +241,45 @@
                                 <td class="col-label" style="padding-top:8px;">Untuk pembayaran</td>
                                 <td class="col-colon" style="padding-top:8px;">:</td>
                                 <td style="padding-top:8px;">
-                                    Honor Asesor, dengan skema sebagai berikut:
-                                    <table class="detail-list">
-                                        @foreach(array_values($grouped) as $i => $g)
-                                        <tr>
+                                    Honor Asesor, dengan rincian jadwal sebagai berikut:
+
+                                    {{-- Tabel per-jadwal --}}
+                                    <table class="detail-list" style="margin-top:6px;">
+                                        <tr style="background:#f0f4f8;font-size:9.5pt;font-weight:bold;">
+                                            <td class="no-col">No</td>
+                                            <td style="width:130px;">Skema</td>
+                                            <td style="width:95px;">Tanggal</td>
+                                            <td>Lokasi / TUK</td>
+                                            <td style="width:60px;text-align:center;">Asesi</td>
+                                            <td style="width:90px;text-align:right;">Honor/Asesi</td>
+                                            <td style="width:100px;text-align:right;">Subtotal</td>
+                                        </tr>
+                                        @foreach($jadwalRows as $i => $row)
+                                        <tr style="{{ $i % 2 === 1 ? 'background:#f9fbfd;' : '' }}">
                                             <td class="no-col">{{ $i + 1 }}.</td>
-                                            <td>
-                                                {{ $g['nama'] }}, sebanyak {{ $g['jumlah_asesi'] }} asesi
-                                                @Rp. {{ number_format($g['honor_per_asesi'], 0, ',', '.') }}
-                                                = Rp.
-                                                {{ number_format($g['jumlah_asesi'] * $g['honor_per_asesi'], 0, ',', '.') }},-
+                                            <td style="font-size:9.5pt;">{{ $row['skema'] }}</td>
+                                            <td style="font-size:9pt;">
+                                                {{ $row['tgl'] }}
+                                                @if($row['waktu'])
+                                                <br><span style="color:#666;">{{ $row['waktu'] }}</span>
+                                                @endif
+                                            </td>
+                                            <td style="font-size:9pt;">
+                                                {{ $row['lokasi'] }}
+                                                @if($row['tuk'] !== $row['lokasi'] && $row['tuk'] !== '-')
+                                                <br><span style="color:#666;">({{ $row['tuk'] }})</span>
+                                                @endif
+                                            </td>
+                                            <td style="text-align:center;font-size:9.5pt;">{{ $row['jumlah_asesi'] }}</td>
+                                            <td style="text-align:right;font-size:9.5pt;">
+                                                Rp {{ number_format($row['honor_per'], 0, ',', '.') }}
+                                            </td>
+                                            <td style="text-align:right;font-size:9.5pt;font-weight:bold;">
+                                                Rp {{ number_format($row['subtotal'], 0, ',', '.') }},-
                                             </td>
                                         </tr>
                                         @endforeach
                                     </table>
-                                    <div class="tuk-line">di TUK {{ $allTuks }}, {{ $allTanggals }}</div>
                                 </td>
                             </tr>
                         </table>
@@ -286,7 +297,6 @@
                                     </div>
                                     <div style="font-size:11pt;margin-bottom:2px;">Penerima</div>
                                     @if($isDraft)
-                                        {{-- Belum dikonfirmasi: TTD kosong --}}
                                         <div style="height:60px;border-bottom:1px solid #999;width:150px;margin-top:4px;"></div>
                                         <div style="font-size:9pt;color:#999;margin-top:2px;font-style:italic;">
                                             (Belum ditandatangani)
@@ -310,7 +320,7 @@
     <div class="page-last">
         <div class="bukti-judul">Bukti Pembayaran</div>
         @php
-        $ext = strtolower(pathinfo($honor->bukti_transfer_name ?? '', PATHINFO_EXTENSION));
+        $ext      = strtolower(pathinfo($honor->bukti_transfer_name ?? '', PATHINFO_EXTENSION));
         $buktiFull = storage_path('app/private/' . $honor->bukti_transfer_path);
         @endphp
 
@@ -326,7 +336,7 @@
                     <p><em>Bukti transfer tidak dapat ditampilkan.</em></p>
                     @endif
                 </td>
-                <td style="width:40%; text-align:center; vertical-align:bottom;">
+                <td style="width:40%;text-align:center;vertical-align:bottom;">
                     <div style="font-size:11pt;margin-bottom:6px;">
                         Jakarta,
                         {{ optional($honor->dikonfirmasi_at)->translatedFormat('d F Y') ?? now()->translatedFormat('d F Y') }}
@@ -345,5 +355,4 @@
     @endif
 
 </body>
-
 </html>

@@ -240,17 +240,28 @@
                     @endforeach
                 </div>
             </div>
-
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white fw-semibold border-bottom">
                     <i class="bi bi-file-excel me-2 text-success"></i>Export Data
                 </div>
                 <div class="card-body">
-                    <p class="small text-muted mb-3">Export biodata semua peserta batch ini.</p>
+                    <p class="small text-muted mb-3">Export data peserta batch ini ke Excel.</p>
+            
+                    {{-- Tombol 1: Biodata (sudah ada sebelumnya) --}}
                     <a href="{{ route('admin.asesi.batch.export', $batchId) }}"
-                        class="btn btn-success w-100" id="export-link">
+                        class="btn btn-success w-100 mb-2" id="export-link">
                         <i class="bi bi-download me-1"></i> Download Biodata Excel
                     </a>
+            
+                    {{-- Tombol 2: Blanko Pengajuan BNSP (BARU) --}}
+                    <a href="{{ route('admin.asesi.batch.export-blanko', $batchId) }}"
+                        class="btn btn-outline-primary w-100">
+                        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Blanko Pengajuan
+                    </a>
+                    <div class="text-muted mt-1" style="font-size:0.75rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Format sesuai template BNSP: Nama, NIK, Kode Jadwal, K/BK, dll.
+                    </div>
                 </div>
             </div>
             @endif

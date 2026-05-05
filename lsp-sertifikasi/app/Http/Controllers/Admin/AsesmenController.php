@@ -767,4 +767,208 @@ public function impersonate(Asesmen $asesmen)
     return redirect()->route('admin.dashboard')
         ->with('success', 'Kembali ke akun admin.');
     }
+
+
+    /**
+     * Export blanko pengajuan BNSP semua peserta batch ke format Excel.
+     * Kolom sesuai template resmi + kolom tambahan ASAL SEKOLAH/LEMBAGA di paling kanan.
+     * Kode Jadwal & Kode Kementerian dikosongkan (diisi manual).
+     */
+    public function exportBatchBlanko(string $batchId)
+    {
+        $asesmens = Asesmen::with(['user', 'tuk', 'skema', 'schedule.asesor', 'frak04'])
+            ->where('collective_batch_id', $batchId)
+            ->orderBy('full_name')
+            ->get();
+ 
+        abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
+ 
+        if (!class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class)) {
+            abort(500, 'PhpSpreadsheet tidak tersedia. Hubungi administrator.');
+        }
+ 
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Blanko Pengajuan');
+ 
+        // ── Header Row ───────────────────────────────────────
+        $headers = [
+            'No',
+            'NAMA ASESI',
+            'NIK',
+            'TEMPAT LAHIR',
+            'TANGGAL LAHIR (dd/mm/yyyy)',
+            'JENIS KELAMIN (L/P)',
+            'TEMPAT TINGGAL',
+            'KODE KOTA',
+            'KODE PROVINSI',
+            'TELP',
+            'EMAIL',
+            'KODE PENDIDIKAN',
+            'KODE PEKERJAAN',
+            'KODE JADWAL',            // dikosongkan, isi manual
+            'TANGGAL UJI (hh/bb/yyyy)',
+            'NOMOR REGISTRASI ASESOR',
+            'KODE SUMBER ANGGARAN',
+            'KODE KEMENTERIAN',        // dikosongkan, isi manual
+            'K/BK',
+            'ASAL SEKOLAH/LEMBAGA',   // kolom tambahan paling kanan
+        ];
+ 
+        $totalCols = count($headers); // 20
+        $lastCol   = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($totalCols);
+ 
+        $sheet->fromArray($headers, null, 'A1');
+ 
+        // Style header: bold, background biru gelap, teks putih, center
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'name' => 'Arial', 'size' => 10],
+            'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1F4E79']],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center', 'wrapText' => true],
+            'borders'   => [
+                'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'CCCCCC']],
+            ],
+        ]);
+ 
+        // Kolom tambahan (ASAL SEKOLAH) → header background sedikit berbeda
+        $sheet->getStyle("T1")->applyFromArray([
+            'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '2E75B6']],
+        ]);
+ 
+        $sheet->getRowDimension(1)->setRowHeight(32);
+ 
+        // ── Data Rows ────────────────────────────────────────
+        $first    = $asesmens->first();
+        $schedule = $first->schedule;
+        $asesor   = $schedule?->asesor;
+        $tglUji   = $schedule?->assessment_date;
+ 
+        // Nomor registrasi asesor
+        $nomorAsesor = $asesor?->registration_number
+            ?? $asesor?->nomor_registrasi
+            ?? '';
+ 
+        foreach ($asesmens as $i => $a) {
+            $row = $i + 2;
+ 
+            // K/BK: dari frak04 dulu, fallback result asesmen
+            $result = '';
+            if ($a->frak04 && isset($a->frak04->rekomendasi)) {
+                $result = strtoupper($a->frak04->rekomendasi) === 'K' ? 'K' : 'BK';
+            } elseif ($a->result) {
+                $result = $a->result === 'kompeten' ? 'K' : 'BK';
+            }
+ 
+            $rowData = [
+                $i + 1,                                                  // A  No
+                strtoupper($a->full_name ?? $a->user->name ?? ''),       // B  Nama
+                $a->nik ?? '',                                           // C  NIK
+                strtoupper($a->birth_place ?? ''),                       // D  Tempat Lahir
+                $a->birth_date ? $a->birth_date->format('d/m/Y') : '',  // E  Tgl Lahir
+                $a->gender ?? '',                                        // F  L/P
+                $a->address ?? '',                                       // G  Tempat Tinggal
+                $a->city_code ?? '',                                     // H  Kode Kota
+                $a->province_code ?? '',                                 // I  Kode Provinsi
+                $a->phone ?? '',                                         // J  Telp
+                $a->email ?? $a->user->email ?? '',                      // K  Email
+                $a->education ?? '',                                     // L  Kode Pendidikan
+                $a->occupation ?? '',                                    // M  Kode Pekerjaan
+                '',                                                      // N  Kode Jadwal (kosong)
+                $tglUji ? $tglUji->format('d/m/Y') : '',                // O  Tanggal Uji
+                $nomorAsesor,                                            // P  No Reg Asesor
+                $a->budget_source ?? '',                                 // Q  Kode Sumber Anggaran
+                '',                                                      // R  Kode Kementerian (kosong)
+                $result,                                                 // S  K/BK
+                $a->institution ?? '',                                   // T  Asal Sekolah/Lembaga
+            ];
+ 
+            $sheet->fromArray($rowData, null, "A{$row}");
+ 
+            // Zebra striping kolom A-S (standar BNSP)
+            $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
+            $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => $bgColor]],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => [
+                    'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']],
+                ],
+            ]);
+ 
+            // Kolom T (Asal Sekolah) — background kuning muda, kolom tambahan
+            $sheet->getStyle("T{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFDE7']],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => [
+                    'allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']],
+                ],
+            ]);
+        }
+ 
+        // ── Post-style per kolom ──────────────────────────────
+        $totalRows = $asesmens->count() + 1;
+ 
+        // K/BK (S) — bold + center
+        $sheet->getStyle("S2:S{$totalRows}")->applyFromArray([
+            'font'      => ['bold' => true],
+            'alignment' => ['horizontal' => 'center'],
+        ]);
+ 
+        // Tgl Uji (O) + No Reg Asesor (P) — bold
+        $sheet->getStyle("O2:P{$totalRows}")->applyFromArray([
+            'font' => ['bold' => true],
+        ]);
+ 
+        // No (A) — center
+        $sheet->getStyle("A2:A{$totalRows}")->applyFromArray([
+            'alignment' => ['horizontal' => 'center'],
+        ]);
+ 
+        // JK (F) — center
+        $sheet->getStyle("F2:F{$totalRows}")->applyFromArray([
+            'alignment' => ['horizontal' => 'center'],
+        ]);
+ 
+        // ── Lebar kolom ──────────────────────────────────────
+        $widthMap = [
+            'A' => 5,    // No
+            'B' => 32,   // Nama
+            'C' => 22,   // NIK
+            'D' => 18,   // Tempat Lahir
+            'E' => 16,   // Tgl Lahir
+            'F' => 8,    // JK
+            'G' => 42,   // Alamat
+            'H' => 12,   // Kode Kota
+            'I' => 12,   // Kode Provinsi
+            'J' => 16,   // Telp
+            'K' => 28,   // Email
+            'L' => 14,   // Kode Pendidikan
+            'M' => 14,   // Kode Pekerjaan
+            'N' => 16,   // Kode Jadwal (kosong)
+            'O' => 18,   // Tgl Uji
+            'P' => 26,   // No Reg Asesor
+            'Q' => 18,   // Kode Sumber Anggaran
+            'R' => 16,   // Kode Kementerian (kosong)
+            'S' => 8,    // K/BK
+            'T' => 35,   // Asal Sekolah/Lembaga
+        ];
+        foreach ($widthMap as $col => $width) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+ 
+        // Freeze baris header
+        $sheet->freezePane('A2');
+ 
+        // ── Simpan & kirim ────────────────────────────────────
+        $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'blanko_pengajuan_' . $batchId . '_' . date('Ymd') . '.xlsx';
+        $tmpPath  = storage_path('app/tmp_blanko_' . $filename);
+ 
+        $writer->save($tmpPath);
+ 
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
 }

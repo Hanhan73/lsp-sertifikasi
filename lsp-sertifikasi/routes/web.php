@@ -341,6 +341,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::prefix('asesi')->name('asesi.')->group(function () {
         Route::get('/',                            [AsesmenController::class, 'index'])->name('index');
         Route::get('/batch/{batchId}',             [AsesmenController::class, 'batchShow'])->name('batch.show');
+        Route::get('/batch/{batchId}/export-blanko', [AsesmenController::class, 'exportBatchBlanko'])
+             ->name('batch.export-blanko');
         Route::get('/batch/{batchId}/export',      [AsesmenController::class, 'exportBatchBiodata'])->name('batch.export');
         Route::patch('/batch/{batchId}/rename',    [AsesmenController::class, 'renameBatch'])->name('batch.rename');
         Route::get('/export', [AsesmenController::class, 'exportAllBiodata'])->name('export');

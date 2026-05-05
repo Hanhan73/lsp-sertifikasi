@@ -37,10 +37,23 @@ class HonorAsesorController extends Controller
         // ── Rekap statistik honor ─────────────────────────────────────────────
         $allHonors = HonorPayment::with(['asesor', 'details'])->get();
 
+        // Asesor yang punya jadwal dengan BA tapi ada jadwal yang BELUM masuk kwitansi manapun
+        $belumDibuatCount = Asesor::whereHas('schedules', function ($q) {
+            $q->whereHas('beritaAcara')
+              ->whereDoesntHave('honorPaymentDetails', function ($q2) {
+                  $q2->whereHas('honorPayment', function ($q3) {
+                      $q3->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
+                  });
+              });
+        })->count();
+
         $rekapStats = [
             'total_honor'           => $allHonors->count(),
             'total_asesor_honor'    => $allHonors->pluck('asesor_id')->unique()->count(),
             'total_nominal'         => $allHonors->sum('total'),
+
+            // Asesor yang masih punya jadwal belum dibuatkan kwitansi
+            'belum_dibuat_count'    => $belumDibuatCount,
 
             // Belum dibayar = menunggu_pembayaran
             'belum_dibayar_count'   => $allHonors->where('status', 'menunggu_pembayaran')->count(),
@@ -58,16 +71,16 @@ class HonorAsesorController extends Controller
             'per_asesor' => $allHonors->groupBy('asesor_id')->map(function ($honors) {
                 $asesor = $honors->first()->asesor;
                 return [
-                    'asesor_id'       => $asesor?->id,
-                    'nama'            => $asesor?->nama ?? '-',
-                    'no_reg_met'      => $asesor?->no_reg_met ?? '-',
-                    'total_kwitansi'  => $honors->count(),
-                    'menunggu'        => $honors->where('status', 'menunggu_pembayaran')->count(),
-                    'sudah_dibayar'   => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
-                    'dikonfirmasi'    => $honors->where('status', 'dikonfirmasi')->count(),
-                    'total_nominal'   => $honors->sum('total'),
-                    'dibayar_nominal' => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
-                    'menunggu_nominal'=> $honors->where('status', 'menunggu_pembayaran')->sum('total'),
+                    'asesor_id'        => $asesor?->id,
+                    'nama'             => $asesor?->nama ?? '-',
+                    'no_reg_met'       => $asesor?->no_reg_met ?? '-',
+                    'total_kwitansi'   => $honors->count(),
+                    'menunggu'         => $honors->where('status', 'menunggu_pembayaran')->count(),
+                    'sudah_dibayar'    => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
+                    'dikonfirmasi'     => $honors->where('status', 'dikonfirmasi')->count(),
+                    'total_nominal'    => $honors->sum('total'),
+                    'dibayar_nominal'  => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
+                    'menunggu_nominal' => $honors->where('status', 'menunggu_pembayaran')->sum('total'),
                 ];
             })->sortByDesc('total_nominal')->values(),
         ];
@@ -303,6 +316,7 @@ class HonorAsesorController extends Controller
             'asesor.user',
             'details.schedule.skema',
             'details.schedule.tuk',
+            'details.schedule.asesmens', // untuk ambil collective_batch_id
         ]);
 
         $isDraft = !$honor->isDikonfirmasi();

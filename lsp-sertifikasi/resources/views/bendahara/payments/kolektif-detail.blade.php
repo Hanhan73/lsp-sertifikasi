@@ -25,7 +25,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ route('bendahara.payments.kolektif') }}">Kolektif</a></li>
         <li class="breadcrumb-item"><a href="{{ route('bendahara.payments.kolektif.tuk', $tuk) }}">{{ $tuk->name }}</a></li>
-        <li class="breadcrumb-item active">{{ $invoice->invoice_number }}</li>
+        <li class="breadcrumb-item active" id="breadcrumb-nomor">{{ $invoice->invoice_number }}</li>
     </ol>
 </nav>
 
@@ -68,9 +68,32 @@
 {{-- ══ SECTION A: Invoice ══════════════════════════════════════════════════ --}}
 <div class="card shadow-sm mb-4">
     <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <h6 class="mb-0">
-            <i class="bi bi-file-earmark-text"></i> Invoice #{{ $invoice->invoice_number }}
-        </h6>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <i class="bi bi-file-earmark-text"></i>
+            <span class="fw-semibold">Invoice</span>
+
+            {{-- ── Nomor Invoice — inline editable ─────────────────── --}}
+            <div class="d-flex align-items-center gap-1" id="nomor-display-wrap">
+                <span class="text-muted small" id="nomor-display">#{{ $invoice->invoice_number }}</span>
+                <button class="btn btn-link btn-sm p-0 ms-1 text-secondary" id="btn-edit-nomor"
+                        title="Edit nomor invoice">
+                    <i class="bi bi-pencil" style="font-size:.8rem;"></i>
+                </button>
+            </div>
+            <div class="d-none align-items-center gap-1" id="nomor-edit-wrap">
+                <input type="text" id="input-nomor-invoice"
+                       class="form-control form-control-sm"
+                       style="width:280px;font-size:.82rem;"
+                       value="{{ $invoice->invoice_number }}">
+                <button class="btn btn-success btn-sm py-0 px-2" id="btn-save-nomor" title="Simpan">
+                    <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-outline-secondary btn-sm py-0 px-2" id="btn-cancel-nomor" title="Batal">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('bendahara.payments.kolektif.invoice.pdf', $invoice) }}"
                target="_blank" class="btn btn-sm btn-outline-danger">
@@ -429,6 +452,14 @@
             </table>
         </div>
         @endif
+
+        @if($jumlahAng < 3 && $sisaTagihan > 0)
+        <div class="mt-3">
+            <button class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#modalAngsuran">
+                <i class="bi bi-plus-circle me-1"></i>Tambah Angsuran ke-{{ $jumlahAng + 1 }}
+            </button>
+        </div>
+        @endif
     </div>
 </div>
 
@@ -539,6 +570,7 @@
 
 @push('scripts')
 <script>
+// ── Hitung subtotal invoice (form edit) ──────────────────────────────────
 document.querySelectorAll('.harga-satuan').forEach(input => input.addEventListener('input', recalc));
 function recalc() {
     let grand = 0;
@@ -556,6 +588,7 @@ function recalc() {
 }
 recalc();
 
+// ── Zoom bukti bayar ─────────────────────────────────────────────────────
 function bukaZoomBukti(src, label, downloadUrl) {
     document.getElementById('zoomBuktiImg').src            = src;
     document.getElementById('zoomBuktiLabel').textContent  = label;
@@ -563,6 +596,85 @@ function bukaZoomBukti(src, label, downloadUrl) {
     bootstrap.Modal.getOrCreateInstance(
         document.getElementById('modalZoomBukti')
     ).show();
-}   
+}
+
+// ── Inline edit nomor invoice ─────────────────────────────────────────────
+const displayWrap  = document.getElementById('nomor-display-wrap');
+const editWrap     = document.getElementById('nomor-edit-wrap');
+const nomorDisplay = document.getElementById('nomor-display');
+const nomorInput   = document.getElementById('input-nomor-invoice');
+const breadcrumb   = document.getElementById('breadcrumb-nomor');
+
+document.getElementById('btn-edit-nomor').addEventListener('click', function () {
+    displayWrap.classList.add('d-none');
+    editWrap.classList.remove('d-none');
+    editWrap.classList.add('d-flex');
+    nomorInput.focus();
+    nomorInput.select();
+});
+
+document.getElementById('btn-cancel-nomor').addEventListener('click', cancelEdit);
+
+function cancelEdit() {
+    editWrap.classList.add('d-none');
+    editWrap.classList.remove('d-flex');
+    displayWrap.classList.remove('d-none');
+    nomorInput.value = nomorDisplay.textContent.replace(/^#/, '');
+}
+
+document.getElementById('btn-save-nomor').addEventListener('click', saveNomor);
+nomorInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') saveNomor();
+    if (e.key === 'Escape') cancelEdit();
+});
+
+function saveNomor() {
+    const newNomor = nomorInput.value.trim();
+    if (!newNomor) {
+        nomorInput.classList.add('is-invalid');
+        return;
+    }
+    nomorInput.classList.remove('is-invalid');
+
+    const btn = document.getElementById('btn-save-nomor');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('{{ route("bendahara.payments.kolektif.invoice.update-nomor", $invoice) }}', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+        },
+        body: JSON.stringify({ invoice_number: newNomor }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            nomorDisplay.textContent = '#' + data.invoice_number;
+            if (breadcrumb) breadcrumb.textContent = data.invoice_number;
+            cancelEdit();
+            // Toast sukses
+            showToast('Nomor invoice berhasil diperbarui.', 'success');
+        } else {
+            showToast(data.message ?? 'Gagal menyimpan nomor.', 'danger');
+        }
+    })
+    .catch(() => showToast('Terjadi kesalahan jaringan.', 'danger'))
+    .finally(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i>';
+    });
+}
+
+function showToast(msg, type) {
+    const t = document.createElement('div');
+    t.className = `toast align-items-center text-bg-${type} border-0 show`;
+    t.style.cssText = 'position:fixed;bottom:1.5rem;end:1.5rem;right:1.5rem;z-index:9999;min-width:250px;';
+    t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button></div>`;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
+}
 </script>
 @endpush

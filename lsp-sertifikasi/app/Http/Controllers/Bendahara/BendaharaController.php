@@ -703,4 +703,28 @@ class BendaharaController extends Controller
 
         return $pdf->download($filename);
     }
+
+        public function kolektifInvoiceUpdateNomor(Request $request, Invoice $invoice)
+    {
+        $request->validate([
+            'invoice_number' => [
+                'required',
+                'string',
+                'max:100',
+                \Illuminate\Validation\Rule::unique('invoices', 'invoice_number')
+                    ->ignore($invoice->id),
+            ],
+        ], [
+            'invoice_number.required' => 'Nomor invoice wajib diisi.',
+            'invoice_number.unique'   => 'Nomor invoice sudah digunakan oleh invoice lain.',
+        ]);
+ 
+        $invoice->update(['invoice_number' => $request->invoice_number]);
+ 
+        return response()->json([
+            'success'        => true,
+            'invoice_number' => $invoice->invoice_number,
+            'message'        => 'Nomor invoice berhasil diperbarui.',
+        ]);
+    }
 }

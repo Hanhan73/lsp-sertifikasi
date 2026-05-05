@@ -1169,4 +1169,53 @@ public function addParticipantToBatch(Request $request, string $batchId)
             ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
     }
 }
+
+public function removeParticipantFromBatch(Request $request, string $batchId, Asesmen $asesmen)
+{
+    $tuk = auth()->user()->tuk;
+
+    // Pastikan batch ini milik TUK ini
+    abort_if($asesmen->collective_batch_id !== $batchId || $asesmen->tuk_id !== $tuk->id, 403, 'Akses ditolak.');
+
+    // Jangan hapus kalau batch hanya tersisa 1 orang
+    $batchCount = Asesmen::where('collective_batch_id', $batchId)->count();
+    if ($batchCount <= 1) {
+        return redirect()->route('tuk.batch.detail', $batchId)
+            ->with('error', 'Tidak bisa menghapus peserta terakhir dalam batch.');
+    }
+
+    // Hanya boleh hapus jika status masih awal (belum diproses lebih lanjut)
+    $allowedStatuses = ['registered', 'data_completed'];
+    if (!in_array($asesmen->status, $allowedStatuses)) {
+        return redirect()->route('tuk.batch.detail', $batchId)
+            ->with('error', "Peserta {$asesmen->full_name} tidak bisa dihapus karena sudah dalam status: {$asesmen->status_label}.");
+    }
+
+    DB::beginTransaction();
+    try {
+        $name = $asesmen->full_name ?? $asesmen->user->name;
+        $user = $asesmen->user;
+
+        // Hapus asesmen
+        $asesmen->delete();
+
+        // Hapus user juga jika user ini tidak punya asesmen lain
+        // dan memang dibuat oleh TUK (kolektif)
+        if ($user && $user->asesmens()->count() === 0) {
+            $user->delete();
+        }
+
+        DB::commit();
+
+        return redirect()->route('tuk.batch.detail', $batchId)
+            ->with('success', "Peserta {$name} berhasil dihapus dari batch.");
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Remove Participant From Batch Error: ' . $e->getMessage());
+
+        return redirect()->route('tuk.batch.detail', $batchId)
+            ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+    }
+}
 }

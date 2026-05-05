@@ -168,11 +168,23 @@
                                         {{ $asesmen->status_label }}
                                     </span>
                                 </td>
-                                <td>
+                                <td class="d-flex gap-1">
                                     <a href="{{ route('tuk.asesi.show', $asesmen) }}"
                                         class="btn btn-sm btn-outline-primary" title="Lihat Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
+
+                                    @if(in_array($asesmen->status, ['registered', 'data_completed']))
+                                    <form method="POST"
+                                        action="{{ route('tuk.batch.remove-participant', [$batchId, $asesmen]) }}"
+                                        onsubmit="return confirm('Hapus {{ $asesmen->full_name ?? $asesmen->user->name }} dari batch ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus dari Batch">
+                                            <i class="bi bi-person-x"></i>
+                                        </button>
+                                    </form>
+                                    @endif
                                 </td>
                             </tr>
                             @endforeach

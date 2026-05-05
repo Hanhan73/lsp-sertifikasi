@@ -569,6 +569,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     });
 
     Route::post('/batch/{batchId}/add-participant', [TukController::class, 'addParticipantToBatch'])->name('batch.add-participant');
+    Route::delete('/batch/{batchId}/remove-participant/{asesmen}', [TukController::class, 'removeParticipantFromBatch'])->name('batch.remove-participant');
 
     Route::prefix('invoice-kolektif')->name('invoice-kolektif.')->group(function () {
         Route::get('/',                                  [TukAngsuranController::class, 'index'])->name('index');

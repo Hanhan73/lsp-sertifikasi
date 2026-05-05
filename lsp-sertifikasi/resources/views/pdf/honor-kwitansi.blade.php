@@ -210,10 +210,10 @@
                     }
                 );
 
-                $namaSekolah = ucwords(strtolower(implode(' ', $filtered)));
+                $namaSekolah = ucwords(strtoupper(implode(' ', $filtered)));
             } else {
                 // fallback jika format tidak standard
-                $namaSekolah = ucwords(strtolower(str_replace('-', ' ', $batchId)));
+                $namaSekolah = ucwords(strtoupper(str_replace('-', ' ', $batchId)));
             }
         }
 
@@ -278,9 +278,6 @@
                                             <td class="skema-col">{{ $row['skema'] }}</td>
                                             <td class="tgl-col">
                                                 {{ $row['tgl'] }}
-                                                @if($row['waktu'])
-                                                <div class="sub-info">{{ $row['waktu'] }}</div>
-                                                @endif
                                             </td>
                                             <td class="lok-col">{{ $row['namaSekolah'] }}</td>
                                             <td class="asesi-col">{{ $row['detail']->jumlah_asesi }}</td>

@@ -72,8 +72,8 @@ class HonorController extends Controller
         $path = storage_path('app/private/' . $honor->bukti_transfer_path);
         abort_unless(file_exists($path), 404, 'File tidak ditemukan.');
 
-        $ext     = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
-        $isImage = in_array($ext, ['jpg','jpeg','png']);
+        $ext      = strtolower(pathinfo($honor->bukti_transfer_path, PATHINFO_EXTENSION));
+        $isImage  = in_array($ext, ['jpg', 'jpeg', 'png']);
         $filename = $honor->bukti_transfer_name ?? 'bukti-honor.' . $ext;
 
         if ($request->boolean('download')) {
@@ -101,15 +101,18 @@ class HonorController extends Controller
             'asesor.user',
             'details.schedule.skema',
             'details.schedule.tuk',
+            'details.schedule.asesmens', // untuk nama sekolah dari collective_batch_id
         ]);
 
-        // TTD asesor dari profil user
+        // Dari sisi asesor selalu sudah dikonfirmasi (ada guard abort di atas)
+        $isDraft   = false;
         $ttdAsesor = Auth::user()->signature_image;
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.honor-kwitansi', [
             'honor'     => $honor,
+            'isDraft'   => $isDraft,
             'ttdAsesor' => $ttdAsesor,
-        ])->setPaper('A4', 'portrait');
+        ])->setPaper('A4', 'landscape');
 
         $filename = 'Kwitansi_Honor_' . str_replace('/', '-', $honor->nomor_kwitansi) . '.pdf';
 

@@ -1185,7 +1185,7 @@ public function removeParticipantFromBatch(Request $request, string $batchId, As
     }
 
     // Hanya boleh hapus jika status masih awal (belum diproses lebih lanjut)
-    $allowedStatuses = ['registered', 'data_completed'];
+    $allowedStatuses = ['registered', 'data_completed', 'pra_asesmen_started'];
     if (!in_array($asesmen->status, $allowedStatuses)) {
         return redirect()->route('tuk.batch.detail', $batchId)
             ->with('error', "Peserta {$asesmen->full_name} tidak bisa dihapus karena sudah dalam status: {$asesmen->status_label}.");

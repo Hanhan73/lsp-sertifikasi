@@ -174,7 +174,7 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
 
-                                    @if(in_array($asesmen->status, ['registered', 'data_completed']))
+                                    @if(in_array($asesmen->status, ['registered', 'data_completed', 'pra_asesmen_started']))
                                     <form method="POST"
                                         action="{{ route('tuk.batch.remove-participant', [$batchId, $asesmen]) }}"
                                         onsubmit="return confirm('Hapus {{ $asesmen->full_name ?? $asesmen->user->name }} dari batch ini?')">

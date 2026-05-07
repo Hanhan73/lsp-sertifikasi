@@ -4,40 +4,44 @@ namespace App\Console\Commands;
 
 use App\Models\JournalEntry;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\JournalService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Auth;
 
 /**
- * BackfillPaymentJournals
- *
- * Buat jurnal yang hilang untuk pembayaran mandiri yang sudah diverifikasi
- * tapi tidak punya journal_entry.
- *
- * Cara pakai (SSH ke server Hostinger):
+ * Cara pakai:
+ *   php artisan journal:backfill-payments --dry-run
  *   php artisan journal:backfill-payments
- *   php artisan journal:backfill-payments --dry-run   (preview saja, tidak simpan)
- *   php artisan journal:backfill-payments --id=14     (satu payment saja)
+ *   php artisan journal:backfill-payments --id=14
  */
 class BackfillPaymentJournals extends Command
 {
     protected $signature   = 'journal:backfill-payments
-                                {--dry-run : Preview tanpa menyimpan ke database}
-                                {--id=     : Proses satu payment saja berdasarkan ID}';
+                                {--dry-run : Preview tanpa menyimpan}
+                                {--id=     : Proses satu payment saja}';
 
     protected $description = 'Buat journal_entry yang hilang untuk payment mandiri yang sudah verified';
 
     public function handle(JournalService $journalService): int
     {
-        $isDry = $this->option('dry-run');
+        $isDry  = $this->option('dry-run');
         $onlyId = $this->option('id');
 
-        $this->info($isDry
-            ? '🔍  DRY RUN — tidak ada data yang disimpan'
-            : '🚀  Memproses backfill jurnal...'
-        );
+        // Login sebagai bendahara/admin agar created_by tidak null
+        $actor = User::whereHas('roles', fn($q) => $q->whereIn('name', ['bendahara', 'admin']))->first()
+            ?? User::first();
+
+        if (! $actor) {
+            $this->error('Tidak ada user di database.');
+            return self::FAILURE;
+        }
+
+        Auth::login($actor);
+        $this->line("Menjalankan sebagai: {$actor->name} (ID: {$actor->id})");
+        $this->info($isDry ? '🔍 DRY RUN — tidak ada data yang disimpan' : '🚀 Memproses backfill...');
         $this->newLine();
 
-        // ── Cari payment yang belum punya jurnal pelunasan ──────────────────
         $query = Payment::with(['asesmen.skema'])
             ->where('status', 'verified')
             ->whereNotNull('verified_at');
@@ -46,27 +50,22 @@ class BackfillPaymentJournals extends Command
             $query->where('id', (int) $onlyId);
         }
 
-        $payments = $query->get()->filter(function (Payment $p) {
-            // Tidak punya jurnal pelunasan (ref_type = App\Models\Payment, tanpa suffix _piutang)
-            return ! JournalEntry::where('ref_type', Payment::class)
-                ->where('ref_id', $p->id)
-                ->exists();
-        });
+        $payments = $query->get()->filter(fn(Payment $p) =>
+            ! JournalEntry::where('ref_type', Payment::class)->where('ref_id', $p->id)->exists()
+        );
 
         if ($payments->isEmpty()) {
-            $this->info('✅  Semua payment sudah punya jurnal. Tidak ada yang perlu dibackfill.');
+            $this->info('✅ Semua payment sudah punya jurnal.');
             return self::SUCCESS;
         }
 
         $this->table(
-            ['ID', 'Asesmen ID', 'Nama Asesi', 'Amount', 'Verified At', 'Aksi'],
+            ['ID', 'Nama Asesi', 'Amount', 'Verified At'],
             $payments->map(fn($p) => [
                 $p->id,
-                $p->asesmen_id,
                 $p->asesmen->full_name ?? '-',
                 'Rp ' . number_format($p->amount, 0, ',', '.'),
                 $p->verified_at?->format('d/m/Y H:i'),
-                $isDry ? '[preview]' : 'akan dibuat',
             ])
         );
 
@@ -87,19 +86,18 @@ class BackfillPaymentJournals extends Command
 
         foreach ($payments as $payment) {
             $label = "Payment #{$payment->id} ({$payment->asesmen->full_name})";
-
             try {
-                // 1. Buat jurnal piutang jika belum ada
+                // 1. Jurnal piutang (jika belum ada)
                 $piutangKey = Payment::class . '_piutang';
                 if (! JournalEntry::existsFor($piutangKey, $payment->id)) {
-                    $journalService->jurnalPiutangAsesi($payment);
+                    $journalService->jurnalPiutangAsesi($payment->fresh(['asesmen.skema']));
                     $this->line("  ✔ {$label} — jurnal piutang dibuat");
                 } else {
                     $this->line("  – {$label} — jurnal piutang sudah ada, dilewati");
                 }
 
-                // 2. Buat jurnal pelunasan (kas masuk)
-                $journalService->jurnalPiutangLunas($payment);
+                // 2. Jurnal pelunasan
+                $journalService->jurnalPiutangLunas($payment->fresh(['asesmen.skema']));
                 $this->info("  ✔ {$label} — jurnal pelunasan dibuat");
 
                 $success++;
@@ -111,7 +109,6 @@ class BackfillPaymentJournals extends Command
 
         $this->newLine();
         $this->info("Selesai. Berhasil: {$success} | Gagal: {$failed}");
-
         return $failed > 0 ? self::FAILURE : self::SUCCESS;
     }
 }

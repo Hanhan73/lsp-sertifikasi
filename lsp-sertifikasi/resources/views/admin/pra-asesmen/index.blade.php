@@ -524,7 +524,7 @@ $totalBatches = $batches->count();
 
                             {{-- Aksi --}}
                             <td class="text-center" onclick="event.stopPropagation()">
-                                @if($asesi->status === 'verified' && !$asesi->admin_started_at)
+                                @if($asesi->status === 'paid' && !$asesi->admin_started_at)
                                 @if($canStart)
                                 <button class="btn btn-sm btn-success"
                                     onclick="confirmStartSingle({{ $asesi->id }}, '{{ addslashes($asesi->full_name) }}')">

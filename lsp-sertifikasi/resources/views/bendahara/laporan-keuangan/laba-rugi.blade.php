@@ -100,7 +100,7 @@
             </tr>
             <tr>
                 <td class="ps-4 text-success">Tambah: Piutang Asesi Belum Diterima</td>
-                <td class="text-end pe-3 text-success">+ Rp {{ number_format($summary['pendapatan'] > 0 ? $this->saldoAkun('1-003', $tahun) : 0,0,',','.') }}</td>
+                <td class="text-end pe-3 text-success">+ Rp {{ number_format($summary['pendapatan'] > 0 ? $piutangAsesi : 0,0,',','.') }}</td>
             </tr>
 
             @if(($summary['piutang_lainnya'] ?? 0) > 0)

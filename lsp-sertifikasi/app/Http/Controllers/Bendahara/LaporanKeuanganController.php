@@ -115,7 +115,7 @@ class LaporanKeuanganController extends Controller
             ->get();
 
         $bebanOpsDetail = BiayaOperasional::whereYear('tanggal', $tahun)->orderByDesc('total')->get();
-
+        $piutangAsesi   = $this->saldoAkun('1-003', $tahun);
         $pendapatanPerBulan = $this->saldoAkunPerBulan('4-001', $tahun);
         $honorPerBulan      = $this->saldoAkunPerBulan('5-001', $tahun);
         $opsPerBulan        = $this->saldoAkunPerBulan('5-002', $tahun);
@@ -131,7 +131,7 @@ class LaporanKeuanganController extends Controller
             'tahun', 'tahunList', 'balance', 'summary',
             'pendapatanSkema', 'bebanOpsDetail',
             'pendapatanPerBulan', 'honorPerBulan', 'opsPerBulan',
-            'pendapatanLuarDetail', 'piutangLainnyaDetail'
+            'pendapatanLuarDetail', 'piutangLainnyaDetail', 'piutangAsesi'
         ));
     }
     // ── Neraca — dari jurnal + manual ─────────────────────────────────────

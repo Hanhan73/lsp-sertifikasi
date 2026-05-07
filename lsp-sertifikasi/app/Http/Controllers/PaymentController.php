@@ -41,21 +41,20 @@ class PaymentController extends Controller
     /**
      * Upload bukti pembayaran dari asesi.
      */
-     public function uploadBukti(Request $request)
+public function uploadBukti(Request $request)
     {
         $user    = auth()->user();
         $asesmen = Asesmen::with(['payment', 'skema'])
             ->where('user_id', $user->id)
             ->firstOrFail();
- 
+
         abort_if($asesmen->is_collective, 403);
- 
-        // Jangan bisa upload jika sudah di tahap pra-asesmen
+
         if (in_array($asesmen->status, ['pra_asesmen_started', 'scheduled', 'assessed', 'certified'])) {
             return redirect()->route('asesi.dashboard')
                 ->with('info', 'Pembayaran sudah selesai.');
         }
- 
+
         $request->validate([
             'proof'  => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'method' => 'required|in:transfer,qris',
@@ -65,11 +64,11 @@ class PaymentController extends Controller
             'proof.mimes'    => 'Format file harus JPG, PNG, atau PDF.',
             'proof.max'      => 'Ukuran file maksimal 5 MB.',
         ]);
- 
+
         $path = $request->file('proof')->store('uploads/payment-proofs', 'private');
- 
-        // Buat atau update payment record
-        Payment::updateOrCreate(
+
+        // ── FIX: simpan dulu, baru ambil hasil untuk jurnal ─────────────────
+        $payment = Payment::updateOrCreate(
             ['asesmen_id' => $asesmen->id, 'payment_phase' => 'full'],
             [
                 'amount'        => $asesmen->fee_amount,
@@ -80,23 +79,26 @@ class PaymentController extends Controller
                 'payment_phase' => 'full',
             ]
         );
- 
-            try {
-                if (!\App\Models\JournalEntry::existsFor(\App\Models\Payment::class . '_piutang', $payment->id)) {
-                    app(\App\Services\JournalService::class)
-                        ->jurnalPiutangAsesi($payment->fresh(['asesmen.skema']));
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Gagal buat jurnal piutang asesi: ' . $e->getMessage());
+
+        // Buat jurnal piutang asesi (hanya sekali, jika belum ada)
+        try {
+            $piutangKey = \App\Models\Payment::class . '_piutang';
+            if (! \App\Models\JournalEntry::existsFor($piutangKey, $payment->id)) {
+                app(\App\Services\JournalService::class)
+                    ->jurnalPiutangAsesi($payment->fresh(['asesmen.skema']));
             }
-        // Update status asesmen
+        } catch (\Exception $e) {
+            \Log::warning('Gagal buat jurnal piutang asesi: ' . $e->getMessage());
+        }
+
         $asesmen->update(['status' => 'payment_pending']);
- 
-        Log::info('[PAYMENT] Asesi upload bukti', [
+
+        \Log::info('[PAYMENT] Asesi upload bukti', [
             'asesmen_id' => $asesmen->id,
+            'payment_id' => $payment->id,
             'method'     => $request->method,
         ]);
- 
+
         return redirect()->route('asesi.payment.status')
             ->with('success', 'Bukti pembayaran berhasil diupload! Menunggu verifikasi bendahara.');
     }

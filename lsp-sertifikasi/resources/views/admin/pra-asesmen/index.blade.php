@@ -131,14 +131,15 @@
 
 {{-- ── Stats ── --}}
 <div class="row g-3 mb-4">
-    @php
-    $allAsesmens = $batches->flatten()->merge($mandiri);
-    $statWaiting = $allAsesmens->whereIn('status', ['data_completed','payment_pending'])->count();
-    $statStarted = $allAsesmens->whereIn('status',
+@php
+$allAsesmens = $batches->flatten()->merge($mandiri);
+$statWaiting = $batches->flatten()->whereIn('status', ['data_completed','payment_pending'])->count()
+             + $mandiri->where('status', 'verified')->filter(fn($a) => $a->payment?->status === 'verified')->count();
+$statStarted = $allAsesmens->whereIn('status',
     ['pra_asesmen_started','scheduled','pre_assessment_completed'])->count();
-    $statAssessed = $allAsesmens->where('status','assessed')->count();
-    $totalBatches = $batches->count();
-    @endphp
+$statAssessed = $allAsesmens->where('status','assessed')->count();
+$totalBatches = $batches->count();
+@endphp
     <div class="col-6 col-md-3">
         <div class="stat-chip">
             <div class="icon-wrap bg-warning bg-opacity-10"><i class="bi bi-hourglass-split text-warning"></i></div>
@@ -422,13 +423,13 @@
                         @php
                         $payment = $asesi->payment;
                         $payVerified = $payment && $payment->status === 'verified';
-                        $payPending = $payment && $payment->status === 'pending';
+                        $payPending  = $payment && $payment->status === 'pending';
                         $payRejected = $payment && $payment->status === 'rejected';
-                        $canStart = $payVerified; // mandiri wajib bayar dulu
+                        $canStart    = $asesi->status === 'verified' && $payVerified;
 
                         $hasUrgent = $asesi->aplsatu?->status === 'submitted'
-                        || $asesi->apldua?->status === 'submitted'
-                        || $asesi->frak04?->status === 'submitted';
+                            || $asesi->apldua?->status === 'submitted'
+                            || $asesi->frak04?->status === 'submitted';
                         @endphp
                         <tr class="asesi-row {{ $hasUrgent ? 'table-warning' : '' }}"
                             onclick="window.location='{{ route('admin.asesi.show', $asesi) }}'">
@@ -439,7 +440,7 @@
                             <td>
                                 <div class="fw-semibold">{{ $asesi->full_name }}</div>
                                 <div class="text-muted small">{{ $asesi->user->email ?? '-' }}</div>
-                                @if(!$payVerified && in_array($asesi->status, ['data_completed','payment_pending']))
+                                @if(!$payVerified && $asesi->status === 'verified')
                                 <span style="font-size:.65rem;" class="text-danger">
                                     <i class="bi bi-cash-coin"></i>
                                     @if($payPending) Menunggu verifikasi bendahara
@@ -523,7 +524,7 @@
 
                             {{-- Aksi --}}
                             <td class="text-center" onclick="event.stopPropagation()">
-                                @if(in_array($asesi->status, ['data_completed','payment_pending']))
+                                @if($asesi->status === 'verified' && !$asesi->admin_started_at)
                                 @if($canStart)
                                 <button class="btn btn-sm btn-success"
                                     onclick="confirmStartSingle({{ $asesi->id }}, '{{ addslashes($asesi->full_name) }}')">

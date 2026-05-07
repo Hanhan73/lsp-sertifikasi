@@ -20,7 +20,7 @@ $asesmen = auth()->user()->asesmen;
 
 {{-- ── Data Pribadi ── --}}
 @if(in_array($asesmen->status, ['registered', 'data_completed', 'pra_asesmen_started', 'scheduled',
-'pre_assessment_completed', 'assessed', 'certified']))
+'pre_assessment_completed', 'assessed', 'certified', 'verified']))
 <a href="{{ route('asesi.complete-data') }}"
     class="nav-link {{ $currentRoute == 'asesi.complete-data' ? 'active' : '' }}">
     <i class="bi bi-person-fill"></i>

@@ -425,7 +425,7 @@ $totalBatches = $batches->count();
                         $payVerified = $payment && $payment->status === 'verified';
                         $payPending  = $payment && $payment->status === 'pending';
                         $payRejected = $payment && $payment->status === 'rejected';
-                        $canStart    = $asesi->status === 'verified' && $payVerified;
+                        $canStart    = $asesi->status === 'paid' && $payVerified;
 
                         $hasUrgent = $asesi->aplsatu?->status === 'submitted'
                             || $asesi->apldua?->status === 'submitted'

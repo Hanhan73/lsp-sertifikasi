@@ -201,6 +201,8 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
             $progress = match($asesmen->status) {
             'registered' => 10,
             'data_completed' => 25,
+            'payment_pending' => 30,
+            'verified' => 35,
             'pra_asesmen_started' => 40,
             'scheduled' => 55,
             'pre_assessment_completed' => 70,

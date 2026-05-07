@@ -1235,4 +1235,66 @@ public function pdfBeritaAcara(Schedule $schedule): \Illuminate\Http\Response
 
     return $pdf->stream($filename);
 }
+
+// =========================================================================
+// KISI-KISI PORTOFOLIO — upload, download, hapus
+// =========================================================================
+
+public function uploadKisiKisiPortofolio(Request $request, Schedule $schedule, Portofolio $portofolio): RedirectResponse
+{
+    $request->validate([
+        'file' => 'required|file|mimes:xlsx,xlsm,xls,pdf,doc,docx|max:20480',
+    ]);
+
+    $dist = DistribusiPortofolio::where([
+        'schedule_id'   => $schedule->id,
+        'portofolio_id' => $portofolio->id,
+    ])->firstOrFail();
+
+    if ($dist->kisi_kisi_path && Storage::disk('private')->exists($dist->kisi_kisi_path)) {
+        Storage::disk('private')->delete($dist->kisi_kisi_path);
+    }
+
+    $file = $request->file('file');
+    $path = $file->store("kisi-kisi/portofolio/{$schedule->id}", 'private');
+
+    $dist->update([
+        'kisi_kisi_path' => $path,
+        'kisi_kisi_name' => $file->getClientOriginalName(),
+    ]);
+
+    return back()->with('success', "Kisi-kisi '{$portofolio->judul}' berhasil diupload.");
+}
+
+public function downloadKisiKisiPortofolio(Schedule $schedule, Portofolio $portofolio)
+{
+    $dist = DistribusiPortofolio::where([
+        'schedule_id'   => $schedule->id,
+        'portofolio_id' => $portofolio->id,
+    ])->firstOrFail();
+
+    abort_unless(
+        $dist->kisi_kisi_path && Storage::disk('private')->exists($dist->kisi_kisi_path),
+        404,
+        'Kisi-kisi portofolio belum diupload atau file tidak ditemukan.'
+    );
+
+    return Storage::disk('private')->download($dist->kisi_kisi_path, $dist->kisi_kisi_name);
+}
+
+public function hapusKisiKisiPortofolio(Schedule $schedule, Portofolio $portofolio): RedirectResponse
+{
+    $dist = DistribusiPortofolio::where([
+        'schedule_id'   => $schedule->id,
+        'portofolio_id' => $portofolio->id,
+    ])->firstOrFail();
+
+    if ($dist->kisi_kisi_path && Storage::disk('private')->exists($dist->kisi_kisi_path)) {
+        Storage::disk('private')->delete($dist->kisi_kisi_path);
+    }
+
+    $dist->update(['kisi_kisi_path' => null, 'kisi_kisi_name' => null]);
+
+    return back()->with('success', "Kisi-kisi '{$portofolio->judul}' berhasil dihapus.");
+}
 }

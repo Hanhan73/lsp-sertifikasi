@@ -584,13 +584,20 @@
                                 $sudah = $distribusiPortofolioIds->contains($porto->id);
                             @endphp
 
+@php
+                                $distRecord  = $schedule->distribusiPortofolio->firstWhere('portofolio_id', $porto->id);
+                                $hasKisiKisi = $distRecord && $distRecord->kisi_kisi_path
+                                              && Storage::disk('private')->exists($distRecord->kisi_kisi_path);
+                                $hasForm     = $distRecord && $distRecord->form_penilaian_path
+                                              && Storage::disk('private')->exists($distRecord->form_penilaian_path);
+                            @endphp
+
                             <div class="border rounded-3 overflow-hidden {{ $sudah ? 'border-success' : '' }}">
 
-                                {{-- Header --}}
+                                {{-- ── HEADER ── --}}
                                 <div class="d-flex align-items-center justify-content-between px-3 py-3
                                             {{ $sudah ? 'bg-success-subtle' : 'bg-light' }}">
                                     <div class="d-flex align-items-center gap-3">
-                                        {{-- Icon file --}}
                                         <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
                                              style="width:42px;height:42px;background:{{ $sudah ? '#dcfce7' : '#f5f3ff' }}">
                                             <i class="bi bi-{{ $porto->hasFile() ? 'file-earmark-excel-fill' : 'file-earmark-text' }}"
@@ -616,30 +623,17 @@
                                             <span class="badge bg-success px-3 py-2">
                                                 <i class="bi bi-check-lg me-1"></i>Terdistribusi
                                             </span>
-
-                                            {{-- Download file jika ada --}}
-                                            @if($porto->hasFile())
-                                            <a href="{{ route('manajer-sertifikasi.bank-soal.portofolio.download', [$schedule->skema, $porto]) }}"
-                                               class="btn btn-sm btn-outline-primary" title="Download form penilaian">
-                                                <i class="bi bi-download"></i>
-                                            </a>
-                                            @endif
-
-                                            {{-- Hapus distribusi — POST ke hapusDistribusiPortofolio --}}
                                             <form method="POST"
                                                   action="{{ route('manajer-sertifikasi.portofolio.distribusi.hapus') }}"
                                                   onsubmit="return confirm('Hapus distribusi portofolio \'{{ addslashes($porto->judul) }}\' dari jadwal ini?')">
-                                                @csrf
-                                                @method('DELETE')
+                                                @csrf @method('DELETE')
                                                 <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                                 <input type="hidden" name="portofolio_id" value="{{ $porto->id }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                                     <i class="bi bi-trash3"></i>
                                                 </button>
                                             </form>
-
                                         @else
-                                            {{-- Distribusikan --}}
                                             <form method="POST"
                                                   action="{{ route('manajer-sertifikasi.portofolio.distribusi') }}">
                                                 @csrf
@@ -652,6 +646,125 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                {{-- ── KISI-KISI — hanya tampil jika sudah didistribusikan ── --}}
+                                @if($sudah)
+                                <div class="border-top px-3 py-2 {{ $hasKisiKisi ? 'bg-warning-subtle' : 'bg-white' }}">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold small">
+                                                <i class="bi bi-list-check me-1 {{ $hasKisiKisi ? 'text-warning' : 'text-muted' }}"></i>
+                                                Kisi-Kisi / Soal
+                                                @if(!$hasKisiKisi)
+                                                <span class="badge bg-warning ms-1" style="font-size:.65rem;">Belum diupload</span>
+                                                @endif
+                                            </div>
+                                            @if($hasKisiKisi)
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                <i class="bi bi-paperclip me-1"></i>{{ $distRecord->kisi_kisi_name }}
+                                            </div>
+                                            @else
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                File kisi-kisi/soal portofolio yang akan diakses asesor
+                                            </div>
+                                            @endif
+                                        </div>
+                                        @if($hasKisiKisi)
+                                        <a href="{{ route('manajer-sertifikasi.jadwal.portofolio.kisi-kisi.download', [$schedule, $porto]) }}"
+                                           class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <form method="POST"
+                                              action="{{ route('manajer-sertifikasi.jadwal.portofolio.kisi-kisi.hapus', [$schedule, $porto]) }}"
+                                              onsubmit="return confirm('Hapus kisi-kisi ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <button class="btn btn-sm {{ $hasKisiKisi ? 'btn-outline-secondary' : 'btn-outline-warning' }}"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#uploadKisiKisi{{ $porto->id }}">
+                                            <i class="bi bi-upload me-1"></i>{{ $hasKisiKisi ? 'Ganti' : 'Upload' }}
+                                        </button>
+                                    </div>
+                                    <div class="collapse mt-2" id="uploadKisiKisi{{ $porto->id }}">
+                                        <form method="POST"
+                                              action="{{ route('manajer-sertifikasi.jadwal.portofolio.kisi-kisi.upload', [$schedule, $porto]) }}"
+                                              enctype="multipart/form-data">
+                                            @csrf
+                                            <div class="d-flex gap-2">
+                                                <input type="file" name="file" class="form-control form-control-sm"
+                                                       accept=".xlsx,.xlsm,.xls,.pdf,.doc,.docx" required>
+                                                <button type="submit" class="btn btn-warning btn-sm flex-shrink-0">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Excel / PDF / Word · Maks. 20 MB</div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                {{-- ── FORM PENILAIAN ── --}}
+                                <div class="border-top px-3 py-2 {{ $hasForm ? 'bg-primary-subtle' : 'bg-white' }}">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="flex-grow-1">
+                                            <div class="fw-semibold small">
+                                                <i class="bi bi-clipboard2-check me-1 {{ $hasForm ? 'text-primary' : 'text-muted' }}"></i>
+                                                Form Penilaian
+                                                @if(!$hasForm)
+                                                <span class="badge bg-warning ms-1" style="font-size:.65rem;">Belum diupload</span>
+                                                @endif
+                                            </div>
+                                            @if($hasForm)
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>
+                                                {{ $distRecord->form_penilaian_name }}
+                                            </div>
+                                            @else
+                                            <div class="text-muted" style="font-size:.75rem;">
+                                                Template Excel penilaian (.xlsx/.xlsm) yang akan didownload asesor
+                                            </div>
+                                            @endif
+                                        </div>
+                                        @if($hasForm)
+                                        <a href="{{ route('manajer-sertifikasi.jadwal.portofolio.form-penilaian.download', [$schedule, $porto]) }}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                        <form method="POST"
+                                              action="{{ route('manajer-sertifikasi.jadwal.portofolio.form-penilaian.hapus', [$schedule, $porto]) }}"
+                                              onsubmit="return confirm('Hapus form penilaian ini?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-trash3"></i>
+                                            </button>
+                                        </form>
+                                        @endif
+                                        <button class="btn btn-sm {{ $hasForm ? 'btn-outline-secondary' : 'btn-outline-primary' }}"
+                                                data-bs-toggle="collapse"
+                                                data-bs-target="#uploadFormPenilaian{{ $porto->id }}">
+                                            <i class="bi bi-upload me-1"></i>{{ $hasForm ? 'Ganti' : 'Upload' }}
+                                        </button>
+                                    </div>
+                                    <div class="collapse mt-2" id="uploadFormPenilaian{{ $porto->id }}">
+                                        <form method="POST"
+                                              action="{{ route('manajer-sertifikasi.jadwal.portofolio.form-penilaian.upload', [$schedule, $porto]) }}"
+                                              enctype="multipart/form-data">
+                                            @csrf
+                                            <div class="d-flex gap-2">
+                                                <input type="file" name="file" class="form-control form-control-sm"
+                                                       accept=".xlsx,.xlsm,.xls" required>
+                                                <button type="submit" class="btn btn-primary btn-sm flex-shrink-0">
+                                                    <i class="bi bi-upload"></i>
+                                                </button>
+                                            </div>
+                                            <div class="form-text">Excel (.xlsx / .xlsm / .xls) · Maks. 20 MB</div>
+                                        </form>
+                                    </div>
+                                </div>
+                                @endif
 
                             </div>
                             @endforeach

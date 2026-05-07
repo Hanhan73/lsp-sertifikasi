@@ -729,11 +729,23 @@
                                         </div>
                                         @endif
                                     </div>
-                                    <div class="d-flex gap-2 flex-shrink-0">
-                                        @if($porto->hasFile())
+                                    <div class="d-flex gap-2 flex-shrink-0 flex-wrap">
+                                        {{-- Kisi-Kisi: per-jadwal diutamakan, fallback ke bank soal --}}
+                                        @if($dist->kisi_kisi_path)
+                                        <a href="{{ route('asesor.jadwal.portofolio.kisi-kisi', [$schedule, $porto]) }}"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            <i class="bi bi-list-check me-1"></i>Kisi-Kisi
+                                        </a>
+                                        @elseif($porto->hasFile())
                                         <a href="{{ route('asesor.jadwal.template.portofolio', [$schedule, $porto]) }}"
                                            class="btn btn-sm btn-outline-secondary">
-                                            <i class="bi bi-file-earmark-arrow-down me-1"></i>Template
+                                            <i class="bi bi-list-check me-1"></i>Kisi-Kisi
+                                        </a>
+                                        @endif
+                                        @if($dist->form_penilaian_path)
+                                        <a href="{{ route('asesor.jadwal.portofolio.form-penilaian', [$schedule, $porto]) }}"
+                                           class="btn btn-sm btn-outline-purple" style="border-color:#7c3aed;color:#7c3aed">
+                                            <i class="bi bi-clipboard2-check me-1"></i>Form Penilaian
                                         </a>
                                         @endif
                                         @if($hasil)

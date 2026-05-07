@@ -659,10 +659,13 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/observasi/{soalObservasi}/form-penilaian', [HasilPenilaianController::class, 'downloadFormPenilaianObservasi'])->name('observasi.form-penilaian');
 
         // Hasil portofolio
-        Route::post('/portofolio/{portofolio}/upload',    [HasilPenilaianController::class, 'uploadPortofolio'])->name('portofolio.upload');
-        Route::delete('/portofolio/{portofolio}/hapus',   [HasilPenilaianController::class, 'hapusPortofolio'])->name('portofolio.hapus');
-        Route::get('/portofolio/{portofolio}/download',   [HasilPenilaianController::class, 'downloadPortofolio'])->name('portofolio.download');
-
+        Route::post('/portofolio/{portofolio}/upload',          [HasilPenilaianController::class, 'uploadPortofolio'])             ->name('portofolio.upload');
+        Route::delete('/portofolio/{portofolio}/hapus',         [HasilPenilaianController::class, 'hapusPortofolio'])              ->name('portofolio.hapus');
+        Route::get('/portofolio/{portofolio}/download',         [HasilPenilaianController::class, 'downloadPortofolio'])           ->name('portofolio.download');
+        Route::get('/portofolio/{portofolio}/form-penilaian',   [HasilPenilaianController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian');
+        Route::get('/portofolio/{portofolio}/kisi-kisi', [HasilPenilaianController::class, 'downloadKisiKisiPortofolio'])->name('portofolio.kisi-kisi');
+ // [BARU]
+        
         // Berita acara
         Route::get('/berita-acara',              [HasilPenilaianController::class, 'beritaAcara'])->name('berita-acara');
         Route::post('/berita-acara/simpan',      [HasilPenilaianController::class, 'simpanBeritaAcara'])->name('berita-acara.simpan');
@@ -883,7 +886,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::post('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'uploadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.upload');
             Route::delete('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianPortofolio'])->name('portofolio.form-penilaian.hapus');
             Route::get('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.download');
-
+            Route::post('/portofolio/{portofolio}/kisi-kisi',   [DistribusiSoalController::class, 'uploadKisiKisiPortofolio'])  ->name('portofolio.kisi-kisi.upload');
+            Route::get('/portofolio/{portofolio}/kisi-kisi',    [DistribusiSoalController::class, 'downloadKisiKisiPortofolio'])->name('portofolio.kisi-kisi.download');
+            Route::delete('/portofolio/{portofolio}/kisi-kisi', [DistribusiSoalController::class, 'hapusKisiKisiPortofolio'])   ->name('portofolio.kisi-kisi.hapus');
             Route::get('/berita-acara/pdf', [DistribusiSoalController::class, 'pdfBeritaAcara'])->name('berita-acara.pdf');
         });
 

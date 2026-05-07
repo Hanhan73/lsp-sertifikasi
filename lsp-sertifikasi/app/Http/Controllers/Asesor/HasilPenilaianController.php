@@ -266,6 +266,44 @@ class HasilPenilaianController extends Controller
         return response()->download($outputPath, $dist->form_penilaian_name)->deleteFileAfterSend();
     }
 
+    public function downloadFormPenilaianPortofolio(Schedule $schedule, Portofolio $portofolio)
+    {
+        $this->authorizeSchedule($schedule);
+
+        $dist = \App\Models\DistribusiPortofolio::where([
+            'schedule_id'   => $schedule->id,
+            'portofolio_id' => $portofolio->id,
+        ])->firstOrFail();
+
+        abort_unless(
+            $dist->form_penilaian_path && Storage::disk('private')->exists($dist->form_penilaian_path),
+            404, 'Form penilaian belum diupload oleh Manajer Sertifikasi.'
+        );
+
+        $ext     = strtolower(pathinfo($dist->form_penilaian_name, PATHINFO_EXTENSION));
+        $isExcel = in_array($ext, ['xlsx', 'xlsm', 'xls']);
+
+        if (!$isExcel) {
+            return Storage::disk('private')->download($dist->form_penilaian_path, $dist->form_penilaian_name);
+        }
+
+        $schedule->loadMissing('asesmens');
+        $names = $schedule->asesmens->pluck('full_name')->all();
+
+        $inputPath  = Storage::disk('private')->path($dist->form_penilaian_path);
+        $outputPath = sys_get_temp_dir() . '/' . uniqid('form_pen_porto_') . '.' . $ext;
+
+        $service = new \App\Services\ExcelService();
+        $ok      = $service->injectNamaAsesi($inputPath, $outputPath, $names);
+
+        if (!$ok || !file_exists($outputPath)) {
+            \Log::warning('[FormPenilaianPortofolio] Inject gagal, fallback ke file asli: ' . $dist->form_penilaian_name);
+            return Storage::disk('private')->download($dist->form_penilaian_path, $dist->form_penilaian_name);
+        }
+
+        return response()->download($outputPath, $dist->form_penilaian_name)->deleteFileAfterSend();
+    }
+
     // =========================================================================
     // BERITA ACARA
     // =========================================================================
@@ -634,5 +672,22 @@ class HasilPenilaianController extends Controller
             'success' => true,
             'message' => "Submit ujian {$asesmen->full_name} berhasil direset. Asesi bisa submit ulang.",
         ]);
+    }
+
+    public function downloadKisiKisiPortofolio(Schedule $schedule, Portofolio $portofolio)
+    {
+        $this->authorizeSchedule($schedule);
+
+        $dist = \App\Models\DistribusiPortofolio::where([
+            'schedule_id'   => $schedule->id,
+            'portofolio_id' => $portofolio->id,
+        ])->firstOrFail();
+
+        abort_unless(
+            $dist->kisi_kisi_path && Storage::disk('private')->exists($dist->kisi_kisi_path),
+            404, 'Kisi-kisi belum diupload oleh Manajer Sertifikasi.'
+        );
+
+        return Storage::disk('private')->download($dist->kisi_kisi_path, $dist->kisi_kisi_name);
     }
 }

@@ -10,14 +10,18 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * Cara pakai:
+ * Cara pakai (SSH ke server):
  *   php artisan journal:backfill-payments --dry-run
  *   php artisan journal:backfill-payments
  *   php artisan journal:backfill-payments --id=14
+ *
+ * Setelah upload file ini ke app/Console/Commands/,
+ * daftarkan di app/Console/Kernel.php dalam array $commands:
+ *   \App\Console\Commands\BackfillPaymentJournals::class,
  */
 class BackfillPaymentJournals extends Command
 {
-    protected $signature   = 'journal:backfill-payments
+    protected $signature = 'journal:backfill-payments
                                 {--dry-run : Preview tanpa menyimpan}
                                 {--id=     : Proses satu payment saja}';
 
@@ -28,8 +32,8 @@ class BackfillPaymentJournals extends Command
         $isDry  = $this->option('dry-run');
         $onlyId = $this->option('id');
 
-        // Login sebagai bendahara/admin agar created_by tidak null
-        $actor = User::whereHas('roles', fn($q) => $q->whereIn('name', ['bendahara', 'admin']))->first()
+        // Sistem pakai kolom 'role' langsung, bukan relasi roles (bukan Spatie)
+        $actor = User::whereIn('role', ['bendahara', 'admin'])->first()
             ?? User::first();
 
         if (! $actor) {
@@ -38,7 +42,7 @@ class BackfillPaymentJournals extends Command
         }
 
         Auth::login($actor);
-        $this->line("Menjalankan sebagai: {$actor->name} (ID: {$actor->id})");
+        $this->line("Menjalankan sebagai: {$actor->name} (ID: {$actor->id}, role: {$actor->role})");
         $this->info($isDry ? '🔍 DRY RUN — tidak ada data yang disimpan' : '🚀 Memproses backfill...');
         $this->newLine();
 
@@ -55,7 +59,7 @@ class BackfillPaymentJournals extends Command
         );
 
         if ($payments->isEmpty()) {
-            $this->info('✅ Semua payment sudah punya jurnal.');
+            $this->info('✅ Semua payment sudah punya jurnal. Tidak ada yang perlu dibackfill.');
             return self::SUCCESS;
         }
 
@@ -96,7 +100,7 @@ class BackfillPaymentJournals extends Command
                     $this->line("  – {$label} — jurnal piutang sudah ada, dilewati");
                 }
 
-                // 2. Jurnal pelunasan
+                // 2. Jurnal pelunasan (kas masuk)
                 $journalService->jurnalPiutangLunas($payment->fresh(['asesmen.skema']));
                 $this->info("  ✔ {$label} — jurnal pelunasan dibuat");
 

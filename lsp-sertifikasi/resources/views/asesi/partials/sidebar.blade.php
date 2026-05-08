@@ -67,7 +67,7 @@ $asesmen = auth()->user()->asesmen;
 
 {{-- ── Fase Pra-Asesmen: sebelum dijadwalkan ── --}}
 {{-- Akses langsung ke dokumen karena belum ada hub jadwal --}}
-@if(in_array($asesmen->status, ['pra_asesmen_started', 'pra_asesmen_completed', 'asesmen_started', 'assessed']) && !$asesmen->schedule_id)
+@if(in_array($asesmen->status, ['pra_asesmen_started', 'pra_asesmen_completed', 'asesmen_started', 'assessed']))
 
 @php
 $aplStatus = $asesmen->aplsatu?->status;

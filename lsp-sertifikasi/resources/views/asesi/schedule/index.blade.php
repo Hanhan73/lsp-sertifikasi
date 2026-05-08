@@ -240,7 +240,7 @@
                     <i class="bi bi-chevron-right text-muted small"></i>
                 </a>
 
-                {{-- FR.AK.04 --}}
+{{-- FR.AK.04 --}}
                 <a href="{{ route('asesi.frak04') }}"
                    class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
                     <i class="bi {{ $frak04?->status === 'submitted' ? 'bi-megaphone-fill text-warning' : 'bi-megaphone text-muted' }} fs-5 flex-shrink-0"></i>
@@ -252,6 +252,24 @@
                     </div>
                     @if($frak04?->status === 'submitted')
                     <span class="badge bg-warning text-dark" style="font-size:.68rem;">Diajukan</span>
+                    @endif
+                    <i class="bi bi-chevron-right text-muted small"></i>
+                </a>
+
+                {{-- GDrive Ujikom / Portofolio --}}
+                @php $gdriveLink = $apldua?->gdrive_ujikom; @endphp
+                <a href="{{ route('asesi.ujikom.index') }}"
+                   class="list-group-item list-group-item-action d-flex align-items-center gap-3 px-4 py-3">
+                    <i class="bi {{ $gdriveLink ? 'bi-folder-check' : 'bi-folder2-open' }}
+                       {{ $gdriveLink ? 'text-success' : 'text-muted' }} fs-5 flex-shrink-0"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold small">Dok. Ujikom / Portofolio</div>
+                        <div class="text-muted" style="font-size:.78rem;">Link Google Drive dokumen portofolio</div>
+                    </div>
+                    @if($gdriveLink)
+                    <span class="badge bg-success" style="font-size:.68rem;"><i class="bi bi-check-lg me-1"></i>Sudah Diisi</span>
+                    @else
+                    <span class="badge bg-secondary" style="font-size:.68rem;">Belum Diisi</span>
                     @endif
                     <i class="bi bi-chevron-right text-muted small"></i>
                 </a>

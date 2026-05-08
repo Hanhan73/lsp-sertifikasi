@@ -402,14 +402,9 @@
             </div>
             @endif
 
-            </div>
-            @endif
-
             {{-- GDrive Portofolio — tampil jika tidak ada observasi --}}
             @if($distribusiObservasi->isEmpty())
-            @php
-                $gdriveLink = $asesmen->apldua?->gdrive_ujikom;
-            @endphp
+            @php $gdriveLink = $asesmen->apldua?->gdrive_ujikom; @endphp
             <div class="border rounded-3 p-3 d-flex align-items-center gap-3
                 {{ $gdriveLink ? 'border-success' : 'border-secondary' }}"
                 style="background:#f8fafc;">

@@ -405,6 +405,41 @@
             </div>
             @endif
 
+            {{-- GDrive Portofolio — tampil jika tidak ada observasi --}}
+            @if($distribusiObservasi->isEmpty())
+            @php
+                $gdriveLink = $asesmen->apldua?->gdrive_ujikom;
+            @endphp
+            <div class="border rounded-3 p-3 d-flex align-items-center gap-3
+                {{ $gdriveLink ? 'border-success' : 'border-secondary' }}"
+                style="background:#f8fafc;">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                    {{ $gdriveLink ? 'bg-success' : 'bg-secondary' }} text-white"
+                    style="width:44px;height:44px;">
+                    <i class="bi bi-{{ $gdriveLink ? 'check-lg' : 'folder2-open' }}"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold text-dark">Dokumen Portofolio</div>
+                    @if($gdriveLink)
+                    <div class="small">
+                        <a href="{{ $gdriveLink }}" target="_blank" class="text-success text-decoration-none">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Lihat di Google Drive
+                        </a>
+                    </div>
+                    @else
+                    <div class="small text-muted">Belum ada link Google Drive</div>
+                    @endif
+                </div>
+                <a href="{{ route('asesi.ujikom.index') }}"
+                   class="btn btn-sm {{ $gdriveLink ? 'btn-outline-success' : 'btn-outline-secondary' }} flex-shrink-0">
+                    {{ $gdriveLink ? 'Ganti' : 'Isi Link' }}
+                </a>
+            </div>
+            @endif
+
+            </div>
+            @endif
+
         </div>
     </div>
 

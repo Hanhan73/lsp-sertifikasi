@@ -369,8 +369,8 @@
                 <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
                 @endif
             </div>
-
-            {{-- Soal Observasi --}}
+            {{-- Soal Observasi — hanya tampil jika ada distribusi observasi --}}
+            @if($distribusiObservasi->isNotEmpty())
             <div class="border rounded-3 p-3 d-flex align-items-center gap-3
                 {{ $obsUpload > 0 && $obsUpload === $obsTotal ? 'border-success' : 'border-secondary' }}"
                 style="background:#f8fafc;">
@@ -393,13 +393,14 @@
                 </div>
                 @if($obsTotal > 0)
                 <a href="{{ route('asesi.soal.observasi.index') }}"
-                class="btn btn-sm {{ $obsUpload === $obsTotal ? 'btn-outline-success' : 'btn-outline-info' }} flex-shrink-0">
+                   class="btn btn-sm {{ $obsUpload === $obsTotal ? 'btn-outline-success' : 'btn-outline-info' }} flex-shrink-0">
                     <i class="bi bi-upload me-1"></i>{{ $obsUpload === $obsTotal ? 'Lihat' : 'Upload' }}
                 </a>
                 @else
                 <span class="badge bg-secondary flex-shrink-0">Menunggu</span>
                 @endif
             </div>
+            @endif
 
             </div>
             @endif

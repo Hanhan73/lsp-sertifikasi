@@ -378,10 +378,17 @@
                             <input type="text" name="uraian" class="form-control"
                                    placeholder="cth: Kasbon operasional, Pinjaman pribadi..." required>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Jumlah (Rp) <span class="text-danger">*</span></label>
-                            <input type="number" name="jumlah" class="form-control" min="1000" step="1000" required>
-                        </div>
+<div class="col-md-4">
+    <label class="form-label">Jumlah (Rp) <span class="text-danger">*</span></label>
+    <div class="input-group">
+        <span class="input-group-text">Rp</span>
+        <input type="text" id="inputJumlahPiutang"
+               class="form-control text-end font-monospace"
+               placeholder="1.000.000"
+               autocomplete="off">
+        <input type="hidden" name="jumlah" id="hiddenJumlahPiutang">
+    </div>
+</div>
                         <div class="col-md-4">
                             <label class="form-label">Tanggal <span class="text-danger">*</span></label>
                             <input type="date" name="tanggal" class="form-control"
@@ -546,5 +553,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+
+(function () {
+    const display = document.getElementById('inputJumlahHutang');
+    const hidden  = document.getElementById('hiddenJumlahHutang');
+    if (!display || !hidden) return;
+
+    function formatRupiah(val) {
+        const angka = val.replace(/\D/g, '');
+        return angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    display.addEventListener('input', function () {
+        const raw = this.value.replace(/\D/g, '');
+        this.value  = raw ? formatRupiah(raw) : '';
+        hidden.value = raw;
+    });
+
+    display.addEventListener('blur', function () {
+        if (!hidden.value) this.value = '';
+    });
+
+    // Tandai hidden sebagai required agar validasi tetap jalan
+    hidden.required = true;
+})();
 </script>
 @endpush

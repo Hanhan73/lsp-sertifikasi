@@ -277,7 +277,14 @@
                         {{-- Jumlah, Tanggal, Jatuh Tempo --}}
                         <div class="col-md-4">
                             <label class="form-label">Jumlah (Rp) <span class="text-danger">*</span></label>
-                            <input type="number" name="jumlah" class="form-control" min="1" required>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="text" id="inputJumlahPiutang"
+                                    class="form-control text-end font-monospace"
+                                    placeholder="1.000.000"
+                                    autocomplete="off">
+                                <input type="hidden" name="jumlah" id="hiddenJumlahPiutang">
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Tanggal <span class="text-danger">*</span></label>
@@ -401,6 +408,8 @@
 @endsection
 @push('scripts')
 <script>
+
+
 // ── Pihak: asesor vs lainnya ───────────────────────────────────────────────
 const radios       = document.querySelectorAll('input[name="_pihak_tipe"]');
 const wrapAsesor   = document.getElementById('wrapAsesor');
@@ -496,5 +505,29 @@ document.querySelectorAll('.btn-hapus-trigger').forEach(btn => {
         }).then(r => { if (r.isConfirmed) form.submit(); });
     });
 });
+
+// ── Format Rupiah input piutang ────────────────────────────────────────────
+(function () {
+    const display = document.getElementById('inputJumlahPiutang');
+    const hidden  = document.getElementById('hiddenJumlahPiutang');
+    if (!display || !hidden) return;
+
+    function formatRupiah(val) {
+        const angka = val.replace(/\D/g, '');
+        return angka.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    display.addEventListener('input', function () {
+        const raw = this.value.replace(/\D/g, '');
+        this.value   = raw ? formatRupiah(raw) : '';
+        hidden.value = raw;
+    });
+
+    display.addEventListener('blur', function () {
+        if (!hidden.value) this.value = '';
+    });
+
+    hidden.required = true;
+})();
 </script>
 @endpush

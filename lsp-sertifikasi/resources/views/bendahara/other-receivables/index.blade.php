@@ -399,7 +399,6 @@
 </div>
 
 @endsection
-
 @push('scripts')
 <script>
 // ── Pihak: asesor vs lainnya ───────────────────────────────────────────────
@@ -410,7 +409,6 @@ const selectAsesor = document.getElementById('selectAsesor');
 const hiddenNama   = document.getElementById('hiddenNamaPihak');
 const inputNama    = document.getElementById('inputNamaPihak');
 
-// Map asesor id → nama untuk hidden field
 const asesorMap = {
     @foreach($asesors as $a)
     {{ $a->id }}: "{{ addslashes($a->nama) }}",
@@ -424,37 +422,34 @@ radios.forEach(radio => {
         wrapNama.style.display   = isAsesor ? 'none'  : 'block';
         selectAsesor.required    = isAsesor;
         inputNama.required       = !isAsesor;
-        // Ganti name attribute agar tidak double submit
         if (isAsesor) {
-            hiddenNama.name  = 'nama_pihak';
-            inputNama.name   = '_nama_pihak_unused';
+            hiddenNama.name = 'nama_pihak';
+            inputNama.name  = '_nama_pihak_unused';
         } else {
-            hiddenNama.name  = '_asesor_nama_unused';
-            inputNama.name   = 'nama_pihak';
+            hiddenNama.name    = '_asesor_nama_unused';
+            inputNama.name     = 'nama_pihak';
             selectAsesor.value = '';
         }
     });
 });
 
-// Sync hidden nama saat asesor dipilih
 selectAsesor.addEventListener('change', function () {
     hiddenNama.value = asesorMap[this.value] ?? '';
 });
 
-// Init: asesor mode aktif default
-hiddenNama.name  = 'nama_pihak';
-inputNama.name   = '_nama_pihak_unused';
+hiddenNama.name       = 'nama_pihak';
+inputNama.name        = '_nama_pihak_unused';
 selectAsesor.required = true;
 
 // ── Jenis change ───────────────────────────────────────────────────────────
-const selectJenis   = document.getElementById('selectJenis');
-const wrapCoaLawan  = document.getElementById('wrapCoaLawan');
+const selectJenis    = document.getElementById('selectJenis');
+const wrapCoaLawan   = document.getElementById('wrapCoaLawan');
 const selectCoaLawan = document.getElementById('selectCoaLawan');
-const jenisHint     = document.getElementById('jenisHint');
+const jenisHint      = document.getElementById('jenisHint');
 
 selectJenis.addEventListener('change', function () {
     const isPinjaman = this.value === 'pinjaman';
-    jenisHint.textContent = isPinjaman
+    jenisHint.textContent      = isPinjaman
         ? 'Jurnal: Dr. Piutang / Cr. Kas-Bank (kas sudah keluar)'
         : 'Jurnal: Dr. Piutang / Cr. Akun Lawan pilihan';
     wrapCoaLawan.style.display = isPinjaman ? 'none' : 'block';
@@ -465,20 +460,21 @@ selectJenis.addEventListener('change', function () {
 // ── COA baru toggle ────────────────────────────────────────────────────────
 const selectCoa = document.getElementById('selectCoa');
 const coaBaru   = document.getElementById('coaBaru');
+
 selectCoa.addEventListener('change', function () {
     const isBaru = this.value === '__baru__';
     coaBaru.style.display = isBaru ? 'block' : 'none';
-    if (isBaru) this.value = '';
+    // Biarkan value '__baru__' tetap terpilih — controller handle via coa_baru_kode/nama
 });
 
 // ── Isi modal lunas ────────────────────────────────────────────────────────
 document.querySelectorAll('.btn-lunas').forEach(btn => {
     btn.addEventListener('click', function () {
         const sisa = this.dataset.sisa;
-        document.getElementById('lunasNama').textContent        = this.dataset.nama;
-        document.getElementById('inputJumlahLunas').value       = sisa;
-        document.getElementById('inputJumlahLunas').max         = sisa;
-        document.getElementById('lunasMaksimal').textContent    =
+        document.getElementById('lunasNama').textContent     = this.dataset.nama;
+        document.getElementById('inputJumlahLunas').value   = sisa;
+        document.getElementById('inputJumlahLunas').max     = sisa;
+        document.getElementById('lunasMaksimal').textContent =
             'Rp ' + parseInt(sisa).toLocaleString('id-ID');
         document.getElementById('formLunas').action =
             `/bendahara/piutang-lainnya/${this.dataset.id}/lunas`;

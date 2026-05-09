@@ -446,7 +446,10 @@ async function simpanNomor() {
     try {
         const res  = await fetch('{{ route("bendahara.honor.payment.nomor.update", $honor) }}', {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
             body: JSON.stringify({ nomor_kwitansi: nomor }),
         });
         const data = await res.json();
@@ -461,6 +464,7 @@ async function simpanNomor() {
         Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
     }
 }
+
 document.getElementById('inputNomorKwitansi')?.addEventListener('keydown', e => {
     if (e.key === 'Enter')  simpanNomor();
     if (e.key === 'Escape') toggleEditNomor();
@@ -480,7 +484,10 @@ function confirmReset(id) {
         if (!result.isConfirmed) return;
         fetch(`/bendahara/honor/payment/${id}/reset`, {
             method: 'POST',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
         })
         .then(r => r.json())
         .then(data => {
@@ -495,8 +502,20 @@ function confirmReset(id) {
     });
 }
 
-// ── Toggle deduction panel ─────────────────────────────────────────────────
+// ── COA baru toggle (modal tambah hutang) ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
+    const selectCoa = document.querySelector('#modalTambahHutang select[name="coa_id"]');
+    const coaBaru   = document.getElementById('coaBaruHutang');
+
+    if (selectCoa && coaBaru) {
+        selectCoa.addEventListener('change', function () {
+            const isBaru = this.value === '__baru__';
+            coaBaru.style.display = isBaru ? 'block' : 'none';
+            // Biarkan value '__baru__' tetap — controller handle via coa_baru_kode/nama
+        });
+    }
+
+    // ── Toggle deduction panel ─────────────────────────────────────────────
     document.querySelectorAll('[id^="deduction_receivable_id"]').forEach(function (select) {
         const panelId = select.id === 'deduction_receivable_id' ? 'deduction-panel' : 'deduction-panel-replace';
         const panel   = document.getElementById(panelId);
@@ -517,9 +536,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (amtEl) {
             const total = {{ $honor->total }};
             amtEl.addEventListener('input', function () {
-                const v   = parseFloat(this.value) || 0;
-                const trf = Math.max(0, total - v);
-                panel.querySelector('.preview-deduction')?.setAttribute && null;
+                const v          = parseFloat(this.value) || 0;
+                const trf        = Math.max(0, total - v);
                 const previewDed = panel.querySelector('.preview-deduction');
                 const previewTrf = panel.querySelector('.preview-transfer');
                 if (previewDed) previewDed.textContent = new Intl.NumberFormat('id-ID').format(v);

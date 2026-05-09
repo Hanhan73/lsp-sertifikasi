@@ -555,8 +555,8 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 (function () {
-    const display = document.getElementById('inputJumlahHutang');
-    const hidden  = document.getElementById('hiddenJumlahHutang');
+    const display = document.getElementById('inputJumlahPiutang');  // sesuai HTML
+    const hidden  = document.getElementById('hiddenJumlahPiutang'); // sesuai HTML
     if (!display || !hidden) return;
 
     function formatRupiah(val) {
@@ -565,8 +565,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     display.addEventListener('input', function () {
-        const raw = this.value.replace(/\D/g, '');
-        this.value  = raw ? formatRupiah(raw) : '';
+        const raw    = this.value.replace(/\D/g, '');
+        this.value   = raw ? formatRupiah(raw) : '';
         hidden.value = raw;
     });
 
@@ -574,7 +574,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!hidden.value) this.value = '';
     });
 
-    // Tandai hidden sebagai required agar validasi tetap jalan
     hidden.required = true;
 })();
 </script>

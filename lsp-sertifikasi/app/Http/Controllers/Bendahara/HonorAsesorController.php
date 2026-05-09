@@ -446,7 +446,7 @@ class HonorAsesorController extends Controller
             }
         }
 
-        // ── Generate kwitansi PDF via DomPDF ──────────────────────────────────
+        // Generate kwitansi PDF via DomPDF
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.honor-kwitansi', [
             'honor'     => $honor,
             'isDraft'   => $isDraft,
@@ -458,24 +458,23 @@ class HonorAsesorController extends Controller
             $filename = 'DRAFT_' . $filename;
         }
 
-        // ── Cek apakah ada bukti transfer yang bisa digabung ─────────────────
+        // Cek apakah bisa merge
         $buktiPath = $honor->bukti_transfer_path
             ? storage_path('app/private/' . $honor->bukti_transfer_path)
             : null;
 
-        $buktiExt = $buktiPath
-            ? strtolower(pathinfo($buktiPath, PATHINFO_EXTENSION))
-            : null;
+        // Cek FPDI tersedia — pakai try/catch, bukan ::class (throw error kalau belum install)
+        $fpdiAda = false;
+        try {
+            $fpdiAda = class_exists('setasign\Fpdi\Fpdi');
+        } catch (\Throwable $e) {
+            $fpdiAda = false;
+        }
 
-        // Gabungkan hanya kalau:
-        // - Sudah dikonfirmasi (kwitansi final)
-        // - Ada file bukti
-        // - File bukti ada di disk
-        // - FPDI library tersedia
         $shouldMerge = !$isDraft
             && $buktiPath
             && file_exists($buktiPath)
-            && class_exists(\setasign\Fpdi\Fpdi::class);
+            && $fpdiAda;
 
         if ($shouldMerge) {
             try {
@@ -495,13 +494,12 @@ class HonorAsesorController extends Controller
                     'Content-Disposition' => 'attachment; filename="' . $filename . '"',
                     'Content-Length'      => strlen($mergedPdf),
                 ]);
-            } catch (\Exception $e) {
-                \Log::warning('[PdfMerge] Gagal merge PDF, fallback ke kwitansi saja: ' . $e->getMessage());
-                // Fallback: return kwitansi saja tanpa bukti
+            } catch (\Throwable $e) {
+                \Log::warning('[PdfMerge] Gagal merge, fallback ke kwitansi saja: ' . $e->getMessage());
+                // Fallback: return kwitansi tanpa bukti
             }
         }
 
-        // Default: return kwitansi tanpa merge
         return request()->boolean('preview')
             ? $pdf->stream($filename)
             : $pdf->download($filename);

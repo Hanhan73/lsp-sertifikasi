@@ -7,11 +7,8 @@ use setasign\Fpdi\Fpdi;
 /**
  * PdfMergeService
  *
- * Menggabungkan 2 PDF:
- *   1. Kwitansi honor (generated oleh DomPDF, landscape A4)
- *   2. Bukti transfer (file upload dari bendahara)
- *
- * Requires: composer require setasign/fpdi
+ * Requires:
+ *   composer require setasign/fpdi setasign/fpdf
  */
 class PdfMergeService
 {
@@ -24,33 +21,29 @@ class PdfMergeService
      */
     public function mergeKwitansiDenganBukti(string $kwitansiPdfString, string $buktiFilePath): string
     {
-        // Simpan kwitansi ke temp file dulu (FPDI butuh path, bukan string)
+        // Simpan kwitansi ke temp file (FPDI butuh path)
         $tempKwitansi = tempnam(sys_get_temp_dir(), 'kwitansi_') . '.pdf';
         file_put_contents($tempKwitansi, $kwitansiPdfString);
 
         try {
-            $pdf = new Fpdi('L', 'mm', 'A4'); // landscape A4
+            $pdf = new Fpdi();
             $pdf->SetAutoPageBreak(false);
-            $pdf->setPrintHeader(false);
-            $pdf->setPrintFooter(false);
 
-            // ── Halaman 1+: semua halaman kwitansi ───────────────────────
-            $this->importAllPages($pdf, $tempKwitansi, 'L');
+            // ── Import semua halaman kwitansi ─────────────────────────────
+            $this->importAllPages($pdf, $tempKwitansi);
 
-            // ── Halaman bukti transfer ────────────────────────────────────
+            // ── Append bukti transfer ─────────────────────────────────────
             $ext = strtolower(pathinfo($buktiFilePath, PATHINFO_EXTENSION));
 
             if ($ext === 'pdf') {
-                // Import semua halaman PDF bukti
-                $this->importAllPages($pdf, $buktiFilePath, 'P'); // portrait untuk bukti
+                $this->importAllPages($pdf, $buktiFilePath);
             } elseif (in_array($ext, ['jpg', 'jpeg', 'png'])) {
-                // Embed gambar sebagai halaman baru
                 $this->addImagePage($pdf, $buktiFilePath, $ext);
             }
 
-            return $pdf->Output('S'); // S = return as string
+            // Output sebagai string
+            return $pdf->Output('S');
         } finally {
-            // Hapus temp file
             if (file_exists($tempKwitansi)) {
                 unlink($tempKwitansi);
             }
@@ -59,8 +52,9 @@ class PdfMergeService
 
     /**
      * Import semua halaman dari satu PDF ke FPDI instance.
+     * Deteksi orientasi otomatis dari ukuran halaman asli.
      */
-    private function importAllPages(Fpdi $pdf, string $filePath, string $orientation = 'L'): void
+    private function importAllPages(Fpdi $pdf, string $filePath): void
     {
         $pageCount = $pdf->setSourceFile($filePath);
 
@@ -68,34 +62,32 @@ class PdfMergeService
             $templateId = $pdf->importPage($i);
             $size       = $pdf->getTemplateSize($templateId);
 
-            // Deteksi orientasi dari ukuran halaman asli
+            // Deteksi orientasi
             $isLandscape = $size['width'] > $size['height'];
-            $pageOrient  = $isLandscape ? 'L' : 'P';
+            $orientation = $isLandscape ? 'L' : 'P';
 
-            $pdf->AddPage($pageOrient, [$size['width'], $size['height']]);
+            $pdf->AddPage($orientation, [$size['width'], $size['height']]);
             $pdf->useTemplate($templateId, 0, 0, $size['width'], $size['height']);
         }
     }
 
     /**
-     * Tambah halaman baru berisi gambar (JPG/PNG) full-page.
+     * Tambah halaman baru berisi gambar full-page (A4 portrait).
      */
     private function addImagePage(Fpdi $pdf, string $imagePath, string $ext): void
     {
-        // A4 portrait dalam mm: 210 x 297
         $pdf->AddPage('P', 'A4');
 
-        $pageW = $pdf->GetPageWidth();
-        $pageH = $pdf->GetPageHeight();
-        $margin = 10; // mm padding
+        $pageW  = $pdf->GetPageWidth();
+        $pageH  = $pdf->GetPageHeight();
+        $margin = 10; // mm
 
         $imgType = strtoupper($ext === 'jpg' ? 'JPEG' : $ext);
 
-        // Hitung dimensi proporsional
         [$imgW, $imgH] = getimagesize($imagePath);
-        $ratio   = $imgW / $imgH;
-        $maxW    = $pageW - ($margin * 2);
-        $maxH    = $pageH - ($margin * 2);
+        $ratio  = $imgW / $imgH;
+        $maxW   = $pageW - ($margin * 2);
+        $maxH   = $pageH - ($margin * 2);
 
         if ($imgW / $maxW > $imgH / $maxH) {
             $drawW = $maxW;

@@ -83,7 +83,6 @@
         font-size: 11pt;
     }
 
-    /* Tabel rincian jadwal */
     .detail-list {
         width: 100%;
         border-collapse: collapse;
@@ -106,13 +105,18 @@
         border-bottom: 1px solid #eee;
     }
 
-    .detail-list .no-col   { width: 20px; }
+    .detail-list .no-col    { width: 20px; }
     .detail-list .skema-col { width: 140px; }
-    .detail-list .tgl-col  { width: 90px; }
-    .detail-list .lok-col  { }
+    .detail-list .tgl-col   { width: 90px; }
+    .detail-list .lok-col   { }
     .detail-list .asesi-col { width: 40px; text-align: center; }
     .detail-list .honor-col { width: 90px; text-align: right; }
     .detail-list .sub-col   { width: 100px; text-align: right; font-weight: bold; }
+
+    .deduction-row {
+        background: #fff3cd;
+        font-size: 10pt;
+    }
 
     .footer-table {
         width: 100%;
@@ -157,37 +161,34 @@
         margin-top: 6px;
     }
 
-    .deduction-row {
-        background: #fff3cd;
-        font-size: 10pt;
-    }
-
     .bukti-judul {
         font-size: 13pt;
         font-weight: bold;
         margin-bottom: 16px;
     }
     </style>
+
     @if($isDraft)
-        <style>
-        .watermark-draft {
-            position: fixed;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-35deg);
-            font-size: 80px;
-            font-weight: 900;
-            color: rgba(200, 0, 0, 0.08);
-            letter-spacing: 8px;
-            white-space: nowrap;
-            z-index: 0;
-            pointer-events: none;
-        }
-        </style>
+    <style>
+    .watermark-draft {
+        position: fixed;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-35deg);
+        font-size: 80px;
+        font-weight: 900;
+        color: rgba(200, 0, 0, 0.08);
+        letter-spacing: 8px;
+        white-space: nowrap;
+        z-index: 0;
+        pointer-events: none;
+    }
+    </style>
     @endif
 </head>
 
 <body>
+
     @if($isDraft)
     <div class="watermark-draft">DRAFT</div>
     @endif
@@ -195,17 +196,17 @@
     @php
     $rows = [];
     foreach ($honor->details as $detail) {
-        $schedule = $detail->schedule;
-        $tgl      = optional($schedule->assessment_date)->translatedFormat('d F Y') ?? '-';
-        $skema    = $schedule->skema->name ?? '-';
-        $sub      = $detail->jumlah_asesi * $detail->honor_per_asesi;
-
+        $schedule    = $detail->schedule;
+        $tgl         = optional($schedule->assessment_date)->translatedFormat('d F Y') ?? '-';
+        $skema       = $schedule->skema->name ?? '-';
+        $sub         = $detail->jumlah_asesi * $detail->honor_per_asesi;
         $batchId     = $schedule->asesmens->first()?->collective_batch_id ?? '';
         $namaSekolah = '-';
+
         if ($batchId) {
             $parts = explode('-', $batchId);
             if (count($parts) > 2) {
-                $filtered = array_filter(
+                $filtered    = array_filter(
                     array_slice($parts, 0, count($parts) - 2),
                     fn($word) => strtoupper($word) !== 'TUK'
                 );
@@ -218,25 +219,42 @@
         $rows[] = compact('tgl', 'namaSekolah', 'skema', 'sub', 'detail');
     }
 
-    $hasBukti  = $honor->isDikonfirmasi() && $honor->bukti_transfer_path;
-    $hasDeduct = $honor->has_deduction ?? (!is_null($honor->deduction_amount) && $honor->deduction_amount > 0);
+    $hasDeduct = !is_null($honor->deduction_amount) && $honor->deduction_amount > 0;
 
-    // Jumlah yang ditampilkan di kotak utama:
-    // - Kalau ada potongan → tampilkan total honor dulu, lalu baris potongan, lalu bersih
-    // - Kalau tidak → tampilkan total honor
     $jumlahTerbilang = $hasDeduct
         ? (float) $honor->total - (float) $honor->deduction_amount
         : (float) $honor->total;
+
+    // Bukti hanya tampil di blade kalau:
+    // - Sudah dikonfirmasi
+    // - Ada file bukti
+    // - File-nya gambar (jpg/png) — karena DomPDF bisa render gambar
+    // - FPDI TIDAK tersedia (kalau FPDI ada, merge dilakukan di controller, bukan di sini)
+    $buktiPath   = $honor->bukti_transfer_path
+        ? storage_path('app/private/' . $honor->bukti_transfer_path)
+        : null;
+    $buktiExt    = $buktiPath ? strtolower(pathinfo($buktiPath, PATHINFO_EXTENSION)) : null;
+    $fpdiAda     = class_exists(\setasign\Fpdi\Fpdi::class);
+
+    // Tampilkan halaman bukti di DomPDF hanya kalau FPDI tidak ada
+    // (kalau FPDI ada, controller sudah merge via PdfMergeService)
+    $hasBuktiDomPdf = !$isDraft
+        && $buktiPath
+        && file_exists($buktiPath)
+        && !$fpdiAda;
     @endphp
 
-    <div class="{{ $hasBukti ? 'page' : 'page-last' }}">
+    {{-- ═══ HALAMAN KWITANSI ═══ --}}
+    <div class="{{ $hasBuktiDomPdf ? 'page' : 'page-last' }}">
         <div class="kwitansi-frame">
             <table class="main-table">
                 <tr>
                     {{-- LOGO --}}
                     <td class="col-logo">
                         @php $icon = public_path('images/icon-lsp.png'); @endphp
-                        @if(file_exists($icon))<img src="{{ $icon }}">@endif
+                        @if(file_exists($icon))
+                        <img src="{{ $icon }}">
+                        @endif
                     </td>
 
                     {{-- KONTEN --}}
@@ -261,7 +279,8 @@
                                     </span>
                                     @if($hasDeduct)
                                     <div style="font-size:8.5pt;color:#666;margin-top:3px;font-style:italic;">
-                                        (setelah potongan cicilan hutang Rp {{ number_format($honor->deduction_amount, 0, ',', '.') }}
+                                        (setelah potongan cicilan hutang
+                                        Rp {{ number_format($honor->deduction_amount, 0, ',', '.') }}
                                         dari total honor Rp {{ number_format($honor->total, 0, ',', '.') }})
                                     </div>
                                     @endif
@@ -283,6 +302,7 @@
                                             <th class="honor-col">Honor/Asesi</th>
                                             <th class="sub-col">Subtotal</th>
                                         </tr>
+
                                         @foreach($rows as $i => $row)
                                         <tr style="{{ $i % 2 === 1 ? 'background:#f9fbfd;' : '' }}">
                                             <td class="no-col">{{ $i + 1 }}.</td>
@@ -299,7 +319,7 @@
                                         </tr>
                                         @endforeach
 
-                                        {{-- Baris total honor --}}
+                                        {{-- Total honor --}}
                                         <tr style="border-top:2px solid #ccc;">
                                             <td colspan="6" style="text-align:right;padding:3px 4px;font-weight:bold;">
                                                 Total Honor
@@ -309,7 +329,7 @@
                                             </td>
                                         </tr>
 
-                                        {{-- Baris cicilan hutang (jika ada) --}}
+                                        {{-- Baris cicilan hutang --}}
                                         @if($hasDeduct)
                                         <tr class="deduction-row">
                                             <td colspan="6" style="text-align:right;padding:3px 4px;color:#dc3545;">
@@ -338,6 +358,7 @@
                                         </tr>
                                         @endif
                                         @endif
+
                                     </table>
                                 </td>
                             </tr>
@@ -365,39 +386,62 @@
                                             (Belum ditandatangani)
                                         </div>
                                     @elseif(!empty($ttdAsesor))
-                                    <img src="{{ $ttdAsesor }}" style="height:68px;margin:6px 0 2px;"><br>
+                                        <img src="{{ $ttdAsesor }}" style="height:68px;margin:6px 0 2px;"><br>
                                     @else
-                                    <div style="height:76px;"></div>
+                                        <div style="height:76px;"></div>
                                     @endif
                                     <div style="font-size:11pt;">{{ $honor->asesor->nama }}</div>
                                 </td>
                             </tr>
                         </table>
+
                     </td>
                 </tr>
             </table>
         </div>
     </div>
 
-    @if($hasBukti)
+    {{--
+        ═══ HALAMAN BUKTI (FALLBACK — hanya tampil kalau FPDI tidak terinstall) ═══
+
+        Kalau FPDI sudah terinstall:
+          → Controller (PdfMergeService) yang handle penggabungan
+          → Blok ini tidak akan pernah dirender ($hasBuktiDomPdf = false)
+
+        Kalau FPDI belum terinstall:
+          → Gambar (JPG/PNG): tampil langsung di sini via DomPDF
+          → PDF: tampil keterangan singkat (DomPDF tidak bisa embed PDF lain)
+    --}}
+    @if($hasBuktiDomPdf)
     <div class="page-last">
         <div class="bukti-judul">Bukti Pembayaran</div>
-        @php
-        $ext       = strtolower(pathinfo($honor->bukti_transfer_name ?? '', PATHINFO_EXTENSION));
-        $buktiFull = storage_path('app/private/' . $honor->bukti_transfer_path);
-        @endphp
 
         <table style="width:100%;border-collapse:collapse;">
             <tr>
                 <td style="width:60%;vertical-align:top;padding-right:20px;">
-                    @if(in_array($ext, ['jpg', 'jpeg', 'png']) && file_exists($buktiFull))
-                    <img src="{{ $buktiFull }}"
-                        style="max-width:100%;max-height:460px;width:auto;height:auto;display:block;">
-                    @elseif($ext === 'pdf')
-                    <p><em>Bukti transfer disimpan dalam format PDF.</em></p>
+
+                    @if(in_array($buktiExt, ['jpg', 'jpeg', 'png']))
+                    <img src="{{ $buktiPath }}"
+                         style="max-width:100%;max-height:460px;width:auto;height:auto;display:block;">
+
+                    @elseif($buktiExt === 'pdf')
+                    {{-- PDF tidak bisa dirender inline oleh DomPDF --}}
+                    <div style="border:1px dashed #ccc;padding:24px;text-align:center;border-radius:4px;background:#f8f9fa;">
+                        <div style="font-size:32pt;color:#dc3545;">&#128196;</div>
+                        <div style="font-size:11pt;font-weight:bold;margin-top:8px;">Bukti Transfer (PDF)</div>
+                        <div style="font-size:9pt;color:#666;margin-top:4px;">
+                            {{ $honor->bukti_transfer_name }}
+                        </div>
+                        <div style="font-size:8.5pt;color:#888;margin-top:8px;font-style:italic;">
+                            Install library <strong>setasign/fpdi</strong> agar bukti PDF
+                            dapat digabungkan otomatis ke dalam kwitansi ini.
+                        </div>
+                    </div>
+
                     @else
-                    <p><em>Bukti transfer tidak dapat ditampilkan.</em></p>
+                    <p style="color:#888;font-style:italic;">Bukti transfer tidak dapat ditampilkan.</p>
                     @endif
+
                 </td>
                 <td style="width:40%;text-align:center;vertical-align:bottom;">
                     <div style="font-size:11pt;margin-bottom:6px;">

@@ -117,7 +117,8 @@ class HonorPayment extends Model
      */
     public function getCanResetAttribute(): bool
     {
-        return $this->isMenunggu() && is_null($this->bukti_transfer_path);
+        return in_array($this->status, ['sudah_dibayar', 'dikonfirmasi'])
+            && !is_null($this->bukti_transfer_path);
     }
 
     /**

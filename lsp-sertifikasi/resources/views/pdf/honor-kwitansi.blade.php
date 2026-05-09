@@ -225,19 +225,22 @@
         ? (float) $honor->total - (float) $honor->deduction_amount
         : (float) $honor->total;
 
-    // Bukti hanya tampil di blade kalau:
-    // - Sudah dikonfirmasi
-    // - Ada file bukti
-    // - File-nya gambar (jpg/png) — karena DomPDF bisa render gambar
-    // - FPDI TIDAK tersedia (kalau FPDI ada, merge dilakukan di controller, bukan di sini)
-    $buktiPath   = $honor->bukti_transfer_path
+    // Path file bukti transfer
+    $buktiPath = $honor->bukti_transfer_path
         ? storage_path('app/private/' . $honor->bukti_transfer_path)
         : null;
-    $buktiExt    = $buktiPath ? strtolower(pathinfo($buktiPath, PATHINFO_EXTENSION)) : null;
-    $fpdiAda     = class_exists(\setasign\Fpdi\Fpdi::class);
+    $buktiExt  = $buktiPath ? strtolower(pathinfo($buktiPath, PATHINFO_EXTENSION)) : null;
 
-    // Tampilkan halaman bukti di DomPDF hanya kalau FPDI tidak ada
-    // (kalau FPDI ada, controller sudah merge via PdfMergeService)
+    // Cek FPDI tersedia — pakai try/catch agar aman kalau belum install
+    $fpdiAda = false;
+    try {
+        $fpdiAda = class_exists('setasign\Fpdi\Fpdi');
+    } catch (\Throwable $e) {
+        $fpdiAda = false;
+    }
+
+    // Tampilkan halaman bukti di DomPDF hanya kalau FPDI tidak ada.
+    // Kalau FPDI ada, PdfMergeService di controller yang handle penggabungan.
     $hasBuktiDomPdf = !$isDraft
         && $buktiPath
         && file_exists($buktiPath)
@@ -329,7 +332,7 @@
                                             </td>
                                         </tr>
 
-                                        {{-- Baris cicilan hutang --}}
+                                        {{-- Cicilan hutang --}}
                                         @if($hasDeduct)
                                         <tr class="deduction-row">
                                             <td colspan="6" style="text-align:right;padding:3px 4px;color:#dc3545;">
@@ -402,15 +405,9 @@
     </div>
 
     {{--
-        ═══ HALAMAN BUKTI (FALLBACK — hanya tampil kalau FPDI tidak terinstall) ═══
-
-        Kalau FPDI sudah terinstall:
-          → Controller (PdfMergeService) yang handle penggabungan
-          → Blok ini tidak akan pernah dirender ($hasBuktiDomPdf = false)
-
-        Kalau FPDI belum terinstall:
-          → Gambar (JPG/PNG): tampil langsung di sini via DomPDF
-          → PDF: tampil keterangan singkat (DomPDF tidak bisa embed PDF lain)
+        ═══ HALAMAN BUKTI — FALLBACK (hanya aktif kalau FPDI belum install) ═══
+        Setelah install FPDI: $hasBuktiDomPdf selalu false, blok ini tidak dirender.
+        Penggabungan dilakukan oleh PdfMergeService di controller.
     --}}
     @if($hasBuktiDomPdf)
     <div class="page-last">
@@ -419,19 +416,15 @@
         <table style="width:100%;border-collapse:collapse;">
             <tr>
                 <td style="width:60%;vertical-align:top;padding-right:20px;">
-
                     @if(in_array($buktiExt, ['jpg', 'jpeg', 'png']))
                     <img src="{{ $buktiPath }}"
                          style="max-width:100%;max-height:460px;width:auto;height:auto;display:block;">
 
                     @elseif($buktiExt === 'pdf')
-                    {{-- PDF tidak bisa dirender inline oleh DomPDF --}}
                     <div style="border:1px dashed #ccc;padding:24px;text-align:center;border-radius:4px;background:#f8f9fa;">
                         <div style="font-size:32pt;color:#dc3545;">&#128196;</div>
                         <div style="font-size:11pt;font-weight:bold;margin-top:8px;">Bukti Transfer (PDF)</div>
-                        <div style="font-size:9pt;color:#666;margin-top:4px;">
-                            {{ $honor->bukti_transfer_name }}
-                        </div>
+                        <div style="font-size:9pt;color:#666;margin-top:4px;">{{ $honor->bukti_transfer_name }}</div>
                         <div style="font-size:8.5pt;color:#888;margin-top:8px;font-style:italic;">
                             Install library <strong>setasign/fpdi</strong> agar bukti PDF
                             dapat digabungkan otomatis ke dalam kwitansi ini.
@@ -441,7 +434,6 @@
                     @else
                     <p style="color:#888;font-style:italic;">Bukti transfer tidak dapat ditampilkan.</p>
                     @endif
-
                 </td>
                 <td style="width:40%;text-align:center;vertical-align:bottom;">
                     <div style="font-size:11pt;margin-bottom:6px;">

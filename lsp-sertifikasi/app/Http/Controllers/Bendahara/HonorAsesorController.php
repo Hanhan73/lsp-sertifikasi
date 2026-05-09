@@ -230,8 +230,11 @@ class HonorAsesorController extends Controller
      */
     public function uploadBukti(Request $request, HonorPayment $honor)
     {
-        // Bisa upload kalau menunggu atau sudah_dibayar (ganti bukti)
-        abort_if($honor->isDikonfirmasi(), 422, 'Tidak dapat mengubah setelah dikonfirmasi asesor.');
+        // Hanya block kalau masih menunggu tapi tidak ada bukti (harusnya tidak mungkin terjadi)
+        // Semua status selain menunggu_pembayaran boleh ganti bukti
+        if ($honor->isMenunggu() && $honor->bukti_transfer_path) {
+            // edge case: menunggu tapi ada bukti — ini state invalid, izinkan saja
+        }
 
         $request->validate([
             'bukti_transfer'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -245,9 +248,9 @@ class HonorAsesorController extends Controller
             'deduction_amount.min'    => 'Nominal cicilan minimal Rp 1.000.',
         ]);
 
-        // Validasi deduction tidak melebihi sisa hutang
+        // Validasi deduction
         if ($request->filled('deduction_receivable_id') && $request->filled('deduction_amount')) {
-            $receivable = OtherReceivable::find($request->deduction_receivable_id);
+            $receivable = \App\Models\OtherReceivable::find($request->deduction_receivable_id);
             if ($receivable) {
                 if ($request->deduction_amount > $receivable->sisa) {
                     return back()->withErrors([
@@ -263,41 +266,44 @@ class HonorAsesorController extends Controller
             }
         }
 
-        DB::beginTransaction();
+        \DB::beginTransaction();
         try {
-            // Hapus file lama jika ada
+            // Hapus file lama
             if ($honor->bukti_transfer_path) {
-                Storage::disk('private')->delete($honor->bukti_transfer_path);
+                \Storage::disk('private')->delete($honor->bukti_transfer_path);
             }
 
             $file = $request->file('bukti_transfer');
             $path = $file->store("honor/bukti-transfer/{$honor->id}", 'private');
 
-            // Data update dasar
+            // Base update data
             $updateData = [
                 'bukti_transfer_path'     => $path,
                 'bukti_transfer_name'     => $file->getClientOriginalName(),
-                'status'                  => 'sudah_dibayar',
-                'dibayar_at'              => now(),
-                'dibayar_oleh'            => Auth::id(),
-                // Reset cicilan lama (akan diisi ulang jika ada)
                 'deduction_receivable_id' => null,
                 'deduction_amount'        => null,
                 'deduction_note'          => null,
             ];
 
-            // Simpan data cicilan jika diisi
+            // Kalau masih menunggu → ubah ke sudah_dibayar + catat waktu bayar
+            if ($honor->isMenunggu()) {
+                $updateData['status']      = 'sudah_dibayar';
+                $updateData['dibayar_at']  = now();
+                $updateData['dibayar_oleh'] = \Auth::id();
+            }
+            // Kalau sudah_dibayar atau dikonfirmasi → JANGAN ubah status
+            // Hanya update file bukti saja
+
+            // Simpan cicilan kalau diisi
             if ($request->filled('deduction_receivable_id') && $request->filled('deduction_amount')) {
                 $updateData['deduction_receivable_id'] = $request->deduction_receivable_id;
                 $updateData['deduction_amount']        = $request->deduction_amount;
                 $updateData['deduction_note']          = $request->deduction_note;
 
-                // Update OtherReceivable — tambah jumlah_lunas
-                $receivable = OtherReceivable::find($request->deduction_receivable_id);
+                $receivable = \App\Models\OtherReceivable::find($request->deduction_receivable_id);
                 if ($receivable) {
                     $newLunas = (float) ($receivable->jumlah_lunas ?? 0) + (float) $request->deduction_amount;
                     $sisa     = (float) $receivable->jumlah - $newLunas;
-
                     $receivable->update([
                         'jumlah_lunas'  => $newLunas,
                         'status'        => $sisa <= 0 ? 'lunas' : 'cicilan',
@@ -308,40 +314,42 @@ class HonorAsesorController extends Controller
 
             $honor->update($updateData);
 
-            // Jurnal hanya saat upload pertama (bukan ganti bukti)
-            if ($honor->wasRecentlyCreated || !$honor->getOriginal('dibayar_at')) {
+            // Jurnal hanya saat upload pertama
+            if ($honor->wasChanged('status') && $honor->status === 'sudah_dibayar') {
                 try {
-                    app(JournalService::class)->jurnalHonorDibayar($honor->fresh(['asesor']));
+                    app(\App\Services\JournalService::class)->jurnalHonorDibayar($honor->fresh(['asesor']));
                 } catch (\Exception $e) {
                     \Log::warning('Gagal buat jurnal honor dibayar: ' . $e->getMessage());
                 }
+
+                // Notifikasi ke asesor
+                if ($honor->asesor && method_exists($honor->asesor, 'notifications')) {
+                    $honor->asesor->notifications()->create([
+                        'type'    => 'honor_dibayar',
+                        'title'   => 'Honor Asesor Telah Ditransfer',
+                        'message' => 'Honor asesmen Anda sejumlah Rp ' . number_format($honor->total, 0, ',', '.') .
+                            ' telah ditransfer. Silakan konfirmasi penerimaan.',
+                        'data'    => json_encode(['honor_payment_id' => $honor->id]),
+                    ]);
+                }
             }
 
-            // Notifikasi ke asesor
-            if ($honor->asesor && method_exists($honor->asesor, 'notifications')) {
-                $honor->asesor->notifications()->create([
-                    'type'    => 'honor_dibayar',
-                    'title'   => 'Honor Asesor Telah Ditransfer',
-                    'message' => 'Honor asesmen Anda sejumlah Rp ' . number_format($honor->total, 0, ',', '.') .
-                        ' telah ditransfer. Silakan konfirmasi penerimaan.',
-                    'data'    => json_encode(['honor_payment_id' => $honor->id]),
-                ]);
-            }
+            \DB::commit();
 
-            DB::commit();
-
-            $isReplace = $honor->getOriginal('status') === 'sudah_dibayar';
-            $msg = $isReplace
-                ? 'Bukti transfer berhasil diganti.'
-                : 'Bukti transfer berhasil diupload. Notifikasi telah dikirim ke asesor.';
+            $msg = $honor->isDikonfirmasi()
+                ? 'Bukti transfer berhasil diperbarui.'
+                : ($honor->isMenunggu()
+                    ? 'Bukti transfer berhasil diupload.'
+                    : 'Bukti transfer berhasil diganti.');
 
             return back()->with('success', $msg);
         } catch (\Exception $e) {
-            DB::rollBack();
+            \DB::rollBack();
             \Log::error('[HonorAsesor][uploadBukti] ' . $e->getMessage());
             return back()->with('error', 'Gagal mengupload bukti transfer: ' . $e->getMessage());
         }
     }
+
 
     /**
      * Reset kwitansi — hanya boleh kalau belum ada bukti transfer.

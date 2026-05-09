@@ -288,7 +288,30 @@
                     <div class="text-muted small">Dikonfirmasi pada</div>
                     <div>{{ optional($honor->dikonfirmasi_at)->translatedFormat('d F Y, H:i') }}</div>
                 </div>
+
                 @include('bendahara.honor._bukti-preview', ['honor' => $honor])
+
+                {{-- Bendahara tetap bisa ganti bukti meski sudah dikonfirmasi --}}
+                <hr>
+                <p class="small fw-semibold mb-1">
+                    <i class="bi bi-arrow-repeat me-1"></i>Ganti bukti transfer:
+                </p>
+                <form action="{{ route('bendahara.honor.payment.bukti', $honor) }}" method="POST"
+                    enctype="multipart/form-data">
+                    @csrf
+                    @include('bendahara.honor._form-bukti', [
+                        'honor'        => $honor,
+                        'hutangAsesor' => $hutangAsesor,
+                        'isReplace'    => true,
+                    ])
+                </form>
+                <div class="mt-2 text-end">
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0"
+                            data-bs-toggle="modal" data-bs-target="#modalTambahHutang"
+                            style="font-size:.8rem;">
+                        <i class="bi bi-plus-circle me-1"></i>Tambah hutang baru
+                    </button>
+                </div>
                 @endif
 
             </div>
@@ -320,7 +343,8 @@
 </div>
 
 {{-- ── Modal Tambah Hutang Asesor ──────────────────────────────────────── --}}
-@if(!$honor->isDikonfirmasi())
+{{-- Modal tambah hutang tersedia di semua status --}}
+@if(true)
 <div class="modal fade" id="modalTambahHutang" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <form action="{{ route('bendahara.other-receivables.store') }}" method="POST"

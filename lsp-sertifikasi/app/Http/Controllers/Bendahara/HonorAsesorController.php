@@ -435,15 +435,7 @@ class HonorAsesorController extends Controller
 
         $ttdAsesor = null;
         if (!$isDraft) {
-            $ttdPath = $honor->asesor->user?->ttd_path ?? null;
-            if ($ttdPath) {
-                $fullPath = storage_path('app/private/' . $ttdPath);
-                if (file_exists($fullPath)) {
-                    $ext       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-                    $mime      = $ext === 'png' ? 'image/png' : 'image/jpeg';
-                    $ttdAsesor = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
-                }
-            }
+            $ttdAsesor = $honor->asesor->user?->signature_image ?? null;
         }
 
         // Generate kwitansi PDF via DomPDF

@@ -18,15 +18,21 @@ class HonorPayment extends Model
         'dibayar_oleh',
         'dikonfirmasi_at',
         'dibuat_oleh',
+        // Deduction (cicilan hutang)
+        'deduction_receivable_id',
+        'deduction_amount',
+        'deduction_note',
     ];
 
     protected $casts = [
-        'tanggal_kwitansi' => 'date',
-        'dibayar_at'       => 'datetime',
-        'dikonfirmasi_at'  => 'datetime',
+        'tanggal_kwitansi'  => 'date',
+        'dibayar_at'        => 'datetime',
+        'dikonfirmasi_at'   => 'datetime',
+        'total'             => 'decimal:2',
+        'deduction_amount'  => 'decimal:2',
     ];
 
-    // ── Relationships ──────────────────────────────────────────────────────
+    // ── Relations ──────────────────────────────────────────────────────────
 
     public function asesor()
     {
@@ -48,7 +54,12 @@ class HonorPayment extends Model
         return $this->belongsTo(User::class, 'dibayar_oleh');
     }
 
-    // ── Helpers ────────────────────────────────────────────────────────────
+    public function deductionReceivable()
+    {
+        return $this->belongsTo(OtherReceivable::class, 'deduction_receivable_id');
+    }
+
+    // ── Status helpers (dipakai di views dan controller) ───────────────────
 
     public function isMenunggu(): bool
     {
@@ -65,9 +76,23 @@ class HonorPayment extends Model
         return $this->status === 'dikonfirmasi';
     }
 
+    // ── Accessors ──────────────────────────────────────────────────────────
+
+    /** Jumlah bersih yang benar-benar ditransfer ke asesor setelah potong cicilan */
+    public function getJumlahTransferAttribute(): float
+    {
+        return (float) $this->total - (float) ($this->deduction_amount ?? 0);
+    }
+
+    /** Apakah ada potongan cicilan hutang */
+    public function getHasDeductionAttribute(): bool
+    {
+        return !is_null($this->deduction_amount) && $this->deduction_amount > 0;
+    }
+
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'menunggu_pembayaran' => 'Menunggu Pembayaran',
             'sudah_dibayar'       => 'Sudah Dibayar',
             'dikonfirmasi'        => 'Dikonfirmasi',
@@ -77,7 +102,7 @@ class HonorPayment extends Model
 
     public function getStatusBadgeAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'menunggu_pembayaran' => 'warning',
             'sudah_dibayar'       => 'info',
             'dikonfirmasi'        => 'success',
@@ -86,30 +111,40 @@ class HonorPayment extends Model
     }
 
     /**
-     * Generate nomor kwitansi otomatis.
-     * Format: 001/LSP-KAP/KEU.KK/IV/2026
+     * Kwitansi bisa di-reset hanya kalau:
+     * - Status masih menunggu_pembayaran
+     * - Belum ada bukti transfer diupload
      */
+    public function getCanResetAttribute(): bool
+    {
+        return $this->isMenunggu() && is_null($this->bukti_transfer_path);
+    }
+
+    /**
+     * Bukti bisa diganti kalau:
+     * - Sudah upload (sudah_dibayar) tapi asesor belum konfirmasi
+     */
+    public function getCanReplaceBuktiAttribute(): bool
+    {
+        return $this->isSudahDibayar() && !is_null($this->bukti_transfer_path);
+    }
+
+    /**
+     * Asesor bisa lihat kwitansi & nominal hanya setelah sudah_dibayar
+     */
+    public function getAsesorCanViewAttribute(): bool
+    {
+        return in_array($this->status, ['sudah_dibayar', 'dikonfirmasi']);
+    }
+
+    /** Auto-generate nomor kwitansi */
     public static function generateNomor(): string
     {
-        $bulanRomawi = [
-            1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI',
-            7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X', 11 => 'XI', 12 => 'XII',
-        ];
+        $bulan  = now()->format('m');
+        $tahun  = now()->format('Y');
+        $roman  = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][(int) $bulan];
+        $urutan = static::whereYear('created_at', $tahun)->whereMonth('created_at', $bulan)->count() + 1;
 
-        $tahun = now()->year;
-
-        // Ambil nomor urut tertinggi dari semua kwitansi tahun ini
-        $last = static::whereYear('created_at', $tahun)
-            ->orderByDesc('id')
-            ->value('nomor_kwitansi');
-
-        $urutan = 1;
-        if ($last && preg_match('/^(\d+)/', $last, $m)) {
-            $urutan = (int) $m[1] + 1;
-        }
-
-        $bulan = now()->month;
-
-        return sprintf('%03d/LSP-KAP/KEU.KK/%s/%d', $urutan, $bulanRomawi[$bulan], $tahun);
+        return sprintf('%03d/LSP-KAP/KEU.KK/%s/%s', $urutan, $roman, $tahun);
     }
 }

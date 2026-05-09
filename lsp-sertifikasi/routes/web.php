@@ -342,7 +342,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/',                            [AsesmenController::class, 'index'])->name('index');
         Route::get('/batch/{batchId}',             [AsesmenController::class, 'batchShow'])->name('batch.show');
         Route::get('/batch/{batchId}/export-blanko', [AsesmenController::class, 'exportBatchBlanko'])
-             ->name('batch.export-blanko');
+            ->name('batch.export-blanko');
         Route::get('/batch/{batchId}/export',      [AsesmenController::class, 'exportBatchBiodata'])->name('batch.export');
         Route::patch('/batch/{batchId}/rename',    [AsesmenController::class, 'renameBatch'])->name('batch.rename');
         Route::get('/export', [AsesmenController::class, 'exportAllBiodata'])->name('export');
@@ -383,33 +383,30 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::prefix('surat')->name('surat.')->group(function () {
         // Surat Masuk
         Route::prefix('masuk')->name('masuk.')->group(function () {
-            Route::get('/',                         [SuratController::class, 'masukIndex'])   ->name('index');
-            Route::get('/create',                   [SuratController::class, 'masukCreate'])  ->name('create');
-            Route::post('/',                        [SuratController::class, 'masukStore'])   ->name('store');
-                        Route::get('/rekap/export',       [SuratController::class, 'masukRekapExport'])      ->name('rekap.export');
-            Route::get('/rekap/export-bulan', [SuratController::class, 'masukRekapExportBulan']) ->name('rekap.export-bulan');
-            Route::get('/{suratMasuk}/edit',        [SuratController::class, 'masukEdit'])    ->name('edit');
-            Route::put('/{suratMasuk}',             [SuratController::class, 'masukUpdate'])  ->name('update');
-            Route::delete('/{suratMasuk}',          [SuratController::class, 'masukDestroy']) ->name('destroy');
+            Route::get('/',                         [SuratController::class, 'masukIndex'])->name('index');
+            Route::get('/create',                   [SuratController::class, 'masukCreate'])->name('create');
+            Route::post('/',                        [SuratController::class, 'masukStore'])->name('store');
+            Route::get('/rekap/export',       [SuratController::class, 'masukRekapExport'])->name('rekap.export');
+            Route::get('/rekap/export-bulan', [SuratController::class, 'masukRekapExportBulan'])->name('rekap.export-bulan');
+            Route::get('/{suratMasuk}/edit',        [SuratController::class, 'masukEdit'])->name('edit');
+            Route::put('/{suratMasuk}',             [SuratController::class, 'masukUpdate'])->name('update');
+            Route::delete('/{suratMasuk}',          [SuratController::class, 'masukDestroy'])->name('destroy');
             Route::get('/{suratMasuk}/download',    [SuratController::class, 'masukDownload'])->name('download');
             Route::get('/{suratMasuk}/preview', [SuratController::class, 'masukPreview'])->name('preview');
-
         });
 
         // Surat Keluar
         Route::prefix('keluar')->name('keluar.')->group(function () {
-            Route::get('/',                         [SuratController::class, 'keluarIndex'])   ->name('index');
-            Route::get('/create',                   [SuratController::class, 'keluarCreate'])  ->name('create');
-            Route::post('/',                        [SuratController::class, 'keluarStore'])   ->name('store');
-                            Route::get('/rekap/export',       [SuratController::class, 'keluarRekapExport'])      ->name('rekap.export');
-    Route::get('/rekap/export-bulan', [SuratController::class, 'keluarRekapExportBulan']) ->name('rekap.export-bulan');
-            Route::get('/{suratKeluar}/edit',       [SuratController::class, 'keluarEdit'])    ->name('edit');
-            Route::put('/{suratKeluar}',            [SuratController::class, 'keluarUpdate'])  ->name('update');
-            Route::delete('/{suratKeluar}',         [SuratController::class, 'keluarDestroy']) ->name('destroy');
+            Route::get('/',                         [SuratController::class, 'keluarIndex'])->name('index');
+            Route::get('/create',                   [SuratController::class, 'keluarCreate'])->name('create');
+            Route::post('/',                        [SuratController::class, 'keluarStore'])->name('store');
+            Route::get('/rekap/export',       [SuratController::class, 'keluarRekapExport'])->name('rekap.export');
+            Route::get('/rekap/export-bulan', [SuratController::class, 'keluarRekapExportBulan'])->name('rekap.export-bulan');
+            Route::get('/{suratKeluar}/edit',       [SuratController::class, 'keluarEdit'])->name('edit');
+            Route::put('/{suratKeluar}',            [SuratController::class, 'keluarUpdate'])->name('update');
+            Route::delete('/{suratKeluar}',         [SuratController::class, 'keluarDestroy'])->name('destroy');
             Route::get('/{suratKeluar}/download',   [SuratController::class, 'keluarDownload'])->name('download');
             Route::get('/{suratKeluar}/preview', [SuratController::class, 'keluarPreview'])->name('preview');
-
-
         });
     });
 
@@ -489,8 +486,8 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::get('/frak04/pdf',    [FrAk04AsesiController::class, 'asesiPdf'])->name('frak04.pdf');
 
         Route::get('/dokumen-ujikom',        [AsesiController::class, 'ujikomIndex'])->name('ujikom.index');
-        Route::post('/dokumen-ujikom/simpan',[AsesiController::class, 'ujikomSimpan'])->name('ujikom.simpan');
-        
+        Route::post('/dokumen-ujikom/simpan', [AsesiController::class, 'ujikomSimpan'])->name('ujikom.simpan');
+
         Route::get('/documents', [AsesiController::class, 'documents'])->name('documents');
 
         Route::prefix('soal')->name('soal.')->group(function () {
@@ -659,13 +656,13 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/observasi/{soalObservasi}/form-penilaian', [HasilPenilaianController::class, 'downloadFormPenilaianObservasi'])->name('observasi.form-penilaian');
 
         // Hasil portofolio
-        Route::post('/portofolio/{portofolio}/upload',          [HasilPenilaianController::class, 'uploadPortofolio'])             ->name('portofolio.upload');
-        Route::delete('/portofolio/{portofolio}/hapus',         [HasilPenilaianController::class, 'hapusPortofolio'])              ->name('portofolio.hapus');
-        Route::get('/portofolio/{portofolio}/download',         [HasilPenilaianController::class, 'downloadPortofolio'])           ->name('portofolio.download');
+        Route::post('/portofolio/{portofolio}/upload',          [HasilPenilaianController::class, 'uploadPortofolio'])->name('portofolio.upload');
+        Route::delete('/portofolio/{portofolio}/hapus',         [HasilPenilaianController::class, 'hapusPortofolio'])->name('portofolio.hapus');
+        Route::get('/portofolio/{portofolio}/download',         [HasilPenilaianController::class, 'downloadPortofolio'])->name('portofolio.download');
         Route::get('/portofolio/{portofolio}/form-penilaian',   [HasilPenilaianController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian');
         Route::get('/portofolio/{portofolio}/kisi-kisi', [HasilPenilaianController::class, 'downloadKisiKisiPortofolio'])->name('portofolio.kisi-kisi');
- // [BARU]
-        
+        // [BARU]
+
         // Berita acara
         Route::get('/berita-acara',              [HasilPenilaianController::class, 'beritaAcara'])->name('berita-acara');
         Route::post('/berita-acara/simpan',      [HasilPenilaianController::class, 'simpanBeritaAcara'])->name('berita-acara.simpan');
@@ -709,10 +706,10 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 
     Route::get('/biaya-operasional', [BiayaOperasionalAsesorController::class, 'index'])->name('biaya-operasional.index');
     Route::prefix('rekening')->name('rekening.')->group(function () {
-    Route::post('/',             [AsesorRekeningController::class, 'asesorStore'])->name('store');
-    Route::put('/{rekening}',    [AsesorRekeningController::class, 'asesorUpdate'])->name('update');
-    Route::delete('/{rekening}', [AsesorRekeningController::class, 'asesorDestroy'])->name('destroy');
-});
+        Route::post('/',             [AsesorRekeningController::class, 'asesorStore'])->name('store');
+        Route::put('/{rekening}',    [AsesorRekeningController::class, 'asesorUpdate'])->name('update');
+        Route::delete('/{rekening}', [AsesorRekeningController::class, 'asesorDestroy'])->name('destroy');
+    });
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin
@@ -758,94 +755,112 @@ Route::prefix('direktur')
         Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])
             ->name('rekap-pendapatan');
 
-            
-Route::prefix('keuangan')
-    ->name('keuangan.')
-    ->group(function () {
- 
-        $ctrl = DirekturKeuanganController::class;
- 
-        // ── Dashboard ──────────────────────────────────────────────────────
-        Route::get('/', [$ctrl, 'index'])->name('index');
- 
-        // ── Laporan Keuangan ───────────────────────────────────────────────
-        Route::get('/laba-rugi',       [$ctrl, 'labaRugi'])->name('laba-rugi');
-        Route::get('/neraca',          [$ctrl, 'neraca'])->name('neraca');
-        Route::get('/arus-kas',        [$ctrl, 'arusKas'])->name('arus-kas');
-        Route::get('/perubahan-modal', [$ctrl, 'perubahanModal'])->name('perubahan-modal');
-        Route::get('/distribusi',      [$ctrl, 'distribusi'])->name('distribusi');
- 
-        // ── Jurnal (export HARUS sebelum non-export) ───────────────────────
-        Route::get('/transaksi-harian/export', [$ctrl, 'exportTransaksiHarian'])->name('transaksi-harian.export');
-        Route::get('/transaksi-harian',        [$ctrl, 'transaksiHarian'])->name('transaksi-harian');
-        Route::get('/buku-besar/export',       [$ctrl, 'exportBukuBesar'])->name('buku-besar.export');
-        Route::get('/buku-besar',              [$ctrl, 'bukuBesar'])->name('buku-besar');
- 
-        // ── CoA ────────────────────────────────────────────────────────────
-        Route::get('/coa', [$ctrl, 'coa'])->name('coa');
- 
-        // ── Rekap & Biaya ──────────────────────────────────────────────────
-        Route::get('/rekap-pendapatan',  [$ctrl, 'rekapPendapatan'])->name('rekap-pendapatan');
-        Route::get('/biaya-operasional', [$ctrl, 'biayaOperasional'])->name('biaya-operasional');
- 
-        // ── Pembayaran Mandiri ─────────────────────────────────────────────
-        Route::get('/pembayaran-mandiri', [$ctrl, 'pembayaranMandiri'])->name('pembayaran-mandiri');
- 
-        // ── Pembayaran Kolektif (static sebelum wildcard) ──────────────────
-        Route::get('/pembayaran-kolektif',            [$ctrl, 'pembayaranKolektif'])->name('pembayaran-kolektif');
-        Route::get('/pembayaran-kolektif/tuk/{tuk}',  [$ctrl, 'pembayaranKolektifTuk'])->name('pembayaran-kolektif.tuk');
-        Route::get('/pembayaran-kolektif/{invoice}',  [$ctrl, 'pembayaranKolektifDetail'])->name('pembayaran-kolektif.detail');
- 
-        // ── Honor (payment HARUS sebelum {asesor} wildcard) ───────────────
-        Route::get('/honor',                  [$ctrl, 'honor'])->name('honor');
-        Route::get('/honor/payment/{honor}',  [$ctrl, 'honorPayment'])->name('honor.payment');
-        Route::get('/honor/{asesor}',          [$ctrl, 'honorDetail'])->name('honor.detail');
- 
-        // ══════════════════════════════════════════════════════════════════
-        // DOWNLOAD PASSTHROUGH
-        // Semua download via route direktur agar tidak kena middleware bendahara
-        // ══════════════════════════════════════════════════════════════════
- 
-        // ── Pembayaran Mandiri ─────────────────────────────────────────────
-        Route::get('/download/bukti-mandiri/{payment}',
-            [BendaharaController::class, 'downloadBukti'])
-            ->name('download.bukti-mandiri');
- 
-        Route::get('/download/invoice-mandiri/{payment}',
-            [BendaharaController::class, 'downloadInvoiceIndividu'])
-            ->name('download.invoice-mandiri');
- 
-        Route::get('/download/kwitansi-mandiri/{payment}',
-            [BendaharaController::class, 'kwitansiIndividu'])
-            ->name('download.kwitansi-mandiri');
- 
-        // ── Pembayaran Kolektif ────────────────────────────────────────────
-        Route::get('/download/invoice-kolektif/{invoice}',
-            [BendaharaController::class, 'kolektifInvoicePdf'])
-            ->name('download.invoice-kolektif');
- 
-        Route::get('/download/kwitansi-kolektif/{invoice}',
-            [BendaharaController::class, 'kolektifKwitansi'])
-            ->name('download.kwitansi-kolektif');
- 
-        Route::get('/download/bukti-angsuran/{payment}',
-            [BendaharaController::class, 'kolektifBuktiBayar'])
-            ->name('download.bukti-angsuran');
- 
-        // ── Honor ──────────────────────────────────────────────────────────
-        Route::get('/download/bukti-honor/{honor}',
-            [HonorAsesorController::class, 'downloadBukti'])
-            ->name('download.bukti-honor');
- 
-        Route::get('/download/kwitansi-honor/{honor}',
-            [HonorAsesorController::class, 'pdfKwitansi'])
-            ->name('download.kwitansi-honor');
- 
-        // ── Rekap Pendapatan ───────────────────────────────────────────────
-        Route::get('/download/rekap-pendapatan',
-            [RekapPendapatanController::class, 'export'])
-            ->name('download.rekap-pendapatan');
-    });
+
+        Route::prefix('keuangan')
+            ->name('keuangan.')
+            ->group(function () {
+
+                $ctrl = DirekturKeuanganController::class;
+
+                // ── Dashboard ──────────────────────────────────────────────────────
+                Route::get('/', [$ctrl, 'index'])->name('index');
+
+                // ── Laporan Keuangan ───────────────────────────────────────────────
+                Route::get('/laba-rugi',       [$ctrl, 'labaRugi'])->name('laba-rugi');
+                Route::get('/neraca',          [$ctrl, 'neraca'])->name('neraca');
+                Route::get('/arus-kas',        [$ctrl, 'arusKas'])->name('arus-kas');
+                Route::get('/perubahan-modal', [$ctrl, 'perubahanModal'])->name('perubahan-modal');
+                Route::get('/distribusi',      [$ctrl, 'distribusi'])->name('distribusi');
+
+                // ── Jurnal (export HARUS sebelum non-export) ───────────────────────
+                Route::get('/transaksi-harian/export', [$ctrl, 'exportTransaksiHarian'])->name('transaksi-harian.export');
+                Route::get('/transaksi-harian',        [$ctrl, 'transaksiHarian'])->name('transaksi-harian');
+                Route::get('/buku-besar/export',       [$ctrl, 'exportBukuBesar'])->name('buku-besar.export');
+                Route::get('/buku-besar',              [$ctrl, 'bukuBesar'])->name('buku-besar');
+
+                // ── CoA ────────────────────────────────────────────────────────────
+                Route::get('/coa', [$ctrl, 'coa'])->name('coa');
+
+                // ── Rekap & Biaya ──────────────────────────────────────────────────
+                Route::get('/rekap-pendapatan',  [$ctrl, 'rekapPendapatan'])->name('rekap-pendapatan');
+                Route::get('/biaya-operasional', [$ctrl, 'biayaOperasional'])->name('biaya-operasional');
+
+                // ── Pembayaran Mandiri ─────────────────────────────────────────────
+                Route::get('/pembayaran-mandiri', [$ctrl, 'pembayaranMandiri'])->name('pembayaran-mandiri');
+
+                // ── Pembayaran Kolektif (static sebelum wildcard) ──────────────────
+                Route::get('/pembayaran-kolektif',            [$ctrl, 'pembayaranKolektif'])->name('pembayaran-kolektif');
+                Route::get('/pembayaran-kolektif/tuk/{tuk}',  [$ctrl, 'pembayaranKolektifTuk'])->name('pembayaran-kolektif.tuk');
+                Route::get('/pembayaran-kolektif/{invoice}',  [$ctrl, 'pembayaranKolektifDetail'])->name('pembayaran-kolektif.detail');
+
+                // ── Honor (payment HARUS sebelum {asesor} wildcard) ───────────────
+                Route::get('/honor',                  [$ctrl, 'honor'])->name('honor');
+                Route::get('/honor/payment/{honor}',  [$ctrl, 'honorPayment'])->name('honor.payment');
+                Route::get('/honor/{asesor}',          [$ctrl, 'honorDetail'])->name('honor.detail');
+
+                // ══════════════════════════════════════════════════════════════════
+                // DOWNLOAD PASSTHROUGH
+                // Semua download via route direktur agar tidak kena middleware bendahara
+                // ══════════════════════════════════════════════════════════════════
+
+                // ── Pembayaran Mandiri ─────────────────────────────────────────────
+                Route::get(
+                    '/download/bukti-mandiri/{payment}',
+                    [BendaharaController::class, 'downloadBukti']
+                )
+                    ->name('download.bukti-mandiri');
+
+                Route::get(
+                    '/download/invoice-mandiri/{payment}',
+                    [BendaharaController::class, 'downloadInvoiceIndividu']
+                )
+                    ->name('download.invoice-mandiri');
+
+                Route::get(
+                    '/download/kwitansi-mandiri/{payment}',
+                    [BendaharaController::class, 'kwitansiIndividu']
+                )
+                    ->name('download.kwitansi-mandiri');
+
+                // ── Pembayaran Kolektif ────────────────────────────────────────────
+                Route::get(
+                    '/download/invoice-kolektif/{invoice}',
+                    [BendaharaController::class, 'kolektifInvoicePdf']
+                )
+                    ->name('download.invoice-kolektif');
+
+                Route::get(
+                    '/download/kwitansi-kolektif/{invoice}',
+                    [BendaharaController::class, 'kolektifKwitansi']
+                )
+                    ->name('download.kwitansi-kolektif');
+
+                Route::get(
+                    '/download/bukti-angsuran/{payment}',
+                    [BendaharaController::class, 'kolektifBuktiBayar']
+                )
+                    ->name('download.bukti-angsuran');
+
+                // ── Honor ──────────────────────────────────────────────────────────
+                Route::get(
+                    '/download/bukti-honor/{honor}',
+                    [HonorAsesorController::class, 'downloadBukti']
+                )
+                    ->name('download.bukti-honor');
+
+                Route::get(
+                    '/download/kwitansi-honor/{honor}',
+                    [HonorAsesorController::class, 'pdfKwitansi']
+                )
+                    ->name('download.kwitansi-honor');
+
+                // ── Rekap Pendapatan ───────────────────────────────────────────────
+                Route::get(
+                    '/download/rekap-pendapatan',
+                    [RekapPendapatanController::class, 'export']
+                )
+                    ->name('download.rekap-pendapatan');
+            });
     });
 
 
@@ -886,9 +901,9 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::post('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'uploadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.upload');
             Route::delete('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'hapusFormPenilaianPortofolio'])->name('portofolio.form-penilaian.hapus');
             Route::get('/portofolio/{portofolio}/form-penilaian', [DistribusiSoalController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian.download');
-            Route::post('/portofolio/{portofolio}/kisi-kisi',   [DistribusiSoalController::class, 'uploadKisiKisiPortofolio'])  ->name('portofolio.kisi-kisi.upload');
+            Route::post('/portofolio/{portofolio}/kisi-kisi',   [DistribusiSoalController::class, 'uploadKisiKisiPortofolio'])->name('portofolio.kisi-kisi.upload');
             Route::get('/portofolio/{portofolio}/kisi-kisi',    [DistribusiSoalController::class, 'downloadKisiKisiPortofolio'])->name('portofolio.kisi-kisi.download');
-            Route::delete('/portofolio/{portofolio}/kisi-kisi', [DistribusiSoalController::class, 'hapusKisiKisiPortofolio'])   ->name('portofolio.kisi-kisi.hapus');
+            Route::delete('/portofolio/{portofolio}/kisi-kisi', [DistribusiSoalController::class, 'hapusKisiKisiPortofolio'])->name('portofolio.kisi-kisi.hapus');
             Route::get('/berita-acara/pdf', [DistribusiSoalController::class, 'pdfBeritaAcara'])->name('berita-acara.pdf');
         });
 
@@ -982,14 +997,14 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
         });
 
-            Route::prefix('umpan-balik')->name('frak03.')->group(function () {
-                Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'index'])
-                    ->name('index');
-                Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'detail'])
-                    ->name('detail');
-                Route::get('/jadwal/{schedule}/asesi/{asesmen}/pdf', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'exportPdf'])
-                    ->name('pdf');
-            });
+        Route::prefix('umpan-balik')->name('frak03.')->group(function () {
+            Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'index'])
+                ->name('index');
+            Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'detail'])
+                ->name('detail');
+            Route::get('/jadwal/{schedule}/asesi/{asesmen}/pdf', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'exportPdf'])
+                ->name('pdf');
+        });
     });
 
 
@@ -1011,7 +1026,7 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::get('/kolektif/angsuran/{payment}/bukti',    [BendaharaController::class, 'kolektifBuktiBayar'])->name('kolektif.angsuran.bukti');
         Route::post('/kolektif/tuk/{tuk}/invoice/bulk',     [BendaharaController::class, 'kolektifInvoiceStoreBulk'])->name('kolektif.invoice.bulk');
         Route::patch('/kolektif/invoice/{invoice}/update-nomor', [BendaharaController::class, 'kolektifInvoiceUpdateNomor'])
-                ->name('kolektif.invoice.update-nomor');
+            ->name('kolektif.invoice.update-nomor');
         Route::get('/kolektif',           [BendaharaController::class, 'kolektif'])->name('kolektif');
         Route::get('/kolektif/tuk/{tuk}', [BendaharaController::class, 'kolektifTuk'])->name('kolektif.tuk');
         Route::get('/kolektif/{invoice}', [BendaharaController::class, 'kolektifDetail'])->name('kolektif.detail');
@@ -1035,11 +1050,21 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])->name('show');
         Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])->name('store');
         Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])->name('payment.show');
+
+        // Upload bukti — sekarang support ganti bukti (isSudahDibayar) dan cicilan hutang
         Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
+
+        // Download bukti
         Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
+
+        // PDF kwitansi (dipakai bendahara + asesor)
         Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
-        Route::patch('/payments/{honor}/nomor', [HonorAsesorController::class, 'updateNomor'])
-            ->name('payment.nomor.update');
+
+        // Update nomor kwitansi
+        Route::patch('/payments/{honor}/nomor',       [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
+
+        // ── BARU: Reset kwitansi ──────────────────────────────────────────────
+        Route::post('/payment/{honor}/reset',         [HonorAsesorController::class, 'resetKwitansi'])->name('payment.reset');
     });
 
     // ── Rekap Pendapatan ──────────────────────────────────────────────────

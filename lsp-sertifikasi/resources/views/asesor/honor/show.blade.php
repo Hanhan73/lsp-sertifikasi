@@ -9,6 +9,13 @@
 
 @section('content')
 
+@php
+    // Guard: asesor tidak boleh akses kalau belum sudah_dibayar
+    if (!$honor->asesor_can_view) {
+        abort(403, 'Kwitansi belum tersedia.');
+    }
+@endphp
+
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
@@ -61,13 +68,52 @@
                             @endforeach
                         </tbody>
                         <tfoot>
-                            <tr class="table-primary">
-                                <td colspan="4" class="fw-bold text-end">Total</td>
+                            <tr class="table-light">
+                                <td colspan="4" class="fw-bold text-end">Total Honor</td>
                                 <td class="text-end fw-bold">Rp {{ number_format($honor->total, 0, ',', '.') }}</td>
                             </tr>
+                            @if($honor->has_deduction)
+                            <tr class="table-warning">
+                                <td colspan="4" class="text-end" style="color:#dc3545;">
+                                    <i class="bi bi-dash-circle me-1"></i>
+                                    Cicilan Hutang
+                                    @if($honor->deductionReceivable)
+                                    <small class="ms-1">({{ $honor->deductionReceivable->uraian ?? $honor->deductionReceivable->jenis_label }})</small>
+                                    @endif
+                                </td>
+                                <td class="text-end fw-semibold" style="color:#dc3545;">
+                                    - Rp {{ number_format($honor->deduction_amount, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                            <tr class="table-success">
+                                <td colspan="4" class="fw-bold text-end">Transfer Bersih ke Anda</td>
+                                <td class="text-end fw-bold text-success fs-6">
+                                    Rp {{ number_format($honor->jumlah_transfer, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                            @if($honor->deduction_note)
+                            <tr>
+                                <td colspan="5" class="text-muted small fst-italic py-1">
+                                    <i class="bi bi-chat-left-text me-1"></i>{{ $honor->deduction_note }}
+                                </td>
+                            </tr>
+                            @endif
+                            @endif
                         </tfoot>
                     </table>
                 </div>
+
+                @if($honor->has_deduction)
+                <div class="alert alert-info py-2 small mt-2 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Total honor Anda adalah
+                    <strong>Rp {{ number_format($honor->total, 0, ',', '.') }}</strong>,
+                    dikurangi cicilan hutang
+                    <strong>Rp {{ number_format($honor->deduction_amount, 0, ',', '.') }}</strong>.
+                    Jumlah yang ditransfer ke rekening Anda:
+                    <strong class="text-success">Rp {{ number_format($honor->jumlah_transfer, 0, ',', '.') }}</strong>.
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -83,9 +129,9 @@
             <div class="card-body py-2">
                 @php
                     $steps = [
-                        ['label' => 'Kwitansi Dibuat',      'done' => true],
-                        ['label' => 'Transfer dari LSP KAP', 'done' => in_array($honor->status, ['sudah_dibayar','dikonfirmasi'])],
-                        ['label' => 'Konfirmasi Anda',       'done' => $honor->isDikonfirmasi()],
+                        ['label' => 'Kwitansi Dibuat',       'done' => true],
+                        ['label' => 'Transfer dari LSP KAP',  'done' => in_array($honor->status, ['sudah_dibayar','dikonfirmasi'])],
+                        ['label' => 'Konfirmasi Anda',        'done' => $honor->isDikonfirmasi()],
                     ];
                 @endphp
                 @foreach($steps as $step)
@@ -112,7 +158,7 @@
                 @include('bendahara.honor._bukti-preview', ['honor' => $honor])
 
                 <a href="{{ route('asesor.honor.bukti.download', $honor) }}"
-                class="btn btn-sm btn-outline-info w-100 mb-3">
+                   class="btn btn-sm btn-outline-info w-100 mb-3">
                     <i class="bi bi-download me-1"></i>Download Bukti Transfer
                 </a>
 
@@ -131,10 +177,9 @@
                 @endif
             </div>
         </div>
-
         @endif
 
-        {{-- Download Kwitansi --}}
+        {{-- Download Kwitansi (hanya setelah dikonfirmasi) --}}
         @if($honor->isDikonfirmasi())
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold small">

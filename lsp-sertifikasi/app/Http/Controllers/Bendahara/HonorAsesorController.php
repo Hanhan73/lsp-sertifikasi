@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asesor;
 use App\Models\HonorPayment;
 use App\Models\HonorPaymentDetail;
+use App\Models\OtherReceivable;
 use App\Models\Schedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,7 +19,6 @@ class HonorAsesorController extends Controller
 {
     /**
      * List asesor yang punya berita acara (jadwal selesai).
-     * Sekaligus hitung rekap statistik honor untuk tab Rekap.
      */
     public function index()
     {
@@ -34,10 +34,8 @@ class HonorAsesorController extends Controller
             ->orderBy('nama')
             ->get();
 
-        // ── Rekap statistik honor ─────────────────────────────────────────────
         $allHonors = HonorPayment::with(['asesor', 'details'])->get();
 
-        // Asesor yang punya jadwal dengan BA tapi ada jadwal yang BELUM masuk kwitansi manapun
         $belumDibuatCount = Asesor::whereHas('schedules', function ($q) {
             $q->whereHas('beritaAcara')
               ->whereDoesntHave('honorPaymentDetails', function ($q2) {
@@ -51,24 +49,14 @@ class HonorAsesorController extends Controller
             'total_honor'           => $allHonors->count(),
             'total_asesor_honor'    => $allHonors->pluck('asesor_id')->unique()->count(),
             'total_nominal'         => $allHonors->sum('total'),
-
-            // Asesor yang masih punya jadwal belum dibuatkan kwitansi
             'belum_dibuat_count'    => $belumDibuatCount,
-
-            // Belum dibayar = menunggu_pembayaran
             'belum_dibayar_count'   => $allHonors->where('status', 'menunggu_pembayaran')->count(),
             'belum_dibayar_nominal' => $allHonors->where('status', 'menunggu_pembayaran')->sum('total'),
-
-            // Sudah dibayar (termasuk dikonfirmasi)
             'sudah_dibayar_count'   => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
             'sudah_dibayar_nominal' => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
-
-            // Dikonfirmasi asesor
             'dikonfirmasi_count'    => $allHonors->where('status', 'dikonfirmasi')->count(),
             'dikonfirmasi_nominal'  => $allHonors->where('status', 'dikonfirmasi')->sum('total'),
-
-            // Per asesor — untuk tabel rekap
-            'per_asesor' => $allHonors->groupBy('asesor_id')->map(function ($honors) {
+            'per_asesor'            => $allHonors->groupBy('asesor_id')->map(function ($honors) {
                 $asesor = $honors->first()->asesor;
                 return [
                     'asesor_id'        => $asesor?->id,
@@ -94,7 +82,7 @@ class HonorAsesorController extends Controller
     public function show(Asesor $asesor)
     {
         $asesor->load('rekenings');
- 
+
         $jadwalTersedia = Schedule::where('asesor_id', $asesor->id)
             ->whereHas('beritaAcara')
             ->whereDoesntHave('honorPaymentDetails', function ($q) {
@@ -102,23 +90,18 @@ class HonorAsesorController extends Controller
                     $q2->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
                 });
             })
-            ->with([
-                'skema.honorTiers',
-                'tuk',
-                'beritaAcara',
-                'asesmens',
-            ])
+            ->with(['skema.honorTiers', 'tuk', 'beritaAcara', 'asesmens'])
             ->orderBy('assessment_date')
             ->get();
- 
+
         $riwayat = HonorPayment::where('asesor_id', $asesor->id)
             ->with(['details.schedule.skema', 'details.schedule.tuk'])
             ->latest()
             ->get();
- 
+
         return view('bendahara.honor.show', compact('asesor', 'jadwalTersedia', 'riwayat'));
     }
- 
+
     public function store(Request $request, Asesor $asesor)
     {
         $request->validate([
@@ -128,7 +111,7 @@ class HonorAsesorController extends Controller
             'schedule_ids.required' => 'Pilih minimal 1 jadwal.',
             'schedule_ids.min'      => 'Pilih minimal 1 jadwal.',
         ]);
- 
+
         DB::beginTransaction();
         try {
             $schedules = Schedule::whereIn('id', $request->schedule_ids)
@@ -136,48 +119,41 @@ class HonorAsesorController extends Controller
                 ->whereHas('beritaAcara')
                 ->with(['skema.honorTiers', 'asesmens'])
                 ->get();
- 
+
             abort_if($schedules->isEmpty(), 422, 'Tidak ada jadwal valid yang dipilih.');
- 
-            $details = [];
-            $total   = 0;
- 
+
+            $details      = [];
+            $total        = 0;
             $tierIds      = $request->input('tier_ids', []);
             $honorAmounts = $request->input('honor_amounts', []);
- 
+
             foreach ($schedules as $schedule) {
-                $jumlahAsesi = $schedule->asesmens()->count();
- 
+                $jumlahAsesi   = $schedule->asesmens()->count();
                 $honorPerAsesi = 0;
-                $tierLabel     = null;
- 
+
                 $tierId = $tierIds[$schedule->id] ?? null;
                 if ($tierId) {
                     $tier = $schedule->skema->honorTiers->firstWhere('id', (int) $tierId);
-                    if ($tier) {
-                        $honorPerAsesi = $tier->amount;
-                        $tierLabel     = $tier->label;
-                    }
+                    if ($tier) $honorPerAsesi = $tier->amount;
                 }
- 
+
                 if (!$honorPerAsesi && isset($honorAmounts[$schedule->id])) {
                     $honorPerAsesi = (int) str_replace(['.', ','], '', $honorAmounts[$schedule->id]);
                 }
- 
+
                 if (!$honorPerAsesi) {
                     $defaultTier = $schedule->skema->honorTiers->firstWhere('is_default', true)
                                    ?? $schedule->skema->honorTiers->first();
                     if ($defaultTier) {
                         $honorPerAsesi = $defaultTier->amount;
-                        $tierLabel     = $defaultTier->label;
                     } else {
                         $honorPerAsesi = $schedule->skema->honor_per_asesi ?? 0;
                     }
                 }
- 
-                $subtotal = $jumlahAsesi * $honorPerAsesi;
-                $total   += $subtotal;
- 
+
+                $subtotal  = $jumlahAsesi * $honorPerAsesi;
+                $total    += $subtotal;
+
                 $details[] = [
                     'schedule_id'     => $schedule->id,
                     'jumlah_asesi'    => $jumlahAsesi,
@@ -185,7 +161,7 @@ class HonorAsesorController extends Controller
                     'subtotal'        => $subtotal,
                 ];
             }
- 
+
             $honor = HonorPayment::create([
                 'asesor_id'        => $asesor->id,
                 'nomor_kwitansi'   => HonorPayment::generateNomor(),
@@ -194,19 +170,19 @@ class HonorAsesorController extends Controller
                 'status'           => 'menunggu_pembayaran',
                 'dibuat_oleh'      => Auth::id(),
             ]);
- 
+
             try {
                 app(JournalService::class)->jurnalHonorDibuat($honor->fresh(['asesor']));
             } catch (\Exception $e) {
                 \Log::warning('Gagal buat jurnal honor dibuat: ' . $e->getMessage());
             }
- 
+
             foreach ($details as $d) {
                 HonorPaymentDetail::create(array_merge(['honor_payment_id' => $honor->id], $d));
             }
- 
+
             DB::commit();
- 
+
             return redirect()
                 ->route('bendahara.honor.payment.show', $honor)
                 ->with('success', 'Kwitansi honor berhasil dibuat.');
@@ -229,56 +205,168 @@ class HonorAsesorController extends Controller
             'details.schedule.asesmens',
             'dibuatOleh',
             'dibayarOleh',
+            'deductionReceivable',
         ]);
 
-        return view('bendahara.honor.payment', compact('honor'));
+        // Hutang aktif milik asesor ini untuk form cicilan
+        $hutangAsesor = OtherReceivable::where('nama_pihak', $honor->asesor->nama)
+            ->whereIn('status', ['belum_lunas', 'cicilan'])
+            ->orderByDesc('tanggal')
+            ->get();
+
+        return view('bendahara.honor.payment', compact('honor', 'hutangAsesor'));
     }
 
     /**
      * Upload bukti transfer → status jadi sudah_dibayar.
+     * Mendukung: upload pertama, ganti bukti, dan cicilan hutang opsional.
      */
     public function uploadBukti(Request $request, HonorPayment $honor)
     {
-        abort_if(!$honor->isMenunggu(), 422, 'Status tidak valid untuk upload bukti.');
+        // Bisa upload kalau menunggu atau sudah_dibayar (ganti bukti)
+        abort_if($honor->isDikonfirmasi(), 422, 'Tidak dapat mengubah setelah dikonfirmasi asesor.');
 
         $request->validate([
-            'bukti_transfer' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'bukti_transfer'          => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'deduction_receivable_id' => 'nullable|exists:other_receivables,id',
+            'deduction_amount'        => 'nullable|numeric|min:1000',
+            'deduction_note'          => 'nullable|string|max:500',
         ], [
             'bukti_transfer.required' => 'File bukti transfer wajib diupload.',
             'bukti_transfer.mimes'    => 'Format file harus jpg, png, atau pdf.',
+            'bukti_transfer.max'      => 'Ukuran file maksimal 5MB.',
+            'deduction_amount.min'    => 'Nominal cicilan minimal Rp 1.000.',
         ]);
 
-        if ($honor->bukti_transfer_path) {
-            Storage::disk('private')->delete($honor->bukti_transfer_path);
+        // Validasi deduction tidak melebihi sisa hutang
+        if ($request->filled('deduction_receivable_id') && $request->filled('deduction_amount')) {
+            $receivable = OtherReceivable::find($request->deduction_receivable_id);
+            if ($receivable) {
+                if ($request->deduction_amount > $receivable->sisa) {
+                    return back()->withErrors([
+                        'deduction_amount' => 'Nominal cicilan melebihi sisa hutang (Rp ' .
+                            number_format($receivable->sisa, 0, ',', '.') . ').',
+                    ])->withInput();
+                }
+                if ($request->deduction_amount >= $honor->total) {
+                    return back()->withErrors([
+                        'deduction_amount' => 'Nominal cicilan tidak boleh melebihi atau sama dengan total honor.',
+                    ])->withInput();
+                }
+            }
         }
 
-        $file = $request->file('bukti_transfer');
-        $path = $file->store("honor/bukti-transfer/{$honor->id}", 'private');
-
-        $honor->update([
-            'bukti_transfer_path' => $path,
-            'bukti_transfer_name' => $file->getClientOriginalName(),
-            'status'              => 'sudah_dibayar',
-            'dibayar_at'          => now(),
-            'dibayar_oleh'        => Auth::id(),
-        ]);
-
+        DB::beginTransaction();
         try {
-            app(JournalService::class)->jurnalHonorDibayar($honor->fresh(['asesor']));
+            // Hapus file lama jika ada
+            if ($honor->bukti_transfer_path) {
+                Storage::disk('private')->delete($honor->bukti_transfer_path);
+            }
+
+            $file = $request->file('bukti_transfer');
+            $path = $file->store("honor/bukti-transfer/{$honor->id}", 'private');
+
+            // Data update dasar
+            $updateData = [
+                'bukti_transfer_path'     => $path,
+                'bukti_transfer_name'     => $file->getClientOriginalName(),
+                'status'                  => 'sudah_dibayar',
+                'dibayar_at'              => now(),
+                'dibayar_oleh'            => Auth::id(),
+                // Reset cicilan lama (akan diisi ulang jika ada)
+                'deduction_receivable_id' => null,
+                'deduction_amount'        => null,
+                'deduction_note'          => null,
+            ];
+
+            // Simpan data cicilan jika diisi
+            if ($request->filled('deduction_receivable_id') && $request->filled('deduction_amount')) {
+                $updateData['deduction_receivable_id'] = $request->deduction_receivable_id;
+                $updateData['deduction_amount']        = $request->deduction_amount;
+                $updateData['deduction_note']          = $request->deduction_note;
+
+                // Update OtherReceivable — tambah jumlah_lunas
+                $receivable = OtherReceivable::find($request->deduction_receivable_id);
+                if ($receivable) {
+                    $newLunas = (float) ($receivable->jumlah_lunas ?? 0) + (float) $request->deduction_amount;
+                    $sisa     = (float) $receivable->jumlah - $newLunas;
+
+                    $receivable->update([
+                        'jumlah_lunas'  => $newLunas,
+                        'status'        => $sisa <= 0 ? 'lunas' : 'cicilan',
+                        'tanggal_lunas' => $sisa <= 0 ? now()->toDateString() : null,
+                    ]);
+                }
+            }
+
+            $honor->update($updateData);
+
+            // Jurnal hanya saat upload pertama (bukan ganti bukti)
+            if ($honor->wasRecentlyCreated || !$honor->getOriginal('dibayar_at')) {
+                try {
+                    app(JournalService::class)->jurnalHonorDibayar($honor->fresh(['asesor']));
+                } catch (\Exception $e) {
+                    \Log::warning('Gagal buat jurnal honor dibayar: ' . $e->getMessage());
+                }
+            }
+
+            // Notifikasi ke asesor
+            if ($honor->asesor && method_exists($honor->asesor, 'notifications')) {
+                $honor->asesor->notifications()->create([
+                    'type'    => 'honor_dibayar',
+                    'title'   => 'Honor Asesor Telah Ditransfer',
+                    'message' => 'Honor asesmen Anda sejumlah Rp ' . number_format($honor->total, 0, ',', '.') .
+                                 ' telah ditransfer. Silakan konfirmasi penerimaan.',
+                    'data'    => json_encode(['honor_payment_id' => $honor->id]),
+                ]);
+            }
+
+            DB::commit();
+
+            $isReplace = $honor->getOriginal('status') === 'sudah_dibayar';
+            $msg = $isReplace
+                ? 'Bukti transfer berhasil diganti.'
+                : 'Bukti transfer berhasil diupload. Notifikasi telah dikirim ke asesor.';
+
+            return back()->with('success', $msg);
         } catch (\Exception $e) {
-            \Log::warning('Gagal buat jurnal honor: ' . $e->getMessage());
+            DB::rollBack();
+            \Log::error('[HonorAsesor][uploadBukti] ' . $e->getMessage());
+            return back()->with('error', 'Gagal mengupload bukti transfer: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Reset kwitansi — hanya boleh kalau belum ada bukti transfer.
+     */
+    public function resetKwitansi(HonorPayment $honor)
+    {
+        if (!$honor->can_reset) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kwitansi tidak dapat direset karena sudah ada bukti transfer atau sudah dikonfirmasi.',
+            ], 422);
         }
 
-        if ($honor->asesor) {
-            $honor->asesor->notifications()->create([
-                'type'    => 'honor_dibayar',
-                'title'   => 'Honor Asesor Telah Ditransfer',
-                'message' => "Honor asesmen Anda sejumlah Rp " . number_format($honor->total, 0, ',', '.') . " telah ditransfer. Silakan konfirmasi penerimaan.",
-                'data'    => json_encode(['honor_payment_id' => $honor->id]),
+        DB::beginTransaction();
+        try {
+            $asesorId = $honor->asesor_id;
+
+            $honor->details()->delete();
+            $honor->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Kwitansi berhasil direset. Silakan atur ulang tarif honor.',
+                'redirect' => route('bendahara.honor.show', $asesorId),
             ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('[HonorAsesor][resetKwitansi] ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mereset kwitansi.'], 500);
         }
-
-        return back()->with('success', 'Bukti transfer berhasil diupload. Notifikasi telah dikirim ke asesor.');
     }
 
     /**
@@ -309,14 +397,23 @@ class HonorAsesorController extends Controller
 
     /**
      * Generate PDF kwitansi honor.
+     * Asesor hanya bisa akses kalau sudah dibayar/dikonfirmasi.
      */
     public function pdfKwitansi(HonorPayment $honor)
     {
+        // Guard untuk asesor
+        if (auth()->user()->role === 'asesor') {
+            $asesor = auth()->user()->asesor;
+            abort_if(!$asesor || $asesor->id !== $honor->asesor_id, 403);
+            abort_if(!$honor->asesor_can_view, 403, 'Kwitansi belum tersedia.');
+        }
+
         $honor->load([
             'asesor.user',
             'details.schedule.skema',
             'details.schedule.tuk',
-            'details.schedule.asesmens', // untuk ambil collective_batch_id
+            'details.schedule.asesmens',
+            'deductionReceivable',
         ]);
 
         $isDraft = !$honor->isDikonfirmasi();
@@ -328,7 +425,7 @@ class HonorAsesorController extends Controller
                 $fullPath = storage_path('app/private/' . $ttdPath);
                 if (file_exists($fullPath)) {
                     $ext       = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-                    $mime      = in_array($ext, ['png']) ? 'image/png' : 'image/jpeg';
+                    $mime      = $ext === 'png' ? 'image/png' : 'image/jpeg';
                     $ttdAsesor = 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($fullPath));
                 }
             }
@@ -355,8 +452,7 @@ class HonorAsesorController extends Controller
         $request->validate([
             'nomor_kwitansi' => [
                 'required', 'string', 'max:100',
-                \Illuminate\Validation\Rule::unique('honor_payments', 'nomor_kwitansi')
-                    ->ignore($honor->id),
+                \Illuminate\Validation\Rule::unique('honor_payments', 'nomor_kwitansi')->ignore($honor->id),
             ],
         ], [
             'nomor_kwitansi.required' => 'Nomor kwitansi wajib diisi.',

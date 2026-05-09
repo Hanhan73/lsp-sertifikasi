@@ -19,7 +19,7 @@ class HonorController extends Controller
         abort_unless($asesor, 403);
 
         $honors = HonorPayment::where('asesor_id', $asesor->id)
-            ->with(['details.schedule.skema', 'details.schedule.tuk'])
+            ->with(['details.schedule.skema', 'details.schedule.tuk', 'deductionReceivable'])
             ->latest()
             ->get();
 
@@ -28,16 +28,24 @@ class HonorController extends Controller
 
     /**
      * Detail satu honor payment.
+     * Guard: asesor hanya bisa lihat kalau sudah_dibayar atau dikonfirmasi.
      */
     public function show(HonorPayment $honor)
     {
         $asesor = Auth::user()->asesor;
         abort_if($honor->asesor_id !== $asesor->id, 403);
 
+        // ── BARU: hide dari asesor sebelum sudah_dibayar ──
+        if (!$honor->asesor_can_view) {
+            return redirect()->route('asesor.honor.index')
+                ->with('info', 'Kwitansi belum tersedia. Tunggu hingga bendahara menyelesaikan pembayaran.');
+        }
+
         $honor->load([
             'details.schedule.skema',
             'details.schedule.tuk',
             'asesor.user',
+            'deductionReceivable',
         ]);
 
         return view('asesor.honor.show', compact('honor'));
@@ -62,11 +70,13 @@ class HonorController extends Controller
 
     /**
      * Download bukti transfer dari bendahara.
+     * Guard: hanya bisa diakses kalau sudah_dibayar atau dikonfirmasi.
      */
     public function downloadBukti(HonorPayment $honor, Request $request)
     {
         $asesor = Auth::user()->asesor;
         abort_if($honor->asesor_id !== $asesor->id, 403);
+        abort_if(!$honor->asesor_can_view, 403, 'Bukti transfer belum tersedia.');
         abort_unless($honor->bukti_transfer_path, 404, 'Bukti transfer belum tersedia.');
 
         $path = storage_path('app/private/' . $honor->bukti_transfer_path);
@@ -89,7 +99,8 @@ class HonorController extends Controller
     }
 
     /**
-     * Download kwitansi PDF (hanya setelah dikonfirmasi).
+     * Download kwitansi PDF.
+     * Guard: hanya setelah dikonfirmasi.
      */
     public function downloadKwitansi(HonorPayment $honor)
     {
@@ -101,10 +112,10 @@ class HonorController extends Controller
             'asesor.user',
             'details.schedule.skema',
             'details.schedule.tuk',
-            'details.schedule.asesmens', // untuk nama sekolah dari collective_batch_id
+            'details.schedule.asesmens',
+            'deductionReceivable',
         ]);
 
-        // Dari sisi asesor selalu sudah dikonfirmasi (ada guard abort di atas)
         $isDraft   = false;
         $ttdAsesor = Auth::user()->signature_image;
 

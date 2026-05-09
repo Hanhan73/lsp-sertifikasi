@@ -38,11 +38,11 @@ class HonorAsesorController extends Controller
 
         $belumDibuatCount = Asesor::whereHas('schedules', function ($q) {
             $q->whereHas('beritaAcara')
-              ->whereDoesntHave('honorPaymentDetails', function ($q2) {
-                  $q2->whereHas('honorPayment', function ($q3) {
-                      $q3->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
-                  });
-              });
+                ->whereDoesntHave('honorPaymentDetails', function ($q2) {
+                    $q2->whereHas('honorPayment', function ($q3) {
+                        $q3->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
+                    });
+                });
         })->count();
 
         $rekapStats = [
@@ -143,7 +143,7 @@ class HonorAsesorController extends Controller
 
                 if (!$honorPerAsesi) {
                     $defaultTier = $schedule->skema->honorTiers->firstWhere('is_default', true)
-                                   ?? $schedule->skema->honorTiers->first();
+                        ?? $schedule->skema->honorTiers->first();
                     if ($defaultTier) {
                         $honorPerAsesi = $defaultTier->amount;
                     } else {
@@ -209,12 +209,19 @@ class HonorAsesorController extends Controller
         ]);
 
         // Hutang aktif milik asesor ini untuk form cicilan
-        $hutangAsesor = OtherReceivable::where('nama_pihak', $honor->asesor->nama)
-            ->whereIn('status', ['belum_lunas', 'cicilan'])
+        $hutangAsesor = OtherReceivable::where('asesor_id', $honor->asesor_id)
+            ->whereIn('status', ['outstanding', 'cicilan'])
+            ->where('jenis', 'pinjaman')
             ->orderByDesc('tanggal')
             ->get();
 
-        return view('bendahara.honor.payment', compact('honor', 'hutangAsesor'));
+
+        $coaOptions = \App\Models\ChartOfAccount::where('tipe', 'aset')
+            ->where('is_active', true)
+            ->orderBy('kode')
+            ->get();
+
+        return view('bendahara.honor.payment', compact('honor', 'hutangAsesor', 'coaOptions'));
     }
 
     /**
@@ -316,7 +323,7 @@ class HonorAsesorController extends Controller
                     'type'    => 'honor_dibayar',
                     'title'   => 'Honor Asesor Telah Ditransfer',
                     'message' => 'Honor asesmen Anda sejumlah Rp ' . number_format($honor->total, 0, ',', '.') .
-                                 ' telah ditransfer. Silakan konfirmasi penerimaan.',
+                        ' telah ditransfer. Silakan konfirmasi penerimaan.',
                     'data'    => json_encode(['honor_payment_id' => $honor->id]),
                 ]);
             }
@@ -451,7 +458,9 @@ class HonorAsesorController extends Controller
     {
         $request->validate([
             'nomor_kwitansi' => [
-                'required', 'string', 'max:100',
+                'required',
+                'string',
+                'max:100',
                 \Illuminate\Validation\Rule::unique('honor_payments', 'nomor_kwitansi')->ignore($honor->id),
             ],
         ], [

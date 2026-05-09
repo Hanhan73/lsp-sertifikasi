@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Bendahara;
 
 use App\Http\Controllers\Controller;
+use App\Models\Asesor;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\OtherReceivable;
@@ -15,14 +16,14 @@ class OtherReceivableController extends Controller
 {
     public function index(Request $request)
     {
-        $query = OtherReceivable::with(['coa', 'creator'])
+        $query = OtherReceivable::with(['coa', 'creator', 'asesor'])
             ->orderByDesc('tanggal')
             ->orderByDesc('id');
 
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('uraian', 'like', '%' . $request->search . '%')
-                  ->orWhere('nama_pihak', 'like', '%' . $request->search . '%');
+                    ->orWhere('nama_pihak', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -38,16 +39,20 @@ class OtherReceivableController extends Controller
             $query->whereYear('tanggal', $request->tahun);
         }
 
-        $receivables         = $query->paginate(20)->withQueryString();
-        $totalOutstanding    = OtherReceivable::where('status', 'outstanding')->sum('jumlah');
-        $totalLunas          = OtherReceivable::where('status', 'lunas')->sum('jumlah_lunas');
+        // Filter per asesor
+        if ($request->filled('asesor_id')) {
+            $query->where('asesor_id', $request->asesor_id);
+        }
+
+        $receivables      = $query->paginate(20)->withQueryString();
+        $totalOutstanding = OtherReceivable::where('status', 'outstanding')->sum('jumlah');
+        $totalLunas       = OtherReceivable::where('status', 'lunas')->sum('jumlah_lunas');
 
         $coaOptions = ChartOfAccount::where('tipe', 'aset')
             ->where('is_active', true)
             ->orderBy('kode')
             ->get();
 
-        // Tambah ini:
         $coaLawanOptions = ChartOfAccount::where('is_active', true)
             ->whereNotIn('tipe', ['aset'])
             ->orderBy('kode')
@@ -56,9 +61,17 @@ class OtherReceivableController extends Controller
         $tahunList = OtherReceivable::selectRaw('YEAR(tanggal) as tahun')
             ->distinct()->orderByDesc('tahun')->pluck('tahun');
 
+        // Untuk dropdown filter asesor
+        $asesors = Asesor::orderBy('nama')->get(['id', 'nama']);
+
         return view('bendahara.other-receivables.index', compact(
-            'receivables', 'totalOutstanding', 'totalLunas',
-            'coaOptions', 'tahunList', 'coaLawanOptions'
+            'receivables',
+            'totalOutstanding',
+            'totalLunas',
+            'coaOptions',
+            'tahunList',
+            'coaLawanOptions',
+            'asesors'
         ));
     }
 
@@ -69,6 +82,7 @@ class OtherReceivableController extends Controller
         $request->validate([
             'jenis'         => 'required|in:pinjaman,tagihan',
             'nama_pihak'    => 'required|string|max:255',
+            'asesor_id'     => 'nullable|exists:asesors,id',
             'uraian'        => 'required|string|max:500',
             'jumlah'        => 'required|integer|min:1',
             'tanggal'       => 'required|date',
@@ -78,7 +92,7 @@ class OtherReceivableController extends Controller
             'catatan'       => 'nullable|string|max:1000',
             'coa_baru_kode' => $modeBaru ? 'required|string|max:20|unique:chart_of_accounts,kode' : 'nullable',
             'coa_baru_nama' => $modeBaru ? 'required|string|max:255' : 'nullable',
-            'coa_lawan_id' => $request->jenis === 'tagihan' ? 'required|integer|exists:chart_of_accounts,id' : 'nullable',
+            'coa_lawan_id'  => $request->jenis === 'tagihan' ? 'required|integer|exists:chart_of_accounts,id' : 'nullable',
         ]);
 
         DB::beginTransaction();
@@ -98,18 +112,25 @@ class OtherReceivableController extends Controller
                 $coaId = $newCoa->id;
             }
 
+            // Kalau asesor_id diisi, nama_pihak otomatis dari nama asesor
+            $namaPihak = $request->nama_pihak;
+            if ($request->filled('asesor_id')) {
+                $asesor    = Asesor::find($request->asesor_id);
+                $namaPihak = $asesor?->nama ?? $namaPihak;
+            }
+
             $data = [
                 'coa_id'      => $coaId,
                 'jenis'       => $request->jenis,
-                'nama_pihak'  => $request->nama_pihak,
+                'nama_pihak'  => $namaPihak,
+                'asesor_id'   => $request->filled('asesor_id') ? (int) $request->asesor_id : null,
                 'uraian'      => $request->uraian,
                 'jumlah'      => (int) $request->jumlah,
                 'tanggal'     => $request->tanggal,
                 'jatuh_tempo' => $request->jatuh_tempo,
                 'catatan'     => $request->catatan,
                 'created_by'  => auth()->id(),
-                'coa_lawan_id' => $request->jenis === 'tagihan' ? (int)$request->coa_lawan_id : null,
-
+                'coa_lawan_id' => $request->jenis === 'tagihan' ? (int) $request->coa_lawan_id : null,
             ];
 
             if ($request->hasFile('bukti')) {
@@ -122,8 +143,12 @@ class OtherReceivableController extends Controller
             app(JournalService::class)->jurnalPiutangLainnya($piutang->load('coa'));
 
             DB::commit();
-            return redirect()->route('bendahara.other-receivables.index')
-                ->with('success', 'Piutang berhasil dicatat dan jurnal telah dibuat.');
+            $redirectUrl = $request->filled('_redirect_back')
+                ? $request->input('_redirect_back')
+                : route('bendahara.other-receivables.index');
+
+            return redirect($redirectUrl)
+                ->with('success', 'Hutang berhasil dicatat. Sekarang Anda bisa memilihnya saat upload bukti transfer.');
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('[OTHER-RECEIVABLE] ' . $e->getMessage());

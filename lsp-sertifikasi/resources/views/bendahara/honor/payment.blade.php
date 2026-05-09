@@ -20,36 +20,33 @@
 
 <div class="row g-4">
 
-    {{-- Kiri: Detail kwitansi --}}
+    {{-- ── Kiri: Detail kwitansi ──────────────────────────────────────── --}}
     <div class="col-lg-7">
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white d-flex align-items-center">
                 <i class="bi bi-file-earmark-text me-1 text-primary"></i>
-                    <span class="fw-semibold font-monospace" id="nomorKwitansiDisplay">{{ $honor->nomor_kwitansi }}</span>
-                    <button class="btn btn-outline-secondary ms-2"
-                            style="font-size:.7rem;padding:2px 6px;"
-                            onclick="toggleEditNomor()"
-                            id="btnEditNomor"
-                            title="Edit nomor kwitansi">
-                        <i class="bi bi-pencil"></i>
+                <span class="fw-semibold font-monospace" id="nomorKwitansiDisplay">{{ $honor->nomor_kwitansi }}</span>
+                <button class="btn btn-outline-secondary ms-2"
+                        style="font-size:.7rem;padding:2px 6px;"
+                        onclick="toggleEditNomor()"
+                        id="btnEditNomor"
+                        title="Edit nomor kwitansi">
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <div id="formEditNomor" class="d-none d-flex align-items-center gap-1 ms-1">
+                    <input type="text" id="inputNomorKwitansi"
+                        class="form-control form-control-sm font-monospace"
+                        style="max-width:240px;font-size:.85rem;"
+                        value="{{ $honor->nomor_kwitansi }}"
+                        placeholder="001/LSP-KAP/KEU.KK/IV/2026">
+                    <button class="btn btn-sm btn-success" onclick="simpanNomor()" title="Simpan">
+                        <i class="bi bi-check-lg"></i>
                     </button>
-
-                    {{-- Form inline edit nomor --}}
-                    <div id="formEditNomor" class="d-none d-flex align-items-center gap-1 ms-1">
-                        <input type="text"
-                            id="inputNomorKwitansi"
-                            class="form-control form-control-sm font-monospace"
-                            style="max-width:240px;font-size:.85rem;"
-                            value="{{ $honor->nomor_kwitansi }}"
-                            placeholder="001/LSP-KAP/KEU.KK/IV/2026">
-                        <button class="btn btn-sm btn-success" onclick="simpanNomor()" title="Simpan">
-                            <i class="bi bi-check-lg"></i>
-                        </button>
-                        <button class="btn btn-sm btn-secondary" onclick="toggleEditNomor()" title="Batal">
-                            <i class="bi bi-x-lg"></i>
-                        </button>
-                    </div>
-                    <span class="badge bg-{{ $honor->status_badge }} ms-auto">{{ $honor->status_label }}</span>
+                    <button class="btn btn-sm btn-secondary" onclick="toggleEditNomor()" title="Batal">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+                <span class="badge bg-{{ $honor->status_badge }} ms-auto">{{ $honor->status_label }}</span>
             </div>
             <div class="card-body">
                 <div class="row g-3 mb-3">
@@ -63,7 +60,6 @@
                     </div>
                 </div>
 
-                {{-- Detail per jadwal --}}
                 <div class="table-responsive">
                     <table class="table table-sm table-bordered align-middle">
                         <thead class="table-light">
@@ -83,21 +79,17 @@
                             @php
                                 $asesmens   = $detail->schedule->asesmens ?? collect();
                                 $batches    = $asesmens->where('is_collective', true)
-                                                    ->pluck('collective_batch_id')
-                                                    ->filter()->unique()->values();
+                                                ->pluck('collective_batch_id')->filter()->unique()->values();
                                 $adaMandiri = $asesmens->where('is_collective', false)->isNotEmpty();
                             @endphp
                             <tr>
                                 <td class="text-muted small">{{ $i+1 }}</td>
                                 <td class="small fw-semibold">{{ $detail->schedule->skema->name }}</td>
                                 <td class="small">{{ $detail->schedule->tuk->name ?? '-' }}</td>
-                                <td class="small">
-                                    {{ optional($detail->schedule->assessment_date)->translatedFormat('d M Y') }}
-                                </td>
+                                <td class="small">{{ optional($detail->schedule->assessment_date)->translatedFormat('d M Y') }}</td>
                                 <td class="small">
                                     @forelse($batches as $batch)
-                                        <span class="badge bg-primary bg-opacity-75 font-monospace"
-                                            style="font-size:.65rem;letter-spacing:.3px;">
+                                        <span class="badge bg-primary bg-opacity-75 font-monospace" style="font-size:.65rem;">
                                             <i class="bi bi-people-fill me-1"></i>{{ $batch }}
                                         </span>
                                         @if(!$loop->last)<br>@endif
@@ -123,8 +115,7 @@
                             @if($honor->has_deduction)
                             <tr class="table-warning">
                                 <td colspan="7" class="text-end" style="color:#dc3545;">
-                                    <i class="bi bi-dash-circle me-1"></i>
-                                    Cicilan Hutang
+                                    <i class="bi bi-dash-circle me-1"></i>Cicilan Hutang
                                     @if($honor->deductionReceivable)
                                     <small class="ms-1">({{ $honor->deductionReceivable->uraian ?? $honor->deductionReceivable->jenis_label }})</small>
                                     @endif
@@ -149,20 +140,16 @@
                     </table>
                 </div>
 
-                {{-- Tombol actions bawah tabel --}}
                 <div class="d-flex gap-2 mt-3 flex-wrap">
                     <a href="{{ route('bendahara.honor.payment.kwitansi', ['honor' => $honor, 'preview' => 1]) }}"
                        target="_blank" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-eye me-1"></i>Preview Draft
                     </a>
                     @if($honor->isDikonfirmasi())
-                    <a href="{{ route('bendahara.honor.payment.kwitansi', $honor) }}"
-                       class="btn btn-sm btn-success">
+                    <a href="{{ route('bendahara.honor.payment.kwitansi', $honor) }}" class="btn btn-sm btn-success">
                         <i class="bi bi-download me-1"></i>Download Kwitansi Final
                     </a>
                     @endif
-
-                    {{-- RESET — hanya kalau belum ada bukti --}}
                     @if($honor->can_reset)
                     <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
                             onclick="confirmReset({{ $honor->id }})">
@@ -186,37 +173,37 @@
             <div class="card-body">
                 @php $rekenings = $honor->asesor->rekenings; @endphp
                 @if($rekenings->isEmpty())
-                    <div class="alert alert-warning py-2 mb-0 small">
-                        <i class="bi bi-exclamation-triangle me-1"></i>
-                        Asesor belum memiliki rekening bank tersimpan.
-                        <a href="{{ route('bendahara.rekening.show', $honor->asesor) }}" class="alert-link">Tambah sekarang</a>.
-                    </div>
+                <div class="alert alert-warning py-2 mb-0 small">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Asesor belum memiliki rekening bank tersimpan.
+                    <a href="{{ route('bendahara.rekening.show', $honor->asesor) }}" class="alert-link">Tambah sekarang</a>.
+                </div>
                 @else
-                    <div class="row g-2">
-                        @foreach($rekenings as $rek)
-                        <div class="col-sm-6">
-                            <div class="border rounded px-3 py-2 h-100 {{ $rek->is_utama ? 'border-success bg-success-subtle' : 'bg-light' }}">
-                                <div class="fw-semibold small">
-                                    {{ $rek->nama_bank }}
-                                    @if($rek->is_utama)
-                                        <span class="badge bg-success ms-1" style="font-size:.65rem;">Utama</span>
-                                    @endif
-                                </div>
-                                <div class="font-monospace" style="font-size:.85rem;">{{ $rek->nomor_rekening }}</div>
-                                <div class="text-muted small">a.n. {{ $rek->nama_pemilik }}</div>
-                                @if($rek->cabang)
-                                    <div class="text-muted" style="font-size:.75rem;">{{ $rek->cabang }}</div>
+                <div class="row g-2">
+                    @foreach($rekenings as $rek)
+                    <div class="col-sm-6">
+                        <div class="border rounded px-3 py-2 h-100 {{ $rek->is_utama ? 'border-success bg-success-subtle' : 'bg-light' }}">
+                            <div class="fw-semibold small">
+                                {{ $rek->nama_bank }}
+                                @if($rek->is_utama)
+                                <span class="badge bg-success ms-1" style="font-size:.65rem;">Utama</span>
                                 @endif
                             </div>
+                            <div class="font-monospace" style="font-size:.85rem;">{{ $rek->nomor_rekening }}</div>
+                            <div class="text-muted small">a.n. {{ $rek->nama_pemilik }}</div>
+                            @if($rek->cabang)
+                            <div class="text-muted" style="font-size:.75rem;">{{ $rek->cabang }}</div>
+                            @endif
                         </div>
-                        @endforeach
                     </div>
+                    @endforeach
+                </div>
                 @endif
             </div>
         </div>
     </div>
 
-    {{-- Kanan: Upload bukti transfer --}}
+    {{-- ── Kanan: Bukti Transfer ───────────────────────────────────────── --}}
     <div class="col-lg-5">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white fw-semibold">
@@ -225,7 +212,7 @@
             <div class="card-body">
 
                 @if($honor->isMenunggu())
-                {{-- ── UPLOAD PERTAMA ── --}}
+                {{-- Upload pertama --}}
                 <form action="{{ route('bendahara.honor.payment.bukti', $honor) }}" method="POST"
                     enctype="multipart/form-data">
                     @csrf
@@ -236,8 +223,29 @@
                     ])
                 </form>
 
+                {{-- Shortcut tambah hutang --}}
+                <div class="mt-3 pt-2 border-top">
+                    @if($hutangAsesor->isEmpty())
+                    <div class="text-center">
+                        <p class="text-muted small mb-2">Belum ada hutang tercatat untuk asesor ini.</p>
+                        <button type="button" class="btn btn-sm btn-outline-warning"
+                                data-bs-toggle="modal" data-bs-target="#modalTambahHutang">
+                            <i class="bi bi-plus-circle me-1"></i>Catat Hutang Asesor
+                        </button>
+                    </div>
+                    @else
+                    <div class="text-end">
+                        <button type="button" class="btn btn-sm btn-link text-muted p-0"
+                                data-bs-toggle="modal" data-bs-target="#modalTambahHutang"
+                                style="font-size:.8rem;">
+                            <i class="bi bi-plus-circle me-1"></i>Tambah hutang baru
+                        </button>
+                    </div>
+                    @endif
+                </div>
+
                 @elseif($honor->isSudahDibayar())
-                {{-- ── SUDAH UPLOAD, MENUNGGU KONFIRMASI ── --}}
+                {{-- Sudah upload, menunggu konfirmasi --}}
                 <div class="alert alert-info py-2 small mb-3">
                     <i class="bi bi-clock me-1"></i>
                     Bukti transfer sudah diupload. Menunggu konfirmasi dari asesor.
@@ -249,7 +257,7 @@
 
                 @include('bendahara.honor._bukti-preview', ['honor' => $honor])
 
-                {{-- GANTI BUKTI --}}
+                {{-- Ganti bukti --}}
                 <hr>
                 <p class="small fw-semibold mb-2"><i class="bi bi-arrow-repeat me-1"></i>Ganti bukti transfer:</p>
                 <form action="{{ route('bendahara.honor.payment.bukti', $honor) }}" method="POST"
@@ -262,8 +270,16 @@
                     ])
                 </form>
 
+                <div class="mt-2 text-end">
+                    <button type="button" class="btn btn-sm btn-link text-muted p-0"
+                            data-bs-toggle="modal" data-bs-target="#modalTambahHutang"
+                            style="font-size:.8rem;">
+                        <i class="bi bi-plus-circle me-1"></i>Tambah hutang baru
+                    </button>
+                </div>
+
                 @elseif($honor->isDikonfirmasi())
-                {{-- ── SUDAH DIKONFIRMASI ── --}}
+                {{-- Sudah dikonfirmasi --}}
                 <div class="alert alert-success py-2 small mb-3">
                     <i class="bi bi-check-circle-fill me-1"></i>
                     Asesor sudah konfirmasi penerimaan honor.
@@ -272,7 +288,6 @@
                     <div class="text-muted small">Dikonfirmasi pada</div>
                     <div>{{ optional($honor->dikonfirmasi_at)->translatedFormat('d F Y, H:i') }}</div>
                 </div>
-
                 @include('bendahara.honor._bukti-preview', ['honor' => $honor])
                 @endif
 
@@ -287,9 +302,9 @@
             <div class="card-body py-2">
                 @php
                 $steps = [
-                    ['label' => 'Kwitansi Dibuat',       'done' => true],
-                    ['label' => 'Bukti Transfer Upload',  'done' => in_array($honor->status, ['sudah_dibayar','dikonfirmasi'])],
-                    ['label' => 'Konfirmasi Asesor',      'done' => $honor->isDikonfirmasi()],
+                    ['label' => 'Kwitansi Dibuat',      'done' => true],
+                    ['label' => 'Bukti Transfer Upload', 'done' => in_array($honor->status, ['sudah_dibayar','dikonfirmasi'])],
+                    ['label' => 'Konfirmasi Asesor',     'done' => $honor->isDikonfirmasi()],
                 ];
                 @endphp
                 @foreach($steps as $step)
@@ -300,15 +315,95 @@
                 @endforeach
             </div>
         </div>
-
     </div>
 
 </div>
+
+{{-- ── Modal Tambah Hutang Asesor ──────────────────────────────────────── --}}
+@if(!$honor->isDikonfirmasi())
+<div class="modal fade" id="modalTambahHutang" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form action="{{ route('bendahara.other-receivables.store') }}" method="POST"
+              enctype="multipart/form-data">
+            @csrf
+            {{-- Context sudah diketahui dari kwitansi ini --}}
+            <input type="hidden" name="asesor_id"      value="{{ $honor->asesor_id }}">
+            <input type="hidden" name="nama_pihak"     value="{{ $honor->asesor->nama }}">
+            <input type="hidden" name="jenis"          value="pinjaman">
+            <input type="hidden" name="_redirect_back" value="{{ route('bendahara.honor.payment.show', $honor) }}">
+
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-cash-coin text-warning me-2"></i>
+                        Catat Hutang — {{ $honor->asesor->nama }}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info py-2 small mb-3">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Jenis: <strong>Pinjaman/Kasbon</strong> &nbsp;·&nbsp;
+                        Jurnal otomatis: Dr. Piutang / Cr. Kas-Bank.
+                        Setelah disimpan, hutang ini bisa dipilih sebagai cicilan saat upload bukti transfer.
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Uraian <span class="text-danger">*</span></label>
+                            <input type="text" name="uraian" class="form-control"
+                                   placeholder="cth: Kasbon operasional, Pinjaman pribadi..." required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Jumlah (Rp) <span class="text-danger">*</span></label>
+                            <input type="number" name="jumlah" class="form-control" min="1000" step="1000" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tanggal <span class="text-danger">*</span></label>
+                            <input type="date" name="tanggal" class="form-control"
+                                   value="{{ today()->toDateString() }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Jatuh Tempo</label>
+                            <input type="date" name="jatuh_tempo" class="form-control">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Akun Piutang <span class="text-danger">*</span></label>
+                            <select name="coa_id" class="form-select" required>
+                                <option value="">-- Pilih Akun --</option>
+                                @foreach($coaOptions as $coa)
+                                <option value="{{ $coa->id }}">{{ $coa->kode }} — {{ $coa->nama }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Catatan</label>
+                            <input type="text" name="catatan" class="form-control" placeholder="Opsional">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Bukti Dokumen</label>
+                            <input type="file" name="bukti" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
+                            <div class="form-text">jpg, png, pdf — maks 5MB (opsional)</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-save me-1"></i>Simpan & Buat Jurnal
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')
 <script>
-// ── Edit nomor kwitansi ───────────────────────────────────────────────────
+// ── Edit nomor kwitansi ────────────────────────────────────────────────────
 function toggleEditNomor() {
     const display = document.getElementById('nomorKwitansiDisplay');
     const btnEdit = document.getElementById('btnEditNomor');
@@ -347,7 +442,7 @@ document.getElementById('inputNomorKwitansi')?.addEventListener('keydown', e => 
     if (e.key === 'Escape') toggleEditNomor();
 });
 
-// ── Reset kwitansi ────────────────────────────────────────────────────────
+// ── Reset kwitansi ─────────────────────────────────────────────────────────
 function confirmReset(id) {
     Swal.fire({
         title: 'Reset Kwitansi?',
@@ -376,16 +471,16 @@ function confirmReset(id) {
     });
 }
 
-// ── Toggle deduction panel ────────────────────────────────────────────────
+// ── Toggle deduction panel ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('[id^="deduction_receivable_id"]').forEach(function(select) {
+    document.querySelectorAll('[id^="deduction_receivable_id"]').forEach(function (select) {
         const panelId = select.id === 'deduction_receivable_id' ? 'deduction-panel' : 'deduction-panel-replace';
         const panel   = document.getElementById(panelId);
         if (!panel) return;
 
         select.addEventListener('change', function () {
             panel.style.display = this.value ? 'block' : 'none';
-            const opt  = this.options[this.selectedIndex];
+            const opt   = this.options[this.selectedIndex];
             const maxEl = panel.querySelector('.deduction-max-label');
             const amtEl = panel.querySelector('input[name="deduction_amount"]');
             if (maxEl && opt?.dataset?.sisa) {
@@ -394,13 +489,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Preview realtime
         const amtEl = panel?.querySelector('input[name="deduction_amount"]');
         if (amtEl) {
             const total = {{ $honor->total }};
             amtEl.addEventListener('input', function () {
                 const v   = parseFloat(this.value) || 0;
                 const trf = Math.max(0, total - v);
+                panel.querySelector('.preview-deduction')?.setAttribute && null;
                 const previewDed = panel.querySelector('.preview-deduction');
                 const previewTrf = panel.querySelector('.preview-transfer');
                 if (previewDed) previewDed.textContent = new Intl.NumberFormat('id-ID').format(v);

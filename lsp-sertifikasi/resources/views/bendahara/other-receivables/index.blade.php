@@ -43,20 +43,29 @@
             <div class="col-md-2">
                 <select name="status" class="form-select form-select-sm">
                     <option value="">Semua Status</option>
-                    <option value="outstanding" @selected(request('status')==='outstanding' )>Outstanding</option>
-                    <option value="lunas" @selected(request('status')==='lunas' )>Lunas</option>
+                    <option value="outstanding" @selected(request('status')==='outstanding')>Outstanding</option>
+                    <option value="lunas" @selected(request('status')==='lunas')>Lunas</option>
                 </select>
             </div>
             <div class="col-md-2">
                 <select name="jenis" class="form-select form-select-sm">
                     <option value="">Semua Jenis</option>
-                    <option value="pinjaman" @selected(request('jenis')==='pinjaman' )>Pinjaman</option>
-                    <option value="tagihan" @selected(request('jenis')==='tagihan' )>Tagihan</option>
+                    <option value="pinjaman" @selected(request('jenis')==='pinjaman')>Pinjaman</option>
+                    <option value="tagihan" @selected(request('jenis')==='tagihan')>Tagihan</option>
                 </select>
             </div>
+            {{-- Filter Asesor --}}
             <div class="col-md-2">
+                <select name="asesor_id" class="form-select form-select-sm">
+                    <option value="">Semua Pihak</option>
+                    @foreach($asesors as $a)
+                    <option value="{{ $a->id }}" @selected(request('asesor_id') == $a->id)>{{ $a->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-1">
                 <select name="tahun" class="form-select form-select-sm">
-                    <option value="">Semua Tahun</option>
+                    <option value="">Tahun</option>
                     @foreach($tahunList as $t)
                     <option value="{{ $t }}" @selected(request('tahun')==$t)>{{ $t }}</option>
                     @endforeach
@@ -83,6 +92,7 @@
                         <th>Akun Piutang</th>
                         <th>Akun Lawan</th>
                         <th class="text-end">Jumlah</th>
+                        <th class="text-end">Sisa</th>
                         <th>Jatuh Tempo</th>
                         <th>Status</th>
                         <th></th>
@@ -92,7 +102,14 @@
                     @forelse($receivables as $r)
                     <tr>
                         <td class="text-nowrap">{{ $r->tanggal->format('d/m/Y') }}</td>
-                        <td>{{ $r->nama_pihak }}</td>
+                        <td>
+                            {{ $r->nama_pihak }}
+                            @if($r->asesor)
+                            <div class="text-muted" style="font-size:.72rem;">
+                                <i class="bi bi-person-badge me-1"></i>Asesor
+                            </div>
+                            @endif
+                        </td>
                         <td>
                             {{ $r->uraian }}
                             @if($r->catatan)
@@ -100,8 +117,7 @@
                             @endif
                         </td>
                         <td>
-                            <span
-                                class="badge {{ $r->jenis === 'pinjaman' ? 'bg-warning text-dark' : 'bg-info text-dark' }}">
+                            <span class="badge {{ $r->jenis === 'pinjaman' ? 'bg-warning text-dark' : 'bg-info text-dark' }}">
                                 {{ $r->jenis_label }}
                             </span>
                         </td>
@@ -116,10 +132,18 @@
                             </small>
                         </td>
                         <td class="text-end fw-semibold">Rp {{ number_format($r->jumlah, 0, ',', '.') }}</td>
+                        <td class="text-end">
+                            @if($r->sisa > 0 && $r->status !== 'lunas')
+                            <span class="text-danger fw-semibold">Rp {{ number_format($r->sisa, 0, ',', '.') }}</span>
+                            @elseif($r->status === 'lunas')
+                            <span class="text-success">Lunas</span>
+                            @else
+                            <span class="text-muted">-</span>
+                            @endif
+                        </td>
                         <td class="text-nowrap">
                             @if($r->jatuh_tempo)
-                            <span
-                                class="{{ $r->status === 'outstanding' && $r->jatuh_tempo->isPast() ? 'text-danger fw-semibold' : '' }}">
+                            <span class="{{ $r->status === 'outstanding' && $r->jatuh_tempo->isPast() ? 'text-danger fw-semibold' : '' }}">
                                 {{ $r->jatuh_tempo->format('d/m/Y') }}
                             </span>
                             @else
@@ -129,6 +153,11 @@
                         <td>
                             @if($r->status === 'outstanding')
                             <span class="badge bg-danger">Outstanding</span>
+                            @elseif($r->status === 'cicilan')
+                            <span class="badge bg-warning text-dark">Cicilan</span>
+                            <div class="text-muted" style="font-size:.72rem">
+                                Terbayar Rp {{ number_format($r->jumlah_lunas, 0, ',', '.') }}
+                            </div>
                             @else
                             <span class="badge bg-success">Lunas</span>
                             <div class="text-muted" style="font-size:.72rem">
@@ -144,17 +173,20 @@
                                 <i class="bi bi-paperclip"></i>
                             </a>
                             @endif
-                            @if($r->status === 'outstanding')
-                            <button class="btn btn-sm btn-success btn-lunas" data-id="{{ $r->id }}"
-                                data-nama="{{ $r->nama_pihak }}" data-jumlah="{{ $r->jumlah }}" data-bs-toggle="modal"
+                            @if($r->status !== 'lunas')
+                            <button class="btn btn-sm btn-success btn-lunas"
+                                data-id="{{ $r->id }}"
+                                data-nama="{{ $r->nama_pihak }}"
+                                data-jumlah="{{ $r->jumlah }}"
+                                data-sisa="{{ $r->sisa }}"
+                                data-bs-toggle="modal"
                                 data-bs-target="#modalLunas">
                                 <i class="bi bi-check-lg"></i> Lunas
                             </button>
                             <form action="{{ route('bendahara.other-receivables.destroy', $r) }}" method="POST"
                                 class="d-inline form-hapus">
                                 @csrf @method('DELETE')
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-hapus-trigger"
-                                    title="Hapus">
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-hapus-trigger" title="Hapus">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </form>
@@ -163,7 +195,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted py-4">Tidak ada data piutang.</td>
+                        <td colspan="11" class="text-center text-muted py-4">Tidak ada data piutang.</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -191,7 +223,7 @@
                         <div class="col-md-6">
                             <label class="form-label">Jenis <span class="text-danger">*</span></label>
                             <select name="jenis" class="form-select" id="selectJenis" required>
-                                <option value="pinjaman">Pinjaman</option>
+                                <option value="pinjaman">Pinjaman / Kasbon</option>
                                 <option value="tagihan">Tagihan (belum terima uang)</option>
                             </select>
                             <div class="form-text text-info" id="jenisHint">
@@ -199,18 +231,47 @@
                             </div>
                         </div>
 
-                        {{-- Nama Pihak --}}
+                        {{-- Nama Pihak + Asesor --}}
                         <div class="col-md-6">
                             <label class="form-label">Nama Pihak <span class="text-danger">*</span></label>
-                            <input type="text" name="nama_pihak" class="form-control"
-                                placeholder="Nama orang / instansi" required>
+
+                            {{-- Toggle: Asesor atau Pihak Lain --}}
+                            <div class="d-flex gap-2 mb-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="_pihak_tipe"
+                                           id="pihakAsesor" value="asesor" checked>
+                                    <label class="form-check-label small" for="pihakAsesor">Asesor</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="_pihak_tipe"
+                                           id="pihakLainnya" value="lainnya">
+                                    <label class="form-check-label small" for="pihakLainnya">Pihak Lain</label>
+                                </div>
+                            </div>
+
+                            {{-- Dropdown asesor --}}
+                            <div id="wrapAsesor">
+                                <select name="asesor_id" id="selectAsesor" class="form-select">
+                                    <option value="">-- Pilih Asesor --</option>
+                                    @foreach($asesors as $a)
+                                    <option value="{{ $a->id }}">{{ $a->nama }}</option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" name="nama_pihak" id="hiddenNamaPihak">
+                            </div>
+
+                            {{-- Input manual --}}
+                            <div id="wrapNamaPihak" style="display:none">
+                                <input type="text" name="nama_pihak" id="inputNamaPihak"
+                                       class="form-control" placeholder="Nama orang / instansi">
+                            </div>
                         </div>
 
                         {{-- Uraian --}}
                         <div class="col-12">
                             <label class="form-label">Uraian <span class="text-danger">*</span></label>
-                            <input type="text" name="uraian" class="form-control" placeholder="Keterangan piutang"
-                                required>
+                            <input type="text" name="uraian" class="form-control"
+                                   placeholder="Keterangan piutang" required>
                         </div>
 
                         {{-- Jumlah, Tanggal, Jatuh Tempo --}}
@@ -220,8 +281,8 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Tanggal <span class="text-danger">*</span></label>
-                            <input type="date" name="tanggal" class="form-control" value="{{ today()->toDateString() }}"
-                                required>
+                            <input type="date" name="tanggal" class="form-control"
+                                   value="{{ today()->toDateString() }}" required>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Jatuh Tempo</label>
@@ -260,12 +321,12 @@
                                     <div class="col-md-4">
                                         <label class="form-label form-label-sm">Kode Akun</label>
                                         <input type="text" name="coa_baru_kode" class="form-control form-control-sm"
-                                            placeholder="1-105">
+                                               placeholder="1-105">
                                     </div>
                                     <div class="col-md-8">
                                         <label class="form-label form-label-sm">Nama Akun</label>
                                         <input type="text" name="coa_baru_nama" class="form-control form-control-sm"
-                                            placeholder="Piutang Pinjaman Internal">
+                                               placeholder="Piutang Pinjaman Internal">
                                     </div>
                                 </div>
                             </div>
@@ -314,13 +375,12 @@
                     <div class="mb-3">
                         <label class="form-label">Tanggal Lunas <span class="text-danger">*</span></label>
                         <input type="date" name="tanggal_lunas" class="form-control"
-                            value="{{ today()->toDateString() }}" required>
+                               value="{{ today()->toDateString() }}" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Jumlah Diterima (Rp) <span class="text-danger">*</span></label>
-                        <input type="number" name="jumlah_lunas" id="inputJumlahLunas" class="form-control" min="1"
-                            required>
-                        <div class="form-text">Maksimal: <span id="lunasMaksimal"></span></div>
+                        <input type="number" name="jumlah_lunas" id="inputJumlahLunas" class="form-control" min="1" required>
+                        <div class="form-text">Sisa hutang: <span id="lunasMaksimal"></span></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Catatan</label>
@@ -342,51 +402,92 @@
 
 @push('scripts')
 <script>
-const selectJenis = document.getElementById('selectJenis');
-const selectCoa = document.getElementById('selectCoa');
-const wrapCoaLawan = document.getElementById('wrapCoaLawan');
+// ── Pihak: asesor vs lainnya ───────────────────────────────────────────────
+const radios       = document.querySelectorAll('input[name="_pihak_tipe"]');
+const wrapAsesor   = document.getElementById('wrapAsesor');
+const wrapNama     = document.getElementById('wrapNamaPihak');
+const selectAsesor = document.getElementById('selectAsesor');
+const hiddenNama   = document.getElementById('hiddenNamaPihak');
+const inputNama    = document.getElementById('inputNamaPihak');
+
+// Map asesor id → nama untuk hidden field
+const asesorMap = {
+    @foreach($asesors as $a)
+    {{ $a->id }}: "{{ addslashes($a->nama) }}",
+    @endforeach
+};
+
+radios.forEach(radio => {
+    radio.addEventListener('change', function () {
+        const isAsesor = this.value === 'asesor';
+        wrapAsesor.style.display = isAsesor ? 'block' : 'none';
+        wrapNama.style.display   = isAsesor ? 'none'  : 'block';
+        selectAsesor.required    = isAsesor;
+        inputNama.required       = !isAsesor;
+        // Ganti name attribute agar tidak double submit
+        if (isAsesor) {
+            hiddenNama.name  = 'nama_pihak';
+            inputNama.name   = '_nama_pihak_unused';
+        } else {
+            hiddenNama.name  = '_asesor_nama_unused';
+            inputNama.name   = 'nama_pihak';
+            selectAsesor.value = '';
+        }
+    });
+});
+
+// Sync hidden nama saat asesor dipilih
+selectAsesor.addEventListener('change', function () {
+    hiddenNama.value = asesorMap[this.value] ?? '';
+});
+
+// Init: asesor mode aktif default
+hiddenNama.name  = 'nama_pihak';
+inputNama.name   = '_nama_pihak_unused';
+selectAsesor.required = true;
+
+// ── Jenis change ───────────────────────────────────────────────────────────
+const selectJenis   = document.getElementById('selectJenis');
+const wrapCoaLawan  = document.getElementById('wrapCoaLawan');
 const selectCoaLawan = document.getElementById('selectCoaLawan');
-const jenisHint = document.getElementById('jenisHint');
-const coaBaru = document.getElementById('coaBaru');
+const jenisHint     = document.getElementById('jenisHint');
 
-// ── Jenis change: update hint + toggle akun lawan ──────────────────────
-selectJenis.addEventListener('change', function() {
+selectJenis.addEventListener('change', function () {
     const isPinjaman = this.value === 'pinjaman';
-
-    jenisHint.textContent = isPinjaman ?
-        'Jurnal: Dr. Piutang / Cr. Kas-Bank (kas sudah keluar)' :
-        'Jurnal: Dr. Piutang / Cr. Akun Lawan pilihan';
-
+    jenisHint.textContent = isPinjaman
+        ? 'Jurnal: Dr. Piutang / Cr. Kas-Bank (kas sudah keluar)'
+        : 'Jurnal: Dr. Piutang / Cr. Akun Lawan pilihan';
     wrapCoaLawan.style.display = isPinjaman ? 'none' : 'block';
-    selectCoaLawan.required = !isPinjaman;
-
+    selectCoaLawan.required    = !isPinjaman;
     if (isPinjaman) selectCoaLawan.value = '';
 });
 
-// ── COA baru toggle ────────────────────────────────────────────────────
-selectCoa.addEventListener('change', function() {
+// ── COA baru toggle ────────────────────────────────────────────────────────
+const selectCoa = document.getElementById('selectCoa');
+const coaBaru   = document.getElementById('coaBaru');
+selectCoa.addEventListener('change', function () {
     const isBaru = this.value === '__baru__';
     coaBaru.style.display = isBaru ? 'block' : 'none';
     if (isBaru) this.value = '';
 });
 
-// ── Isi modal lunas ────────────────────────────────────────────────────
+// ── Isi modal lunas ────────────────────────────────────────────────────────
 document.querySelectorAll('.btn-lunas').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const jumlah = this.dataset.jumlah;
-        document.getElementById('lunasNama').textContent = this.dataset.nama;
-        document.getElementById('inputJumlahLunas').value = jumlah;
-        document.getElementById('inputJumlahLunas').max = jumlah;
-        document.getElementById('lunasMaksimal').textContent =
-            'Rp ' + parseInt(jumlah).toLocaleString('id-ID');
+    btn.addEventListener('click', function () {
+        const sisa = this.dataset.sisa;
+        document.getElementById('lunasNama').textContent        = this.dataset.nama;
+        document.getElementById('inputJumlahLunas').value       = sisa;
+        document.getElementById('inputJumlahLunas').max         = sisa;
+        document.getElementById('lunasMaksimal').textContent    =
+            'Rp ' + parseInt(sisa).toLocaleString('id-ID');
         document.getElementById('formLunas').action =
             `/bendahara/piutang-lainnya/${this.dataset.id}/lunas`;
     });
 });
 
-// ── Konfirmasi hapus ───────────────────────────────────────────────────
+// ── Konfirmasi hapus ───────────────────────────────────────────────────────
 document.querySelectorAll('.btn-hapus-trigger').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
         const form = this.closest('form');
         Swal.fire({
             title: 'Hapus piutang ini?',
@@ -396,9 +497,7 @@ document.querySelectorAll('.btn-hapus-trigger').forEach(btn => {
             confirmButtonText: 'Ya, hapus',
             cancelButtonText: 'Batal',
             confirmButtonColor: '#dc3545',
-        }).then(r => {
-            if (r.isConfirmed) form.submit();
-        });
+        }).then(r => { if (r.isConfirmed) form.submit(); });
     });
 });
 </script>

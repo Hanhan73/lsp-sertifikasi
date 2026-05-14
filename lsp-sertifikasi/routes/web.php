@@ -1045,28 +1045,18 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/{payment}/reject', [BendaharaController::class, 'reject'])->name('reject');
     });
     // ── Honor Asesor ──────────────────────────────────────────────────────
-    Route::prefix('honor')->name('honor.')->group(function () {
-        Route::get('/',                               [HonorAsesorController::class, 'index'])->name('index');
-        Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])->name('show');
-        Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])->name('store');
-        Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])->name('payment.show');
-
-        // Upload bukti — sekarang support ganti bukti (isSudahDibayar) dan cicilan hutang
-        Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
-
-        // Download bukti
-        Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
-
-        // PDF kwitansi (dipakai bendahara + asesor)
-        Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
-
-        // Update nomor kwitansi
-        Route::patch('/payments/{honor}/nomor',       [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
-
-        // ── BARU: Reset kwitansi ──────────────────────────────────────────────
-        Route::post('/payment/{honor}/reset',         [HonorAsesorController::class, 'resetKwitansi'])->name('payment.reset');
-    });
-
+Route::prefix('honor')->name('honor.')->group(function () {
+    Route::get('/',                               [HonorAsesorController::class, 'index'])->name('index');
+    Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])->name('show');
+    Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])->name('store');
+    Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])->name('payment.show');
+    Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
+    Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
+    Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
+    
+    // Ganti dari /payments/{honor}/nomor → /payment/{honor}/nomor (konsisten)
+    Route::patch('/payment/{honor}/nomor',        [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
+});
     // ── Rekap Pendapatan ──────────────────────────────────────────────────
     Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])->name('rekap-pendapatan');
 

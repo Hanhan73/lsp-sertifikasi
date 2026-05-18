@@ -30,17 +30,20 @@ class DirekturScheduleController extends Controller
         $pendingSchedules = Schedule::with(['tuk', 'skema', 'asesor', 'asesmens', 'creator'])
             ->pendingApproval()
             ->orderBy('created_at', 'asc')
-            ->paginate(15, ['*'], 'pending_page');
+            ->paginate(15, ['*'], 'pending_page')
+            ->appends(['tab' => 'pending']);
 
         $approvedSchedules = Schedule::with(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy'])
             ->approved()
             ->orderBy('approved_at', 'desc')
-            ->paginate(15, ['*'], 'approved_page');
+            ->paginate(15, ['*'], 'approved_page')
+            ->appends(['tab' => 'approved']);
 
         $rejectedSchedules = Schedule::with(['tuk', 'skema', 'asesmens', 'creator'])
             ->where('approval_status', 'rejected')
             ->orderBy('rejected_at', 'desc')
-            ->paginate(15, ['*'], 'rejected_page');
+            ->paginate(15, ['*'], 'rejected_page')
+            ->appends(['tab' => 'rejected']);
 
         $stats = [
             'pending'  => Schedule::pendingApproval()->count(),
@@ -63,8 +66,15 @@ class DirekturScheduleController extends Controller
     public function show(Schedule $schedule)
     {
         $schedule->load([
-            'tuk', 'skema', 'asesor', 'creator', 'approvedBy',
-            'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+            'tuk',
+            'skema',
+            'asesor',
+            'creator',
+            'approvedBy',
+            'asesmens.user',
+            'asesmens.aplsatu',
+            'asesmens.apldua',
+            'asesmens.frak01',
         ]);
 
         return view('direktur.schedules.show', compact('schedule'));
@@ -125,7 +135,6 @@ class DirekturScheduleController extends Controller
                 "Jadwal disetujui. Nomor SK: {$skNumber}. Status {$schedule->asesmens->count()} asesi berubah ke Terjadwal.",
                 route('direktur.schedules.show', $schedule)
             );
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Direktur approve schedule error: {$e->getMessage()}");

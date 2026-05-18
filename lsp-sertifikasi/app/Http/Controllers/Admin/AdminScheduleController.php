@@ -46,29 +46,42 @@ class AdminScheduleController extends Controller
             // APL-02 harus sudah disubmit (bukan draft)
             ->whereHas('apldua', function ($q) {
                 $q->whereNotIn('status', ['draft'])
-                  ->whereNotNull('submitted_at');
+                    ->whereNotNull('submitted_at');
                 // Sesuaikan: mungkin kolom submitted_at atau status != 'draft'
             })
             // FR.AK.01 harus sudah disubmit
             ->whereHas('frak01', function ($q) {
                 $q->whereNotIn('status', ['draft'])
-                  ->whereNotNull('submitted_at');
+                    ->whereNotNull('submitted_at');
             });
     }
 
     /**
      * Daftar semua jadwal + asesi siap dijadwalkan.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->get('search');
+
         $readyToSchedule = $this->readyToScheduleQuery()
             ->orderBy('full_name')
             ->get()
             ->groupBy('tuk_id');
 
-        $schedules = Schedule::with(['tuk', 'skema', 'asesor', 'asesmens.user'])
-            ->orderBy('assessment_date', 'desc')
-            ->paginate(20);
+        $schedulesQuery = Schedule::with(['tuk', 'skema', 'asesor', 'asesmens.user'])
+            ->orderBy('assessment_date', 'desc');
+
+        if ($search) {
+            $schedulesQuery->where(function ($q) use ($search) {
+                $q->whereHas('skema', fn($sq) => $sq->where('name', 'like', "%{$search}%"))
+                    ->orWhereHas('tuk', fn($tq) => $tq->where('name', 'like', "%{$search}%"))
+                    ->orWhere('location', 'like', "%{$search}%")
+                    ->orWhereHas('asesor', fn($aq) => $aq->where('nama', 'like', "%{$search}%"));
+            });
+        }
+
+        $schedules = $schedulesQuery->paginate(20)->appends($request->only('search'));
+
 
         $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
         $skemas = Skema::where('is_active', true)->orderBy('name')->get();
@@ -88,36 +101,36 @@ class AdminScheduleController extends Controller
     /**
      * Form buat jadwal baru.
      */
-public function create(Request $request)
-{
-    $selectedIds = $request->input('asesmen_ids', []);
-    $selectedAsesmens = $selectedIds
-        ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
-        : collect();
+    public function create(Request $request)
+    {
+        $selectedIds = $request->input('asesmen_ids', []);
+        $selectedAsesmens = $selectedIds
+            ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
+            : collect();
 
-    $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
-    $skemas = Skema::where('is_active', true)->orderBy('name')->get();
+        $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
+        $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-    $availableAsesmens = $this->readyToScheduleQuery()
-        ->orderBy('full_name')
-        ->get();
+        $availableAsesmens = $this->readyToScheduleQuery()
+            ->orderBy('full_name')
+            ->get();
 
-    // Ambil semua batch ID yang ada di available asesmens (kolektif saja)
-    $batches = $availableAsesmens
-        ->whereNotNull('collective_batch_id')
-        ->pluck('collective_batch_id')
-        ->unique()
-        ->sort()
-        ->values();
+        // Ambil semua batch ID yang ada di available asesmens (kolektif saja)
+        $batches = $availableAsesmens
+            ->whereNotNull('collective_batch_id')
+            ->pluck('collective_batch_id')
+            ->unique()
+            ->sort()
+            ->values();
 
-    return view('admin.schedules.create', compact(
-        'selectedAsesmens',
-        'availableAsesmens',
-        'tuks',
-        'skemas',
-        'batches',
-    ));
-}
+        return view('admin.schedules.create', compact(
+            'selectedAsesmens',
+            'availableAsesmens',
+            'tuks',
+            'skemas',
+            'batches',
+        ));
+    }
 
     /**
      * Simpan jadwal baru.
@@ -170,8 +183,8 @@ public function create(Request $request)
                 'location'        => $request->location,
                 'location_type'   => $request->location_type,           // ← tambah
                 'meeting_link'    => $request->location_type === 'online'
-                                        ? $request->meeting_link
-                                        : null,                          // ← tambah
+                    ? $request->meeting_link
+                    : null,                          // ← tambah
                 'notes'           => $request->notes,
                 'created_by'      => auth()->id(),
                 'approval_status' => 'pending_approval',
@@ -196,7 +209,6 @@ public function create(Request $request)
 
             return redirect()->route('admin.schedules.index')
                 ->with('success', "Jadwal berhasil dibuat untuk {$asesmens->count()} asesi dan sedang menunggu persetujuan Direktur.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Admin create schedule error: ' . $e->getMessage());
@@ -212,8 +224,14 @@ public function create(Request $request)
     public function show(Schedule $schedule)
     {
         $schedule->load([
-            'tuk', 'skema', 'asesor', 'approvedBy',
-            'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+            'tuk',
+            'skema',
+            'asesor',
+            'approvedBy',
+            'asesmens.user',
+            'asesmens.aplsatu',
+            'asesmens.apldua',
+            'asesmens.frak01',
         ]);
 
         return view('admin.schedules.show', compact('schedule'));
@@ -257,17 +275,17 @@ public function create(Request $request)
             'meeting_link'    => 'nullable|url|max:500|required_if:location_type,online',
             'notes'           => 'nullable|string',
         ]);
-        
+
         $data = $request->only(['assessment_date', 'start_time', 'end_time', 'location', 'location_type', 'notes']);
         $data['meeting_link'] = $request->location_type === 'online' ? $request->meeting_link : null;
-        
+
         // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
         if ($schedule->isRejected()) {
             $data['approval_status'] = 'pending_approval';
             $data['approval_notes']  = null;
             $data['rejected_at']     = null;
         }
-        
+
         $schedule->update($data);
 
         if ($request->wantsJson()) {

@@ -140,22 +140,46 @@ $noAsesorCount  = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)-
                 </div>
                 <span class="fw-semibold">Semua Jadwal</span>
             </div>
-            <div class="ms-auto d-flex gap-2 flex-wrap">
+            {{-- ── Server-side search form ── --}}
+            <form method="GET" action="{{ route('admin.schedules.index') }}"
+                  class="ms-auto d-flex gap-2 flex-wrap align-items-center">
                 <div class="input-group input-group-sm" style="max-width:220px;">
-                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted" style="font-size:.75rem;"></i></span>
-                    <input type="text" class="form-control form-control-sm border-start-0 ps-0" id="search-sched" placeholder="Cari jadwal...">
+                    <span class="input-group-text bg-white border-end-0">
+                        <i class="bi bi-search text-muted" style="font-size:.75rem;"></i>
+                    </span>
+                    <input type="text" name="search"
+                           class="form-control form-control-sm border-start-0 ps-0"
+                           placeholder="Cari jadwal..."
+                           value="{{ request('search') }}"
+                           autocomplete="off">
+                    @if(request('search'))
+                    <a href="{{ route('admin.schedules.index') }}"
+                       class="btn btn-sm btn-outline-secondary border-start-0" title="Hapus pencarian">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                    @endif
                 </div>
                 <a href="{{ route('admin.schedules.create') }}" class="btn btn-primary btn-sm">
                     <i class="bi bi-plus-lg me-1"></i>Buat Jadwal
                 </a>
-            </div>
+            </form>
         </div>
         <div class="card-body p-0">
             @if($schedules->isEmpty())
             <div class="text-center py-5 text-muted">
+                @if(request('search'))
+                <i class="bi bi-search fs-1 d-block mb-2 opacity-25"></i>
+                <p class="mb-2">Tidak ada jadwal yang cocok dengan "<strong>{{ request('search') }}</strong>".</p>
+                <a href="{{ route('admin.schedules.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-lg me-1"></i>Hapus Pencarian
+                </a>
+                @else
                 <i class="bi bi-calendar-x fs-1 d-block mb-2 opacity-25"></i>
                 <p class="mb-2">Belum ada jadwal yang dibuat.</p>
-                <a href="{{ route('admin.schedules.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg me-1"></i>Buat Jadwal Pertama</a>
+                <a href="{{ route('admin.schedules.create') }}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-plus-lg me-1"></i>Buat Jadwal Pertama
+                </a>
+                @endif
             </div>
             @else
             <div class="table-responsive">
@@ -276,7 +300,7 @@ $noAsesorCount  = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)-
             @if($schedules->hasPages())
             <div class="p-3 border-top d-flex justify-content-between align-items-center">
                 <div class="small text-muted">Menampilkan {{ $schedules->firstItem() }}–{{ $schedules->lastItem() }} dari {{ $schedules->total() }} jadwal</div>
-                {{ $schedules->links('pagination::bootstrap-5') }}
+                {{ $schedules->appends(request()->only('search'))->links('pagination::bootstrap-5') }}
             </div>
             @endif
             @endif
@@ -289,13 +313,6 @@ $noAsesorCount  = $schedules->getCollection()->filter(fn($s) => !$s->asesor_id)-
 
 @push('scripts')
 <script>
-document.getElementById('search-sched')?.addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('#sched-table tbody tr').forEach(tr => {
-        tr.style.display = !q || tr.dataset.search?.includes(q) ? '' : 'none';
-    });
-});
-
 async function deleteSchedule(id, peserta) {
     const result = await Swal.fire({
         title: 'Hapus Jadwal?',

@@ -1296,5 +1296,5 @@ public function hapusKisiKisiPortofolio(Schedule $schedule, Portofolio $portofol
     $dist->update(['kisi_kisi_path' => null, 'kisi_kisi_name' => null]);
 
     return back()->with('success', "Kisi-kisi '{$portofolio->judul}' berhasil dihapus.");
-}
+}   
 }

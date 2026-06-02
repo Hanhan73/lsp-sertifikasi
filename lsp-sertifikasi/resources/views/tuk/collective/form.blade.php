@@ -551,23 +551,14 @@ $(document).ready(function () {
 function tampilkanModalDuplikat(duplicates) {
     let html = '';
     duplicates.forEach((d, i) => {
-        const isEmailSama = d.match_type === 'email';
-        const canConvert  = d.can_convert;
-        const matchTypeBadge = isEmailSama
-            ? '<span class="badge bg-danger">Email sama</span>'
-            : '<span class="badge bg-warning text-dark">Nama sama</span>';
+        // Semua match sekarang pasti email-based
+        const canConvert = d.can_convert;
         const jenisExisting = d.existing.is_collective
             ? `<span class="badge bg-info">Kolektif</span> <small class="text-muted">batch: ${d.existing.batch_id}</small>`
             : '<span class="badge bg-success">Mandiri</span>';
+
         let actionSection = '';
-        if (!isEmailSama) {
-            actionSection = `
-            <div class="mt-3 p-3 bg-light border rounded">
-                <i class="bi bi-info-circle text-secondary me-1"></i>
-                <span class="small">Nama mirip tapi email berbeda — peserta ini akan <strong>di-skip</strong>.
-                Koreksi email di form jika ini orang yang sama.</span>
-            </div>`;
-        } else if (canConvert) {
+        if (canConvert) {
             actionSection = `
             <div class="mt-3 p-3 bg-warning bg-opacity-10 border border-warning rounded">
                 <div class="small mb-2">
@@ -589,15 +580,15 @@ function tampilkanModalDuplikat(duplicates) {
                 <i class="bi bi-x-circle text-danger me-1"></i>
                 <span class="small"><strong>Tidak bisa dikonversi.</strong>
                 Peserta sudah dalam status <strong>${d.existing.status}</strong> —
-                proses sudah terlalu jauh untuk dipindahkan ke batch ini.
-                Hubungi admin untuk penanganan lebih lanjut.</span>
+                proses sudah terlalu jauh untuk dipindahkan ke batch ini.</span>
             </div>`;
         }
+
         html += `
-        <div class="card mb-3 border-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'}">
-            <div class="card-header bg-${isEmailSama ? (canConvert ? 'warning' : 'danger') : 'secondary'} ${isEmailSama && !canConvert ? 'text-white' : ''} bg-opacity-25 d-flex justify-content-between align-items-center">
+        <div class="card mb-3 border-${canConvert ? 'warning' : 'danger'}">
+            <div class="card-header bg-${canConvert ? 'warning' : 'danger'} ${!canConvert ? 'text-white' : ''} bg-opacity-25 d-flex justify-content-between align-items-center">
                 <span class="fw-semibold">Peserta #${d.index + 1}: ${d.input_name}</span>
-                ${matchTypeBadge}
+                <span class="badge bg-danger">Email sama</span>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -642,6 +633,7 @@ function tampilkanModalDuplikat(duplicates) {
             </div>
         </div>`;
     });
+
     $('#duplikat-list').html(html);
     cekTombolLanjutkan();
     $(document).off('change', '.chk-setuju-convert').on('change', '.chk-setuju-convert', function () {

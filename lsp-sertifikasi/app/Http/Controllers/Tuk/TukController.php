@@ -1034,51 +1034,46 @@ public function storeCollectiveRegistration(Request $request)
         }
     }
 
-    public function checkDuplicates(Request $request)
-    {
-        $participants = $request->participants ?? [];
-        $duplicates   = [];
+public function checkDuplicates(Request $request)
+{
+    $participants = $request->participants ?? [];
+    $duplicates   = [];
 
-        foreach ($participants as $index => $p) {
-            $email = strtolower(trim($p['email'] ?? ''));
-            $name  = strtolower(trim($p['name'] ?? ''));
+    foreach ($participants as $index => $p) {
+        $email = strtolower(trim($p['email'] ?? ''));
 
-            $byEmail = Asesmen::with(['user', 'skema', 'tuk'])
-                ->whereHas('user', fn($q) => $q->where('email', $email))
-                ->first();
+        // Hanya cek duplikat berdasarkan EMAIL saja
+        // Nama sama tapi email beda = orang berbeda, bukan duplikat
+        $match = Asesmen::with(['user', 'skema', 'tuk'])
+            ->whereHas('user', fn($q) => $q->where('email', $email))
+            ->first();
 
-            $byName = !$byEmail ? Asesmen::with(['user', 'skema', 'tuk'])
-                ->whereRaw('LOWER(TRIM(full_name)) = ?', [$name])
-                ->first() : null;
+        if ($match) {
+            $canConvert = in_array($match->status, ['registered', 'data_completed']);
 
-            $match = $byEmail ?? $byName;
-
-            if ($match) {
-                $canConvert = $byEmail && in_array($match->status, ['registered', 'data_completed']);
-
-                $duplicates[] = [
-                    'index'       => $index,
-                    'input_name'  => $p['name'],
-                    'input_email' => $p['email'],
-                    'match_type'  => $byEmail ? 'email' : 'nama',
-                    'can_convert' => $canConvert,
-                    'existing'    => [
-                        'id'           => $match->id,
-                        'nama'         => $match->full_name,
-                        'email'        => $match->user->email ?? '-',
-                        'skema'        => $match->skema->name ?? '-',
-                        'tuk'          => $match->tuk->name ?? '-',
-                        'status'       => $match->status_label,
-                        'status_raw'   => $match->status,
-                        'is_collective'=> $match->is_collective,
-                        'batch_id'     => $match->collective_batch_id ?? '-',
-                    ],
-                ];
-            }
+            $duplicates[] = [
+                'index'       => $index,
+                'input_name'  => $p['name'],
+                'input_email' => $p['email'],
+                'match_type'  => 'email',
+                'can_convert' => $canConvert,
+                'existing'    => [
+                    'id'            => $match->id,
+                    'nama'          => $match->full_name,
+                    'email'         => $match->user->email ?? '-',
+                    'skema'         => $match->skema->name ?? '-',
+                    'tuk'           => $match->tuk->name ?? '-',
+                    'status'        => $match->status_label,
+                    'status_raw'    => $match->status,
+                    'is_collective' => $match->is_collective,
+                    'batch_id'      => $match->collective_batch_id ?? '-',
+                ],
+            ];
         }
-
-        return response()->json(['duplicates' => $duplicates]);
     }
+
+    return response()->json(['duplicates' => $duplicates]);
+}
 
 public function requestHapusMandiri(Request $request, Asesmen $asesmen)
 {

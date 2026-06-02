@@ -18,7 +18,7 @@ class VerifyEmail extends VerifyEmailBase
 
         return (new MailMessage)
             ->subject('Verifikasi Alamat Email - Sikap LSP')
-            ->greeting('Halo, ' . $notifiable->name . '!')
+            ->greeting('Halo, ' . strip_tags($notifiable->name) . '!')
             ->line('Terima kasih telah mendaftar di Sikap LSP - Sistem Sertifikasi Kompetensi.')
             ->line('Untuk melanjutkan, silakan verifikasi alamat email Anda dengan mengklik tombol di bawah ini:')
             ->action('Verifikasi Email Saya', $verificationUrl)

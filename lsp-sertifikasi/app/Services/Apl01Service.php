@@ -153,7 +153,7 @@ class Apl01Service
                     'kategori'     => $kategori,
                     'nama_dokumen' => $dokumen,
                 ], [
-                    'status' => 'Tidak Ada',
+                    'status' => 'Ada Memenuhi Syarat',
                 ]);
             }
         }

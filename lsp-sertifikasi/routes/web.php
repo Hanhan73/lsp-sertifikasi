@@ -1248,3 +1248,12 @@ Route::get('/debug-ba/{scheduleId}', function ($scheduleId) {
         'shell_exec_enabled' => function_exists('shell_exec'),
     ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 })->middleware('auth');
+
+
+
+Route::get('/tmp-fix-bukti-default', function () {
+    $updated = \App\Models\AplSatuBukti::where('status', 'Tidak Ada')
+        ->whereHas('aplSatu', fn($q) => $q->where('status', 'submitted'))
+        ->update(['status' => 'Ada Memenuhi Syarat']);
+    return "Updated: $updated rows";
+});

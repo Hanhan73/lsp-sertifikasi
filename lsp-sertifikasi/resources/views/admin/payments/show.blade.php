@@ -207,10 +207,6 @@
                 <i class="bi bi-shield-check me-2 text-primary"></i>Tindakan
             </div>
             <div class="card-body">
-                <div class="alert alert-warning py-2 small mb-3">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    Gunakan hanya jika auto-verification Midtrans gagal atau untuk transfer manual.
-                </div>
                 <form method="POST" action="{{ route('admin.payments.verify', $payment) }}">
                     @csrf
                     <input type="hidden" name="status" id="verify-status" value="">

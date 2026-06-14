@@ -30,41 +30,41 @@
 <div class="row g-4">
 
     {{-- Kolom kiri: Info Asesi + Info Pembayaran --}}
-    <div class="col-md-7">
+    <div class="col-lg-5">
 
         {{-- Info Asesi --}}
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-person me-1"></i>Informasi Asesi</h6>
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-person-badge me-2 text-primary"></i>Data Asesi
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <table class="table table-sm table-borderless mb-0">
                     <tr>
-                        <td class="text-muted" width="160">No. Registrasi</td>
+                        <td class="text-muted ps-3" width="130">No. Reg</td>
                         <td><strong>#{{ $payment->asesmen->id }}</strong></td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Nama</td>
+                        <td class="text-muted ps-3">Nama</td>
                         <td><strong>{{ $payment->asesmen->full_name ?? '-' }}</strong></td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Email</td>
+                        <td class="text-muted ps-3">Email</td>
                         <td>{{ $payment->asesmen->email ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">No. HP</td>
+                        <td class="text-muted ps-3">No. HP</td>
                         <td>{{ $payment->asesmen->phone ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">TUK</td>
+                        <td class="text-muted ps-3">TUK</td>
                         <td>{{ $payment->asesmen->tuk->name ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Skema</td>
+                        <td class="text-muted ps-3">Skema</td>
                         <td>{{ $payment->asesmen->skema->name ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Jenis</td>
+                        <td class="text-muted ps-3">Jenis</td>
                         <td>
                             @if($payment->asesmen->is_collective)
                             <span class="badge bg-primary"><i class="bi bi-people me-1"></i>Kolektif</span>
@@ -74,7 +74,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Status Asesi</td>
+                        <td class="text-muted ps-3">Status</td>
                         <td>
                             <span class="badge bg-{{ $payment->asesmen->status_badge }}">
                                 {{ $payment->asesmen->status_label }}
@@ -87,47 +87,25 @@
 
         {{-- Info Pembayaran --}}
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-credit-card me-1"></i>Informasi Pembayaran</h6>
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-receipt me-2 text-primary"></i>Info Pembayaran
             </div>
-            <div class="card-body">
+            <div class="card-body p-0">
                 <table class="table table-sm table-borderless mb-0">
                     <tr>
-                        <td class="text-muted" width="160">Payment ID</td>
-                        <td>#{{ $payment->id }}</td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Order ID</td>
-                        <td><code>{{ $payment->order_id ?? '-' }}</code></td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Transaction ID</td>
-                        <td>
-                            @if($payment->transaction_id)
-                            <code>{{ $payment->transaction_id }}</code>
-                            @else
-                            <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Metode</td>
-                        <td>
-                            @if($payment->payment_type)
-                            <span class="badge bg-secondary">{{ strtoupper($payment->payment_type) }}</span>
-                            @elseif($payment->method)
-                            <span class="badge bg-secondary">{{ strtoupper($payment->method) }}</span>
-                            @else
-                            <span class="text-muted">-</span>
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <td class="text-muted">Jumlah</td>
+                        <td class="text-muted ps-3" width="130">Jumlah</td>
                         <td><strong class="text-success fs-5">Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong></td>
                     </tr>
                     <tr>
-                        <td class="text-muted">Status</td>
+                        <td class="text-muted ps-3">Metode</td>
+                        <td>
+                            <span class="badge bg-secondary">
+                                {{ strtoupper($payment->payment_type ?? $payment->method ?? '-') }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted ps-3">Status</td>
                         <td>
                             @if($payment->status === 'pending')
                             <span class="badge bg-warning text-dark">Menunggu</span>
@@ -138,31 +116,41 @@
                             @endif
                         </td>
                     </tr>
+                    @if($payment->order_id)
                     <tr>
-                        <td class="text-muted">Tgl Pembayaran</td>
-                        <td>{{ $payment->created_at->translatedFormat('d M Y H:i') }}</td>
+                        <td class="text-muted ps-3">Order ID</td>
+                        <td><code class="small">{{ $payment->order_id }}</code></td>
                     </tr>
-                    @if($payment->verified_at)
+                    @endif
+                    @if($payment->transaction_id)
                     <tr>
-                        <td class="text-muted">Tgl Verifikasi</td>
-                        <td>{{ $payment->verified_at->translatedFormat('d M Y H:i') }}</td>
+                        <td class="text-muted ps-3">Transaction ID</td>
+                        <td><code class="small">{{ $payment->transaction_id }}</code></td>
                     </tr>
                     @endif
                     <tr>
-                        <td class="text-muted">Verifikasi Oleh</td>
+                        <td class="text-muted ps-3">Diupload</td>
+                        <td>{{ $payment->created_at->translatedFormat('d F Y, H:i') }}</td>
+                    </tr>
+                    @if($payment->status === 'verified')
+                    <tr>
+                        <td class="text-muted ps-3">Diverifikasi</td>
                         <td>
-                            @if($payment->is_auto_verified)
-                            <span class="badge bg-success"><i class="bi bi-robot me-1"></i>Auto (Midtrans)</span>
-                            @elseif($payment->verifier)
-                            <span class="badge bg-info"><i class="bi bi-person-check me-1"></i>{{ $payment->verifier->name }}</span>
-                            @else
-                            <span class="text-muted">-</span>
-                            @endif
+                            {{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}<br>
+                            <small class="text-muted">
+                                oleh
+                                @if($payment->is_auto_verified)
+                                <span class="badge bg-success"><i class="bi bi-robot me-1"></i>Auto (Midtrans)</span>
+                                @else
+                                {{ $payment->verifier->name ?? 'Admin' }}
+                                @endif
+                            </small>
                         </td>
                     </tr>
+                    @endif
                     @if($payment->notes)
                     <tr>
-                        <td class="text-muted">Catatan</td>
+                        <td class="text-muted ps-3">Catatan</td>
                         <td><small class="text-muted">{{ $payment->notes }}</small></td>
                     </tr>
                     @endif
@@ -173,68 +161,111 @@
     </div>
 
     {{-- Kolom kanan: Bukti Transfer + Aksi --}}
-    <div class="col-md-5">
+    <div class="col-lg-7">
 
         {{-- Bukti Transfer --}}
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-image me-1"></i>Bukti Transfer</h6>
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-file-earmark-image me-2 text-primary"></i>Bukti Pembayaran
             </div>
             <div class="card-body text-center">
                 @if($payment->proof_path)
-                    @php
-                        $ext = strtolower(pathinfo($payment->proof_path, PATHINFO_EXTENSION));
-                        $buktiUrl = route('admin.payments.bukti', $payment);
-                    @endphp
-
+                    @php $ext = strtolower(pathinfo($payment->proof_path, PATHINFO_EXTENSION)); @endphp
                     @if(in_array($ext, ['jpg','jpeg','png','webp']))
-                    <img src="{{ $buktiUrl }}"
-                         class="img-fluid rounded mb-3" style="max-height: 400px;"
-                         alt="Bukti Transfer"
-                         onerror="this.style.display='none'; document.getElementById('bukti-fallback-{{ $payment->id }}').style.display='block'">
-                    <div id="bukti-fallback-{{ $payment->id }}" style="display:none;" class="py-3">
-                        <i class="bi bi-image text-muted fs-1 d-block mb-2"></i>
-                        <small class="text-muted">Gambar tidak dapat ditampilkan</small>
-                    </div>
-                    @elseif($ext === 'pdf')
-                    <div class="py-3">
-                        <i class="bi bi-file-earmark-pdf fs-1 text-danger d-block mb-2"></i>
-                        <small class="text-muted">File PDF tersedia</small>
-                    </div>
+                    <img src="{{ route('admin.payments.bukti', $payment) }}"
+                         alt="Bukti Pembayaran"
+                         class="img-fluid rounded border mb-3"
+                         style="max-height: 400px; object-fit: contain;">
                     @else
-                    <div class="py-3">
-                        <i class="bi bi-file-earmark fs-1 text-secondary d-block mb-2"></i>
-                        <small class="text-muted">File tersedia</small>
+                    <div class="py-4">
+                        <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 4rem;"></i>
+                        <p class="mt-2 text-muted">File PDF — klik Download untuk melihat</p>
                     </div>
                     @endif
-
-                    <a href="{{ $buktiUrl }}" target="_blank"
-                       class="btn btn-sm btn-outline-primary mt-1">
-                        <i class="bi bi-arrow-up-right-square me-1"></i>Buka / Download Bukti
+                    <a href="{{ route('admin.payments.bukti', $payment) }}"
+                       class="btn btn-outline-primary" target="_blank">
+                        <i class="bi bi-download me-1"></i>Download Bukti
                     </a>
-
                 @else
-                <div class="py-4 text-muted">
-                    <i class="bi bi-image fs-2 d-block mb-2 opacity-50"></i>
+                <div class="py-5 text-muted">
+                    <i class="bi bi-image fs-1 d-block mb-2 opacity-25"></i>
                     @if($payment->transaction_id)
-                    <small>Pembayaran via Midtrans<br>
-                        <code class="small">{{ $payment->transaction_id }}</code>
-                    </small>
+                    Pembayaran diproses via Midtrans.<br>
+                    <code class="small">{{ $payment->transaction_id }}</code>
                     @else
-                    <small>Belum ada bukti transfer diunggah</small>
+                    Asesi belum mengupload bukti pembayaran.
                     @endif
                 </div>
                 @endif
             </div>
         </div>
 
-        {{-- Link ke detail asesi --}}
-        <div class="mt-3">
-            <a href="{{ route('admin.asesi.show', $payment->asesmen->id) }}"
-               class="btn btn-outline-primary btn-sm w-100">
-                <i class="bi bi-person me-1"></i>Lihat Detail Asesi
-            </a>
+        {{-- Verifikasi Manual --}}
+        @if($payment->status === 'pending')
+        <div class="card border-0 shadow-sm mb-4" style="border-top: 3px solid #ffc107 !important;">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-shield-check me-2 text-primary"></i>Tindakan
+            </div>
+            <div class="card-body">
+                <div class="alert alert-warning py-2 small mb-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Gunakan hanya jika auto-verification Midtrans gagal atau untuk transfer manual.
+                </div>
+                <form method="POST" action="{{ route('admin.payments.verify', $payment) }}">
+                    @csrf
+                    <input type="hidden" name="status" id="verify-status" value="">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">
+                            Catatan <span class="text-danger">*</span>
+                        </label>
+                        <textarea name="notes" class="form-control form-control-sm" rows="2"
+                            placeholder="Misal: Transfer tanggal 14 Juni 2026, nominal sesuai…"
+                            required></textarea>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <button type="submit" class="btn btn-success w-100"
+                                onclick="document.getElementById('verify-status').value='verified';
+                                         return confirm('Verifikasi pembayaran ini?')">
+                                <i class="bi bi-check-circle me-1"></i>Verifikasi
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="submit" class="btn btn-danger w-100"
+                                onclick="document.getElementById('verify-status').value='rejected';
+                                         return confirm('Tolak pembayaran ini?')">
+                                <i class="bi bi-x-circle me-1"></i>Tolak
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
+
+        @elseif($payment->status === 'verified')
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            Pembayaran sudah terverifikasi pada
+            {{ $payment->verified_at?->translatedFormat('d F Y, H:i') }}
+            oleh <strong>
+                @if($payment->is_auto_verified) Sistem (Midtrans)
+                @else {{ $payment->verifier->name ?? 'Admin' }}
+                @endif
+            </strong>.
+        </div>
+
+        @else
+        <div class="alert alert-danger">
+            <i class="bi bi-x-circle-fill me-2"></i>
+            Pembayaran ini sudah ditolak.
+        </div>
+        @endif
+
+        {{-- Link ke detail asesi --}}
+        <a href="{{ route('admin.asesi.show', $payment->asesmen->id) }}"
+           class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-person me-1"></i>Lihat Detail Asesi
+        </a>
 
     </div>
 </div>

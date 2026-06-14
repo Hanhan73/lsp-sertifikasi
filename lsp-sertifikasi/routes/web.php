@@ -1257,3 +1257,12 @@ Route::get('/tmp-fix-bukti-default', function () {
         ->update(['status' => 'Ada Memenuhi Syarat']);
     return "Updated: $updated rows";
 });
+
+Route::get('/tmp-clear-cache', function () {
+    Artisan::call('route:clear');
+    Artisan::call('view:clear');
+    Artisan::call('cache:clear');
+    Artisan::call('config:clear');
+    if (function_exists('opcache_reset')) opcache_reset();
+    return 'cleared at ' . now();
+});

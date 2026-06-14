@@ -1266,3 +1266,7 @@ Route::get('/tmp-clear-cache', function () {
     if (function_exists('opcache_reset')) opcache_reset();
     return 'cleared at ' . now();
 });
+
+Route::get('/test-route', function() {
+    return 'Laravel reached! Path: ' . request()->path();
+});

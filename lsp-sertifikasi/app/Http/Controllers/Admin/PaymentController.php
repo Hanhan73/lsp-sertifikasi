@@ -65,23 +65,27 @@ class PaymentController extends Controller
     {
         abort_unless($payment->proof_path, 404, 'Tidak ada bukti transfer.');
 
-        // Disk public (storage/app/public) — tempat asesi upload
-        if (Storage::disk('public')->exists($payment->proof_path)) {
-            $mime = Storage::disk('public')->mimeType($payment->proof_path);
-            // Tampilkan inline untuk gambar/PDF supaya bisa langsung dilihat
-            return response(Storage::disk('public')->get($payment->proof_path), 200, [
+        abort_unless(
+            Storage::disk('private')->exists($payment->proof_path),
+            404,
+            'File bukti transfer tidak ditemukan.'
+        );
+
+        $ext      = pathinfo($payment->proof_path, PATHINFO_EXTENSION);
+        $filename = 'bukti-' . $payment->asesmen->full_name . '-' . $payment->id . '.' . $ext;
+
+        // Untuk gambar — tampilkan inline supaya langsung terlihat di halaman
+        $imageExts = ['jpg', 'jpeg', 'png', 'webp'];
+        if (in_array(strtolower($ext), $imageExts)) {
+            $mime = Storage::disk('private')->mimeType($payment->proof_path);
+            return response(Storage::disk('private')->get($payment->proof_path), 200, [
                 'Content-Type'        => $mime,
-                'Content-Disposition' => 'inline; filename="' . basename($payment->proof_path) . '"',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
             ]);
         }
 
-        // Fallback: path absolut langsung (untuk Hostinger non-symlink)
-        $absPath = public_path($payment->proof_path);
-        if (file_exists($absPath)) {
-            return response()->file($absPath);
-        }
-
-        abort(404, 'File bukti transfer tidak ditemukan.');
+        // Untuk PDF dan lainnya — download
+        return Storage::disk('private')->download($payment->proof_path, $filename);
     }
 
     /**

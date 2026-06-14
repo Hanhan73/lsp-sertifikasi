@@ -374,7 +374,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/',                  [AdminPaymentController::class, 'index'])       ->name('index');
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])      ->name('verify');
-        Route::get('/{payment}/bukti',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');   // ← TAMBAH INI
+        Route::get('/bukti/{payment}',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');  // ← TAMBAH INI
         Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])      ->name('detail');   // bisa hapus nanti
         Route::get('/{payment}',         [AdminPaymentController::class, 'show'])        ->name('show');
     });

@@ -372,12 +372,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/assessments/{asesmen}', [AsesmenController::class, 'inputHasil'])->name('assessments.input');
 
     Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/',                  [AdminPaymentController::class, 'index']) ->name('index');
-        Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
-        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail'); // bisa hapus kalau sudah tidak dipakai
-        Route::get('/{payment}',         [AdminPaymentController::class, 'show'])  ->name('show');   // wildcard paling bawah
+        Route::get('/',                  [AdminPaymentController::class, 'index'])       ->name('index');
+        Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])      ->name('verify');
+        Route::get('/{payment}/bukti',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');   // ← TAMBAH INI
+        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])      ->name('detail');   // bisa hapus nanti
+        Route::get('/{payment}',         [AdminPaymentController::class, 'show'])        ->name('show');
     });
-    Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // a
 
     // ── Persuratan ─────────────────────────────────────────────────────────────
     Route::prefix('surat')->name('surat.')->group(function () {
@@ -1256,13 +1256,4 @@ Route::get('/tmp-fix-bukti-default', function () {
         ->whereHas('aplSatu', fn($q) => $q->where('status', 'submitted'))
         ->update(['status' => 'Ada Memenuhi Syarat']);
     return "Updated: $updated rows";
-});
-
-Route::get('/tmp-clear-cache', function () {
-    Artisan::call('route:clear');
-    Artisan::call('view:clear');
-    Artisan::call('cache:clear');
-    Artisan::call('config:clear');
-    if (function_exists('opcache_reset')) opcache_reset();
-    return 'cleared at ' . now();
 });

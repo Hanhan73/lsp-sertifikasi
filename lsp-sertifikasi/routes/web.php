@@ -371,15 +371,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/assessments',            [AsesmenController::class, 'assessments'])->name('assessments');
     Route::post('/assessments/{asesmen}', [AsesmenController::class, 'inputHasil'])->name('assessments.input');
 
-    // ── Pembayaran ─────────────────────────────────────────────────────────
     Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/',                  [AdminPaymentController::class, 'index'])->name('index');
-        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail');
+        Route::get('/',                  [AdminPaymentController::class, 'index']) ->name('index');
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
-        Route::get('/{payment}', [AdminPaymentController::class, 'show'])->name('show');
-
+        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail'); // bisa hapus kalau sudah tidak dipakai
+        Route::get('/{payment}',         [AdminPaymentController::class, 'show'])  ->name('show');   // wildcard paling bawah
     });
-    Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // alias lama
+    Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // a
 
     // ── Persuratan ─────────────────────────────────────────────────────────────
     Route::prefix('surat')->name('surat.')->group(function () {

@@ -137,11 +137,7 @@
                     <td>
                         <a href="{{ route('admin.payments.show', $p) }}"
                            class="btn btn-sm {{ $p->status === 'pending' ? 'btn-primary' : 'btn-outline-secondary' }}">
-                            @if($p->status === 'pending')
-                            <i class="bi bi-eye me-1"></i>Periksa
-                            @else
-                            <i class="bi bi-eye me-1"></i>Detail
-                            @endif
+                            <i class="bi bi-eye me-1"></i>{{ $p->status === 'pending' ? 'Periksa' : 'Detail' }}
                         </a>
                     </td>
                 </tr>

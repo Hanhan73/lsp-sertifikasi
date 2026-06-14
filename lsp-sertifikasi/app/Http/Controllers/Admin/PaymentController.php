@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
@@ -14,12 +15,10 @@ class PaymentController extends Controller
         $query = Payment::with(['asesmen.user', 'asesmen.tuk', 'asesmen.skema'])
             ->orderBy('created_at', 'desc');
 
-        // Filter status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter tipe verifikasi
         if ($request->filled('verification')) {
             if ($request->verification === 'auto') {
                 $query->where('status', 'verified')->whereNull('verified_by');
@@ -28,7 +27,6 @@ class PaymentController extends Controller
             }
         }
 
-        // Search nama / no reg
         if ($request->filled('search')) {
             $search = $request->search;
             $query->whereHas('asesmen', function ($q) use ($search) {
@@ -40,25 +38,50 @@ class PaymentController extends Controller
 
         $payments = $query->paginate(15)->withQueryString();
 
-        // Summary counts (tanpa filter agar selalu tampil total keseluruhan)
         $summary = [
-            'pending'        => Payment::where('status', 'pending')->count(),
-            'auto_verified'  => Payment::where('status', 'verified')->whereNull('verified_by')->count(),
-            'manual_verified'=> Payment::where('status', 'verified')->whereNotNull('verified_by')->count(),
-            'rejected'       => Payment::where('status', 'rejected')->count(),
+            'pending'         => Payment::where('status', 'pending')->count(),
+            'auto_verified'   => Payment::where('status', 'verified')->whereNull('verified_by')->count(),
+            'manual_verified' => Payment::where('status', 'verified')->whereNotNull('verified_by')->count(),
+            'rejected'        => Payment::where('status', 'rejected')->count(),
         ];
 
         return view('admin.payments.index', compact('payments', 'summary'));
     }
 
     /**
-     * Detail halaman (bukan AJAX modal).
+     * Halaman detail pembayaran (bukan AJAX modal).
      */
     public function show(Payment $payment)
     {
         $payment->load(['asesmen.user', 'asesmen.tuk', 'asesmen.skema', 'verifier']);
 
         return view('admin.payments.show', compact('payment'));
+    }
+
+    /**
+     * Download / tampilkan bukti transfer via Laravel (bypass 403 symlink).
+     */
+    public function downloadBukti(Payment $payment)
+    {
+        abort_unless($payment->proof_path, 404, 'Tidak ada bukti transfer.');
+
+        // Disk public (storage/app/public) — tempat asesi upload
+        if (Storage::disk('public')->exists($payment->proof_path)) {
+            $mime = Storage::disk('public')->mimeType($payment->proof_path);
+            // Tampilkan inline untuk gambar/PDF supaya bisa langsung dilihat
+            return response(Storage::disk('public')->get($payment->proof_path), 200, [
+                'Content-Type'        => $mime,
+                'Content-Disposition' => 'inline; filename="' . basename($payment->proof_path) . '"',
+            ]);
+        }
+
+        // Fallback: path absolut langsung (untuk Hostinger non-symlink)
+        $absPath = public_path($payment->proof_path);
+        if (file_exists($absPath)) {
+            return response()->file($absPath);
+        }
+
+        abort(404, 'File bukti transfer tidak ditemukan.');
     }
 
     /**

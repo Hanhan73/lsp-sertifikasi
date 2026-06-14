@@ -115,6 +115,8 @@
                         <td>
                             @if($payment->payment_type)
                             <span class="badge bg-secondary">{{ strtoupper($payment->payment_type) }}</span>
+                            @elseif($payment->method)
+                            <span class="badge bg-secondary">{{ strtoupper($payment->method) }}</span>
                             @else
                             <span class="text-muted">-</span>
                             @endif
@@ -182,71 +184,49 @@
                 @if($payment->proof_path)
                     @php
                         $ext = strtolower(pathinfo($payment->proof_path, PATHINFO_EXTENSION));
+                        $buktiUrl = route('admin.payments.bukti', $payment);
                     @endphp
+
                     @if(in_array($ext, ['jpg','jpeg','png','webp']))
-                    <img src="{{ Storage::url($payment->proof_path) }}"
-                         class="img-fluid rounded" style="max-height: 400px;"
-                         alt="Bukti Transfer">
+                    <img src="{{ $buktiUrl }}"
+                         class="img-fluid rounded mb-3" style="max-height: 400px;"
+                         alt="Bukti Transfer"
+                         onerror="this.style.display='none'; document.getElementById('bukti-fallback-{{ $payment->id }}').style.display='block'">
+                    <div id="bukti-fallback-{{ $payment->id }}" style="display:none;" class="py-3">
+                        <i class="bi bi-image text-muted fs-1 d-block mb-2"></i>
+                        <small class="text-muted">Gambar tidak dapat ditampilkan</small>
+                    </div>
+                    @elseif($ext === 'pdf')
+                    <div class="py-3">
+                        <i class="bi bi-file-earmark-pdf fs-1 text-danger d-block mb-2"></i>
+                        <small class="text-muted">File PDF tersedia</small>
+                    </div>
                     @else
-                    <div class="py-4">
-                        <i class="bi bi-file-earmark-pdf fs-1 text-danger"></i>
-                        <p class="mt-2 mb-0">File bukti transfer tersedia</p>
+                    <div class="py-3">
+                        <i class="bi bi-file-earmark fs-1 text-secondary d-block mb-2"></i>
+                        <small class="text-muted">File tersedia</small>
                     </div>
                     @endif
-                    <div class="mt-3">
-                        <a href="{{ Storage::url($payment->proof_path) }}"
-                           class="btn btn-sm btn-outline-secondary" target="_blank">
-                            <i class="bi bi-arrow-up-right-square me-1"></i>Buka File
-                        </a>
-                    </div>
+
+                    <a href="{{ $buktiUrl }}" target="_blank"
+                       class="btn btn-sm btn-outline-primary mt-1">
+                        <i class="bi bi-arrow-up-right-square me-1"></i>Buka / Download Bukti
+                    </a>
+
                 @else
                 <div class="py-4 text-muted">
                     <i class="bi bi-image fs-2 d-block mb-2 opacity-50"></i>
                     @if($payment->transaction_id)
-                    <small>Pembayaran diproses via Midtrans<br>
+                    <small>Pembayaran via Midtrans<br>
                         <code class="small">{{ $payment->transaction_id }}</code>
                     </small>
                     @else
-                    <small>Belum ada bukti transfer</small>
+                    <small>Belum ada bukti transfer diunggah</small>
                     @endif
                 </div>
                 @endif
             </div>
         </div>
-
-        {{-- Aksi Manual Verifikasi --}}
-        @if($payment->status === 'pending')
-        <div class="card border-0 shadow-sm border-top border-warning border-3">
-            <div class="card-header bg-white">
-                <h6 class="mb-0"><i class="bi bi-shield-check me-1"></i>Verifikasi Manual</h6>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-warning py-2 small mb-3">
-                    <i class="bi bi-exclamation-triangle me-1"></i>
-                    Gunakan hanya jika auto-verification Midtrans gagal.
-                </div>
-                <form method="POST" action="{{ route('admin.payments.verify', $payment) }}">
-                    @csrf
-                    <input type="hidden" name="status" id="verify-status" value="">
-                    <div class="mb-3">
-                        <label class="form-label small fw-semibold">Catatan <span class="text-danger">*</span></label>
-                        <textarea name="notes" class="form-control form-control-sm" rows="2"
-                            placeholder="Alasan verifikasi manual…" required></textarea>
-                    </div>
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-sm"
-                            onclick="document.getElementById('verify-status').value='verified'">
-                            <i class="bi bi-check-circle me-1"></i>Verifikasi Manual
-                        </button>
-                        <button type="submit" class="btn btn-outline-danger btn-sm"
-                            onclick="document.getElementById('verify-status').value='rejected'">
-                            <i class="bi bi-x-circle me-1"></i>Tolak Pembayaran
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        @endif
 
         {{-- Link ke detail asesi --}}
         <div class="mt-3">

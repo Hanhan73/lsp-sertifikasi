@@ -9,7 +9,7 @@
 @section('content')
 
 <div class="mb-3">
-    <a href="{{ route('admin.payments.index') }}" class="btn btn-sm btn-outline-secondary">
+    <a href="{{ route('admin.payments') }}" class="btn btn-sm btn-outline-secondary">
         <i class="bi bi-arrow-left me-1"></i>Kembali
     </a>
 </div>

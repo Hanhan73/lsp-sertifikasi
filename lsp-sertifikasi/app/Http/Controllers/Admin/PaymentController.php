@@ -9,29 +9,60 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::with(['asesmen.user', 'asesmen.tuk', 'asesmen.skema'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = Payment::with(['asesmen.user', 'asesmen.tuk', 'asesmen.skema'])
+            ->orderBy('created_at', 'desc');
 
-        return view('admin.payments.index', compact('payments'));
+        // Filter status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter tipe verifikasi
+        if ($request->filled('verification')) {
+            if ($request->verification === 'auto') {
+                $query->where('status', 'verified')->whereNull('verified_by');
+            } elseif ($request->verification === 'manual') {
+                $query->where('status', 'verified')->whereNotNull('verified_by');
+            }
+        }
+
+        // Search nama / no reg
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('asesmen', function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                  ->orWhereHas('user', fn($u) => $u->where('name', 'like', "%{$search}%"))
+                  ->orWhere('nik', 'like', "%{$search}%");
+            });
+        }
+
+        $payments = $query->paginate(15)->withQueryString();
+
+        // Summary counts (tanpa filter agar selalu tampil total keseluruhan)
+        $summary = [
+            'pending'        => Payment::where('status', 'pending')->count(),
+            'auto_verified'  => Payment::where('status', 'verified')->whereNull('verified_by')->count(),
+            'manual_verified'=> Payment::where('status', 'verified')->whereNotNull('verified_by')->count(),
+            'rejected'       => Payment::where('status', 'rejected')->count(),
+        ];
+
+        return view('admin.payments.index', compact('payments', 'summary'));
     }
 
     /**
-     * Modal detail pembayaran (AJAX).
+     * Detail halaman (bukan AJAX modal).
      */
-    public function detail(Payment $payment)
+    public function show(Payment $payment)
     {
         $payment->load(['asesmen.user', 'asesmen.tuk', 'asesmen.skema', 'verifier']);
 
-        $html = view('admin.payments.partials.detail-modal', compact('payment'))->render();
-
-        return response()->json(['success' => true, 'html' => $html]);
+        return view('admin.payments.show', compact('payment'));
     }
 
     /**
-     * Verifikasi manual jika diperlukan (backup dari Midtrans webhook).
+     * Verifikasi manual (backup dari Midtrans webhook).
      */
     public function verify(Request $request, Payment $payment)
     {
@@ -41,7 +72,7 @@ class PaymentController extends Controller
         ]);
 
         if ($payment->status === 'verified' && $payment->verified_by === null) {
-            return redirect()->route('admin.payments')
+            return redirect()->route('admin.payments.index')
                 ->with('warning', 'Pembayaran sudah terverifikasi otomatis oleh sistem.');
         }
 
@@ -56,7 +87,9 @@ class PaymentController extends Controller
             $payment->asesmen->update(['status' => 'paid']);
         }
 
-        return redirect()->route('admin.payments')
-            ->with('success', 'Pembayaran berhasil diverifikasi manual!');
+        $label = $request->status === 'verified' ? 'diverifikasi' : 'ditolak';
+
+        return redirect()->route('admin.payments.show', $payment)
+            ->with('success', "Pembayaran berhasil {$label}.");
     }
 }

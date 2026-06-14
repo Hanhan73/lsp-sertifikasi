@@ -376,6 +376,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/',                  [AdminPaymentController::class, 'index'])->name('index');
         Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail');
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
+        Route::get('/{payment}', [AdminPaymentController::class, 'show'])->name('show');
+
     });
     Route::get('/payments', [AdminPaymentController::class, 'index'])->name('payments'); // alias lama
 

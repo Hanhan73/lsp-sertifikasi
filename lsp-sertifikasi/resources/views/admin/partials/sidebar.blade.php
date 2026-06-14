@@ -109,7 +109,7 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     <span>MONITORING</span>
 </div>
 
-<a href="{{ route('admin.payments') }}"
+<a href="{{ route('admin.payments.index') }}"
     class="nav-link {{ Str::startsWith($route, 'admin.payments') ? 'active' : '' }}">
     <i class="bi bi-credit-card"></i> Monitor Pembayaran
     @if($pendingPayments > 0)

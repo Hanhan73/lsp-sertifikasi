@@ -1262,5 +1262,7 @@ Route::get('/tmp-clear-cache', function () {
     Artisan::call('route:clear');
     Artisan::call('view:clear');
     Artisan::call('cache:clear');
-    return 'cleared';
+    Artisan::call('config:clear');
+    if (function_exists('opcache_reset')) opcache_reset();
+    return 'cleared at ' . now();
 });

@@ -29,6 +29,7 @@ use App\Http\Controllers\Admin\AdminScheduleController;
 use App\Http\Controllers\Admin\AdminRejectController;
 use App\Http\Controllers\Admin\SuratController;
 use App\Http\Controllers\Admin\AdminSkUjikomController;
+use App\Http\Controllers\Admin\AdminBeritaAcaraController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;

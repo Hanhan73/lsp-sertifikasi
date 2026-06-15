@@ -64,7 +64,7 @@ class AdminBeritaAcaraController extends Controller
                 'total_jadwal'    => $schedules->count(),
                 'total_k'         => $totalK,
                 'total_bk'        => $totalBK,
-                'tanggal_terakhir'=> $tanggalTerakhir,
+                'tanggal_terakhir' => $tanggalTerakhir,
                 'tanggal_surat'   => \Carbon\Carbon::parse($tanggalTerakhir)->addDays(7)->translatedFormat('d F Y'),
             ];
         })->sortByDesc('tanggal_terakhir')->values();
@@ -79,7 +79,9 @@ class AdminBeritaAcaraController extends Controller
     public function downloadBatch(string $batchId)
     {
         $schedules = Schedule::with([
-            'tuk', 'skema', 'asesor.user',
+            'tuk',
+            'skema',
+            'asesor.user',
             'asesmens',
             'beritaAcara.asesis.asesmen',
         ])

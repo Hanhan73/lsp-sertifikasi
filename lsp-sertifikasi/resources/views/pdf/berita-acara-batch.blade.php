@@ -4,123 +4,123 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        @page {
-            margin: 0;
-            size: A4 portrait;
-        }
+    @page {
+        margin: 0;
+        size: A4 portrait;
+    }
 
-        * {
-            box-sizing: border-box;
-        }
+    * {
+        box-sizing: border-box;
+    }
 
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 11pt;
-            color: #000;
-            margin: 0;
-            padding: 1.5cm 2cm 1.5cm 2cm;
-            line-height: 1.4;
-        }
+    body {
+        font-family: Arial, sans-serif;
+        font-size: 11pt;
+        color: #000;
+        margin: 0;
+        padding: 1.5cm 2cm 1.5cm 2cm;
+        line-height: 1.4;
+    }
 
-        .kop-garis {
-            border-top: 3pt solid #000;
-            border-bottom: 1pt solid #000;
-            height: 4pt;
-            margin-bottom: 12pt;
-        }
+    .kop-garis {
+        border-top: 3pt solid #000;
+        border-bottom: 1pt solid #000;
+        height: 4pt;
+        margin-bottom: 12pt;
+    }
 
-        .doc-title {
-            text-align: center;
-            font-size: 13pt;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin-bottom: 2pt;
-        }
+    .doc-title {
+        text-align: center;
+        font-size: 13pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        margin-bottom: 2pt;
+    }
 
-        .doc-subtitle {
-            text-align: center;
-            font-size: 11pt;
-            font-weight: bold;
-            margin-bottom: 10pt;
-        }
+    .doc-subtitle {
+        text-align: center;
+        font-size: 11pt;
+        font-weight: bold;
+        margin-bottom: 10pt;
+    }
 
-        .opening {
-            text-align: justify;
-            margin-bottom: 8pt;
-            font-size: 10.5pt;
-        }
+    .opening {
+        text-align: justify;
+        margin-bottom: 8pt;
+        font-size: 10.5pt;
+    }
 
-        .tabel-peserta {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 8pt 0 10pt 0;
-            font-size: 10pt;
-        }
+    .tabel-peserta {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 8pt 0 10pt 0;
+        font-size: 10pt;
+    }
 
-        .tabel-peserta th {
-            border: 1pt solid #000;
-            background: #f0f0f0;
-            text-align: center;
-            padding: 4pt 5pt;
-            font-weight: bold;
-        }
+    .tabel-peserta th {
+        border: 1pt solid #000;
+        background: #f0f0f0;
+        text-align: center;
+        padding: 4pt 5pt;
+        font-weight: bold;
+    }
 
-        .tabel-peserta td {
-            border: 1pt solid #000;
-            padding: 3pt 5pt;
-            vertical-align: middle;
-        }
+    .tabel-peserta td {
+        border: 1pt solid #000;
+        padding: 3pt 5pt;
+        vertical-align: middle;
+    }
 
-        .td-center {
-            text-align: center;
-        }
+    .td-center {
+        text-align: center;
+    }
 
-        /* TTD */
-        .ttd-section {
-            margin-top: 12pt;
-            font-size: 10.5pt;
-        }
+    /* TTD */
+    .ttd-section {
+        margin-top: 12pt;
+        font-size: 10.5pt;
+    }
 
-        .ttd-tanggal {
-            text-align: right;
-            margin-bottom: 6pt;
-        }
+    .ttd-tanggal {
+        text-align: right;
+        margin-bottom: 6pt;
+    }
 
-        .ttd-wrap {
-            width: 100%;
-            border: none;
-            border-collapse: collapse;
-        }
+    .ttd-wrap {
+        width: 100%;
+        border: none;
+        border-collapse: collapse;
+    }
 
-        .ttd-wrap td {
-            border: none;
-            text-align: center;
-            vertical-align: top;
-            padding: 0 4pt;
-        }
+    .ttd-wrap td {
+        border: none;
+        text-align: center;
+        vertical-align: top;
+        padding: 0 4pt;
+    }
 
-        .ttd-sig {
-            height: 60pt;
-            line-height: 60pt;
-        }
+    .ttd-sig {
+        height: 60pt;
+        line-height: 60pt;
+    }
 
-        .ttd-sig img {
-            max-height: 60pt;
-            max-width: 130pt;
-            vertical-align: middle;
-        }
+    .ttd-sig img {
+        max-height: 60pt;
+        max-width: 130pt;
+        vertical-align: middle;
+    }
 
-        .ttd-name {
-            font-weight: bold;
-            text-decoration: underline;
-            display: block;
-            margin-top: 4pt;
-        }
+    .ttd-name {
+        font-weight: bold;
+        text-decoration: underline;
+        display: block;
+        margin-top: 4pt;
+    }
 
-        .ttd-reg {
-            font-size: 9.5pt;
-            display: block;
-        }
+    .ttd-reg {
+        font-size: 9.5pt;
+        display: block;
+    }
     </style>
 </head>
 
@@ -239,9 +239,17 @@
                     text-align: center;
                     font-size: 9.5pt;
                     line-height: 1.3;
-                ">@if($b['asesor']){{ $b['asesor']->nama }}@if($b['asesor']->no_reg_met)
-                    <br>{{ $b['asesor']->no_reg_met }}@endif@endif
-                </td>
+                ">
+                    @php
+                    $asesorDisplay = '';
+                    if ($b['asesor']) {
+                    $asesorDisplay = $b['asesor']->nama;
+                    if ($b['asesor']->no_reg_met) {
+                    $asesorDisplay .= '<br>' . $b['asesor']->no_reg_met;
+                    }
+                    }
+                    @endphp
+                    {!! $asesorDisplay !!}</td>
                 <td class="td-center">{{ $b['rek'] ?? '-' }}</td>
             </tr>
             @endforeach

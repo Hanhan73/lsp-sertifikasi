@@ -361,6 +361,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{asesmen}/impersonate',     [AsesmenController::class, 'impersonate'])->name('impersonate');
         Route::post('/impersonate/stop', [App\Http\Controllers\Admin\AsesmenController::class, 'stopImpersonate'])
             ->name('admin.asesi.impersonate.stop');
+
+        Route::get('/mandiri-per-tuk/{tukId}', [AsesmenController::class, 'mandiriPerTuk'])
+            ->name('mandiri-per-tuk');
     });
     Route::get('/asesi', [AsesmenController::class, 'index'])->name('asesi'); // alias lama
 
@@ -373,11 +376,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/assessments/{asesmen}', [AsesmenController::class, 'inputHasil'])->name('assessments.input');
 
     Route::prefix('payments')->name('payments.')->group(function () {
-        Route::get('/',                  [AdminPaymentController::class, 'index'])       ->name('index');
-        Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])      ->name('verify');
+        Route::get('/',                  [AdminPaymentController::class, 'index'])->name('index');
+        Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
         Route::get('/bukti/{payment}',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');  // ← TAMBAH INI
-        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])      ->name('detail');   // bisa hapus nanti
-        Route::get('/{payment}',         [AdminPaymentController::class, 'show'])        ->name('show');
+        Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail');   // bisa hapus nanti
+        Route::get('/{payment}',         [AdminPaymentController::class, 'show'])->name('show');
     });
 
     // ── Persuratan ─────────────────────────────────────────────────────────────
@@ -419,13 +422,20 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/{invoice}/pdf',                     [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'pdf'])->name('pdf');
     });
 
-        Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
-        Route::get('/',                        [AdminSkUjikomController::class, 'index'])     ->name('index');
-        Route::get('/create/{batchId}',        [AdminSkUjikomController::class, 'create'])    ->name('create');
-        Route::post('/',                       [AdminSkUjikomController::class, 'store'])     ->name('store');
-        Route::get('/{skUjikom}',              [AdminSkUjikomController::class, 'show'])      ->name('show');
-        Route::get('/{skUjikom}/download',     [AdminSkUjikomController::class, 'download'])  ->name('download');
+    Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
+        Route::get('/',                        [AdminSkUjikomController::class, 'index'])->name('index');
+        Route::get('/create/{batchId}',        [AdminSkUjikomController::class, 'create'])->name('create');
+        Route::post('/',                       [AdminSkUjikomController::class, 'store'])->name('store');
+        Route::get('/{skUjikom}',              [AdminSkUjikomController::class, 'show'])->name('show');
+        Route::get('/{skUjikom}/download',     [AdminSkUjikomController::class, 'download'])->name('download');
         Route::post('/{skUjikom}/regenerate',  [AdminSkUjikomController::class, 'regenerate'])->name('regenerate');
+    });
+
+    Route::prefix('berita-acara')->name('berita-acara.')->group(function () {
+        Route::get('/',                                     [AdminBeritaAcaraController::class, 'index'])->name('index');
+        Route::get('/batch/{batchId}/download',             [AdminBeritaAcaraController::class, 'downloadBatch'])->name('batch.download');
+        Route::get('/mandiri',                              [AdminBeritaAcaraController::class, 'indexMandiri'])->name('mandiri.index');
+        Route::get('/mandiri/{asesmen}/download',           [AdminBeritaAcaraController::class, 'downloadMandiri'])->name('mandiri.download');
     });
 });
 
@@ -1055,18 +1065,18 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/{payment}/reject', [BendaharaController::class, 'reject'])->name('reject');
     });
     // ── Honor Asesor ──────────────────────────────────────────────────────
-Route::prefix('honor')->name('honor.')->group(function () {
-    Route::get('/',                               [HonorAsesorController::class, 'index'])->name('index');
-    Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])->name('show');
-    Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])->name('store');
-    Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])->name('payment.show');
-    Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
-    Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
-    Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
-    
-    // Ganti dari /payments/{honor}/nomor → /payment/{honor}/nomor (konsisten)
-    Route::patch('/payment/{honor}/nomor',        [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
-});
+    Route::prefix('honor')->name('honor.')->group(function () {
+        Route::get('/',                               [HonorAsesorController::class, 'index'])->name('index');
+        Route::get('/{asesor}',                       [HonorAsesorController::class, 'show'])->name('show');
+        Route::post('/{asesor}/store',                [HonorAsesorController::class, 'store'])->name('store');
+        Route::get('/payment/{honor}',                [HonorAsesorController::class, 'showPayment'])->name('payment.show');
+        Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
+        Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
+        Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
+
+        // Ganti dari /payments/{honor}/nomor → /payment/{honor}/nomor (konsisten)
+        Route::patch('/payment/{honor}/nomor',        [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
+    });
     // ── Rekap Pendapatan ──────────────────────────────────────────────────
     Route::get('/rekap-pendapatan', [RekapPendapatanController::class, 'index'])->name('rekap-pendapatan');
 
@@ -1277,6 +1287,6 @@ Route::get('/tmp-clear-cache', function () {
     return 'cleared at ' . now();
 });
 
-Route::get('/test-route', function() {
+Route::get('/test-route', function () {
     return 'Laravel reached! Path: ' . request()->path();
 });

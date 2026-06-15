@@ -12,15 +12,14 @@
 {{-- Tab Navigation --}}
 <ul class="nav nav-tabs mb-4" id="asesiTab" role="tablist">
     <li class="nav-item" role="presentation">
-        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-asesi"
-            type="button" role="tab">
+        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all-asesi" type="button"
+            role="tab">
             <i class="bi bi-people me-1"></i> Semua Asesi
             <span class="badge bg-primary ms-1">{{ $asesmens->count() }}</span>
         </button>
     </li>
     <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tuk-tab" data-bs-toggle="tab" data-bs-target="#per-tuk"
-            type="button" role="tab">
+        <button class="nav-link" id="tuk-tab" data-bs-toggle="tab" data-bs-target="#per-tuk" type="button" role="tab">
             <i class="bi bi-building me-1"></i> Per TUK
             <span class="badge bg-secondary ms-1">{{ $tuks->count() }}</span>
         </button>
@@ -40,8 +39,8 @@
                 </h5>
                 <div class="d-flex align-items-center gap-2">
                     <div class="dropdown">
-                        <button class="btn btn-sm btn-success dropdown-toggle" type="button"
-                            data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-sm btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
                             <i class="bi bi-file-excel"></i> Export Excel
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" style="min-width:220px;">
@@ -49,24 +48,23 @@
                                 <h6 class="dropdown-header">Export Biodata</h6>
                             </li>
                             <li>
-                                <a class="dropdown-item" id="export-all-link"
-                                    href="{{ route('admin.asesi.export') }}">
+                                <a class="dropdown-item" id="export-all-link" href="{{ route('admin.asesi.export') }}">
                                     <i class="bi bi-people me-2 text-primary"></i>Semua Asesi
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item"
-                                    href="{{ route('admin.asesi.export') }}?type=mandiri">
+                                <a class="dropdown-item" href="{{ route('admin.asesi.export') }}?type=mandiri">
                                     <i class="bi bi-person me-2 text-success"></i>Mandiri saja
                                 </a>
                             </li>
                             <li>
-                                <a class="dropdown-item"
-                                    href="{{ route('admin.asesi.export') }}?type=collective">
+                                <a class="dropdown-item" href="{{ route('admin.asesi.export') }}?type=collective">
                                     <i class="bi bi-layers me-2 text-info"></i>Kolektif saja
                                 </a>
                             </li>
-                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
                             <li>
                                 <a class="dropdown-item text-muted" id="export-filtered-link"
                                     href="{{ route('admin.asesi.export') }}"
@@ -187,8 +185,7 @@
                             @forelse($asesmens as $asesmen)
                             <tr data-status="{{ $asesmen->status }}"
                                 data-type="{{ $asesmen->is_collective ? 'collective' : 'mandiri' }}"
-                                data-tuk="{{ $asesmen->tuk_id }}"
-                                data-skema="{{ $asesmen->skema_id }}"
+                                data-tuk="{{ $asesmen->tuk_id }}" data-skema="{{ $asesmen->skema_id }}"
                                 data-asesmen-id="{{ $asesmen->id }}">
                                 <td><strong>#{{ $asesmen->id }}</strong></td>
                                 <td>
@@ -215,7 +212,8 @@
                                 </td>
                                 <td>
                                     @if($asesmen->payment)
-                                    <span class="badge bg-{{ $asesmen->payment->status === 'verified' ? 'success' : 'warning' }}">
+                                    <span
+                                        class="badge bg-{{ $asesmen->payment->status === 'verified' ? 'success' : 'warning' }}">
                                         {{ ucfirst($asesmen->payment->status) }}
                                     </span>
                                     <br><small>Rp {{ number_format($asesmen->payment->amount, 0, ',', '.') }}</small>
@@ -241,11 +239,12 @@
                                 </td>
                                 <td><small>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</small></td>
                                 <td>
-                                    <a href="{{ route('admin.asesi.show', $asesmen) }}"
-                                        class="btn btn-sm btn-info" data-bs-toggle="tooltip" title="Lihat Detail">
+                                    <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-info"
+                                        data-bs-toggle="tooltip" title="Lihat Detail">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    @if(!$asesmen->is_collective && !in_array($asesmen->status, ['certified', 'assessed', 'asesmen_started']))
+                                    @if(!$asesmen->is_collective && !in_array($asesmen->status, ['certified',
+                                    'assessed', 'asesmen_started']))
                                     <button class="btn btn-sm btn-danger ms-1"
                                         onclick="hapusMandiri({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name ?? $asesmen->user->name) }}')"
                                         data-bs-toggle="tooltip" title="Hapus Akun Mandiri">
@@ -276,33 +275,26 @@
         <div class="row g-3">
             @forelse($tuks as $tuk)
             @php
-                $tukBatches = $asesmens
-                    ->where('tuk_id', $tuk->id)
-                    ->whereNotNull('collective_batch_id')
-                    ->groupBy('collective_batch_id');
-
-                $mandiriCount = $asesmens
-                    ->where('tuk_id', $tuk->id)
-                    ->where('is_collective', false)
-                    ->count();
+            $tukBatches = $tuk->_batches ?? collect();
+            $mandiriCount = isset($tuk->_mandiri) ? $tuk->_mandiri->count() : 0;
             @endphp
             <div class="col-md-6 col-xl-4">
                 <div class="card border-0 shadow-sm h-100">
                     <div class="card-header bg-white d-flex align-items-center gap-2 border-bottom">
                         @if($tuk->logo_path)
-                            <img src="{{ asset('storage/' . $tuk->logo_path) }}"
-                                style="width:32px;height:32px;object-fit:cover;border-radius:4px;">
+                        <img src="{{ asset('storage/' . $tuk->logo_path) }}"
+                            style="width:32px;height:32px;object-fit:cover;border-radius:4px;">
                         @else
-                            <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded"
-                                style="width:32px;height:32px;font-size:0.8rem;font-weight:700;">
-                                {{ strtoupper(substr($tuk->name, 0, 2)) }}
-                            </div>
+                        <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded"
+                            style="width:32px;height:32px;font-size:0.8rem;font-weight:700;">
+                            {{ strtoupper(substr($tuk->name, 0, 2)) }}
+                        </div>
                         @endif
                         <div class="flex-grow-1 min-width-0">
                             <div class="fw-semibold text-truncate">{{ $tuk->name }}</div>
                             <small class="text-muted">{{ $tuk->code }}</small>
                         </div>
-                        <span class="badge bg-primary rounded-pill">{{ $tuk->asesmens_count }}</span>
+                        <span class="badge bg-primary rounded-pill">{{ $tuk->_total ?? $tuk->asesmens_count }}</span>
                     </div>
                     <div class="card-body p-0">
 
@@ -311,9 +303,8 @@
                             <small class="text-muted fw-semibold">MANDIRI</small>
                             <div class="d-flex align-items-center justify-content-between mt-1">
                                 <span class="small">{{ $mandiriCount }} asesi mandiri</span>
-                                <a href="{{ route('admin.asesi') }}?tuk={{ $tuk->id }}&type=mandiri"
-                                    class="btn btn-xs btn-outline-secondary py-0 px-2"
-                                    style="font-size:0.75rem;">
+                                <a href="{{ route('admin.asesi.mandiri-per-tuk', $tuk->id) }}"
+                                    class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size:0.75rem;">
                                     <i class="bi bi-eye"></i> Lihat
                                 </a>
                             </div>
@@ -321,49 +312,49 @@
                         @endif
 
                         @if($tukBatches->isEmpty())
-                            <div class="text-center text-muted py-3">
-                                <small>Tidak ada batch kolektif</small>
-                            </div>
+                        <div class="text-center text-muted py-3">
+                            <small>Tidak ada batch kolektif</small>
+                        </div>
                         @else
-                            <div class="list-group list-group-flush">
-                                @foreach($tukBatches as $batchId => $members)
-                                @php
-                                    $first       = $members->first();
-                                    $count       = $members->count();
-                                    $allComplete = $members->every(fn($m) => $m->status === 'data_completed');
-                                    $anyStarted  = $members->contains(
-                                        fn($m) => !in_array($m->status, ['registered','data_completed'])
-                                    );
-                                    $batchBadge = $anyStarted ? 'success' : ($allComplete ? 'warning' : 'secondary');
-                                    $batchLabel = $anyStarted ? 'Berjalan' : ($allComplete ? 'Siap Mulai' : 'Dalam Proses');
-                                @endphp
-                                <a href="{{ route('admin.asesi.batch.show', $batchId) }}"
-                                    class="list-group-item list-group-item-action px-3 py-2">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <div class="small fw-semibold text-truncate" style="max-width:160px;">
-                                                <i class="bi bi-layers me-1 text-primary"></i>
-                                                {{ $batchId }}
-                                            </div>
-                                            <div class="text-muted" style="font-size:0.72rem;">
-                                                {{ $count }} peserta
-                                                &bull;
-                                                {{ $first->skema->name ?? '-' }}
-                                            </div>
-                                            <div class="text-muted" style="font-size:0.72rem;">
-                                                {{ $first->registration_date->translatedFormat('d M Y') }}
-                                            </div>
+                        <div class="list-group list-group-flush">
+                            @foreach($tukBatches as $batchId => $members)
+                            @php
+                            $first = $members->first();
+                            $count = $members->count();
+                            $allComplete = $members->every(fn($m) => $m->status === 'data_completed');
+                            $anyStarted = $members->contains(
+                            fn($m) => !in_array($m->status, ['registered','data_completed'])
+                            );
+                            $batchBadge = $anyStarted ? 'success' : ($allComplete ? 'warning' : 'secondary');
+                            $batchLabel = $anyStarted ? 'Berjalan' : ($allComplete ? 'Siap Mulai' : 'Dalam Proses');
+                            @endphp
+                            <a href="{{ route('admin.asesi.batch.show', $batchId) }}"
+                                class="list-group-item list-group-item-action px-3 py-2">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="small fw-semibold text-truncate" style="max-width:160px;">
+                                            <i class="bi bi-layers me-1 text-primary"></i>
+                                            {{ $batchId }}
                                         </div>
-                                        <div class="d-flex flex-column align-items-end gap-1">
-                                            <span class="badge bg-{{ $batchBadge }} rounded-pill">
-                                                {{ $batchLabel }}
-                                            </span>
-                                            <i class="bi bi-chevron-right text-muted small"></i>
+                                        <div class="text-muted" style="font-size:0.72rem;">
+                                            {{ $count }} peserta
+                                            &bull;
+                                            {{ $first->skema->name ?? '-' }}
+                                        </div>
+                                        <div class="text-muted" style="font-size:0.72rem;">
+                                            {{ $first->registration_date->translatedFormat('d M Y') }}
                                         </div>
                                     </div>
-                                </a>
-                                @endforeach
-                            </div>
+                                    <div class="d-flex flex-column align-items-end gap-1">
+                                        <span class="badge bg-{{ $batchBadge }} rounded-pill">
+                                            {{ $batchLabel }}
+                                        </span>
+                                        <i class="bi bi-chevron-right text-muted small"></i>
+                                    </div>
+                                </div>
+                            </a>
+                            @endforeach
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -407,7 +398,7 @@
 <script>
 let dtTable = null;
 
-$(document).ready(function () {
+$(document).ready(function() {
 
     $('[data-bs-toggle="tooltip"]').tooltip();
 
@@ -416,34 +407,41 @@ $(document).ready(function () {
     }
 
     dtTable = $('#asesi-table').DataTable({
-        language: { url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json' },
-        order: [[10, 'desc']],
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+        },
+        order: [
+            [10, 'desc']
+        ],
         pageLength: 25,
         responsive: true,
-        columnDefs: [{ orderable: false, targets: 11 }]
+        columnDefs: [{
+            orderable: false,
+            targets: 11
+        }]
     });
 
-    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
         const status = $('#filter-status').val();
-        const type   = $('#filter-type').val();
-        const tuk    = $('#filter-tuk').val();
-        const skema  = $('#filter-skema').val();
+        const type = $('#filter-type').val();
+        const tuk = $('#filter-tuk').val();
+        const skema = $('#filter-skema').val();
 
-        const row       = dtTable.row(dataIndex).node();
+        const row = dtTable.row(dataIndex).node();
         const rowStatus = $(row).data('status');
-        const rowType   = $(row).data('type');
-        const rowTuk    = $(row).data('tuk');
-        const rowSkema  = $(row).data('skema');
+        const rowType = $(row).data('type');
+        const rowTuk = $(row).data('tuk');
+        const rowSkema = $(row).data('skema');
 
         if (status && rowStatus !== status) return false;
-        if (type   && rowType   !== type)   return false;
-        if (tuk    && rowTuk    != tuk)     return false;
-        if (skema  && rowSkema  != skema)   return false;
+        if (type && rowType !== type) return false;
+        if (tuk && rowTuk != tuk) return false;
+        if (skema && rowSkema != skema) return false;
 
         return true;
     });
 
-    $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function () {
+    $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function() {
         dtTable.draw();
         updateFilteredExportLink();
     });
@@ -461,19 +459,19 @@ $(document).ready(function () {
 
 function updateFilteredExportLink() {
     const baseUrl = '{{ route("admin.asesi.export") }}';
-    const params  = new URLSearchParams();
+    const params = new URLSearchParams();
 
-    const status  = $('#filter-status').val();
-    const type    = $('#filter-type').val();
-    const tukId   = $('#filter-tuk').val();
+    const status = $('#filter-status').val();
+    const type = $('#filter-type').val();
+    const tukId = $('#filter-tuk').val();
     const skemaId = $('#filter-skema').val();
 
-    if (status)  params.set('status',   status);
-    if (type)    params.set('type',     type);
-    if (tukId)   params.set('tuk_id',  tukId);
+    if (status) params.set('status', status);
+    if (type) params.set('type', type);
+    if (tukId) params.set('tuk_id', tukId);
     if (skemaId) params.set('skema_id', skemaId);
 
-    const qs  = params.toString();
+    const qs = params.toString();
     const url = qs ? baseUrl + '?' + qs : baseUrl;
 
     $('#export-filtered-link').attr('href', url);

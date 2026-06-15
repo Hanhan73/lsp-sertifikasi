@@ -108,7 +108,6 @@ class AsesmenController extends Controller
             $html = view('admin.asesmens.partials.detail-modal', compact('asesmen'))->render();
 
             return response()->json(['success' => true, 'html' => $html]);
-
         } catch (\Exception $e) {
             Log::error('[ASESMEN][detail] ' . $e->getMessage());
 
@@ -139,6 +138,7 @@ class AsesmenController extends Controller
             'frak01',
             'frak04',
             'registrar',
+            'schedule.asesor',
         ])
             ->where('collective_batch_id', $batchId)
             ->orderBy('full_name')
@@ -148,15 +148,11 @@ class AsesmenController extends Controller
 
         $firstBatch = $asesmens->first();
 
-        // Cek apakah semua masih data_completed (boleh mulai asesmen)
         $allDataCompleted = $asesmens->every(fn($a) => $a->status === 'data_completed');
-
-        // Apakah asesmen sudah dimulai (ada yang status != registered/data_completed)
-        $asesmenStarted = $asesmens->contains(
+        $asesmenStarted   = $asesmens->contains(
             fn($a) => !in_array($a->status, ['registered', 'data_completed'])
         );
 
-        // Progress dokumen
         $docProgress = [
             'apl01'  => $asesmens->filter(fn($a) => $a->aplsatu !== null)->count(),
             'apl02'  => $asesmens->filter(fn($a) => $a->apldua  !== null)->count(),
@@ -166,8 +162,34 @@ class AsesmenController extends Controller
         ];
 
         $allDocsComplete = $docProgress['apl01']  === $docProgress['total']
-                        && $docProgress['apl02']  === $docProgress['total']
-                        && $docProgress['frak01'] === $docProgress['total'];
+            && $docProgress['apl02']  === $docProgress['total']
+            && $docProgress['frak01'] === $docProgress['total'];
+
+        // Jadwal dalam batch (dari schedule_id asesmens)
+        $scheduleIds = $asesmens->pluck('schedule_id')->filter()->unique();
+        $schedules   = \App\Models\Schedule::with(['beritaAcara', 'asesor', 'asesmens'])
+            ->whereIn('id', $scheduleIds)
+            ->get();
+
+        // Asesi mandiri yang ada di jadwal yang sama dengan batch ini
+        $mandiriDalamBatch = \App\Models\Asesmen::with(['schedule.asesor'])
+            ->where('is_collective', false)
+            ->whereIn('schedule_id', $scheduleIds)
+            ->get();
+
+        // SK Ujikom jika sudah ada
+        $skUjikom = \App\Models\SkHasilUjikom::where('collective_batch_id', $batchId)->first();
+
+        // Peserta kompeten dari BA dalam batch
+        $pesertaKompeten = \App\Models\BeritaAcaraAsesi::with(['asesmen'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->where('rekomendasi', 'K')
+            ->whereHas('asesmen', fn($q) => $q->where('is_collective', true)
+                ->where('collective_batch_id', $batchId))
+            ->get()
+            ->map(fn($baa) => $baa->asesmen)
+            ->filter()
+            ->values();
 
         return view('admin.asesi.batch-show', compact(
             'batchId',
@@ -176,10 +198,49 @@ class AsesmenController extends Controller
             'allDataCompleted',
             'asesmenStarted',
             'docProgress',
-            'allDocsComplete'
+            'allDocsComplete',
+            'schedules',
+            'mandiriDalamBatch',
+            'skUjikom',
+            'pesertaKompeten'
         ));
     }
 
+    public function mandiriPerTuk(int $tukId)
+    {
+        $tuk = \App\Models\Tuk::findOrFail($tukId);
+
+        // Asesi mandiri yang di-assign ke TUK ini (assigned_tuk_id),
+        // atau yang tuk_id = TUK ini dan belum di-assign ke mana-mana
+        $asesmens = Asesmen::with([
+            'user',
+            'tuk',
+            'assignedTuk',
+            'skema',
+            'aplsatu',
+            'apldua',
+            'frak01',
+            'frak04',
+            'schedule.asesor',
+            'schedule.beritaAcara',
+        ])
+            ->where('is_collective', false)
+            ->where(function ($q) use ($tukId) {
+                $q->where('assigned_tuk_id', $tukId)
+                    ->orWhere(function ($q2) use ($tukId) {
+                        $q2->where('tuk_id', $tukId)
+                            ->whereNull('assigned_tuk_id');
+                    });
+            })
+            ->orderBy('full_name')
+            ->get();
+
+        abort_if($asesmens->isEmpty(), 404, 'Tidak ada asesi mandiri untuk TUK ini.');
+
+        return view('admin.asesi.mandiri-per-tuk', compact('tuk', 'asesmens'));
+    }
+ 
+    
     // =========================================================
     // EXPORT BIODATA BATCH KE EXCEL
     // =========================================================
@@ -583,7 +644,7 @@ class AsesmenController extends Controller
             'Content-Disposition' => 'attachment; filename="' . $filename . '.csv"',
         ]);
     }
-    
+
     // =========================================================
     // PRIVATE — SERTIFIKAT
     // =========================================================
@@ -613,140 +674,139 @@ class AsesmenController extends Controller
         $asesmen->update(['status' => 'certified']);
     }
 
-public function updateEmail(Request $request, Asesmen $asesmen)
-{
-    $asesmen->loadMissing('user');
+    public function updateEmail(Request $request, Asesmen $asesmen)
+    {
+        $asesmen->loadMissing('user');
 
-    $request->validate([
-        'email' => [
-            'required',
-            'email',
-            'max:255',
-            \Illuminate\Validation\Rule::unique('users', 'email')->ignore($asesmen->user_id),
-        ],
-    ], [
-        'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
-    ]);
+        $request->validate([
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('users', 'email')->ignore($asesmen->user_id),
+            ],
+        ], [
+            'email.unique' => 'Email ini sudah digunakan oleh akun lain.',
+        ]);
 
-    $oldEmail = $asesmen->user->email;
+        $oldEmail = $asesmen->user->email;
 
-    $asesmen->user->update([
-        'email'             => $request->email,
-        'email_verified_at' => null,
-    ]);
+        $asesmen->user->update([
+            'email'             => $request->email,
+            'email_verified_at' => null,
+        ]);
 
-    // Invalidate semua session asesi supaya mereka login ulang
-    // Ini penting agar verifikasi email berjalan dengan user yang benar
-    \Illuminate\Support\Facades\DB::table('sessions')
-        ->where('user_id', $asesmen->user_id)
-        ->delete();
+        // Invalidate semua session asesi supaya mereka login ulang
+        // Ini penting agar verifikasi email berjalan dengan user yang benar
+        \Illuminate\Support\Facades\DB::table('sessions')
+            ->where('user_id', $asesmen->user_id)
+            ->delete();
 
-    // Kirim verifikasi ke email baru
-    $asesmen->user->sendEmailVerificationNotification();
+        // Kirim verifikasi ke email baru
+        $asesmen->user->sendEmailVerificationNotification();
 
-    Log::info('[ADMIN] Email asesi diubah', [
-        'asesmen_id' => $asesmen->id,
-        'old_email'  => $oldEmail,
-        'new_email'  => $request->email,
-        'by_admin'   => auth()->id(),
-    ]);
+        Log::info('[ADMIN] Email asesi diubah', [
+            'asesmen_id' => $asesmen->id,
+            'old_email'  => $oldEmail,
+            'new_email'  => $request->email,
+            'by_admin'   => auth()->id(),
+        ]);
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Email berhasil diubah. Asesi akan diminta login ulang dan verifikasi email baru.',
-    ]);
-}
-
-
-public function destroyMandiri(Asesmen $asesmen)
-{
-    // Guard: hanya boleh hapus mandiri
-    if ($asesmen->is_collective) {
-        return response()->json(['success' => false, 'message' => 'Asesi kolektif tidak bisa dihapus lewat sini.'], 422);
+        return response()->json([
+            'success' => true,
+            'message' => 'Email berhasil diubah. Asesi akan diminta login ulang dan verifikasi email baru.',
+        ]);
     }
 
-    // Guard: jangan hapus yang sudah certified atau sedang asesmen
-    if (in_array($asesmen->status, ['certified', 'assessed', 'asesmen_started'])) {
-        return response()->json(['success' => false, 'message' => 'Asesi dengan status ' . $asesmen->status_label . ' tidak bisa dihapus.'], 422);
-    }
 
-    DB::beginTransaction();
-    try {
-        $nama = $asesmen->full_name ?? $asesmen->user->name;
+    public function destroyMandiri(Asesmen $asesmen)
+    {
+        // Guard: hanya boleh hapus mandiri
+        if ($asesmen->is_collective) {
+            return response()->json(['success' => false, 'message' => 'Asesi kolektif tidak bisa dihapus lewat sini.'], 422);
+        }
 
-        // Hapus file storage
-        foreach (['photo_path', 'ktp_path', 'document_path', 'pre_assessment_file'] as $col) {
-            if ($asesmen->$col) {
-                Storage::disk('public')->delete($asesmen->$col);
+        // Guard: jangan hapus yang sudah certified atau sedang asesmen
+        if (in_array($asesmen->status, ['certified', 'assessed', 'asesmen_started'])) {
+            return response()->json(['success' => false, 'message' => 'Asesi dengan status ' . $asesmen->status_label . ' tidak bisa dihapus.'], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $nama = $asesmen->full_name ?? $asesmen->user->name;
+
+            // Hapus file storage
+            foreach (['photo_path', 'ktp_path', 'document_path', 'pre_assessment_file'] as $col) {
+                if ($asesmen->$col) {
+                    Storage::disk('public')->delete($asesmen->$col);
+                }
             }
+
+            // Hapus user-nya juga (cascade akan hapus asesmen via FK, atau manual)
+            $user = $asesmen->user;
+            $asesmen->delete();
+            if ($user) {
+                $user->delete();
+            }
+
+            DB::commit();
+
+            Log::info("[ADMIN] Hapus akun mandiri: {$nama} (Asesmen #{$asesmen->id}) oleh Admin #" . auth()->id());
+
+            return response()->json(['success' => true, 'message' => "Akun mandiri {$nama} berhasil dihapus."]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error destroyMandiri: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
         }
-
-        // Hapus user-nya juga (cascade akan hapus asesmen via FK, atau manual)
-        $user = $asesmen->user;
-        $asesmen->delete();
-        if ($user) {
-            $user->delete();
-        }
-
-        DB::commit();
-
-        Log::info("[ADMIN] Hapus akun mandiri: {$nama} (Asesmen #{$asesmen->id}) oleh Admin #" . auth()->id());
-
-        return response()->json(['success' => true, 'message' => "Akun mandiri {$nama} berhasil dihapus."]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Error destroyMandiri: ' . $e->getMessage());
-        return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
-    }
-}
-
-
-public function resetPasswordAsesi(Asesmen $asesmen)
-{
-    $asesmen->loadMissing('user');
-
-    $defaultPassword = 'password123';
-
-    $asesmen->user->update([
-        'password'            => \Illuminate\Support\Facades\Hash::make($defaultPassword),
-    ]);
-
-    // Kick active sessions
-    DB::table('sessions')
-        ->where('user_id', $asesmen->user_id)
-        ->delete();
-
-    Log::info('[ADMIN] Reset password asesi', [
-        'asesmen_id' => $asesmen->id,
-        'by_admin'   => auth()->id(),
-    ]);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Password berhasil direset ke "password123". Asesi akan diminta ganti password saat login berikutnya.',
-    ]);
-}
-
-public function impersonate(Asesmen $asesmen)
-{
-    $target = $asesmen->user;
-
-    if (!$target) {
-        return back()->with('error', 'User asesi tidak ditemukan.');
     }
 
-    // Simpan admin original di session
-    session([
-        'impersonate_original_id'   => auth()->id(),
-        'impersonate_original_role' => auth()->user()->role,
-    ]);
 
-    auth()->login($target);
+    public function resetPasswordAsesi(Asesmen $asesmen)
+    {
+        $asesmen->loadMissing('user');
 
-    return redirect()->route('asesi.dashboard')
-        ->with('info', 'Sedang impersonate sebagai ' . $target->name);
-}
+        $defaultPassword = 'password123';
+
+        $asesmen->user->update([
+            'password'            => \Illuminate\Support\Facades\Hash::make($defaultPassword),
+        ]);
+
+        // Kick active sessions
+        DB::table('sessions')
+            ->where('user_id', $asesmen->user_id)
+            ->delete();
+
+        Log::info('[ADMIN] Reset password asesi', [
+            'asesmen_id' => $asesmen->id,
+            'by_admin'   => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil direset ke "password123". Asesi akan diminta ganti password saat login berikutnya.',
+        ]);
+    }
+
+    public function impersonate(Asesmen $asesmen)
+    {
+        $target = $asesmen->user;
+
+        if (!$target) {
+            return back()->with('error', 'User asesi tidak ditemukan.');
+        }
+
+        // Simpan admin original di session
+        session([
+            'impersonate_original_id'   => auth()->id(),
+            'impersonate_original_role' => auth()->user()->role,
+        ]);
+
+        auth()->login($target);
+
+        return redirect()->route('asesi.dashboard')
+            ->with('info', 'Sedang impersonate sebagai ' . $target->name);
+    }
 
     public function stopImpersonate()
     {
@@ -766,15 +826,15 @@ public function impersonate(Asesmen $asesmen)
 
         auth()->login($admin);
 
-    return redirect()->route('admin.dashboard')
-        ->with('success', 'Kembali ke akun admin.');
+        return redirect()->route('admin.dashboard')
+            ->with('success', 'Kembali ke akun admin.');
     }
 
 
     // =========================================================
     // EXPORT BLANKO PENGAJUAN BATCH
     // =========================================================
- 
+
     /**
      * Export blanko pengajuan BNSP semua peserta batch ke format Excel.
      * - K/BK dari BeritaAcaraAsesi (semua jadwal dalam batch) > frak04 > result
@@ -788,13 +848,13 @@ public function impersonate(Asesmen $asesmen)
             ->where('collective_batch_id', $batchId)
             ->orderBy('full_name')
             ->get();
- 
+
         abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
- 
+
         if (!class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class)) {
             abort(500, 'PhpSpreadsheet tidak tersedia. Hubungi administrator.');
         }
- 
+
         // ── Bangun rekomendasiMap dari SEMUA jadwal dalam batch ──
         // Satu batch bisa punya banyak schedule, tiap schedule punya satu BeritaAcara.
         // Ikuti pola yang sama dengan HasilAsesmenController::showBatch()
@@ -802,27 +862,27 @@ public function impersonate(Asesmen $asesmen)
             'asesmens',
             fn($q) => $q->where('collective_batch_id', $batchId)
         )->pluck('id');
- 
+
         // asesmen_id => 'K' | 'BK'
         $rekomendasiMap = \App\Models\BeritaAcaraAsesi::whereHas(
             'beritaAcara',
             fn($q) => $q->whereIn('schedule_id', $scheduleIds)
         )->get()->keyBy('asesmen_id')->map(fn($baa) => strtoupper(trim($baa->rekomendasi)));
- 
+
         // Ambil satu schedule untuk asesor & tanggal uji (schedule pertama per batch)
         $firstSchedule = Schedule::with('asesor')
             ->whereIn('id', $scheduleIds)
             ->orderBy('assessment_date')
             ->first();
- 
+
         $tglUji      = $firstSchedule?->assessment_date;
         $nomorAsesor = 'MET.' . ($firstSchedule?->asesor?->no_reg_met ?? '');
- 
+
         // ── Spreadsheet ───────────────────────────────────────
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet       = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Blanko Pengajuan');
- 
+
         $headers = [
             'No',
             'NAMA ASESI',
@@ -845,10 +905,10 @@ public function impersonate(Asesmen $asesmen)
             'K/BK',
             'ASAL SEKOLAH/LEMBAGA',
         ];
- 
+
         $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
         $sheet->fromArray($headers, null, 'A1');
- 
+
         $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
             'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'name' => 'Arial', 'size' => 10],
             'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1F4E79']],
@@ -857,11 +917,11 @@ public function impersonate(Asesmen $asesmen)
         ]);
         $sheet->getStyle('T1')->getFill()->setFillType('solid')->getStartColor()->setRGB('2E75B6');
         $sheet->getRowDimension(1)->setRowHeight(32);
- 
+
         // ── Data Rows ─────────────────────────────────────────
         foreach ($asesmens as $i => $a) {
             $row = $i + 2;
- 
+
             // K/BK: BeritaAcara (semua jadwal) → frak04 → result asesmen
             if ($rekomendasiMap->has($a->id)) {
                 $kbk = $rekomendasiMap->get($a->id); // 'K' atau 'BK'
@@ -872,23 +932,26 @@ public function impersonate(Asesmen $asesmen)
             } else {
                 $kbk = '';
             }
- 
+
             // Kolom numerik biasa
             $sheet->setCellValue("A{$row}", $i + 1);
             $sheet->setCellValue("B{$row}", strtoupper($a->full_name ?? $a->user->name ?? ''));
- 
+
             // NIK, Kode Kota, Kode Provinsi → paksa teks
-            foreach ([
-                "C{$row}" => $a->nik ?? '',
-                "H{$row}" => $a->city_code ?? '',
-                "I{$row}" => $a->province_code ?? '',
-            ] as $cell => $val) {
+            foreach (
+                [
+                    "C{$row}" => $a->nik ?? '',
+                    "H{$row}" => $a->city_code ?? '',
+                    "I{$row}" => $a->province_code ?? '',
+                ] as $cell => $val
+            ) {
                 $sheet->setCellValueExplicit(
-                    $cell, $val,
+                    $cell,
+                    $val,
                     \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
                 );
             }
- 
+
             $sheet->setCellValue("D{$row}", strtoupper($a->birth_place ?? ''));
             $sheet->setCellValue("E{$row}", $a->birth_date ? $a->birth_date->format('d/m/Y') : '');
             $sheet->setCellValue("F{$row}", $a->gender ?? '');
@@ -904,7 +967,7 @@ public function impersonate(Asesmen $asesmen)
             $sheet->setCellValue("R{$row}", '');  // Kode Kementerian — kosong
             $sheet->setCellValue("S{$row}", $kbk);
             $sheet->setCellValue("T{$row}", $a->institution ?? '');
- 
+
             $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
             $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
                 'font'      => ['name' => 'Arial', 'size' => 10],
@@ -919,7 +982,7 @@ public function impersonate(Asesmen $asesmen)
                 'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
             ]);
         }
- 
+
         // ── Post-style ────────────────────────────────────────
         $totalRows = $asesmens->count() + 1;
         $sheet->getStyle("S2:S{$totalRows}")->applyFromArray([
@@ -929,24 +992,42 @@ public function impersonate(Asesmen $asesmen)
         $sheet->getStyle("O2:P{$totalRows}")->applyFromArray(['font' => ['bold' => true]]);
         $sheet->getStyle("A2:A{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
         $sheet->getStyle("F2:F{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
- 
+
         // ── Lebar kolom ───────────────────────────────────────
-        foreach ([
-            'A' => 5,  'B' => 32, 'C' => 22, 'D' => 18, 'E' => 16,
-            'F' => 8,  'G' => 42, 'H' => 12, 'I' => 12, 'J' => 16,
-            'K' => 28, 'L' => 14, 'M' => 14, 'N' => 16, 'O' => 18,
-            'P' => 26, 'Q' => 18, 'R' => 16, 'S' => 8,  'T' => 35,
-        ] as $col => $width) {
+        foreach (
+            [
+                'A' => 5,
+                'B' => 32,
+                'C' => 22,
+                'D' => 18,
+                'E' => 16,
+                'F' => 8,
+                'G' => 42,
+                'H' => 12,
+                'I' => 12,
+                'J' => 16,
+                'K' => 28,
+                'L' => 14,
+                'M' => 14,
+                'N' => 16,
+                'O' => 18,
+                'P' => 26,
+                'Q' => 18,
+                'R' => 16,
+                'S' => 8,
+                'T' => 35,
+            ] as $col => $width
+        ) {
             $sheet->getColumnDimension($col)->setWidth($width);
         }
- 
+
         $sheet->freezePane('A2');
- 
+
         $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
         $filename = 'blanko_pengajuan_' . $batchId . '_' . date('Ymd') . '.xlsx';
         $tmpPath  = storage_path('app/tmp_blanko_' . $filename);
         $writer->save($tmpPath);
- 
+
         return response()->download($tmpPath, $filename, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);

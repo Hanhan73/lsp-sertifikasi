@@ -14,9 +14,20 @@
     </ol>
 </nav>
 
+@if(session('success'))
+<div class="alert alert-success border-0 shadow-sm mb-3">
+    <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+</div>
+@endif
+@if(session('error'))
+<div class="alert alert-danger border-0 shadow-sm mb-3">
+    <i class="bi bi-x-circle-fill me-2"></i>{{ session('error') }}
+</div>
+@endif
+
 <div class="row g-4">
 
-    {{-- KIRI --}}
+    {{-- ══ KIRI ══ --}}
     <div class="col-lg-8">
 
         {{-- Info Batch --}}
@@ -153,10 +164,11 @@
 
     </div>
 
-    {{-- KANAN --}}
+    {{-- ══ KANAN ══ --}}
     <div class="col-lg-4">
         <div class="sticky-top" style="top:80px;">
 
+            {{-- Mulai Asesmen --}}
             @if($allDataCompleted && !$asesmenStarted)
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-primary text-white fw-semibold">
@@ -168,7 +180,7 @@
                         $dokumenLengkap = $asesmens->filter(fn($a) =>
                             $a->photo_path && $a->ktp_path && $a->document_path
                         )->count();
-                        $allDocReady    = $dokumenLengkap === $totalPeserta;
+                        $allDocReady = $dokumenLengkap === $totalPeserta;
                     @endphp
                     <p class="small fw-semibold text-muted mb-2">KELENGKAPAN DOKUMEN</p>
                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -183,8 +195,7 @@
                     @if(!$allDocReady)
                     <div class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        <small><strong>{{ $totalPeserta - $dokumenLengkap }} peserta</strong>
-                            belum melengkapi dokumen. Anda tetap bisa memulai asesmen.</small>
+                        <small><strong>{{ $totalPeserta - $dokumenLengkap }} peserta</strong> belum melengkapi dokumen.</small>
                     </div>
                     @endif
                     <form action="{{ route('admin.praasesmen.batch.process') }}" method="POST">
@@ -192,14 +203,12 @@
                         <input type="hidden" name="batch_id" value="{{ $batchId }}" id="form-batch-id">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Catatan (opsional)</label>
-                            <textarea name="notes" class="form-control form-control-sm" rows="3"
-                                placeholder="Catatan untuk batch ini..."></textarea>
+                            <textarea name="notes" class="form-control form-control-sm" rows="2"></textarea>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary"
-                                onclick="return confirm('Mulai asesmen untuk {{ $totalPeserta }} peserta dalam batch ini?')">
-                                <i class="bi bi-play-circle me-1"></i>
-                                Mulai Asesmen ({{ $totalPeserta }} peserta)
+                                onclick="return confirm('Mulai asesmen untuk {{ $totalPeserta }} peserta?')">
+                                <i class="bi bi-play-circle me-1"></i>Mulai Asesmen ({{ $totalPeserta }} peserta)
                             </button>
                         </div>
                     </form>
@@ -207,6 +216,7 @@
             </div>
             @endif
 
+            {{-- Progress & Export --}}
             @if($asesmenStarted)
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white fw-semibold border-bottom">
@@ -240,28 +250,187 @@
                     @endforeach
                 </div>
             </div>
+
+            {{-- Export Data --}}
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-white fw-semibold border-bottom">
                     <i class="bi bi-file-excel me-2 text-success"></i>Export Data
                 </div>
                 <div class="card-body">
-                    <p class="small text-muted mb-3">Export data peserta batch ini ke Excel.</p>
-            
-                    {{-- Tombol 1: Biodata (sudah ada sebelumnya) --}}
                     <a href="{{ route('admin.asesi.batch.export', $batchId) }}"
-                        class="btn btn-success w-100 mb-2" id="export-link">
+                        class="btn btn-success w-100 mb-2">
                         <i class="bi bi-download me-1"></i> Download Biodata Excel
                     </a>
-            
-                    {{-- Tombol 2: Blanko Pengajuan BNSP (BARU) --}}
+                    @if(Route::has('admin.asesi.batch.export-blanko'))
                     <a href="{{ route('admin.asesi.batch.export-blanko', $batchId) }}"
                         class="btn btn-outline-primary w-100">
                         <i class="bi bi-file-earmark-spreadsheet me-1"></i> Download Blanko Pengajuan
                     </a>
-                    <div class="text-muted mt-1" style="font-size:0.75rem;">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Format sesuai template BNSP: Nama, NIK, Kode Jadwal, K/BK, dll.
+                    @endif
+                </div>
+            </div>
+
+            {{-- ── GENERATE BERITA ACARA ── --}}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold border-bottom">
+                    <i class="bi bi-file-text me-2 text-warning"></i>Berita Acara
+                </div>
+                <div class="card-body">
+                    @php
+                        // Cek jadwal dalam batch yang punya BA
+                        $jadwalDalamBatch = $schedules ?? collect();
+                        $jadwalDenganBA   = $jadwalDalamBatch->filter(fn($s) => $s->beritaAcara !== null);
+                        $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
+                    @endphp
+
+                    @if($jadwalDenganBA->isEmpty())
+                    <div class="text-center text-muted py-2 small">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        Belum ada Berita Acara dari asesor.
                     </div>
+                    @else
+                    <div class="small text-muted mb-2">
+                        <i class="bi bi-check-circle text-success me-1"></i>
+                        {{ $jadwalDenganBA->count() }}/{{ $jadwalDalamBatch->count() }} jadwal sudah punya BA
+                    </div>
+
+                    @if($adaMandiriDiBatch->isNotEmpty())
+                    <div class="alert alert-warning border-0 py-2 mb-2" style="font-size:.82rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>{{ $adaMandiriDiBatch->count() }} asesi mandiri</strong> terdeteksi di jadwal batch ini.
+                        <a href="#" class="alert-link" data-bs-toggle="modal" data-bs-target="#modalMandiriBA">
+                            Lihat detail
+                        </a>
+                    </div>
+                    @endif
+
+                    <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}?preview=1"
+                       target="_blank"
+                       class="btn btn-outline-warning w-100 mb-2">
+                        <i class="bi bi-eye me-1"></i>Preview BA
+                    </a>
+                    <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}"
+                       class="btn btn-warning w-100">
+                        <i class="bi bi-download me-1"></i>Download BA PDF
+                    </a>
+                    @endif
+                </div>
+            </div>
+
+            {{-- ── GENERATE SK HASIL UJIKOM ── --}}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white fw-semibold border-bottom">
+                    <i class="bi bi-file-earmark-check me-2 text-primary"></i>SK Hasil Ujikom
+                </div>
+                <div class="card-body">
+                    @php
+                        $skUjikom = $skUjikom ?? null;
+                        $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
+                    @endphp
+
+                    @if($skUjikom && $skUjikom->isApproved())
+                    {{-- SK sudah ada --}}
+                    <div class="alert alert-success border-0 py-2 mb-3" style="font-size:.82rem;">
+                        <i class="bi bi-check-circle-fill me-1"></i>
+                        SK sudah digenerate.<br>
+                        <span class="font-monospace" style="font-size:.78rem;">{{ $skUjikom->nomor_sk }}</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        @if($skUjikom->hasSk())
+                        <a href="{{ route('admin.sk-ujikom.download', $skUjikom) }}"
+                           class="btn btn-success btn-sm">
+                            <i class="bi bi-download me-1"></i>Unduh SK PDF
+                        </a>
+                        @endif
+                        <a href="{{ route('admin.sk-ujikom.show', $skUjikom) }}"
+                           class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye me-1"></i>Lihat Detail SK
+                        </a>
+                    </div>
+
+                    @elseif($jadwalDenganBA->isEmpty())
+                    <div class="text-center text-muted py-2 small">
+                        <i class="bi bi-hourglass-split me-1"></i>
+                        Berita Acara belum ada. Pastikan asesor sudah mengisi BA terlebih dahulu.
+                    </div>
+
+                    @else
+                    {{-- Form generate SK inline --}}
+                    @if($adaMandiriDiBatch->isNotEmpty())
+                    <div class="alert alert-warning border-0 py-2 mb-3" style="font-size:.82rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        <strong>{{ $adaMandiriDiBatch->count() }} asesi mandiri</strong> terdeteksi.
+                        <a href="#" class="alert-link" data-bs-toggle="modal" data-bs-target="#modalMandiriSK">
+                            Lihat detail
+                        </a>
+                    </div>
+                    @endif
+
+                    @php $pesertaK = $pesertaKompeten ?? collect(); @endphp
+
+                    @if($pesertaK->isEmpty())
+                    <div class="text-center text-muted py-2 small">
+                        <i class="bi bi-x-circle me-1"></i>
+                        Belum ada peserta dengan rekomendasi K.
+                    </div>
+                    @else
+                    <div class="small text-muted mb-3">
+                        <i class="bi bi-people me-1 text-success"></i>
+                        <strong class="text-success">{{ $pesertaK->count() }} peserta Kompeten</strong> siap di-SK-kan.
+                    </div>
+
+                    <form action="{{ route('admin.sk-ujikom.store') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="collective_batch_id" value="{{ $batchId }}">
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Nomor SK <span class="text-danger">*</span></label>
+                            <input type="text" name="nomor_sk"
+                                   class="form-control form-control-sm @error('nomor_sk') is-invalid @enderror"
+                                   value="{{ old('nomor_sk') }}"
+                                   placeholder="001/LSP-KAP/SER.10.08/VI/2026"
+                                   required>
+                            @error('nomor_sk')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Tanggal Pleno <span class="text-danger">*</span></label>
+                            <input type="date" name="tanggal_pleno"
+                                   class="form-control form-control-sm @error('tanggal_pleno') is-invalid @enderror"
+                                   value="{{ old('tanggal_pleno') }}"
+                                   required>
+                            @error('tanggal_pleno')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Dikeluarkan di <span class="text-danger">*</span></label>
+                            <input type="text" name="tempat_dikeluarkan"
+                                   class="form-control form-control-sm @error('tempat_dikeluarkan') is-invalid @enderror"
+                                   value="{{ old('tempat_dikeluarkan', 'Bandung') }}"
+                                   required>
+                            @error('tempat_dikeluarkan')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="alert alert-info border-0 py-2 mb-3" style="font-size:.8rem;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            SK akan langsung <strong>disetujui</strong> dan PDF digenerate otomatis.
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-sm"
+                                onclick="return confirm('Generate SK untuk batch ini? SK akan langsung disetujui.')">
+                                <i class="bi bi-file-earmark-check me-1"></i>Generate & Setujui SK
+                            </button>
+                        </div>
+                    </form>
+                    @endif
+                    @endif
                 </div>
             </div>
             @endif
@@ -275,7 +444,7 @@
 
 </div>
 
-{{-- Modal Rename --}}
+{{-- ── MODAL RENAME ── --}}
 <div class="modal fade" id="renameBatchModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -320,6 +489,108 @@
     </div>
 </div>
 
+{{-- ── MODAL MANDIRI — BA ── --}}
+@php $adaMandiriDiBatch = $mandiriDalamBatch ?? collect(); @endphp
+@if($adaMandiriDiBatch->isNotEmpty())
+<div class="modal fade" id="modalMandiriBA" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">
+                    Berikut asesi <strong>mandiri</strong> (bukan bagian dari batch ini) yang ada di jadwal yang sama.
+                    Mereka <strong>akan ikut tercantum</strong> di Berita Acara batch ini karena berada di jadwal yang sama.
+                </p>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama</th>
+                            <th>Jadwal</th>
+                            <th>Asesor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($adaMandiriDiBatch as $m)
+                        <tr>
+                            <td class="small">{{ $m->full_name }}</td>
+                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}</td>
+                            <td class="small">{{ $m->schedule?->asesor?->nama ?? '-' }}</td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti</button>
+                <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}"
+                   class="btn btn-warning">
+                    <i class="bi bi-download me-1"></i>Download BA (termasuk mereka)
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ── MODAL MANDIRI — SK ── --}}
+<div class="modal fade" id="modalMandiriSK" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted mb-3">
+                    Asesi mandiri berikut ada di jadwal yang sama dengan batch ini.
+                    Untuk SK Ujikom, hanya peserta kolektif dari batch ini yang akan masuk ke SK.
+                    Asesi mandiri <strong>tidak ikut</strong> dalam SK ini.
+                </p>
+                <table class="table table-sm table-bordered mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Nama</th>
+                            <th>Jadwal</th>
+                            <th>BA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($adaMandiriDiBatch as $m)
+                        @php
+                            $rekom = $m->schedule?->beritaAcara?->asesis
+                                ->where('asesmen_id', $m->id)->first()?->rekomendasi;
+                        @endphp
+                        <tr>
+                            <td class="small">{{ $m->full_name }}</td>
+                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}</td>
+                            <td class="text-center">
+                                @if($rekom === 'K')
+                                <span class="badge bg-success">K</span>
+                                @elseif($rekom === 'BK')
+                                <span class="badge bg-danger">BK</span>
+                                @else
+                                <span class="badge bg-secondary">-</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+                <div class="alert alert-info border-0 py-2 mt-3 mb-0" style="font-size:.82rem;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Untuk membuat SK asesi mandiri, gunakan menu <strong>SK Hasil Ujikom Mandiri</strong> terpisah.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @push('scripts')
@@ -339,7 +610,6 @@ $(document).ready(function () {
             .replace(/^-+|-+$/g, '');
     }
 
-    // Isi input dengan nama saat ini (hapus TUK code + suffix dari akhir)
     const tukSuffix = '-' + tukCode + '-' + suffix;
     const initName  = batchId.endsWith(tukSuffix)
         ? batchId.slice(0, batchId.length - tukSuffix.length).replace(/-/g, ' ').trim()
@@ -377,7 +647,6 @@ $(document).ready(function () {
                     $('#form-batch-id').val(newId);
                     $('#breadcrumb-batch').text('Batch ' + newId);
                     $('#renameBatchModal').modal('hide');
-
                     Swal.fire({
                         icon : 'success',
                         title: 'Berhasil!',

@@ -23,7 +23,7 @@
         <div class="d-flex gap-2 flex-wrap">
             @if($skUjikom->hasSk())
             <form action="{{ route('admin.sk-ujikom.regenerate', $skUjikom) }}" method="POST"
-                  onsubmit="return confirm('Regenerate ulang PDF SK?')">
+                onsubmit="return confirm('Regenerate ulang PDF SK?')">
                 @csrf
                 <button type="submit" class="btn btn-outline-warning btn-sm">
                     <i class="bi bi-arrow-clockwise me-1"></i>Regenerate PDF
@@ -138,19 +138,19 @@
                         @php $lastAsesorId = null; @endphp
                         @foreach($pesertaKompeten as $i => $asesi)
                         @php
-                            $asesor = $asesi->_asesor;
-                            $asesorId = $asesor?->id;
+                        $asesor = $asesi->_asesor;
+                        $asesorId = $asesor?->id;
                         @endphp
                         <tr>
                             <td class="ps-3 text-muted">{{ $i + 1 }}.</td>
                             <td class="fw-semibold">{{ $asesi->full_name }}</td>
                             <td class="text-muted small">
                                 @if($asesorId !== $lastAsesorId)
-                                    {{ $asesor?->nama ?? '-' }}
-                                    @if($asesor?->no_reg_met)
-                                    <br>{{ $aesor->no_reg_met }}
-                                    @endif
-                                    @php $lastAsesorId = $asesorId; @endphp
+                                {{ $asesor?->nama ?? '-' }}
+                                @if($asesor?->no_reg_met)
+                                <br>{{ $asesor->no_reg_met }}
+                                @endif
+                                @php $lastAsesorId = $asesorId; @endphp
                                 @endif
                             </td>
                         </tr>

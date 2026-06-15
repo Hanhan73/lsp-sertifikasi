@@ -275,8 +275,15 @@
         <div class="row g-3">
             @forelse($tuks as $tuk)
             @php
-            $tukBatches = $tuk->_batches ?? collect();
-            $mandiriCount = isset($tuk->_mandiri) ? $tuk->_mandiri->count() : 0;
+            $tukBatches = $asesmens
+            ->where('tuk_id', $tuk->id)
+            ->whereNotNull('collective_batch_id')
+            ->groupBy('collective_batch_id');
+
+            $mandiriCount = $asesmens
+            ->where('tuk_id', $tuk->id)
+            ->where('is_collective', false)
+            ->count();
             @endphp
             <div class="col-md-6 col-xl-4">
                 <div class="card border-0 shadow-sm h-100">
@@ -396,140 +403,140 @@
 
 @push('scripts')
 <script>
-let dtTable = null;
+    let dtTable = null;
 
-$(document).ready(function() {
+    $(document).ready(function() {
 
-    $('[data-bs-toggle="tooltip"]').tooltip();
+        $('[data-bs-toggle="tooltip"]').tooltip();
 
-    if ($.fn.DataTable.isDataTable('#asesi-table')) {
-        $('#asesi-table').DataTable().destroy();
-    }
+        if ($.fn.DataTable.isDataTable('#asesi-table')) {
+            $('#asesi-table').DataTable().destroy();
+        }
 
-    dtTable = $('#asesi-table').DataTable({
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
-        },
-        order: [
-            [10, 'desc']
-        ],
-        pageLength: 25,
-        responsive: true,
-        columnDefs: [{
-            orderable: false,
-            targets: 11
-        }]
+        dtTable = $('#asesi-table').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/id.json'
+            },
+            order: [
+                [10, 'desc']
+            ],
+            pageLength: 25,
+            responsive: true,
+            columnDefs: [{
+                orderable: false,
+                targets: 11
+            }]
+        });
+
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+            const status = $('#filter-status').val();
+            const type = $('#filter-type').val();
+            const tuk = $('#filter-tuk').val();
+            const skema = $('#filter-skema').val();
+
+            const row = dtTable.row(dataIndex).node();
+            const rowStatus = $(row).data('status');
+            const rowType = $(row).data('type');
+            const rowTuk = $(row).data('tuk');
+            const rowSkema = $(row).data('skema');
+
+            if (status && rowStatus !== status) return false;
+            if (type && rowType !== type) return false;
+            if (tuk && rowTuk != tuk) return false;
+            if (skema && rowSkema != skema) return false;
+
+            return true;
+        });
+
+        $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function() {
+            dtTable.draw();
+            updateFilteredExportLink();
+        });
+
+        // Jika URL punya query param ?tuk=...&type=... langsung pindah tab Per TUK
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tuk') || urlParams.get('type') === 'mandiri') {
+            const tukTab = new bootstrap.Tab(document.getElementById('tuk-tab'));
+            tukTab.show();
+            if (urlParams.get('tuk')) {
+                $('#filter-tuk').val(urlParams.get('tuk')).trigger('change');
+            }
+        }
     });
 
-    $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    function updateFilteredExportLink() {
+        const baseUrl = '{{ route("admin.asesi.export") }}';
+        const params = new URLSearchParams();
+
         const status = $('#filter-status').val();
         const type = $('#filter-type').val();
-        const tuk = $('#filter-tuk').val();
-        const skema = $('#filter-skema').val();
+        const tukId = $('#filter-tuk').val();
+        const skemaId = $('#filter-skema').val();
 
-        const row = dtTable.row(dataIndex).node();
-        const rowStatus = $(row).data('status');
-        const rowType = $(row).data('type');
-        const rowTuk = $(row).data('tuk');
-        const rowSkema = $(row).data('skema');
+        if (status) params.set('status', status);
+        if (type) params.set('type', type);
+        if (tukId) params.set('tuk_id', tukId);
+        if (skemaId) params.set('skema_id', skemaId);
 
-        if (status && rowStatus !== status) return false;
-        if (type && rowType !== type) return false;
-        if (tuk && rowTuk != tuk) return false;
-        if (skema && rowSkema != skema) return false;
+        const qs = params.toString();
+        const url = qs ? baseUrl + '?' + qs : baseUrl;
 
-        return true;
-    });
+        $('#export-filtered-link').attr('href', url);
 
-    $('#filter-status, #filter-type, #filter-tuk, #filter-skema').on('change', function() {
-        dtTable.draw();
-        updateFilteredExportLink();
-    });
-
-    // Jika URL punya query param ?tuk=...&type=... langsung pindah tab Per TUK
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('tuk') || urlParams.get('type') === 'mandiri') {
-        const tukTab = new bootstrap.Tab(document.getElementById('tuk-tab'));
-        tukTab.show();
-        if (urlParams.get('tuk')) {
-            $('#filter-tuk').val(urlParams.get('tuk')).trigger('change');
-        }
-    }
-});
-
-function updateFilteredExportLink() {
-    const baseUrl = '{{ route("admin.asesi.export") }}';
-    const params = new URLSearchParams();
-
-    const status = $('#filter-status').val();
-    const type = $('#filter-type').val();
-    const tukId = $('#filter-tuk').val();
-    const skemaId = $('#filter-skema').val();
-
-    if (status) params.set('status', status);
-    if (type) params.set('type', type);
-    if (tukId) params.set('tuk_id', tukId);
-    if (skemaId) params.set('skema_id', skemaId);
-
-    const qs = params.toString();
-    const url = qs ? baseUrl + '?' + qs : baseUrl;
-
-    $('#export-filtered-link').attr('href', url);
-
-    if (qs) {
-        $('#export-filtered-link').removeClass('text-muted').addClass('text-primary fw-semibold');
-    } else {
-        $('#export-filtered-link').addClass('text-muted').removeClass('text-primary fw-semibold');
-    }
-}
-
-// ── Hapus Akun Mandiri ──────────────────────────────────────
-async function hapusMandiri(asesmenId, nama) {
-    const result = await Swal.fire({
-        title: 'Hapus Akun Mandiri?',
-        html: `Akun <strong>${nama}</strong> (Mandiri) akan dihapus permanen beserta seluruh datanya.<br>
-               <span class="text-danger small fw-semibold">Tindakan ini tidak bisa dibatalkan!</span>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus Permanen',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#dc3545',
-    });
-
-    if (!result.isConfirmed) return;
-
-    try {
-        const res = await fetch(`/admin/asesi/${asesmenId}/hapus-mandiri`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            await Swal.fire({
-                icon: 'success',
-                title: 'Dihapus!',
-                text: data.message,
-                timer: 2000,
-                showConfirmButton: false,
-            });
-
-            // Hapus row dari DataTable tanpa reload
-            const row = document.querySelector(`tr[data-asesmen-id="${asesmenId}"]`);
-            if (row && dtTable) {
-                dtTable.row(row).remove().draw();
-            } else {
-                location.reload();
-            }
+        if (qs) {
+            $('#export-filtered-link').removeClass('text-muted').addClass('text-primary fw-semibold');
         } else {
-            Swal.fire('Gagal', data.message, 'error');
+            $('#export-filtered-link').addClass('text-muted').removeClass('text-primary fw-semibold');
         }
-    } catch (e) {
-        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
     }
-}
+
+    // ── Hapus Akun Mandiri ──────────────────────────────────────
+    async function hapusMandiri(asesmenId, nama) {
+        const result = await Swal.fire({
+            title: 'Hapus Akun Mandiri?',
+            html: `Akun <strong>${nama}</strong> (Mandiri) akan dihapus permanen beserta seluruh datanya.<br>
+               <span class="text-danger small fw-semibold">Tindakan ini tidak bisa dibatalkan!</span>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-trash me-1"></i> Ya, Hapus Permanen',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#dc3545',
+        });
+
+        if (!result.isConfirmed) return;
+
+        try {
+            const res = await fetch(`/admin/asesi/${asesmenId}/hapus-mandiri`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Dihapus!',
+                    text: data.message,
+                    timer: 2000,
+                    showConfirmButton: false,
+                });
+
+                // Hapus row dari DataTable tanpa reload
+                const row = document.querySelector(`tr[data-asesmen-id="${asesmenId}"]`);
+                if (row && dtTable) {
+                    dtTable.row(row).remove().draw();
+                } else {
+                    location.reload();
+                }
+            } else {
+                Swal.fire('Gagal', data.message, 'error');
+            }
+        } catch (e) {
+            Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+        }
+    }
 </script>
 @endpush

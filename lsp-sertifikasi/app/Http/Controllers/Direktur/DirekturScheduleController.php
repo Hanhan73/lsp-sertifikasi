@@ -63,22 +63,19 @@ class DirekturScheduleController extends Controller
     /**
      * Detail jadwal untuk review Direktur.
      */
-    public function show(Schedule $schedule)
-    {
-        $schedule->load([
-            'tuk',
-            'skema',
-            'asesor',
-            'creator',
-            'approvedBy',
-            'asesmens.user',
-            'asesmens.aplsatu',
-            'asesmens.apldua',
-            'asesmens.frak01',
-        ]);
+public function show(Schedule $schedule)
+{
+    $schedule->load([
+        'tuk', 'skema', 'asesor', 'creator', 'approvedBy',
+        'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+    ]);
 
-        return view('direktur.schedules.show', compact('schedule'));
-    }
+    // Sort peserta A-Z
+    $peserta = $schedule->asesmens->sortBy('full_name')->values();
+    $pesertaCount = $peserta->count();
+
+    return view('direktur.schedules.show', compact('schedule', 'peserta', 'pesertaCount'));
+}
 
     /**
      * Setujui jadwal.

@@ -32,9 +32,11 @@
 
         {{-- Info Batch --}}
         <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+            <div
+                class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-info-circle me-2 text-primary"></i>Informasi Batch</span>
-                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#renameBatchModal">
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#renameBatchModal">
                     <i class="bi bi-pencil me-1"></i> Ubah Nama
                 </button>
             </div>
@@ -78,7 +80,8 @@
 
         {{-- Daftar Peserta --}}
         <div class="card border-0 shadow-sm">
-            <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+            <div
+                class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-people me-2 text-primary"></i>Daftar Peserta</span>
                 <span class="badge bg-primary">{{ $asesmens->count() }} orang</span>
             </div>
@@ -110,37 +113,37 @@
                                 <td class="small">{{ $asesmen->user->email }}</td>
                                 <td class="text-center">
                                     @if($asesmen->photo_path && $asesmen->ktp_path && $asesmen->document_path)
-                                        <i class="bi bi-check-circle-fill text-success" title="Lengkap"></i>
+                                    <i class="bi bi-check-circle-fill text-success" title="Lengkap"></i>
                                     @else
-                                        <i class="bi bi-x-circle-fill text-danger" title="Belum Lengkap"></i>
+                                    <i class="bi bi-x-circle-fill text-danger" title="Belum Lengkap"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($asesmen->aplsatu)
-                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    <i class="bi bi-check-circle-fill text-success"></i>
                                     @else
-                                        <i class="bi bi-dash-circle text-muted"></i>
+                                    <i class="bi bi-dash-circle text-muted"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($asesmen->apldua)
-                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    <i class="bi bi-check-circle-fill text-success"></i>
                                     @else
-                                        <i class="bi bi-dash-circle text-muted"></i>
+                                    <i class="bi bi-dash-circle text-muted"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($asesmen->frak01)
-                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    <i class="bi bi-check-circle-fill text-success"></i>
                                     @else
-                                        <i class="bi bi-dash-circle text-muted"></i>
+                                    <i class="bi bi-dash-circle text-muted"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">
                                     @if($asesmen->frak04)
-                                        <i class="bi bi-check-circle-fill text-success"></i>
+                                    <i class="bi bi-check-circle-fill text-success"></i>
                                     @else
-                                        <i class="bi bi-dash-circle text-muted"></i>
+                                    <i class="bi bi-dash-circle text-muted"></i>
                                     @endif
                                 </td>
                                 <td class="text-center">
@@ -176,11 +179,11 @@
                 </div>
                 <div class="card-body">
                     @php
-                        $totalPeserta   = $asesmens->count();
-                        $dokumenLengkap = $asesmens->filter(fn($a) =>
-                            $a->photo_path && $a->ktp_path && $a->document_path
-                        )->count();
-                        $allDocReady = $dokumenLengkap === $totalPeserta;
+                    $totalPeserta = $asesmens->count();
+                    $dokumenLengkap = $asesmens->filter(fn($a) =>
+                    $a->photo_path && $a->ktp_path && $a->document_path
+                    )->count();
+                    $allDocReady = $dokumenLengkap === $totalPeserta;
                     @endphp
                     <p class="small fw-semibold text-muted mb-2">KELENGKAPAN DOKUMEN</p>
                     <div class="d-flex justify-content-between align-items-center mb-1">
@@ -195,7 +198,8 @@
                     @if(!$allDocReady)
                     <div class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle me-1"></i>
-                        <small><strong>{{ $totalPeserta - $dokumenLengkap }} peserta</strong> belum melengkapi dokumen.</small>
+                        <small><strong>{{ $totalPeserta - $dokumenLengkap }} peserta</strong> belum melengkapi
+                            dokumen.</small>
                     </div>
                     @endif
                     <form action="{{ route('admin.praasesmen.batch.process') }}" method="POST">
@@ -225,15 +229,15 @@
                 <div class="card-body">
                     @php $total = $docProgress['total']; @endphp
                     @foreach([
-                        ['key' => 'apl01',  'label' => 'APL-01',   'color' => 'primary'],
-                        ['key' => 'apl02',  'label' => 'APL-02',   'color' => 'info'],
-                        ['key' => 'frak01', 'label' => 'FR.AK.01', 'color' => 'warning'],
-                        ['key' => 'frak04', 'label' => 'FR.AK.04', 'color' => 'secondary'],
+                    ['key' => 'apl01', 'label' => 'APL-01', 'color' => 'primary'],
+                    ['key' => 'apl02', 'label' => 'APL-02', 'color' => 'info'],
+                    ['key' => 'frak01', 'label' => 'FR.AK.01', 'color' => 'warning'],
+                    ['key' => 'frak04', 'label' => 'FR.AK.04', 'color' => 'secondary'],
                     ] as $doc)
                     @php
-                        $count   = $docProgress[$doc['key']];
-                        $pct     = $total > 0 ? round($count / $total * 100) : 0;
-                        $allDone = $count === $total;
+                    $count = $docProgress[$doc['key']];
+                    $pct = $total > 0 ? round($count / $total * 100) : 0;
+                    $allDone = $count === $total;
                     @endphp
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
@@ -257,8 +261,7 @@
                     <i class="bi bi-file-excel me-2 text-success"></i>Export Data
                 </div>
                 <div class="card-body">
-                    <a href="{{ route('admin.asesi.batch.export', $batchId) }}"
-                        class="btn btn-success w-100 mb-2">
+                    <a href="{{ route('admin.asesi.batch.export', $batchId) }}" class="btn btn-success w-100 mb-2">
                         <i class="bi bi-download me-1"></i> Download Biodata Excel
                     </a>
                     @if(Route::has('admin.asesi.batch.export-blanko'))
@@ -277,10 +280,10 @@
                 </div>
                 <div class="card-body">
                     @php
-                        // Cek jadwal dalam batch yang punya BA
-                        $jadwalDalamBatch = $schedules ?? collect();
-                        $jadwalDenganBA   = $jadwalDalamBatch->filter(fn($s) => $s->beritaAcara !== null);
-                        $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
+                    // Cek jadwal dalam batch yang punya BA
+                    $jadwalDalamBatch = $schedules ?? collect();
+                    $jadwalDenganBA = $jadwalDalamBatch->filter(fn($s) => $s->beritaAcara !== null);
+                    $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
                     @endphp
 
                     @if($jadwalDenganBA->isEmpty())
@@ -305,29 +308,27 @@
                     @endif
 
                     @php
-                        $tglMaks = $jadwalDalamBatch->map(fn($s) => $s->assessment_date)->max();
-                        $tglDefaultBA = $tglMaks
-                            ? \Carbon\Carbon::parse($tglMaks)->addDays(7)->format('Y-m-d')
-                            : now()->addDays(7)->format('Y-m-d');
+                    $tglMaks = $jadwalDalamBatch->map(fn($s) => $s->assessment_date)->max();
+                    $tglDefaultBA = $tglMaks
+                    ? \Carbon\Carbon::parse($tglMaks)->addDays(7)->format('Y-m-d')
+                    : now()->addDays(7)->format('Y-m-d');
                     @endphp
 
                     <div class="mb-2">
                         <label class="form-label small fw-semibold">Tanggal Surat</label>
-                        <input type="date" id="ba-tanggal-surat"
-                               class="form-control form-control-sm"
-                               value="{{ $tglDefaultBA }}">
+                        <input type="date" id="ba-tanggal-surat" class="form-control form-control-sm"
+                            value="{{ $tglDefaultBA }}">
                         <div class="form-text">Default: 7 hari setelah pelaksanaan terakhir</div>
                     </div>
                     <div class="d-flex gap-2">
-                        <button type="button" onclick="previewBA()"
-                                class="btn btn-outline-warning flex-fill btn-sm">
+                        <button type="button" onclick="previewBA()" class="btn btn-outline-warning flex-fill btn-sm">
                             <i class="bi bi-eye me-1"></i>Preview
                         </button>
-                        <button type="button" onclick="downloadBA()"
-                                class="btn btn-warning flex-fill btn-sm">
+                        <button type="button" onclick="downloadBA()" class="btn btn-warning flex-fill btn-sm">
                             <i class="bi bi-download me-1"></i>Download
                         </button>
                     </div>
+                    @endif {{-- end @if($jadwalDenganBA->isEmpty()) --}}
                 </div>
             </div>
 
@@ -338,8 +339,8 @@
                 </div>
                 <div class="card-body">
                     @php
-                        $skUjikom = $skUjikom ?? null;
-                        $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
+                    $skUjikom = $skUjikom ?? null;
+                    $adaMandiriDiBatch = $mandiriDalamBatch ?? collect();
                     @endphp
 
                     @if($skUjikom && $skUjikom->isApproved())
@@ -351,13 +352,11 @@
                     </div>
                     <div class="d-grid gap-2">
                         @if($skUjikom->hasSk())
-                        <a href="{{ route('admin.sk-ujikom.download', $skUjikom) }}"
-                           class="btn btn-success btn-sm">
+                        <a href="{{ route('admin.sk-ujikom.download', $skUjikom) }}" class="btn btn-success btn-sm">
                             <i class="bi bi-download me-1"></i>Unduh SK PDF
                         </a>
                         @endif
-                        <a href="{{ route('admin.sk-ujikom.show', $skUjikom) }}"
-                           class="btn btn-outline-primary btn-sm">
+                        <a href="{{ route('admin.sk-ujikom.show', $skUjikom) }}" class="btn btn-outline-primary btn-sm">
                             <i class="bi bi-eye me-1"></i>Lihat Detail SK
                         </a>
                     </div>
@@ -398,34 +397,33 @@
                         <input type="hidden" name="collective_batch_id" value="{{ $batchId }}">
 
                         <div class="mb-2">
-                            <label class="form-label small fw-semibold">Nomor SK <span class="text-danger">*</span></label>
+                            <label class="form-label small fw-semibold">Nomor SK <span
+                                    class="text-danger">*</span></label>
                             <input type="text" name="nomor_sk"
-                                   class="form-control form-control-sm @error('nomor_sk') is-invalid @enderror"
-                                   value="{{ old('nomor_sk') }}"
-                                   placeholder="001/LSP-KAP/SER.10.08/VI/2026"
-                                   required>
+                                class="form-control form-control-sm @error('nomor_sk') is-invalid @enderror"
+                                value="{{ old('nomor_sk') }}" placeholder="001/LSP-KAP/SER.10.08/VI/2026" required>
                             @error('nomor_sk')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="mb-2">
-                            <label class="form-label small fw-semibold">Tanggal Pleno <span class="text-danger">*</span></label>
+                            <label class="form-label small fw-semibold">Tanggal Pleno <span
+                                    class="text-danger">*</span></label>
                             <input type="date" name="tanggal_pleno"
-                                   class="form-control form-control-sm @error('tanggal_pleno') is-invalid @enderror"
-                                   value="{{ old('tanggal_pleno') }}"
-                                   required>
+                                class="form-control form-control-sm @error('tanggal_pleno') is-invalid @enderror"
+                                value="{{ old('tanggal_pleno') }}" required>
                             @error('tanggal_pleno')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Dikeluarkan di <span class="text-danger">*</span></label>
+                            <label class="form-label small fw-semibold">Dikeluarkan di <span
+                                    class="text-danger">*</span></label>
                             <input type="text" name="tempat_dikeluarkan"
-                                   class="form-control form-control-sm @error('tempat_dikeluarkan') is-invalid @enderror"
-                                   value="{{ old('tempat_dikeluarkan', 'Bandung') }}"
-                                   required>
+                                class="form-control form-control-sm @error('tempat_dikeluarkan') is-invalid @enderror"
+                                value="{{ old('tempat_dikeluarkan', 'Bandung') }}" required>
                             @error('tempat_dikeluarkan')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -469,7 +467,8 @@
             <div class="modal-body">
                 <div class="mb-3">
                     <label class="form-label small fw-semibold text-muted">BATCH ID SAAT INI</label>
-                    <div class="form-control bg-light" style="font-family:monospace;font-size:0.85rem;">{{ $batchId }}</div>
+                    <div class="form-control bg-light" style="font-family:monospace;font-size:0.85rem;">{{ $batchId }}
+                    </div>
                 </div>
                 <div class="mb-2">
                     <label class="form-label fw-semibold">Nama baru <span class="text-danger">*</span></label>
@@ -510,13 +509,15 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <p class="small text-muted mb-3">
                     Berikut asesi <strong>mandiri</strong> (bukan bagian dari batch ini) yang ada di jadwal yang sama.
-                    Mereka <strong>akan ikut tercantum</strong> di Berita Acara batch ini karena berada di jadwal yang sama.
+                    Mereka <strong>akan ikut tercantum</strong> di Berita Acara batch ini karena berada di jadwal yang
+                    sama.
                 </p>
                 <table class="table table-sm table-bordered mb-0">
                     <thead class="table-light">
@@ -530,7 +531,8 @@
                         @foreach($adaMandiriDiBatch as $m)
                         <tr>
                             <td class="small">{{ $m->full_name }}</td>
-                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}</td>
+                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}
+                            </td>
                             <td class="small">{{ $m->schedule?->asesor?->nama ?? '-' }}</td>
                         </tr>
                         @endforeach
@@ -539,8 +541,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Mengerti</button>
-                <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}"
-                   class="btn btn-warning">
+                <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}" class="btn btn-warning">
                     <i class="bi bi-download me-1"></i>Download BA (termasuk mereka)
                 </a>
             </div>
@@ -553,7 +554,8 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch</h5>
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Asesi Mandiri di Jadwal Batch
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -573,12 +575,13 @@
                     <tbody>
                         @foreach($adaMandiriDiBatch as $m)
                         @php
-                            $rekom = $m->schedule?->beritaAcara?->asesis
-                                ->where('asesmen_id', $m->id)->first()?->rekomendasi;
+                        $rekom = $m->schedule?->beritaAcara?->asesis
+                        ->where('asesmen_id', $m->id)->first()?->rekomendasi;
                         @endphp
                         <tr>
                             <td class="small">{{ $m->full_name }}</td>
-                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}</td>
+                            <td class="small">{{ $m->schedule?->assessment_date?->translatedFormat('d M Y') ?? '-' }}
+                            </td>
                             <td class="text-center">
                                 @if($rekom === 'K')
                                 <span class="badge bg-success">K</span>
@@ -609,93 +612,104 @@
 
 @push('scripts')
 <script>
-$(document).ready(function () {
+    $(document).ready(function() {
 
-    const baBaseUrl = '{{ route("admin.berita-acara.batch.download", $batchId) }}';
+        const baBaseUrl = '{{ route("admin.berita-acara.batch.download", $batchId) }}';
 
-    window.previewBA = function () {
-        const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
-        const url = baBaseUrl + '?preview=1' + (tgl ? '&tanggal_surat=' + tgl : '');
-        window.open(url, '_blank');
-    };
+        window.previewBA = function() {
+            const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
+            const url = baBaseUrl + '?preview=1' + (tgl ? '&tanggal_surat=' + tgl : '');
+            window.open(url, '_blank');
+        };
 
-    window.downloadBA = function () {
-        const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
-        const url = baBaseUrl + (tgl ? '?tanggal_surat=' + tgl : '');
-        window.location.href = url;
-    };
+        window.downloadBA = function() {
+            const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
+            const url = baBaseUrl + (tgl ? '?tanggal_surat=' + tgl : '');
+            window.location.href = url;
+        };
 
-    const tukCode   = '{{ strtoupper($firstBatch->tuk->code ?? "TUK") }}';
-    const suffix    = '{{ substr($batchId, -6) }}';
-    const batchId   = @json($batchId);
-    const renameUrl = '{{ route("admin.asesi.batch.rename", $batchId) }}';
+        const tukCode = '{{ strtoupper($firstBatch->tuk->code ?? "TUK") }}';
+        const suffix = '{{ substr($batchId, -6) }}';
+        const batchId = @json($batchId);
+        const renameUrl = '{{ route("admin.asesi.batch.rename", $batchId) }}';
 
-    function slugify(text) {
-        return text.toString().toUpperCase().trim()
-            .replace(/\s+/g, '-')
-            .replace(/[^A-Z0-9\-]/g, '')
-            .replace(/\-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    }
+        function slugify(text) {
+            return text.toString().toUpperCase().trim()
+                .replace(/\s+/g, '-')
+                .replace(/[^A-Z0-9\-]/g, '')
+                .replace(/\-+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
 
-    const tukSuffix = '-' + tukCode + '-' + suffix;
-    const initName  = batchId.endsWith(tukSuffix)
-        ? batchId.slice(0, batchId.length - tukSuffix.length).replace(/-/g, ' ').trim()
-        : '';
-    $('#rename-input').val(initName);
+        const tukSuffix = '-' + tukCode + '-' + suffix;
+        const initName = batchId.endsWith(tukSuffix) ?
+            batchId.slice(0, batchId.length - tukSuffix.length).replace(/-/g, ' ').trim() :
+            '';
+        $('#rename-input').val(initName);
 
-    function updatePreview() {
-        const val     = $('#rename-input').val().trim();
-        const slug    = val ? slugify(val) : 'BATCH';
-        const preview = slug + '-' + tukCode + '-' + suffix;
-        $('#rename-preview').text(preview);
-        $('#rename-confirm-btn').prop('disabled', val.length === 0);
-    }
-    $('#rename-input').on('input', updatePreview);
-    updatePreview();
+        function updatePreview() {
+            const val = $('#rename-input').val().trim();
+            const slug = val ? slugify(val) : 'BATCH';
+            const preview = slug + '-' + tukCode + '-' + suffix;
+            $('#rename-preview').text(preview);
+            $('#rename-confirm-btn').prop('disabled', val.length === 0);
+        }
+        $('#rename-input').on('input', updatePreview);
+        updatePreview();
 
-    $('#rename-confirm-btn').on('click', function () {
-        const newName = $('#rename-input').val().trim();
-        if (!newName) return;
+        $('#rename-confirm-btn').on('click', function() {
+            const newName = $('#rename-input').val().trim();
+            if (!newName) return;
 
-        const $btn = $(this).prop('disabled', true)
-            .html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
+            const $btn = $(this).prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
 
-        $.ajax({
-            url   : renameUrl,
-            method: 'PATCH',
-            data  : {
-                _token    : $('meta[name="csrf-token"]').attr('content'),
-                batch_name: newName,
-            },
-            success: function (res) {
-                if (res.success) {
-                    const newId = res.new_batch_id;
-                    $('#current-batch-id').text(newId);
-                    $('#form-batch-id').val(newId);
-                    $('#breadcrumb-batch').text('Batch ' + newId);
-                    $('#renameBatchModal').modal('hide');
+            $.ajax({
+                url: renameUrl,
+                method: 'PATCH',
+                data: {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    batch_name: newName,
+                },
+                success: function(res) {
+                    if (res.success) {
+                        const newId = res.new_batch_id;
+                        $('#current-batch-id').text(newId);
+                        $('#form-batch-id').val(newId);
+                        $('#breadcrumb-batch').text('Batch ' + newId);
+                        $('#renameBatchModal').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Batch ID diubah: ' + newId,
+                            timer: 2000,
+                            showConfirmButton: false,
+                        }).then(() => {
+                            window.location.href = window.location.href
+                                .replace(encodeURIComponent(batchId),
+                                    encodeURIComponent(newId));
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: res.message
+                        });
+                        $btn.prop('disabled', false).html(
+                            '<i class="bi bi-check-circle me-1"></i> Simpan');
+                    }
+                },
+                error: function(xhr) {
                     Swal.fire({
-                        icon : 'success',
-                        title: 'Berhasil!',
-                        text : 'Batch ID diubah: ' + newId,
-                        timer: 2000,
-                        showConfirmButton: false,
-                    }).then(() => {
-                        window.location.href = window.location.href
-                            .replace(encodeURIComponent(batchId), encodeURIComponent(newId));
+                        icon: 'error',
+                        title: 'Error',
+                        text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.'
                     });
-                } else {
-                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
-                    $btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Simpan');
-                }
-            },
-            error: function (xhr) {
-                Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.' });
-                $btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Simpan');
-            },
+                    $btn.prop('disabled', false).html(
+                        '<i class="bi bi-check-circle me-1"></i> Simpan');
+                },
+            });
         });
     });
-});
 </script>
 @endpush

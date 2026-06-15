@@ -50,62 +50,71 @@
             font-size: 10.5pt;
         }
 
-        /* ── TABEL PESERTA ── */
+        /* ── TABEL — border-collapse: separate agar bisa kontrol border per sel ── */
         .tabel-peserta {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             margin: 8pt 0 10pt 0;
             font-size: 10pt;
         }
 
-        .tabel-peserta th {
-            border: 1pt solid #000;
-            background: #f0f0f0;
-            text-align: center;
-            padding: 4pt 5pt;
-            font-weight: bold;
+        /* Border luar tabel */
+        .tabel-peserta {
+            border-left: 1pt solid #000;
+            border-top: 1pt solid #000;
         }
 
-        /* Border normal untuk semua td */
+        /* Semua sel: border kanan dan bawah */
+        .tabel-peserta th,
         .tabel-peserta td {
-            border: 1pt solid #000;
-            padding: 3pt 5pt;
-            vertical-align: middle;
-        }
-
-        /* Kolom asesor — baris non-pertama: hilangkan border atas & bawah,
-       tapi pertahankan border kiri & kanan agar terlihat seperti rowspan */
-        .td-asesor-empty {
-            border-left: 1pt solid #000;
             border-right: 1pt solid #000;
-            border-top: 0;
-            border-bottom: 0;
-            padding: 3pt 5pt;
-            vertical-align: middle;
-        }
-
-        /* Baris terakhir per grup: border bawah dikembalikan */
-        .td-asesor-last {
-            border-left: 1pt solid #000;
-            border-right: 1pt solid #000;
-            border-top: 0;
             border-bottom: 1pt solid #000;
             padding: 3pt 5pt;
             vertical-align: middle;
         }
 
-        /* Baris pertama per grup: border atas dikembalikan */
-        .td-asesor-first {
-            border: 1pt solid #000;
-            padding: 3pt 5pt;
-            vertical-align: middle;
+        .tabel-peserta th {
+            background: #f0f0f0;
             text-align: center;
-            font-size: 9.5pt;
-            line-height: 1.3;
+            font-weight: bold;
+            padding: 4pt 5pt;
         }
 
         .td-center {
             text-align: center;
+        }
+
+        /* Kolom asesor — baris pertama: normal */
+        .td-asesor-first {
+            text-align: center;
+            font-size: 9.5pt;
+            line-height: 1.3;
+            /* border kanan + bawah sudah dari selector umum */
+        }
+
+        /* Kolom asesor — baris tengah & terakhir: kosong, hilangkan border atas (= bawah baris sebelumnya sudah ada) */
+        /* Trik: border-bottom tetap ada (dari selector umum), border-right tetap ada */
+        /* Yang perlu dihilangkan: garis "atas" sel ini, yaitu border-bottom dari baris sebelumnya */
+        /* DomPDF tidak support border-top: none setelah border-collapse:separate dengan benar */
+        /* Solusi: override border-bottom baris sebelumnya via class khusus */
+
+        /* Untuk baris tengah & terakhir: hilangkan border-bottom dari baris DI ATAS mereka
+       dengan menset border-bottom: 1pt solid white pada baris sebelumnya di kolom asesor */
+        .td-asesor-prev {
+            /* Border bawah putih = menyembunyikan garis pemisah */
+            border-bottom: 1pt solid #fff !important;
+        }
+
+        /* Kolom asesor kosong (non-first): no left-right variation, just empty */
+        .td-asesor-empty {
+            /* kosong, semua border dari selector umum tetap */
+            /* tapi kita override border-bottom */
+            border-bottom: 1pt solid #fff !important;
+        }
+
+        .td-asesor-last {
+            /* baris terakhir grup: border bottom normal (sudah dari selector umum) */
         }
 
         .closing {
@@ -126,13 +135,13 @@
             margin-bottom: 6pt;
         }
 
-        .ttd-asesor-wrap {
+        .ttd-wrap {
             width: 100%;
             border: none;
             border-collapse: collapse;
         }
 
-        .ttd-asesor-wrap td {
+        .ttd-wrap td {
             border: none;
             text-align: center;
             vertical-align: top;
@@ -201,7 +210,11 @@
     : $tglMin->translatedFormat('d') . ' dan ' . $tglMax->translatedFormat('d F Y');
     $totalPeserta = $totalK + $totalBK;
 
-    // Bangun baris dengan info grup asesor (untuk simulasi rowspan)
+    // Bangun array baris dengan metadata grup
+    // is_first: tampilkan nama asesor
+    // is_last: border bawah normal
+    // is_middle: border bawah putih (sembunyikan garis)
+    // is_only: satu-satunya di grup (baris first sekaligus last)
     $baris = collect();
     $noUrut = 1;
     foreach ($jadwalData as $item) {
@@ -209,18 +222,21 @@
     $rekMap = $item['rekMap'];
     $asesor = $schedule->asesor;
     $asesmens = $item['asesmens'];
-    $groupCount = $asesmens->count();
+    $total_grup = $asesmens->count();
     $idx = 0;
 
     foreach ($asesmens as $asesmen) {
     $isFirst = $idx === 0;
-    $isLast = $idx === $groupCount - 1;
+    $isLast = $idx === $total_grup - 1;
+    $isOnly = $total_grup === 1;
+
     $baris->push([
     'no' => $noUrut++,
     'nama' => $asesmen->full_name,
     'asesor' => $asesor,
-    'is_first' => $isFirst,
+    'is_first'=> $isFirst,
     'is_last' => $isLast,
+    'is_only' => $isOnly,
     'rek' => $rekMap[$asesmen->id] ?? null,
     ]);
     $idx++;
@@ -238,7 +254,16 @@
         yang diikuti sebanyak {{ $totalPeserta }} orang peserta dengan penjelasan sebagai berikut:
     </div>
 
-    {{-- ══ TABEL PESERTA ══ --}}
+    {{--
+        TRIK SIMULASI ROWSPAN DI DOMPDF:
+        - border-collapse: separate + border-spacing: 0
+        - Sel asesor baris pertama: border semua sisi normal
+        - Sel asesor baris tengah/terakhir: border-bottom putih pada baris INI
+          sehingga border-bottom baris sebelumnya "bertabrakan" dengan border-top sel ini
+          dan karena border-top tidak di-set (border-collapse:separate), yang terlihat
+          hanyalah border-bottom dari baris sebelumnya = berwarna putih = tidak kelihatan
+        Hasilnya: garis horizontal antar baris di kolom asesor hilang
+    --}}
     <table class="tabel-peserta">
         <thead>
             <tr>
@@ -255,8 +280,8 @@
                 <td>{{ $b['nama'] }}</td>
 
                 @if($b['is_first'])
-                {{-- Baris pertama grup: tampilkan nama asesor, border penuh --}}
-                <td class="td-asesor-first">
+                {{-- Baris pertama (atau satu-satunya): tampilkan asesor, border normal --}}
+                <td class="td-asesor-first {{ !$b['is_last'] ? 'td-asesor-prev' : '' }}">
                     @if($b['asesor'])
                     {{ $b['asesor']->nama }}
                     @if($b['asesor']->no_reg_met)
@@ -264,13 +289,11 @@
                     @endif
                     @endif
                 </td>
-
                 @elseif($b['is_last'])
-                {{-- Baris terakhir grup: kosong, border bawah dikembalikan --}}
+                {{-- Baris terakhir grup: kosong, border bottom normal --}}
                 <td class="td-asesor-last"></td>
-
                 @else
-                {{-- Baris tengah: kosong, tanpa border atas & bawah --}}
+                {{-- Baris tengah: kosong, border bottom putih --}}
                 <td class="td-asesor-empty"></td>
                 @endif
 
@@ -284,7 +307,7 @@
         Demikian berita acara asesmen/uji kompetensi ini dibuat sebagai pengambil keputusan oleh LSP-KAP.
     </div>
 
-    {{-- ══ TTD — rata kanan, semua asesor berdampingan ══ --}}
+    {{-- ══ TTD ══ --}}
     @php
     $asesorUnik = $jadwalData
     ->map(fn($d) => $d['schedule']->asesor)
@@ -300,7 +323,7 @@
             <tr>
                 <td style="border:none; width:{{ 100 - $ttdWidth }}%;"></td>
                 <td style="border:none; width:{{ $ttdWidth }}%; vertical-align:top;">
-                    <table class="ttd-asesor-wrap">
+                    <table class="ttd-wrap">
                         <tr>
                             @foreach($asesorUnik as $idx => $asesor)
                             <td>

@@ -93,7 +93,7 @@
     $isPast       = $schedule->assessment_date->isPast() && !$schedule->assessment_date->isToday();
     $isToday      = $schedule->assessment_date->isToday();
     $dateClass    = $isToday ? 'today' : ($isPast ? 'past' : 'future');
-    $peserta      = $schedule->asesmens;
+    $peserta      = $schedule->asesmens->sortBy('full_name')->values();
     $pesertaCount = $peserta->count();
     $isOnline     = $schedule->location_type === 'online';
 @endphp

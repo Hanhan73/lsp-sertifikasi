@@ -4,125 +4,139 @@
 <head>
     <meta charset="UTF-8">
     <style>
-    @page {
-        margin: 0;
-        size: A4 portrait;
-    }
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
 
-    * {
-        box-sizing: border-box;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 11pt;
-        color: #000;
-        margin: 0;
-        padding: 1.5cm 2cm 1.5cm 2cm;
-        line-height: 1.4;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #000;
+            margin: 0;
+            padding: 1.5cm 2cm 1.5cm 2cm;
+            line-height: 1.4;
+        }
 
-    .kop-garis {
-        border-top: 3pt solid #000;
-        border-bottom: 1pt solid #000;
-        height: 4pt;
-        margin-bottom: 12pt;
-    }
+        .kop-garis {
+            border-top: 3pt solid #000;
+            border-bottom: 1pt solid #000;
+            height: 4pt;
+            margin-bottom: 12pt;
+        }
 
-    .doc-title {
-        text-align: center;
-        font-size: 13pt;
-        font-weight: bold;
-        text-transform: uppercase;
-        margin-bottom: 2pt;
-    }
+        .doc-title {
+            text-align: center;
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2pt;
+        }
 
-    .doc-subtitle {
-        text-align: center;
-        font-size: 11pt;
-        font-weight: bold;
-        margin-bottom: 10pt;
-    }
+        .doc-subtitle {
+            text-align: center;
+            font-size: 11pt;
+            font-weight: bold;
+            margin-bottom: 10pt;
+        }
 
-    .opening {
-        text-align: justify;
-        margin-bottom: 8pt;
-        font-size: 10.5pt;
-    }
+        .opening {
+            text-align: justify;
+            margin-bottom: 8pt;
+            font-size: 10.5pt;
+        }
 
-    /* ── TABEL PESERTA ── */
-    .tabel-peserta {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 8pt 0 10pt 0;
-        font-size: 10pt;
-    }
+        /* ── TABEL PESERTA ── */
+        .tabel-peserta {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8pt 0 10pt 0;
+            font-size: 10pt;
+        }
 
-    .tabel-peserta th {
-        border: 1pt solid #000;
-        background: #f0f0f0;
-        text-align: center;
-        padding: 4pt 5pt;
-        font-weight: bold;
-    }
+        .tabel-peserta th {
+            border: 1pt solid #000;
+            background: #f0f0f0;
+            text-align: center;
+            padding: 4pt 5pt;
+            font-weight: bold;
+        }
 
-    .tabel-peserta td {
-        border: 1pt solid #000;
-        padding: 3pt 5pt;
-        vertical-align: middle;
-    }
+        .tabel-peserta td {
+            border: 1pt solid #000;
+            padding: 3pt 5pt;
+            vertical-align: middle;
+        }
 
-    .td-center {
-        text-align: center;
-    }
+        .td-center {
+            text-align: center;
+        }
 
-    .td-asesor {
-        text-align: center;
-        vertical-align: middle;
-        font-size: 10pt;
-        line-height: 1.4;
-    }
+        .td-asesor {
+            text-align: center;
+            font-size: 9.5pt;
+            color: #333;
+            line-height: 1.3;
+        }
 
-    .closing {
-        text-align: justify;
-        margin-top: 8pt;
-        margin-bottom: 6pt;
-        font-size: 10.5pt;
-    }
+        .closing {
+            text-align: justify;
+            margin-top: 8pt;
+            margin-bottom: 6pt;
+            font-size: 10.5pt;
+        }
 
-    /* ── TTD ── */
-    .ttd-wrap {
-        width: 100%;
-        border: none;
-        border-collapse: collapse;
-        margin-top: 12pt;
-        font-size: 10.5pt;
-    }
+        /* ── TTD — selalu rata kanan ── */
+        .ttd-section {
+            margin-top: 12pt;
+            font-size: 10.5pt;
+            line-height: 1.6;
+        }
 
-    .ttd-wrap td {
-        border: none;
-        text-align: center;
-        vertical-align: top;
-    }
+        .ttd-tanggal {
+            text-align: right;
+            margin-bottom: 6pt;
+        }
 
-    .ttd-sig {
-        height: 60pt;
-    }
+        .ttd-asesor-wrap {
+            width: 100%;
+            border: none;
+            border-collapse: collapse;
+        }
 
-    .ttd-sig img {
-        max-height: 60pt;
-        max-width: 130pt;
-    }
+        .ttd-asesor-wrap td {
+            border: none;
+            text-align: center;
+            vertical-align: top;
+            padding: 0 4pt;
+        }
 
-    .ttd-name {
-        font-weight: bold;
-        text-decoration: underline;
-    }
+        .ttd-sig {
+            height: 60pt;
+            line-height: 60pt;
+        }
 
-    .ttd-reg {
-        font-size: 9.5pt;
-        margin-top: 1pt;
-    }
+        .ttd-sig img {
+            max-height: 60pt;
+            max-width: 130pt;
+            vertical-align: middle;
+        }
+
+        .ttd-name {
+            font-weight: bold;
+            text-decoration: underline;
+            display: block;
+            margin-top: 4pt;
+        }
+
+        .ttd-reg {
+            font-size: 9.5pt;
+            display: block;
+        }
     </style>
 </head>
 
@@ -162,12 +176,43 @@
     ? $tglMin->translatedFormat('d F Y')
     : $tglMin->translatedFormat('d') . ' dan ' . $tglMax->translatedFormat('d F Y');
     $totalPeserta = $totalK + $totalBK;
+
+    // Map asesmen_id -> asesor (dari schedule)
+    // Untuk menampilkan nama asesor inline tanpa rowspan
+    $asesorByAsesmenId = collect();
+    foreach ($jadwalData as $item) {
+    $asesor = $item['schedule']->asesor;
+    foreach ($item['asesmens'] as $asesmen) {
+    $asesorByAsesmenId[$asesmen->id] = $asesor;
+    }
+    }
+
+    // Bangun baris dengan flag show_asesor (hanya baris pertama per grup)
+    $baris = collect();
+    $noUrut = 1;
+    foreach ($jadwalData as $item) {
+    $schedule = $item['schedule'];
+    $rekMap = $item['rekMap'];
+    $asesor = $schedule->asesor;
+    $asesmens = $item['asesmens'];
+    $firstOfGrp = true;
+
+    foreach ($asesmens as $asesmen) {
+    $baris->push([
+    'no' => $noUrut++,
+    'nama' => $asesmen->full_name,
+    'asesor' => $asesor,
+    'show_asesor' => $firstOfGrp,
+    'rek' => $rekMap[$asesmen->id] ?? null,
+    ]);
+    $firstOfGrp = false;
+    }
+    }
     @endphp
 
     <div class="doc-title">BERITA ACARA ASESMEN/UJI KOMPETENSI SERTIFIKASI</div>
     <div class="doc-subtitle">LSP KOMPETENSI ADMINISTRASI PERKANTORAN</div>
 
-    {{-- ══ PEMBUKA ══ --}}
     <div class="opening">
         Pada tanggal {{ $tglStr }}, bertempat di {{ $tuk?->name ?? '-' }} telah dilakukan
         Uji Kompetensi Keahlian Administrasi Perkantoran untuk Skema
@@ -175,36 +220,7 @@
         yang diikuti sebanyak {{ $totalPeserta }} orang peserta dengan penjelasan sebagai berikut:
     </div>
 
-    {{-- ══ TABEL PESERTA — 4 kolom, asesor rowspan per grup ══ --}}
-    @php
-    // Bangun array baris dengan rowspan asesor
-    // Struktur: kumpulkan semua peserta dari semua jadwal, kelompokkan per asesor
-    $semuaBaris = collect();
-    $noUrut = 1;
-
-    foreach ($jadwalData as $item) {
-    $schedule = $item['schedule'];
-    $rekMap = $item['rekMap'];
-    $asesor = $schedule->asesor;
-    $asesmens = $item['asesmens'];
-
-    $firstOfGroup = true;
-    $groupCount = $asesmens->count();
-
-    foreach ($asesmens as $asesmen) {
-    $semuaBaris->push([
-    'no' => $noUrut++,
-    'nama' => $asesmen->full_name,
-    'asesor' => $asesor,
-    'rowspan' => $firstOfGroup ? $groupCount : 0,
-    'show_asesor' => $firstOfGroup,
-    'rek' => $rekMap[$asesmen->id] ?? null,
-    ]);
-    $firstOfGroup = false;
-    }
-    }
-    @endphp
-
+    {{-- ══ TABEL — tanpa rowspan, asesor hanya tampil di baris pertama per grup ══ --}}
     <table class="tabel-peserta">
         <thead>
             <tr>
@@ -215,66 +231,70 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($semuaBaris as $baris)
+            @foreach($baris as $b)
             <tr>
-                <td class="td-center">{{ $baris['no'] }}</td>
-                <td>{{ $baris['nama'] }}</td>
-                @if($baris['show_asesor'])
-                <td class="td-asesor" rowspan="{{ $baris['rowspan'] }}">
-                    @if($baris['asesor'])
-                    {{ $baris['asesor']->nama }}
-                    @if($baris['asesor']->no_reg_met)
-                    <br>{{ $baris['asesor']->no_reg_met }}
+                <td class="td-center">{{ $b['no'] }}</td>
+                <td>{{ $b['nama'] }}</td>
+                <td class="td-asesor">
+                    @if($b['show_asesor'] && $b['asesor'])
+                    {{ $b['asesor']->nama }}
+                    @if($b['asesor']->no_reg_met)
+                    <br>{{ $b['asesor']->no_reg_met }}
                     @endif
-                    @else
-                    -
                     @endif
                 </td>
-                @endif
-                <td class="td-center">{{ $baris['rek'] ?? '-' }}</td>
+                <td class="td-center">{{ $b['rek'] ?? '-' }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
 
-    {{-- ══ PENUTUP ══ --}}
     <div class="closing">
         Demikian berita acara asesmen/uji kompetensi ini dibuat sebagai pengambil keputusan oleh LSP-KAP.
     </div>
 
-    {{-- ══ TTD — SEMUA ASESOR BERDAMPINGAN ══ --}}
+    {{-- ══ TTD — rata kanan, semua asesor berdampingan ══ --}}
     @php
     $asesorUnik = $jadwalData
     ->map(fn($d) => $d['schedule']->asesor)
     ->filter()
     ->unique('id')
     ->values();
-    $colPct = $asesorUnik->count() > 0 ? round(100 / $asesorUnik->count()) : 100;
     @endphp
 
-    <p style="text-align:right; margin-top:10pt; margin-bottom:4pt; font-size:10.5pt;">
-        Bandung, {{ $tanggalSurat->translatedFormat('d F Y') }}
-    </p>
+    <div class="ttd-section">
+        <div class="ttd-tanggal">Bandung, {{ $tanggalSurat->translatedFormat('d F Y') }}</div>
 
-    <table class="ttd-wrap">
-        <tr>
-            @foreach($asesorUnik as $idx => $asesor)
-            <td style="width:{{ $colPct }}%;">
-                <div>Asesor {{ $asesorUnik->count() > 1 ? ($idx + 1) : '' }}</div>
-                <div class="ttd-sig">
-                    @php $sigUri = $asesor?->user?->signature_image ?? null; @endphp
-                    @if($sigUri)
-                    <img src="{{ $sigUri }}" alt="TTD">
-                    @endif
-                </div>
-                <div><span class="ttd-name">{{ $asesor->nama }}</span></div>
-                @if($asesor->no_reg_met)
-                <div class="ttd-reg">{{ $asesor->no_reg_met }}</div>
-                @endif
-            </td>
-            @endforeach
-        </tr>
-    </table>
+        {{-- Wrapper rata kanan --}}
+        <table style="width:100%; border:none; border-collapse:collapse;">
+            <tr>
+                {{-- Sisi kiri kosong: makin banyak asesor, kolom kiri makin kecil --}}
+                @php $ttdWidth = min(60, $asesorUnik->count() * 33); @endphp
+                <td style="border:none; width:{{ 100 - $ttdWidth }}%;"></td>
+                <td style="border:none; width:{{ $ttdWidth }}%; vertical-align:top;">
+                    <table class="ttd-asesor-wrap">
+                        <tr>
+                            @foreach($asesorUnik as $idx => $asesor)
+                            <td>
+                                <div>Asesor{{ $asesorUnik->count() > 1 ? ' ' . ($idx + 1) : '' }}</div>
+                                <div class="ttd-sig">
+                                    @php $sigUri = $asesor?->user?->signature_image ?? null; @endphp
+                                    @if($sigUri)
+                                    <img src="{{ $sigUri }}" alt="TTD">
+                                    @endif
+                                </div>
+                                <span class="ttd-name">{{ $asesor->nama }}</span>
+                                @if($asesor->no_reg_met)
+                                <span class="ttd-reg">{{ $asesor->no_reg_met }}</span>
+                                @endif
+                            </td>
+                            @endforeach
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </div>
 
 </body>
 

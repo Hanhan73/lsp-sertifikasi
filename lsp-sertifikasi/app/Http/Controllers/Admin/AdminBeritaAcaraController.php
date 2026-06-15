@@ -76,7 +76,7 @@ class AdminBeritaAcaraController extends Controller
     // DOWNLOAD — PDF BA per batch (gabungan semua jadwal)
     // =========================================================================
 
-    public function downloadBatch(string $batchId)
+    public function downloadBatch(string $batchId, Request $request)
     {
         $schedules = Schedule::with([
             'tuk',
@@ -96,9 +96,11 @@ class AdminBeritaAcaraController extends Controller
             ->where('collective_batch_id', $batchId)
             ->first();
 
-        // Tanggal surat = tanggal pelaksanaan terakhir + 7 hari
+        // Tanggal surat: bisa diubah manual via ?tanggal_surat=, default +7 hari dari pelaksanaan terakhir
         $tanggalTerakhir = $schedules->map(fn($s) => $s->assessment_date)->max();
-        $tanggalSurat    = \Carbon\Carbon::parse($tanggalTerakhir)->addDays(7);
+        $tanggalSurat    = $request->filled('tanggal_surat')
+            ? \Carbon\Carbon::parse($request->tanggal_surat)
+            : \Carbon\Carbon::parse($tanggalTerakhir)->addDays(7);
 
         // Kumpulkan semua peserta + rekomendasi per jadwal
         $jadwalData = $schedules->map(function ($schedule) {

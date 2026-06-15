@@ -304,16 +304,30 @@
                     </div>
                     @endif
 
-                    <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}?preview=1"
-                       target="_blank"
-                       class="btn btn-outline-warning w-100 mb-2">
-                        <i class="bi bi-eye me-1"></i>Preview BA
-                    </a>
-                    <a href="{{ route('admin.berita-acara.batch.download', $batchId) }}"
-                       class="btn btn-warning w-100">
-                        <i class="bi bi-download me-1"></i>Download BA PDF
-                    </a>
-                    @endif
+                    @php
+                        $tglMaks = $jadwalDalamBatch->map(fn($s) => $s->assessment_date)->max();
+                        $tglDefaultBA = $tglMaks
+                            ? \Carbon\Carbon::parse($tglMaks)->addDays(7)->format('Y-m-d')
+                            : now()->addDays(7)->format('Y-m-d');
+                    @endphp
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Tanggal Surat</label>
+                        <input type="date" id="ba-tanggal-surat"
+                               class="form-control form-control-sm"
+                               value="{{ $tglDefaultBA }}">
+                        <div class="form-text">Default: 7 hari setelah pelaksanaan terakhir</div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" onclick="previewBA()"
+                                class="btn btn-outline-warning flex-fill btn-sm">
+                            <i class="bi bi-eye me-1"></i>Preview
+                        </button>
+                        <button type="button" onclick="downloadBA()"
+                                class="btn btn-warning flex-fill btn-sm">
+                            <i class="bi bi-download me-1"></i>Download
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -596,6 +610,20 @@
 @push('scripts')
 <script>
 $(document).ready(function () {
+
+    const baBaseUrl = '{{ route("admin.berita-acara.batch.download", $batchId) }}';
+
+    window.previewBA = function () {
+        const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
+        const url = baBaseUrl + '?preview=1' + (tgl ? '&tanggal_surat=' + tgl : '');
+        window.open(url, '_blank');
+    };
+
+    window.downloadBA = function () {
+        const tgl = document.getElementById('ba-tanggal-surat')?.value ?? '';
+        const url = baBaseUrl + (tgl ? '?tanggal_surat=' + tgl : '');
+        window.location.href = url;
+    };
 
     const tukCode   = '{{ strtoupper($firstBatch->tuk->code ?? "TUK") }}';
     const suffix    = '{{ substr($batchId, -6) }}';

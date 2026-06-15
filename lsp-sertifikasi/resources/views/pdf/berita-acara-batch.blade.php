@@ -66,21 +66,46 @@
             font-weight: bold;
         }
 
+        /* Border normal untuk semua td */
         .tabel-peserta td {
             border: 1pt solid #000;
             padding: 3pt 5pt;
             vertical-align: middle;
         }
 
-        .td-center {
-            text-align: center;
+        /* Kolom asesor — baris non-pertama: hilangkan border atas & bawah,
+       tapi pertahankan border kiri & kanan agar terlihat seperti rowspan */
+        .td-asesor-empty {
+            border-left: 1pt solid #000;
+            border-right: 1pt solid #000;
+            border-top: 0;
+            border-bottom: 0;
+            padding: 3pt 5pt;
+            vertical-align: middle;
         }
 
-        .td-asesor {
+        /* Baris terakhir per grup: border bawah dikembalikan */
+        .td-asesor-last {
+            border-left: 1pt solid #000;
+            border-right: 1pt solid #000;
+            border-top: 0;
+            border-bottom: 1pt solid #000;
+            padding: 3pt 5pt;
+            vertical-align: middle;
+        }
+
+        /* Baris pertama per grup: border atas dikembalikan */
+        .td-asesor-first {
+            border: 1pt solid #000;
+            padding: 3pt 5pt;
+            vertical-align: middle;
             text-align: center;
             font-size: 9.5pt;
-            color: #333;
             line-height: 1.3;
+        }
+
+        .td-center {
+            text-align: center;
         }
 
         .closing {
@@ -90,11 +115,10 @@
             font-size: 10.5pt;
         }
 
-        /* ── TTD — selalu rata kanan ── */
+        /* ── TTD ── */
         .ttd-section {
             margin-top: 12pt;
             font-size: 10.5pt;
-            line-height: 1.6;
         }
 
         .ttd-tanggal {
@@ -177,17 +201,7 @@
     : $tglMin->translatedFormat('d') . ' dan ' . $tglMax->translatedFormat('d F Y');
     $totalPeserta = $totalK + $totalBK;
 
-    // Map asesmen_id -> asesor (dari schedule)
-    // Untuk menampilkan nama asesor inline tanpa rowspan
-    $asesorByAsesmenId = collect();
-    foreach ($jadwalData as $item) {
-    $asesor = $item['schedule']->asesor;
-    foreach ($item['asesmens'] as $asesmen) {
-    $asesorByAsesmenId[$asesmen->id] = $asesor;
-    }
-    }
-
-    // Bangun baris dengan flag show_asesor (hanya baris pertama per grup)
+    // Bangun baris dengan info grup asesor (untuk simulasi rowspan)
     $baris = collect();
     $noUrut = 1;
     foreach ($jadwalData as $item) {
@@ -195,17 +209,21 @@
     $rekMap = $item['rekMap'];
     $asesor = $schedule->asesor;
     $asesmens = $item['asesmens'];
-    $firstOfGrp = true;
+    $groupCount = $asesmens->count();
+    $idx = 0;
 
     foreach ($asesmens as $asesmen) {
+    $isFirst = $idx === 0;
+    $isLast = $idx === $groupCount - 1;
     $baris->push([
     'no' => $noUrut++,
     'nama' => $asesmen->full_name,
     'asesor' => $asesor,
-    'show_asesor' => $firstOfGrp,
+    'is_first' => $isFirst,
+    'is_last' => $isLast,
     'rek' => $rekMap[$asesmen->id] ?? null,
     ]);
-    $firstOfGrp = false;
+    $idx++;
     }
     }
     @endphp
@@ -220,7 +238,7 @@
         yang diikuti sebanyak {{ $totalPeserta }} orang peserta dengan penjelasan sebagai berikut:
     </div>
 
-    {{-- ══ TABEL — tanpa rowspan, asesor hanya tampil di baris pertama per grup ══ --}}
+    {{-- ══ TABEL PESERTA ══ --}}
     <table class="tabel-peserta">
         <thead>
             <tr>
@@ -235,14 +253,27 @@
             <tr>
                 <td class="td-center">{{ $b['no'] }}</td>
                 <td>{{ $b['nama'] }}</td>
-                <td class="td-asesor">
-                    @if($b['show_asesor'] && $b['asesor'])
+
+                @if($b['is_first'])
+                {{-- Baris pertama grup: tampilkan nama asesor, border penuh --}}
+                <td class="td-asesor-first">
+                    @if($b['asesor'])
                     {{ $b['asesor']->nama }}
                     @if($b['asesor']->no_reg_met)
                     <br>{{ $b['asesor']->no_reg_met }}
                     @endif
                     @endif
                 </td>
+
+                @elseif($b['is_last'])
+                {{-- Baris terakhir grup: kosong, border bawah dikembalikan --}}
+                <td class="td-asesor-last"></td>
+
+                @else
+                {{-- Baris tengah: kosong, tanpa border atas & bawah --}}
+                <td class="td-asesor-empty"></td>
+                @endif
+
                 <td class="td-center">{{ $b['rek'] ?? '-' }}</td>
             </tr>
             @endforeach
@@ -260,16 +291,13 @@
     ->filter()
     ->unique('id')
     ->values();
+    $ttdWidth = min(60, $asesorUnik->count() * 33);
     @endphp
 
     <div class="ttd-section">
         <div class="ttd-tanggal">Bandung, {{ $tanggalSurat->translatedFormat('d F Y') }}</div>
-
-        {{-- Wrapper rata kanan --}}
         <table style="width:100%; border:none; border-collapse:collapse;">
             <tr>
-                {{-- Sisi kiri kosong: makin banyak asesor, kolom kiri makin kecil --}}
-                @php $ttdWidth = min(60, $asesorUnik->count() * 33); @endphp
                 <td style="border:none; width:{{ 100 - $ttdWidth }}%;"></td>
                 <td style="border:none; width:{{ $ttdWidth }}%; vertical-align:top;">
                     <table class="ttd-asesor-wrap">

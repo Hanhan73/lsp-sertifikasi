@@ -89,6 +89,11 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     <i class="bi bi-calendar-event"></i> Jadwal Asesmen
 </a>
 
+<a href="{{ route('admin.sk-ujikom.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.sk-ujikom') ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-pdf"></i> SK Ujikom
+</a>
+
 {{-- Divider: PERSURATAN --}}
 <div class="sidebar-divider">
     <span>PERSURATAN</span>

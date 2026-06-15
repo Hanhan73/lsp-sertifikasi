@@ -22,18 +22,6 @@
         line-height: 1.5;
     }
 
-    /* ── KOP SURAT ── */
-    .kop-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 6pt;
-    }
-
-    .kop-table td {
-        border: none;
-        vertical-align: middle;
-    }
-
     .kop-garis {
         border-top: 3pt solid #000;
         border-bottom: 1pt solid #000;
@@ -41,7 +29,6 @@
         margin-bottom: 14pt;
     }
 
-    /* ── JUDUL ── */
     .judul-wrap {
         text-align: center;
         margin-bottom: 12pt;
@@ -57,10 +44,6 @@
         font-weight: bold;
     }
 
-    .lbl-nomor {
-        font-size: 11pt;
-    }
-
     .lbl-tentang {
         font-size: 11pt;
         font-weight: bold;
@@ -68,13 +51,11 @@
         line-height: 1.5;
     }
 
-    /* ── BODY TEXT ── */
     .body-text {
         text-align: justify;
         margin-bottom: 8pt;
     }
 
-    /* ── DAFTAR DASAR ── */
     .dasar-table {
         width: 100%;
         border-collapse: collapse;
@@ -117,34 +98,18 @@
         text-align: center;
     }
 
-    /* ── PENUTUP ── */
+    .tbl-peserta td.asesor-cell {
+        text-align: center;
+        vertical-align: middle;
+        font-size: 10pt;
+        line-height: 1.4;
+    }
+
     .penutup {
         text-align: justify;
-        margin-bottom: 0pt;
+        margin-bottom: 10pt;
     }
 
-    /* ── TTD ── */
-
-    .ttd-jabatan {
-        font-weight: bold;
-        margin-bottom: 0;
-    }
-
-    .ttd-space {
-        height: 55pt;
-    }
-
-    .ttd-nama {
-        font-weight: bold;
-        text-decoration: underline;
-        margin-bottom: 0;
-    }
-
-    .ttd-nip {
-        margin-top: 0;
-    }
-
-    /* ── TEMBUSAN ── */
     .tembusan {
         margin-top: 20pt;
         font-size: 10.5pt;
@@ -157,54 +122,48 @@
     {{-- ══ KOP SURAT ══ --}}
     @php
     $bnspPath = public_path('images/bnsp.png');
-    $lspPath = public_path('images/icon-lsp.png');
-    $bnspSrc = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
-    $lspSrc = file_exists($lspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath)) : '';
+    $lspPath  = public_path('images/icon-lsp.png');
+    $bnspSrc  = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
+    $lspSrc   = file_exists($lspPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath))  : '';
     @endphp
 
-    <div class="kop-border">
-        <table style="width:100%; border:none; border-collapse:collapse;">
-            <tr>
-                <!-- KIRI -->
-                <td style="width:25%; text-align:left; vertical-align:top;">
-                    @if($bnspSrc)
-                    <img src="{{ $bnspSrc }}" style="height:20pt; width: auto;" alt="BNSP">
-                    @endif
-                </td>
+    <table style="width:100%; border:none; border-collapse:collapse;">
+        <tr>
+            <td style="width:25%; text-align:left; vertical-align:middle;">
+                @if($bnspSrc)
+                <img src="{{ $bnspSrc }}" style="height:20pt; width:auto;" alt="BNSP">
+                @endif
+            </td>
+            <td style="width:50%; text-align:center; vertical-align:middle;">
+                @if($lspSrc)
+                <img src="{{ $lspSrc }}" style="height:95pt; width:auto;" alt="LSP-KAP">
+                @endif
+            </td>
+            <td style="width:25%;"></td>
+        </tr>
+    </table>
 
-                <!-- TENGAH -->
-                <td style="width:50%; text-align:center;">
-                    @if($lspSrc)
-                    <img src="{{ $lspSrc }}" style="height:95pt; width: auto;" alt="LSP-KAP">
-                    @endif
-                </td>
-
-                <!-- KANAN (kosong biar balance) -->
-                <td style="width:25%;"></td>
-            </tr>
-        </table>
-    </div>
+    <div class="kop-garis"></div>
 
     {{-- ══ JUDUL SK ══ --}}
     @php
-    $first = $first ?? $schedules->first()?->asesmens->first();
-    $skema = $first?->skema;
-    $tuk = $first?->tuk;
+    $first    = $first ?? $schedules->first()?->asesmens->first();
+    $skema    = $first?->skema;
+    $tuk      = $first?->tuk;
 
-    // Kumpulkan tanggal pelaksanaan dari semua jadwal
     $tanggalList = $schedules->map(fn($s) => \Carbon\Carbon::parse($s->assessment_date));
-    $tanggalMin = $tanggalList->min();
-    $tanggalMax = $tanggalList->max();
-    $tanggalStr = $tanggalMin->eq($tanggalMax)
-    ? $tanggalMin->translatedFormat('d F Y')
-    : $tanggalMin->translatedFormat('d') . '-' . $tanggalMax->translatedFormat('d F Y');
+    $tanggalMin  = $tanggalList->min();
+    $tanggalMax  = $tanggalList->max();
+    $tanggalStr  = $tanggalMin->eq($tanggalMax)
+        ? $tanggalMin->translatedFormat('d F Y')
+        : $tanggalMin->translatedFormat('d') . '-' . $tanggalMax->translatedFormat('d F Y');
     @endphp
 
     <div class="judul-wrap">
         <p class="lbl-sk">SURAT KEPUTUSAN</p>
         <p class="lbl-sk">DIREKTUR LSP KOMPETENSI ADMINISTRASI PERKANTORAN</p>
         <p style="margin:4pt 0 0 0;">Nomor : {{ $skUjikom->nomor_sk }}</p>
-        <p class="lbl-tentang" style="margin-top:36pt;">
+        <p class="lbl-tentang" style="margin-top:12pt;">
             TENTANG<br>
             PENETAPAN HASIL PENILAIAN UJI KOMPETENSI UNTUK<br>
             SKEMA {{ strtoupper($skema?->name ?? '-') }}<br>
@@ -246,43 +205,87 @@
         Dengan ini memutuskan, bahwa peserta uji kompetensi dengan daftar nama sebagai berikut:
     </p>
 
-    {{-- ══ TABEL PESERTA ══ --}}
+    {{-- ══ TABEL PESERTA — dengan kolom Asesor (rowspan per grup) ══ --}}
+    @php
+    /*
+     * $pesertaPerAsesor = array of:
+     *   ['asesor' => Asesor|null, 'asesis' => Collection, 'count' => int]
+     *
+     * Jika variable tidak tersedia (misal dari manajer flow lama), fallback ke loop biasa tanpa asesor.
+     */
+    $hasAsesorData = isset($pesertaPerAsesor) && !empty($pesertaPerAsesor);
+    $noUrut = 1;
+    @endphp
+
     <table class="tbl-peserta">
         <thead>
             <tr>
-                <th style="width:30pt;">No</th>
-                <th>Nama Lengkap</th>
-                <th style="width:180pt;">Instansi Asal</th>
+                <th style="width:28pt;">No</th>
+                <th>Nama Asesi</th>
+                <th style="width:150pt;">Nama Asesor</th>
+                <th style="width:80pt;">Hasil Ujikom</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($pesertaKompeten as $i => $asesi)
-            <tr>
-                <td class="tc">{{ $i + 1 }}.</td>
-                <td>{{ $asesi->full_name }}</td>
-                <td>{{ $asesi->institution ?? $tuk?->name ?? '-' }}</td>
-            </tr>
-            @endforeach
+            @if($hasAsesorData)
+                @foreach($pesertaPerAsesor as $grup)
+                    @php
+                        $asesor    = $grup['asesor'];
+                        $asesis    = $grup['asesis'];
+                        $rowspan   = $grup['count'];
+                        $firstRow  = true;
+                        // Format asesor cell: nama + no reg + tahun (jika ada)
+                        $asesorNama   = $asesor?->nama ?? '-';
+                        $asesorRegMet = $asesor?->no_reg_met ?? '';
+                        // no_reg_met format: "000.010993 2018" — tampilkan apa adanya
+                    @endphp
+                    @foreach($asesis as $asesi)
+                    <tr>
+                        <td class="tc">{{ $noUrut++ }}.</td>
+                        <td>{{ $asesi->full_name }}</td>
+                        @if($firstRow)
+                        <td class="asesor-cell" rowspan="{{ $rowspan }}">
+                            {{ $asesorNama }}
+                            @if($asesorRegMet)
+                            <br>{{ $asesorRegMet }}
+                            @endif
+                        </td>
+                        @php $firstRow = false; @endphp
+                        @endif
+                        <td class="tc">K</td>
+                    </tr>
+                    @endforeach
+                @endforeach
+            @else
+                {{-- Fallback: tanpa kolom asesor (kompatibel dengan view lama) --}}
+                @foreach($pesertaKompeten as $i => $asesi)
+                <tr>
+                    <td class="tc">{{ $i + 1 }}.</td>
+                    <td>{{ $asesi->full_name }}</td>
+                    <td class="tc">-</td>
+                    <td class="tc">K</td>
+                </tr>
+                @endforeach
+            @endif
         </tbody>
     </table>
 
     {{-- ══ PENUTUP ══ --}}
     <p class="penutup">
-        Dinyatakan layak untuk diterbitkan sertifikat kompetensi pada Skema
-        {{ $skema?->name ?? '-' }} sesuai dengan daftar unit kompetensi yang dinyatakan
-        kompeten pada masing-masing skema.
+        Menetapkan bahwa peserta Uji Kompetensi dinyatakan Kompeten dan Belum Kompeten berdasarkan
+        hasil asesmen terhadap unit-unit kompetensi yang diujikan, sesuai dengan skema yang tercantum
+        di atas dan sebagaimana tercantum dalam daftar nama peserta pada Surat Keputusan ini.
     </p>
 
     {{-- ══ TTD ══ --}}
     @php
     $isPreview = $preview ?? false;
-    $sigPath = storage_path('app/private/direktur/ttd_sk.png');
-    $sigSrc = (!$isPreview && file_exists($sigPath))
-    ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
-    : '';
+    $sigPath   = storage_path('app/private/direktur/ttd_sk.png');
+    $sigSrc    = (!$isPreview && file_exists($sigPath))
+        ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
+        : '';
     @endphp
 
-    {{-- Watermark DRAFT — hanya saat preview --}}
     @if($isPreview)
     <div style="position:fixed; top:45%; left:50%; transform:translate(-50%,-50%) rotate(-30deg);
                 font-size:80pt; font-weight:bold; color:rgba(180,0,0,0.07);
@@ -291,20 +294,20 @@
     </div>
     @endif
 
-    <table style="width:100%; border:none; border-collapse:collapse;">
+    <table style="width:100%; border:none; border-collapse:collapse; margin-top:10pt;">
         <tr>
             <td style="width:40%; border:none;"></td>
             <td style="width:60%; border:none; vertical-align:top; font-size:11pt; line-height:1.6;">
-                <p style="text-align:left; margin-bottom: 0; padding-left:80pt;">
+                <p style="text-align:left; margin-bottom:0; padding-left:60pt;">
                     Dikeluarkan di &nbsp;: {{ $skUjikom->tempat_dikeluarkan }}<br>
                     Pada tanggal &nbsp;&nbsp;&nbsp;:
                     {{ $skUjikom->approved_at?->translatedFormat('d F Y') ?? \Carbon\Carbon::now()->translatedFormat('d F Y') }}<br>
                     Direktur LSP-KAP,
                 </p>
                 @if($sigSrc)
-                <img src="{{ $sigSrc }}" style="width:100%; height:auto; display:block; margin-top: -34pt;" alt="TTD">
+                <img src="{{ $sigSrc }}" style="width:100%; height:auto; display:block; margin-top:-34pt;" alt="TTD">
                 @else
-                <div style="height:150pt;"></div>
+                <div style="height:70pt;"></div>
                 @endif
             </td>
         </tr>
@@ -317,5 +320,4 @@
     </div>
 
 </body>
-
 </html>

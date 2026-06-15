@@ -28,6 +28,7 @@ use App\Http\Controllers\Admin\FrAk04Controller as FrAk04AdminController;
 use App\Http\Controllers\Admin\AdminScheduleController;
 use App\Http\Controllers\Admin\AdminRejectController;
 use App\Http\Controllers\Admin\SuratController;
+use App\Http\Controllers\Admin\AdminSkUjikomController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -416,6 +417,15 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/angsuran/{payment}/upload-bukti',  [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'uploadBukti'])->name('upload-bukti');
         Route::get('/bukti/{payment}',                   [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'downloadBukti'])->name('bukti');
         Route::get('/{invoice}/pdf',                     [\App\Http\Controllers\Admin\AdminInvoiceKolektifController::class, 'pdf'])->name('pdf');
+    });
+
+        Route::prefix('sk-ujikom')->name('sk-ujikom.')->group(function () {
+        Route::get('/',                        [AdminSkUjikomController::class, 'index'])     ->name('index');
+        Route::get('/create/{batchId}',        [AdminSkUjikomController::class, 'create'])    ->name('create');
+        Route::post('/',                       [AdminSkUjikomController::class, 'store'])     ->name('store');
+        Route::get('/{skUjikom}',              [AdminSkUjikomController::class, 'show'])      ->name('show');
+        Route::get('/{skUjikom}/download',     [AdminSkUjikomController::class, 'download'])  ->name('download');
+        Route::post('/{skUjikom}/regenerate',  [AdminSkUjikomController::class, 'regenerate'])->name('regenerate');
     });
 });
 

@@ -280,7 +280,7 @@
     {{-- ══ TTD ══ --}}
     @php
     $isPreview = $preview ?? false;
-    $sigPath   = storage_path('app/private/direktur/ttd_sk.png');
+    $sigPath   = storage_path('app/private/direktur/ttd.png');
     $sigSrc    = (!$isPreview && file_exists($sigPath))
         ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
         : '';

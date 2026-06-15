@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <style>
@@ -7,7 +8,11 @@
         margin: 0;
         size: A4 portrait;
     }
-    * { box-sizing: border-box; }
+
+    * {
+        box-sizing: border-box;
+    }
+
     body {
         font-family: Arial, sans-serif;
         font-size: 11pt;
@@ -34,7 +39,8 @@
 
     .doc-subtitle {
         text-align: center;
-        font-size: 10.5pt;
+        font-size: 11pt;
+        font-weight: bold;
         margin-bottom: 10pt;
     }
 
@@ -51,25 +57,30 @@
         margin: 8pt 0 10pt 0;
         font-size: 10pt;
     }
+
     .tabel-peserta th {
         border: 1pt solid #000;
         background: #f0f0f0;
         text-align: center;
-        padding: 3pt 5pt;
+        padding: 4pt 5pt;
         font-weight: bold;
     }
+
     .tabel-peserta td {
         border: 1pt solid #000;
-        padding: 2.5pt 5pt;
+        padding: 3pt 5pt;
         vertical-align: middle;
     }
-    .td-center { text-align: center; }
 
-    .section-jadwal {
-        margin-top: 10pt;
-        margin-bottom: 4pt;
+    .td-center {
+        text-align: center;
+    }
+
+    .td-asesor {
+        text-align: center;
+        vertical-align: middle;
         font-size: 10pt;
-        font-weight: bold;
+        line-height: 1.4;
     }
 
     .closing {
@@ -80,35 +91,49 @@
     }
 
     /* ── TTD ── */
-    .ttd-table {
+    .ttd-wrap {
         width: 100%;
         border: none;
         border-collapse: collapse;
-        margin-top: 10pt;
+        margin-top: 12pt;
+        font-size: 10.5pt;
     }
-    .ttd-table td { border: none; vertical-align: top; }
-    .ttd-left  { width: 50%; }
-    .ttd-right { width: 50%; text-align: center; }
-    .ttd-sig   { height: 55pt; }
-    .ttd-sig img { max-height: 55pt; max-width: 120pt; }
-    .ttd-name  { font-weight: bold; text-decoration: underline; }
-    .ttd-reg   { font-size: 9.5pt; margin-top: 1pt; }
 
-    /* Separator antar jadwal */
-    .jadwal-separator {
-        border-top: 1pt dashed #999;
-        margin: 12pt 0 8pt 0;
+    .ttd-wrap td {
+        border: none;
+        text-align: center;
+        vertical-align: top;
+    }
+
+    .ttd-sig {
+        height: 60pt;
+    }
+
+    .ttd-sig img {
+        max-height: 60pt;
+        max-width: 130pt;
+    }
+
+    .ttd-name {
+        font-weight: bold;
+        text-decoration: underline;
+    }
+
+    .ttd-reg {
+        font-size: 9.5pt;
+        margin-top: 1pt;
     }
     </style>
 </head>
+
 <body>
 
     {{-- ══ KOP SURAT ══ --}}
     @php
     $bnspPath = public_path('images/bnsp.png');
-    $lspPath  = public_path('images/icon-lsp.png');
-    $bnspSrc  = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
-    $lspSrc   = file_exists($lspPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath))  : '';
+    $lspPath = public_path('images/icon-lsp.png');
+    $bnspSrc = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
+    $lspSrc = file_exists($lspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath)) : '';
     @endphp
 
     <table style="width:100%; border:none; border-collapse:collapse;">
@@ -128,145 +153,129 @@
     {{-- ══ JUDUL ══ --}}
     @php
     $skema = $first?->skema;
-    $tuk   = $first?->tuk;
-    @endphp
+    $tuk = $first?->tuk;
 
-    <div class="doc-title">Berita Acara Asesmen/Uji Kompetensi</div>
-    <div class="doc-subtitle">
-        Pelaksanaan Sertifikasi Tanggal
-        {{ $tanggalTerakhir->translatedFormat('d F Y') }}<br>
-        LSP KOMPETENSI ADMINISTRASI PERKANTORAN
-    </div>
-
-    {{-- ══ PEMBUKA ══ --}}
-    @php
-    $totalPeserta = $totalK + $totalBK;
-    // Kumpulkan range tanggal dari semua jadwal
     $semuaTanggal = $jadwalData->map(fn($d) => \Carbon\Carbon::parse($d['schedule']->assessment_date));
     $tglMin = $semuaTanggal->min();
     $tglMax = $semuaTanggal->max();
     $tglStr = $tglMin->eq($tglMax)
-        ? $tglMin->translatedFormat('l, d F Y')
-        : $tglMin->translatedFormat('d F Y') . ' s.d. ' . $tglMax->translatedFormat('d F Y');
+    ? $tglMin->translatedFormat('d F Y')
+    : $tglMin->translatedFormat('d') . ' dan ' . $tglMax->translatedFormat('d F Y');
+    $totalPeserta = $totalK + $totalBK;
     @endphp
 
+    <div class="doc-title">BERITA ACARA ASESMEN/UJI KOMPETENSI SERTIFIKASI</div>
+    <div class="doc-subtitle">LSP KOMPETENSI ADMINISTRASI PERKANTORAN</div>
+
+    {{-- ══ PEMBUKA ══ --}}
     <div class="opening">
-        Pada {{ $tglStr }}, bertempat di {{ $tuk?->name ?? '-' }} telah dilakukan
+        Pada tanggal {{ $tglStr }}, bertempat di {{ $tuk?->name ?? '-' }} telah dilakukan
         Uji Kompetensi Keahlian Administrasi Perkantoran untuk Skema
         <strong>{{ $skema?->name ?? '-' }}</strong>
         yang diikuti sebanyak {{ $totalPeserta }} orang peserta dengan penjelasan sebagai berikut:
     </div>
 
-    {{-- ══ TABEL PESERTA PER JADWAL ══ --}}
-    @php $noUrut = 1; @endphp
-
-    @foreach($jadwalData as $idx => $item)
+    {{-- ══ TABEL PESERTA — 4 kolom, asesor rowspan per grup ══ --}}
     @php
-        $schedule = $item['schedule'];
-        $rekMap   = $item['rekMap'];
-        $asesmens = $item['asesmens'];
-        $asesor   = $schedule->asesor;
-        $tglJadwal = \Carbon\Carbon::parse($schedule->assessment_date)->translatedFormat('d F Y');
+    // Bangun array baris dengan rowspan asesor
+    // Struktur: kumpulkan semua peserta dari semua jadwal, kelompokkan per asesor
+    $semuaBaris = collect();
+    $noUrut = 1;
+
+    foreach ($jadwalData as $item) {
+    $schedule = $item['schedule'];
+    $rekMap = $item['rekMap'];
+    $asesor = $schedule->asesor;
+    $asesmens = $item['asesmens'];
+
+    $firstOfGroup = true;
+    $groupCount = $asesmens->count();
+
+    foreach ($asesmens as $asesmen) {
+    $semuaBaris->push([
+    'no' => $noUrut++,
+    'nama' => $asesmen->full_name,
+    'asesor' => $asesor,
+    'rowspan' => $firstOfGroup ? $groupCount : 0,
+    'show_asesor' => $firstOfGroup,
+    'rek' => $rekMap[$asesmen->id] ?? null,
+    ]);
+    $firstOfGroup = false;
+    }
+    }
     @endphp
-
-    @if($idx > 0)
-    <div class="jadwal-separator"></div>
-    @endif
-
-    <div class="section-jadwal">
-        Jadwal {{ $idx + 1 }}: {{ $tglJadwal }}
-        &nbsp;|&nbsp; Asesor: {{ $asesor?->nama ?? '-' }}
-        @if($asesor?->no_reg_met)
-        ({{ $asesor->no_reg_met }})
-        @endif
-    </div>
 
     <table class="tabel-peserta">
         <thead>
             <tr>
-                <th style="width:18pt;" rowspan="2">No</th>
-                <th rowspan="2">Nama</th>
-                <th style="width:130pt;" rowspan="2">Organisasi</th>
-                <th colspan="2" style="width:60pt;">Rekomendasi</th>
-            </tr>
-            <tr>
-                <th style="width:35pt;">K</th>
-                <th style="width:35pt;">BK</th>
+                <th style="width:28pt;">NO</th>
+                <th>NAMA ASESI</th>
+                <th style="width:150pt;">NAMA ASESOR</th>
+                <th style="width:80pt;">HASIL UJIKOM</th>
             </tr>
         </thead>
         <tbody>
-            @foreach($asesmens as $asesmen)
-            @php $rek = $rekMap[$asesmen->id] ?? null; @endphp
+            @foreach($semuaBaris as $baris)
             <tr>
-                <td class="td-center">{{ $noUrut++ }}.</td>
-                <td>{{ $asesmen->full_name }}</td>
-                <td class="td-center">{{ $asesmen->institution ?? $tuk?->name ?? '-' }}</td>
-                <td class="td-center" style="font-size:13pt;">{{ $rek === 'K'  ? 'V' : '-' }}</td>
-                <td class="td-center" style="font-size:13pt;">{{ $rek === 'BK' ? 'V' : '-' }}</td>
+                <td class="td-center">{{ $baris['no'] }}</td>
+                <td>{{ $baris['nama'] }}</td>
+                @if($baris['show_asesor'])
+                <td class="td-asesor" rowspan="{{ $baris['rowspan'] }}">
+                    @if($baris['asesor'])
+                    {{ $baris['asesor']->nama }}
+                    @if($baris['asesor']->no_reg_met)
+                    <br>{{ $baris['asesor']->no_reg_met }}
+                    @endif
+                    @else
+                    -
+                    @endif
+                </td>
+                @endif
+                <td class="td-center">{{ $baris['rek'] ?? '-' }}</td>
             </tr>
             @endforeach
         </tbody>
     </table>
-    @endforeach
 
     {{-- ══ PENUTUP ══ --}}
     <div class="closing">
         Demikian berita acara asesmen/uji kompetensi ini dibuat sebagai pengambil keputusan oleh LSP-KAP.
     </div>
 
-    {{-- ══ TTD — SATU PER ASESOR ══ --}}
+    {{-- ══ TTD — SEMUA ASESOR BERDAMPINGAN ══ --}}
     @php
-    // Kumpulkan asesor unik dari semua jadwal
     $asesorUnik = $jadwalData
-        ->map(fn($d) => $d['schedule']->asesor)
-        ->filter()
-        ->unique('id')
-        ->values();
+    ->map(fn($d) => $d['schedule']->asesor)
+    ->filter()
+    ->unique('id')
+    ->values();
+    $colPct = $asesorUnik->count() > 0 ? round(100 / $asesorUnik->count()) : 100;
     @endphp
 
-    <table style="width:100%; border:none; border-collapse:collapse; margin-top:10pt;">
+    <p style="text-align:right; margin-top:10pt; margin-bottom:4pt; font-size:10.5pt;">
+        Bandung, {{ $tanggalSurat->translatedFormat('d F Y') }}
+    </p>
+
+    <table class="ttd-wrap">
         <tr>
-            <td style="border:none; width:40%;"></td>
-            <td style="border:none; width:60%; text-align:center; vertical-align:top; font-size:10.5pt; line-height:1.6;">
-                <div>Bandung, {{ $tanggalSurat->translatedFormat('d F Y') }}</div>
-                @if($asesorUnik->count() === 1)
-                    @php $asesor = $asesorUnik->first(); @endphp
-                    <div>Asesor</div>
-                    <div class="ttd-sig">
-                        @php $sigUri = $asesor?->user?->signature_image ?? null; @endphp
-                        @if($sigUri)
-                        <img src="{{ $sigUri }}" alt="TTD">
-                        @endif
-                    </div>
-                    <div><span class="ttd-name">{{ $asesor?->nama ?? '______________________' }}</span></div>
-                    @if($asesor?->no_reg_met)
-                    <div class="ttd-reg">MET. {{ $asesor->no_reg_met }}</div>
+            @foreach($asesorUnik as $idx => $asesor)
+            <td style="width:{{ $colPct }}%;">
+                <div>Asesor {{ $asesorUnik->count() > 1 ? ($idx + 1) : '' }}</div>
+                <div class="ttd-sig">
+                    @php $sigUri = $asesor?->user?->signature_image ?? null; @endphp
+                    @if($sigUri)
+                    <img src="{{ $sigUri }}" alt="TTD">
                     @endif
-                @else
-                    {{-- Multiple asesor: tampilkan dalam satu baris --}}
-                    <div>Para Asesor</div>
-                    <table style="width:100%; border:none; border-collapse:collapse; margin-top:6pt;">
-                        <tr>
-                        @foreach($asesorUnik as $asesor)
-                        <td style="border:none; text-align:center; vertical-align:top; width:{{ round(100/$asesorUnik->count()) }}%;">
-                            <div class="ttd-sig">
-                                @php $sigUri = $asesor?->user?->signature_image ?? null; @endphp
-                                @if($sigUri)
-                                <img src="{{ $sigUri }}" alt="TTD">
-                                @endif
-                            </div>
-                            <div><span class="ttd-name" style="font-size:10pt;">{{ $asesor->nama }}</span></div>
-                            @if($asesor->no_reg_met)
-                            <div class="ttd-reg">MET. {{ $asesor->no_reg_met }}</div>
-                            @endif
-                        </td>
-                        @endforeach
-                        </tr>
-                    </table>
+                </div>
+                <div><span class="ttd-name">{{ $asesor->nama }}</span></div>
+                @if($asesor->no_reg_met)
+                <div class="ttd-reg">{{ $asesor->no_reg_met }}</div>
                 @endif
             </td>
+            @endforeach
         </tr>
     </table>
 
 </body>
+
 </html>

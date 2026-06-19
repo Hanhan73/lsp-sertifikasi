@@ -18,6 +18,8 @@ class DistribusiPortofolio extends Model
         'didistribusikan_oleh',
         'form_penilaian_path',
         'form_penilaian_name',
+        'kisi_kisi_path',
+        'kisi_kisi_name',
     ];
 
     public function schedule(): BelongsTo

@@ -992,31 +992,37 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
         // ── DEPRECATED/DUPLICATE: Bank Soal (scoped per skema) ─────────────────────────────────
         // This section duplicates the logic above. See the recommendation comment for how to consolidate.
         Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
-            Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
+    Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
 
-            Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
-            Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
+    Route::get('/{skema}/teori/template', [DistribusiSoalController::class, 'downloadTemplateSoalTeori'])->name('teori.template');
+    Route::post('/{skema}/teori/import', [DistribusiSoalController::class, 'importSoalTeori'])->name('teori.import');
 
-            Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
-            // Soal Observasi (duplicate)
-            Route::post('/{skema}/observasi', [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
-            Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
-            Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
-            Route::get('/{skema}/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
-            Route::delete('/{skema}/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
-            Route::get('/{skema}/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranBySkema'])->name('paket.download-lampiran');
+    // ── Paket & Bulk (HARUS sebelum wildcard /{skema}/teori/{soalTeori}) ──
+    Route::post('/{skema}/teori/paket',                        [DistribusiSoalController::class, 'storePaketSoalTeori'])->name('teori.paket.store');
+    Route::delete('/{skema}/teori/paket/{paketSoalTeori}',     [DistribusiSoalController::class, 'destroyPaketSoalTeori'])->name('teori.paket.destroy');
+    Route::post('/{skema}/teori/bulk-delete',                  [DistribusiSoalController::class, 'bulkDestroySoalTeori'])->name('teori.bulk-delete');
+    Route::post('/{skema}/teori/bulk-pindah-paket',            [DistribusiSoalController::class, 'bulkPindahPaketSoalTeori'])->name('teori.bulk-pindah-paket');
 
+    Route::get('/{skema}', [DistribusiSoalController::class, 'showBankSoal'])->name('show');
 
-            // Soal Teori (duplicate)
-            Route::post('/{skema}/teori', [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
-            Route::put('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
-            Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
+    // Soal Observasi
+    Route::post('/{skema}/observasi', [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
+    Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
+    Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
+    Route::get('/{skema}/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
+    Route::delete('/{skema}/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
+    Route::get('/{skema}/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranBySkema'])->name('paket.download-lampiran');
 
-            // Portofolio (duplicate)
-            Route::post('/{skema}/portofolio', [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
-            Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
-            Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
-        });
+    // Soal Teori — wildcard di bawah semua static
+    Route::post('/{skema}/teori', [DistribusiSoalController::class, 'storeSoalTeoriBySkema'])->name('teori.store');
+    Route::put('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'updateSoalTeoriBySkema'])->name('teori.update');
+    Route::delete('/{skema}/teori/{soalTeori}', [DistribusiSoalController::class, 'destroySoalTeoriBySkema'])->name('teori.destroy');
+
+    // Portofolio
+    Route::post('/{skema}/portofolio', [DistribusiSoalController::class, 'storePortofolioBySkema'])->name('portofolio.store');
+    Route::get('/{skema}/portofolio/{portofolio}/download', [DistribusiSoalController::class, 'downloadPortofolioBySkema'])->name('portofolio.download');
+    Route::delete('/{skema}/portofolio/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolioBySkema'])->name('portofolio.destroy');
+});
 
         Route::prefix('umpan-balik')->name('frak03.')->group(function () {
             Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\FrAk03ManajerController::class, 'index'])

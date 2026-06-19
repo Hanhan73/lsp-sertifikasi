@@ -14,6 +14,7 @@ class SoalTeori extends Model
 
     protected $fillable = [
         'skema_id',
+        'paket_soal_teori_id',
         'pertanyaan',
         'pilihan_a',
         'pilihan_b',
@@ -29,6 +30,11 @@ class SoalTeori extends Model
         return $this->belongsTo(Skema::class);
     }
 
+    public function paketSoalTeori(): BelongsTo
+    {
+        return $this->belongsTo(PaketSoalTeori::class);
+    }
+    
     public function dibuatOleh(): BelongsTo
     {
         return $this->belongsTo(User::class, 'dibuat_oleh');

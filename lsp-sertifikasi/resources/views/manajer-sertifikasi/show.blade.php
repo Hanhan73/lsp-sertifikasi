@@ -28,19 +28,17 @@
     </div>
 
     <div class="d-flex gap-2 flex-wrap align-items-center">
-        {{-- Daftar Hadir --}}
         @if($schedule->asesor?->user?->signature)
         <a href="{{ route('manajer-sertifikasi.jadwal.daftar-hadir', $schedule) }}"
            target="_blank" class="btn btn-sm btn-outline-danger">
             <i class="bi bi-file-pdf me-1"></i>Daftar Hadir
         </a>
         @else
-        <button class="btn btn-sm btn-outline-secondary disabled"
-                title="Asesor belum menandatangani">
+        <button class="btn btn-sm btn-outline-secondary disabled" title="Asesor belum menandatangani">
             <i class="bi bi-file-pdf me-1"></i>Daftar Hadir
         </button>
         @endif
-        {{-- Summary counter --}}
+
         <div class="d-flex gap-2 flex-wrap">
             @php
                 $countObservasi  = $distribusiObservasiIds->count();
@@ -70,7 +68,6 @@
                 <div style="font-size:1.3rem;font-weight:800;color:#7c3aed">{{ $countPortofolio }}</div>
                 <div style="font-size:.68rem;color:#6b7280;font-weight:600">Portofolio</div>
             </div>
-            
         </div>
     </div>
 </div>
@@ -88,7 +85,7 @@
 </div>
 @endif
 
-{{-- ===== CARD 3 TAB ===== --}}
+{{-- ===== CARD 4 TAB ===== --}}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white pb-0">
         <ul class="nav nav-tabs" id="soalTabs">
@@ -121,9 +118,7 @@
             <li class="nav-item">
                 <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ujikom">
                     <i class="bi bi-google me-1"></i> Dok. Ujikom
-                    @php
-                        $ujikomCount = $schedule->asesmens->filter(fn($a) => $a->apldua?->gdrive_ujikom)->count();
-                    @endphp
+                    @php $ujikomCount = $schedule->asesmens->filter(fn($a) => $a->apldua?->gdrive_ujikom)->count(); @endphp
                     @if($ujikomCount)
                     <span class="badge bg-success ms-1" style="font-size:.6rem">{{ $ujikomCount }}</span>
                     @endif
@@ -139,7 +134,6 @@
         ================================================================ --}}
         <div class="tab-pane fade show active p-4" id="pane-observasi">
             <div class="row g-4">
-                {{-- Kiri: daftar observasi tersedia --}}
                 <div class="col-md-7">
                     <h6 class="fw-bold mb-3">
                         <i class="bi bi-database text-muted me-2"></i>
@@ -164,10 +158,7 @@
                                 $paketAktif = $distRecord?->paketSoalObservasi;
                                 $hasForm    = $distRecord && $distRecord->form_penilaian_path !== null;
                             @endphp
-
                             <div class="border rounded-3 overflow-hidden {{ $sudah ? 'border-success' : '' }}">
-
-                                {{-- ── HEADER ── --}}
                                 <div class="d-flex align-items-center justify-content-between px-3 py-2
                                             {{ $sudah ? 'bg-success-subtle' : 'bg-light' }}">
                                     <div>
@@ -179,25 +170,18 @@
                                             @endif
                                         </small>
                                     </div>
-
                                     <div class="d-flex gap-2 align-items-center flex-shrink-0">
                                         @if($sudah)
                                             <span class="badge bg-success">
                                                 <i class="bi bi-check-lg me-1"></i>Paket {{ $paketAktif?->kode_paket ?? '?' }} Aktif
                                             </span>
-
                                             <button class="btn btn-sm btn-outline-secondary"
                                                     data-bs-toggle="collapse"
-                                                    data-bs-target="#gantiPaket{{ $obs->id }}"
-                                                    title="Ganti paket yang didistribusikan">
+                                                    data-bs-target="#gantiPaket{{ $obs->id }}">
                                                 <i class="bi bi-arrow-repeat me-1"></i>Ganti
                                             </button>
-
-                                            {{-- Hapus distribusi observasi --}}
-                                            <form method="POST"
-                                                  action="{{ route('manajer-sertifikasi.soal-observasi.distribusi.hapus') }}">
-                                                @csrf
-                                                @method('DELETE')
+                                            <form method="POST" action="{{ route('manajer-sertifikasi.soal-observasi.distribusi.hapus') }}">
+                                                @csrf @method('DELETE')
                                                 <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                                 <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger"
@@ -221,29 +205,22 @@
                                     </div>
                                 </div>
 
-                                {{-- ── PILIH PAKET (collapse) ── --}}
                                 @if($obs->paket->isNotEmpty())
                                 <div class="collapse" id="gantiPaket{{ $obs->id }}">
                                     <div class="px-3 py-3 border-top bg-white">
                                         <p class="fw-semibold small mb-2">
-                                            <i class="bi bi-collection text-primary me-1"></i>
-                                            Pilih 1 paket untuk jadwal ini:
+                                            <i class="bi bi-collection text-primary me-1"></i>Pilih 1 paket:
                                         </p>
-                                        <form method="POST"
-                                              action="{{ route('manajer-sertifikasi.soal-observasi.distribusi') }}">
+                                        <form method="POST" action="{{ route('manajer-sertifikasi.soal-observasi.distribusi') }}">
                                             @csrf
                                             <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                             <input type="hidden" name="soal_observasi_id" value="{{ $obs->id }}">
-
                                             <div class="d-flex gap-2 flex-wrap mb-3">
                                                 @foreach($obs->paket as $p)
-                                                <label class="paket-option {{ $paketAktif?->id === $p->id ? 'active' : '' }}"
-                                                       style="cursor:pointer;">
+                                                <label style="cursor:pointer;">
                                                     <input type="radio" name="paket_soal_observasi_id"
-                                                           value="{{ $p->id }}"
-                                                           class="d-none paket-radio"
-                                                           {{ $paketAktif?->id === $p->id ? 'checked' : '' }}
-                                                           >
+                                                           value="{{ $p->id }}" class="d-none paket-radio"
+                                                           {{ $paketAktif?->id === $p->id ? 'checked' : '' }}>
                                                     <div class="border rounded-3 px-3 py-2 d-flex align-items-center gap-2 paket-card
                                                                 {{ $paketAktif?->id === $p->id ? 'border-primary bg-primary bg-opacity-10' : 'bg-light' }}"
                                                          onclick="pilihanPaket(this, '{{ $p->id }}')"
@@ -265,24 +242,19 @@
                                                 </label>
                                                 @endforeach
                                             </div>
-
                                             <div class="d-flex gap-2">
                                                 <button type="submit" class="btn btn-primary btn-sm">
-                                                    <i class="bi bi-send me-1"></i>
-                                                    {{ $sudah ? 'Ganti Paket' : 'Distribusikan Paket Ini' }}
+                                                    <i class="bi bi-send me-1"></i>{{ $sudah ? 'Ganti Paket' : 'Distribusikan' }}
                                                 </button>
                                                 <button type="button" class="btn btn-outline-secondary btn-sm"
                                                         data-bs-toggle="collapse"
-                                                        data-bs-target="#gantiPaket{{ $obs->id }}">
-                                                    Batal
-                                                </button>
+                                                        data-bs-target="#gantiPaket{{ $obs->id }}">Batal</button>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
                                 @endif
 
-                                {{-- ── INFO PAKET AKTIF ── --}}
                                 @if($sudah && $paketAktif)
                                 <div class="px-3 py-2 border-top bg-white d-flex align-items-center gap-2">
                                     <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
@@ -291,13 +263,12 @@
                                         <span class="text-muted ms-2">{{ $paketAktif->file_name }}</span>
                                     </div>
                                     <a href="{{ route('manajer-sertifikasi.soal-observasi.paket.download', $paketAktif) }}"
-                                       class="btn btn-sm btn-outline-secondary" title="Download paket aktif">
+                                       class="btn btn-sm btn-outline-secondary">
                                         <i class="bi bi-download"></i>
                                     </a>
                                 </div>
                                 @endif
 
-                                {{-- ── FORM PENILAIAN — hanya tampil jika sudah didistribusikan ── --}}
                                 @if($sudah)
                                 <div class="px-3 py-2 border-top {{ $hasForm ? 'bg-primary-subtle' : 'bg-white' }}">
                                     <div class="d-flex align-items-center gap-3">
@@ -311,38 +282,28 @@
                                             </div>
                                             @if($hasForm)
                                             <div class="text-muted" style="font-size:.75rem;">
-                                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>
-                                                {{ $distRecord->form_penilaian_name }}
+                                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>{{ $distRecord->form_penilaian_name }}
                                             </div>
                                             @else
-                                            <div class="text-muted" style="font-size:.75rem;">
-                                                Template Excel penilaian (.xlsx/.xlsm) yang akan didownload asesor
-                                            </div>
+                                            <div class="text-muted" style="font-size:.75rem;">Template Excel penilaian untuk asesor</div>
                                             @endif
                                         </div>
-
                                         @if($hasForm)
                                         <a href="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.download', [$schedule, $obs]) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download"></i>
-                                        </a>
+                                           class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a>
                                         <form method="POST"
                                               action="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.hapus', [$schedule, $obs]) }}"
                                               onsubmit="return confirm('Hapus form penilaian ini?')">
                                             @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash3"></i>
-                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
                                         </form>
                                         @endif
-
                                         <button class="btn btn-sm {{ $hasForm ? 'btn-outline-secondary' : 'btn-outline-primary' }}"
                                                 data-bs-toggle="collapse"
                                                 data-bs-target="#uploadFormPenilaian{{ $obs->id }}">
                                             <i class="bi bi-upload me-1"></i>{{ $hasForm ? 'Ganti' : 'Upload' }}
                                         </button>
                                     </div>
-
                                     <div class="collapse mt-2" id="uploadFormPenilaian{{ $obs->id }}">
                                         <form method="POST"
                                               action="{{ route('manajer-sertifikasi.jadwal.observasi.form-penilaian.upload', [$schedule, $obs]) }}"
@@ -366,7 +327,6 @@
                     @endif
                 </div>
 
-                {{-- Kanan: buat observasi baru --}}
                 <div class="col-md-5">
                     <h6 class="fw-bold mb-3">
                         <i class="bi bi-plus-circle text-primary me-2"></i>Buat Soal Observasi Baru
@@ -383,11 +343,10 @@
                                 <div class="form-text">Setelah dibuat, tambahkan paket A, B, C, dst.</div>
                             </div>
                             <button type="submit" class="btn btn-primary btn-sm w-100">
-                                <i class="bi bi-plus-lg me-1"></i> Buat & Tambah Paket
+                                <i class="bi bi-plus-lg me-1"></i>Buat & Tambah Paket
                             </button>
                         </form>
                     </div>
-
                     <div class="mt-3 p-3 border rounded-3 bg-light">
                         <p class="fw-semibold mb-2" style="font-size:.875rem">
                             <i class="bi bi-info-circle text-primary me-1"></i>Cara kerja:
@@ -404,7 +363,7 @@
         </div>
 
         {{-- ================================================================
-             TAB 2: SOAL TEORI PG
+             TAB 2: SOAL TEORI PG — dengan pilih paket
         ================================================================ --}}
         <div class="tab-pane fade p-4" id="pane-teori">
             <div class="row g-4">
@@ -413,19 +372,19 @@
                         <i class="bi bi-gear text-muted me-2"></i>Konfigurasi Distribusi Soal Teori
                     </h6>
 
-                    <div class="d-flex align-items-center gap-3 p-3 rounded-3 mb-3
-                                {{ $jumlahBankSoalTeori >= 30 ? 'bg-success-subtle border border-success' : 'bg-warning-subtle border border-warning' }}">
-                        <i class="bi bi-database fs-4 {{ $jumlahBankSoalTeori >= 30 ? 'text-success' : 'text-warning' }}"></i>
-                        <div>
-                            <div class="fw-bold">{{ $jumlahBankSoalTeori }} soal tersedia</div>
-                            <small class="text-muted">di bank soal skema ini</small>
-                        </div>
-                    </div>
-
+                    {{-- Status distribusi aktif --}}
                     @if($distribusiTeori)
                     <div class="alert alert-success d-flex gap-2 py-2 px-3 mb-3" style="font-size:.875rem">
-                        <i class="bi bi-check-circle-fill flex-shrink-0"></i>
+                        <i class="bi bi-check-circle-fill flex-shrink-0 mt-1"></i>
                         <div>
+                            @if($distribusiTeori->paketSoalTeori)
+                            <strong>Paket {{ $distribusiTeori->paketSoalTeori->kode_paket }}</strong>
+                            ({{ $distribusiTeori->paketSoalTeori->tahun }})
+                            @if($distribusiTeori->paketSoalTeori->nama_paket)
+                                — {{ $distribusiTeori->paketSoalTeori->nama_paket }}
+                            @endif
+                            <br>
+                            @endif
                             <strong>{{ $distribusiTeori->jumlah_soal }} soal</strong> per asesi
                             · <strong>{{ $distribusiTeori->durasi_menit ?? 30 }} menit</strong><br>
                             <small class="text-muted">
@@ -437,24 +396,58 @@
                     @else
                     <div class="alert alert-warning d-flex gap-2 py-2 px-3 mb-3" style="font-size:.875rem">
                         <i class="bi bi-exclamation-circle-fill flex-shrink-0"></i>
-                        Belum dikonfigurasi.
+                        Soal teori belum didistribusikan.
                     </div>
                     @endif
 
+                    {{-- Form distribusi --}}
                     <div class="border rounded-3 p-3 bg-light">
                         <form method="POST" action="{{ route('manajer-sertifikasi.soal-teori.distribusi') }}"
                               id="formDistribusiTeori">
                             @csrf
                             <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
 
+                            {{-- Pilih Paket --}}
                             <div class="mb-3">
                                 <label class="form-label fw-semibold" style="font-size:.875rem">
-                                    Jumlah Soal per Asesi
+                                    Paket Soal <span class="text-danger">*</span>
                                 </label>
-                                <input type="number" name="jumlah_soal" class="form-control"
+                                @if($paketSoalTeori->isEmpty())
+                                <div class="alert alert-warning py-2 px-3 mb-0" style="font-size:.8rem">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Belum ada paket soal teori untuk skema ini.
+                                    <a href="{{ route('manajer-sertifikasi.bank-soal.show', $schedule->skema) }}#pane-teori"
+                                       class="alert-link">Buat paket di Bank Soal</a>
+                                </div>
+                                @else
+                                <select name="paket_soal_teori_id" class="form-select" required
+                                        onchange="updateJumlahMax(this)">
+                                    <option value="">— Pilih Paket —</option>
+                                    @foreach($paketSoalTeori as $p)
+                                    <option value="{{ $p->id }}"
+                                            data-jumlah="{{ $p->soal_teori_count }}"
+                                            {{ $distribusiTeori?->paket_soal_teori_id === $p->id ? 'selected' : '' }}>
+                                        Paket {{ $p->kode_paket }} ({{ $p->tahun }})
+                                        @if($p->nama_paket) — {{ $p->nama_paket }}@endif
+                                        · {{ $p->soal_teori_count }} soal
+                                    </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text" id="infoPaketDipilih">
+                                    Pilih paket untuk melihat jumlah soal tersedia.
+                                </div>
+                                @endif
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold" style="font-size:.875rem">
+                                    Jumlah Soal per Asesi <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" name="jumlah_soal" id="inputJumlahSoal"
+                                       class="form-control"
                                        value="{{ $distribusiTeori?->jumlah_soal ?? 30 }}"
                                        min="1" max="{{ $jumlahBankSoalTeori }}" required>
-                                <div class="form-text">Default 30. Max {{ $jumlahBankSoalTeori }}. Diacak per asesi.</div>
+                                <div class="form-text">Diacak dari paket yang dipilih per asesi.</div>
                             </div>
 
                             <div class="mb-3">
@@ -467,7 +460,7 @@
                                            min="1" max="300" required>
                                     <span class="input-group-text">menit</span>
                                 </div>
-                                <div class="form-text">Default 30 menit. Maks. 300 menit (5 jam).</div>
+                                <div class="form-text">Maks. 300 menit (5 jam).</div>
                             </div>
 
                             @if($distribusiTeori)
@@ -477,11 +470,22 @@
                             </div>
                             @endif
 
-                            <button type="button" class="btn btn-primary w-100" onclick="konfirmasiTeori()">
+                            <button type="button" class="btn btn-primary w-100"
+                                    onclick="konfirmasiTeori()"
+                                    {{ $paketSoalTeori->isEmpty() ? 'disabled' : '' }}>
                                 <i class="bi bi-shuffle me-1"></i>
                                 {{ $distribusiTeori ? 'Perbarui Distribusi' : 'Distribusikan Soal Teori' }}
                             </button>
                         </form>
+                    </div>
+
+                    {{-- Shortcut ke bank soal --}}
+                    <div class="mt-3 p-2 rounded-3 border bg-light d-flex align-items-center justify-content-between">
+                        <small class="text-muted"><i class="bi bi-collection text-primary me-1"></i>Kelola paket soal</small>
+                        <a href="{{ route('manajer-sertifikasi.bank-soal.show', $schedule->skema) }}#pane-teori"
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-box-arrow-up-right me-1"></i>Bank Soal
+                        </a>
                     </div>
                 </div>
 
@@ -490,6 +494,27 @@
                         <i class="bi bi-people text-muted me-2"></i>
                         Daftar Asesi ({{ $schedule->asesmens->count() }} orang)
                     </h6>
+
+                    {{-- Info paket per paket tersedia --}}
+                    @if($paketSoalTeori->isNotEmpty())
+                    <div class="mb-3 d-flex flex-wrap gap-2">
+                        @foreach($paketSoalTeori as $p)
+                        <div class="border rounded-3 px-3 py-2 d-flex align-items-center gap-2
+                                    {{ $distribusiTeori?->paket_soal_teori_id === $p->id ? 'border-primary bg-primary bg-opacity-10' : 'bg-light' }}"
+                             style="font-size:.82rem">
+                            <span class="badge {{ $distribusiTeori?->paket_soal_teori_id === $p->id ? 'bg-primary' : 'bg-secondary' }}">
+                                Paket {{ $p->kode_paket }}
+                            </span>
+                            <span class="text-muted">{{ $p->tahun }}</span>
+                            <span class="fw-semibold">{{ $p->soal_teori_count }} soal</span>
+                            @if($distribusiTeori?->paket_soal_teori_id === $p->id)
+                            <span class="badge bg-success ms-1"><i class="bi bi-check-lg me-1"></i>Aktif</span>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                    @endif
+
                     @if($schedule->asesmens->isEmpty())
                         <div class="text-center py-4 border rounded-3 text-muted">
                             <i class="bi bi-person-x" style="font-size:2rem;opacity:.3;display:block;margin-bottom:.5rem"></i>
@@ -526,9 +551,7 @@
                                     </td>
                                     <td class="text-center">
                                         @if($punya)
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-check-lg"></i> Sudah
-                                            </span>
+                                            <span class="badge bg-success"><i class="bi bi-check-lg"></i> Sudah</span>
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif
@@ -538,15 +561,6 @@
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light border mt-2">
-                        <small class="text-muted">
-                            <i class="bi bi-plus-circle text-primary me-1"></i>Perlu tambah soal ke bank?
-                        </small>
-                        <a href="{{ route('manajer-sertifikasi.bank-soal.show', $schedule->skema) }}"
-                           class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-collection me-1"></i>Kelola Bank Soal
-                        </a>
-                    </div>
                     @endif
                 </div>
             </div>
@@ -554,9 +568,6 @@
 
         {{-- ================================================================
              TAB 3: PORTOFOLIO
-             Alur: form penilaian sudah diupload di Bank Soal.
-             Di sini tinggal pilih portofolio mana yang didistribusikan ke jadwal ini.
-             Tidak ada upload ulang di sini.
         ================================================================ --}}
         <div class="tab-pane fade p-4" id="pane-portofolio">
             <div class="row g-4">
@@ -581,20 +592,14 @@
                         <div class="d-flex flex-column gap-3">
                             @foreach($portofolioTersedia as $porto)
                             @php
-                                $sudah = $distribusiPortofolioIds->contains($porto->id);
-                            @endphp
-
-@php
+                                $sudah       = $distribusiPortofolioIds->contains($porto->id);
                                 $distRecord  = $schedule->distribusiPortofolio->firstWhere('portofolio_id', $porto->id);
                                 $hasKisiKisi = $distRecord && $distRecord->kisi_kisi_path
                                               && Storage::disk('private')->exists($distRecord->kisi_kisi_path);
                                 $hasForm     = $distRecord && $distRecord->form_penilaian_path
                                               && Storage::disk('private')->exists($distRecord->form_penilaian_path);
                             @endphp
-
                             <div class="border rounded-3 overflow-hidden {{ $sudah ? 'border-success' : '' }}">
-
-                                {{-- ── HEADER ── --}}
                                 <div class="d-flex align-items-center justify-content-between px-3 py-3
                                             {{ $sudah ? 'bg-success-subtle' : 'bg-light' }}">
                                     <div class="d-flex align-items-center gap-3">
@@ -606,9 +611,7 @@
                                         <div>
                                             <div class="fw-semibold" style="font-size:.875rem">{{ $porto->judul }}</div>
                                             @if($porto->hasFile())
-                                                <small class="text-muted">
-                                                    <i class="bi bi-paperclip me-1"></i>{{ $porto->file_name }}
-                                                </small>
+                                                <small class="text-muted"><i class="bi bi-paperclip me-1"></i>{{ $porto->file_name }}</small>
                                             @else
                                                 <small class="text-muted fst-italic">Tidak ada file lampiran</small>
                                             @endif
@@ -617,7 +620,6 @@
                                             @endif
                                         </div>
                                     </div>
-
                                     <div class="d-flex gap-2 align-items-center flex-shrink-0">
                                         @if($sudah)
                                             <span class="badge bg-success px-3 py-2">
@@ -625,7 +627,7 @@
                                             </span>
                                             <form method="POST"
                                                   action="{{ route('manajer-sertifikasi.portofolio.distribusi.hapus') }}"
-                                                  onsubmit="return confirm('Hapus distribusi portofolio \'{{ addslashes($porto->judul) }}\' dari jadwal ini?')">
+                                                  onsubmit="return confirm('Hapus distribusi ini?')">
                                                 @csrf @method('DELETE')
                                                 <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                                 <input type="hidden" name="portofolio_id" value="{{ $porto->id }}">
@@ -634,8 +636,7 @@
                                                 </button>
                                             </form>
                                         @else
-                                            <form method="POST"
-                                                  action="{{ route('manajer-sertifikasi.portofolio.distribusi') }}">
+                                            <form method="POST" action="{{ route('manajer-sertifikasi.portofolio.distribusi') }}">
                                                 @csrf
                                                 <input type="hidden" name="schedule_id" value="{{ $schedule->id }}">
                                                 <input type="hidden" name="portofolio_id" value="{{ $porto->id }}">
@@ -647,8 +648,8 @@
                                     </div>
                                 </div>
 
-                                {{-- ── KISI-KISI — hanya tampil jika sudah didistribusikan ── --}}
                                 @if($sudah)
+                                {{-- Kisi-kisi --}}
                                 <div class="border-top px-3 py-2 {{ $hasKisiKisi ? 'bg-warning-subtle' : 'bg-white' }}">
                                     <div class="d-flex align-items-center gap-3">
                                         <div class="flex-grow-1">
@@ -664,23 +665,17 @@
                                                 <i class="bi bi-paperclip me-1"></i>{{ $distRecord->kisi_kisi_name }}
                                             </div>
                                             @else
-                                            <div class="text-muted" style="font-size:.75rem;">
-                                                File kisi-kisi/soal portofolio yang akan diakses asesor
-                                            </div>
+                                            <div class="text-muted" style="font-size:.75rem;">File kisi-kisi/soal untuk asesor</div>
                                             @endif
                                         </div>
                                         @if($hasKisiKisi)
                                         <a href="{{ route('manajer-sertifikasi.jadwal.portofolio.kisi-kisi.download', [$schedule, $porto]) }}"
-                                           class="btn btn-sm btn-outline-warning">
-                                            <i class="bi bi-download"></i>
-                                        </a>
+                                           class="btn btn-sm btn-outline-warning"><i class="bi bi-download"></i></a>
                                         <form method="POST"
                                               action="{{ route('manajer-sertifikasi.jadwal.portofolio.kisi-kisi.hapus', [$schedule, $porto]) }}"
                                               onsubmit="return confirm('Hapus kisi-kisi ini?')">
                                             @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash3"></i>
-                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
                                         </form>
                                         @endif
                                         <button class="btn btn-sm {{ $hasKisiKisi ? 'btn-outline-secondary' : 'btn-outline-warning' }}"
@@ -706,7 +701,7 @@
                                     </div>
                                 </div>
 
-                                {{-- ── FORM PENILAIAN ── --}}
+                                {{-- Form Penilaian --}}
                                 <div class="border-top px-3 py-2 {{ $hasForm ? 'bg-primary-subtle' : 'bg-white' }}">
                                     <div class="d-flex align-items-center gap-3">
                                         <div class="flex-grow-1">
@@ -719,27 +714,20 @@
                                             </div>
                                             @if($hasForm)
                                             <div class="text-muted" style="font-size:.75rem;">
-                                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>
-                                                {{ $distRecord->form_penilaian_name }}
+                                                <i class="bi bi-file-earmark-excel me-1 text-success"></i>{{ $distRecord->form_penilaian_name }}
                                             </div>
                                             @else
-                                            <div class="text-muted" style="font-size:.75rem;">
-                                                Template Excel penilaian (.xlsx/.xlsm) yang akan didownload asesor
-                                            </div>
+                                            <div class="text-muted" style="font-size:.75rem;">Template Excel penilaian untuk asesor</div>
                                             @endif
                                         </div>
                                         @if($hasForm)
                                         <a href="{{ route('manajer-sertifikasi.jadwal.portofolio.form-penilaian.download', [$schedule, $porto]) }}"
-                                           class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-download"></i>
-                                        </a>
+                                           class="btn btn-sm btn-outline-primary"><i class="bi bi-download"></i></a>
                                         <form method="POST"
                                               action="{{ route('manajer-sertifikasi.jadwal.portofolio.form-penilaian.hapus', [$schedule, $porto]) }}"
                                               onsubmit="return confirm('Hapus form penilaian ini?')">
                                             @csrf @method('DELETE')
-                                            <button class="btn btn-sm btn-outline-danger">
-                                                <i class="bi bi-trash3"></i>
-                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></button>
                                         </form>
                                         @endif
                                         <button class="btn btn-sm {{ $hasForm ? 'btn-outline-secondary' : 'btn-outline-primary' }}"
@@ -765,51 +753,49 @@
                                     </div>
                                 </div>
                                 @endif
-
                             </div>
                             @endforeach
                         </div>
                     @endif
                 </div>
 
-                {{-- Kanan: info & shortcut ke bank soal --}}
                 <div class="col-md-4">
                     <div class="border rounded-3 p-3 bg-light">
                         <h6 class="fw-semibold mb-2">
                             <i class="bi bi-info-circle text-primary me-1"></i>Cara kerja Portofolio
                         </h6>
                         <ol class="ps-3 mb-3" style="font-size:.8rem;color:#6b7280;line-height:1.9">
-                            <li>Upload form penilaian portofolio di <strong>Bank Soal</strong></li>
+                            <li>Upload form penilaian di <strong>Bank Soal</strong></li>
                             <li>Kembali ke halaman ini</li>
-                            <li>Klik <strong>Distribusikan</strong> pada form yang sesuai</li>
-                            <li>Asesor akan dapat mengunduh form tersebut</li>
+                            <li>Klik <strong>Distribusikan</strong></li>
+                            <li>Asesor dapat mengunduh form</li>
                         </ol>
                         <a href="{{ route('manajer-sertifikasi.bank-soal.show', $schedule->skema) }}#pane-portofolio"
                            class="btn btn-sm btn-outline-primary w-100">
                             <i class="bi bi-collection me-1"></i>Kelola Bank Soal Portofolio
                         </a>
                     </div>
-
                     @if($countPortofolio > 0)
                     <div class="mt-3 border rounded-3 p-3" style="background:#f0fdf4;border-color:#bbf7d0!important">
                         <div class="fw-semibold small text-success mb-1">
                             <i class="bi bi-check-circle-fill me-1"></i>{{ $countPortofolio }} form terdistribusi
                         </div>
                         <div class="text-muted" style="font-size:.78rem;">
-                            Asesor dapat mengunduh form penilaian portofolio melalui dashboard mereka.
+                            Asesor dapat mengunduh form melalui dashboard mereka.
                         </div>
                     </div>
                     @endif
                 </div>
             </div>
         </div>
+
         {{-- ================================================================
-            TAB 4: DOKUMEN UJIKOM PESERTA
+             TAB 4: DOKUMEN UJIKOM
         ================================================================ --}}
         <div class="tab-pane fade p-4" id="pane-ujikom">
             <h6 class="fw-bold mb-1">Dokumen Hasil Ujikom / Portofolio Peserta</h6>
             <p class="text-muted small mb-4">
-                Link Google Drive yang dilampirkan peserta sebagai bukti hasil ujian kompetensi untuk verifikasi awal.
+                Link Google Drive yang dilampirkan peserta sebagai bukti hasil ujian kompetensi.
             </p>
 
             @if($schedule->asesmens->isEmpty())
@@ -837,14 +823,12 @@
                                 <small class="text-muted">{{ $asesi->user->email ?? '-' }}</small>
                             </td>
                             <td>
-                                <span class="badge bg-{{ $asesi->status_badge }}">
-                                    {{ $asesi->status_label }}
-                                </span>
+                                <span class="badge bg-{{ $asesi->status_badge }}">{{ $asesi->status_label }}</span>
                             </td>
                             <td class="text-center">
                                 @if($asesi->apldua?->gdrive_ujikom)
                                 <a href="{{ $asesi->apldua->gdrive_ujikom }}" target="_blank"
-                                class="btn btn-sm btn-outline-primary">
+                                   class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-box-arrow-up-right me-1"></i>Buka
                                 </a>
                                 @else
@@ -856,8 +840,6 @@
                     </tbody>
                 </table>
             </div>
-
-            {{-- Summary --}}
             @php $totalUjikom = $schedule->asesmens->filter(fn($a) => $a->apldua?->gdrive_ujikom)->count(); @endphp
             <div class="mt-3 p-3 rounded-3 border {{ $totalUjikom === $schedule->asesmens->count() ? 'bg-success-subtle border-success' : 'bg-warning-subtle border-warning' }}">
                 <small class="{{ $totalUjikom === $schedule->asesmens->count() ? 'text-success' : 'text-warning' }} fw-semibold">
@@ -875,15 +857,22 @@
 
 @push('scripts')
 <script>
-
+// ── Konfirmasi distribusi teori ──────────────────────────────
 function konfirmasiTeori() {
-    const jumlah = document.querySelector('input[name="jumlah_soal"]').value;
-    const durasi = document.querySelector('input[name="durasi_menit"]').value;
-    const asesi  = {{ $schedule->asesmens->count() }};
-    const sudah  = {{ $distribusiTeori ? 'true' : 'false' }};
+    const paketSelect = document.querySelector('select[name="paket_soal_teori_id"]');
+    const paketText   = paketSelect ? paketSelect.options[paketSelect.selectedIndex]?.text : '-';
+    const jumlah      = document.querySelector('input[name="jumlah_soal"]').value;
+    const durasi      = document.querySelector('input[name="durasi_menit"]').value;
+    const asesi       = {{ $schedule->asesmens->count() }};
+    const sudah       = {{ $distribusiTeori ? 'true' : 'false' }};
+
+    if (paketSelect && !paketSelect.value) {
+        Swal.fire('Pilih paket soal terlebih dahulu.'); return;
+    }
+
     Swal.fire({
         title: sudah ? 'Perbarui Distribusi?' : 'Distribusikan Soal Teori?',
-        html: `<b>${jumlah} soal</b> · <b>${durasi} menit</b> · <b>${asesi} asesi</b>.`
+        html: `<b>${paketText}</b><br><b>${jumlah} soal</b> · <b>${durasi} menit</b> · <b>${asesi} asesi</b>`
             + (sudah ? '<br><small class="text-warning">Data lama akan digantikan.</small>' : ''),
         icon: sudah ? 'warning' : 'question',
         showCancelButton: true,
@@ -893,19 +882,35 @@ function konfirmasiTeori() {
     }).then(r => { if (r.isConfirmed) document.getElementById('formDistribusiTeori').submit(); });
 }
 
-// Restore tab dari URL hash
+// ── Update max jumlah soal sesuai paket dipilih ──────────────
+function updateJumlahMax(select) {
+    const opt    = select.options[select.selectedIndex];
+    const jumlah = parseInt(opt.dataset.jumlah || 0);
+    const input  = document.getElementById('inputJumlahSoal');
+    const info   = document.getElementById('infoPaketDipilih');
+
+    if (jumlah > 0) {
+        input.max = jumlah;
+        if (parseInt(input.value) > jumlah) input.value = jumlah;
+        if (info) info.textContent = `Paket ini memiliki ${jumlah} soal. Maks. ${jumlah} soal per asesi.`;
+    } else {
+        if (info) info.textContent = 'Pilih paket untuk melihat jumlah soal tersedia.';
+    }
+}
+
+// ── Restore tab dari URL hash ────────────────────────────────
 const hash = window.location.hash;
 if (hash) {
     const t = document.querySelector(`[data-bs-target="${hash}"]`);
     if (t) new bootstrap.Tab(t).show();
 }
-
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
     t.addEventListener('shown.bs.tab', e => {
         history.replaceState(null, null, e.target.getAttribute('data-bs-target'));
     });
 });
 
+// ── Pilihan paket observasi ──────────────────────────────────
 function pilihanPaket(cardEl, paketId) {
     const form = cardEl.closest('form');
     form.querySelectorAll('.paket-card').forEach(c => {

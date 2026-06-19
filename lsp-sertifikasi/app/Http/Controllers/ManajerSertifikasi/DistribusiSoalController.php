@@ -17,6 +17,7 @@ use App\Models\Skema;
 use App\Models\SoalObservasi;
 use App\Models\SoalTeori;
 use App\Models\SoalTeoriAsesi;
+use App\Models\PaketSoalTeori;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -55,26 +56,35 @@ class DistribusiSoalController extends Controller
         return view('manajer-sertifikasi.bank-soal.index', compact('skemas', 'stats'));
     }
 
-    public function showBankSoal(Request $request, Skema $skema): View
-    {
-        $soalObservasi = SoalObservasi::with('paket')
-            ->where('skema_id', $skema->id)
-            ->get();
+public function showBankSoal(Request $request, Skema $skema): View
+{
+    $soalObservasi = SoalObservasi::with('paket')
+        ->where('skema_id', $skema->id)
+        ->get();
 
-        $soalTeori = SoalTeori::where('skema_id', $skema->id)
-            ->latest()
-            ->paginate(20);
+    // Soal dikelompokkan per paket
+    $paketSoalTeori = PaketSoalTeori::where('skema_id', $skema->id)
+        ->withCount('soalTeori')
+        ->orderBy('tahun', 'desc')
+        ->orderBy('kode_paket')
+        ->get();
 
-        $jumlahTeori = SoalTeori::where('skema_id', $skema->id)->count();
+    // Soal tanpa paket (arsip lama)
+    $soalTeoriArsip = SoalTeori::where('skema_id', $skema->id)
+        ->whereNull('paket_soal_teori_id')
+        ->latest()
+        ->get();
 
-        $portofolios = Portofolio::where('skema_id', $skema->id)
-            ->latest()
-            ->get();
+    $jumlahTeori = SoalTeori::where('skema_id', $skema->id)->count();
 
-        return view('manajer-sertifikasi.bank-soal.show', compact(
-            'skema', 'soalObservasi', 'soalTeori', 'jumlahTeori', 'portofolios'
-        ));
-    }
+    $portofolios = Portofolio::where('skema_id', $skema->id)
+        ->latest()
+        ->get();
+
+    return view('manajer-sertifikasi.bank-soal.show', compact(
+        'skema', 'soalObservasi', 'paketSoalTeori', 'soalTeoriArsip', 'jumlahTeori', 'portofolios'
+    ));
+}
 
     // =========================================================================
     // BANK SOAL — SOAL OBSERVASI (scoped ke skema)
@@ -172,60 +182,153 @@ public function storePaketBySkema(Request $request, Skema $skema, SoalObservasi 
     // =========================================================================
 
     public function storeSoalTeoriBySkema(Request $request, Skema $skema): RedirectResponse
-    {
-        $request->validate([
-            'pertanyaan'    => 'required|string',
-            'pilihan_a'     => 'required|string|max:500',
-            'pilihan_b'     => 'required|string|max:500',
-            'pilihan_c'     => 'required|string|max:500',
-            'pilihan_d'     => 'required|string|max:500',
-            'pilihan_e'     => 'nullable|string|max:500',
-            'jawaban_benar' => 'required|in:a,b,c,d,e',
-        ]);
+{
+    $request->validate([
+        'paket_soal_teori_id' => 'nullable|exists:paket_soal_teori,id',
+        'pertanyaan'          => 'required|string',
+        'pilihan_a'           => 'required|string|max:500',
+        'pilihan_b'           => 'required|string|max:500',
+        'pilihan_c'           => 'required|string|max:500',
+        'pilihan_d'           => 'required|string|max:500',
+        'pilihan_e'           => 'nullable|string|max:500',
+        'jawaban_benar'       => 'required|in:a,b,c,d,e',
+    ]);
 
-        SoalTeori::create([
-            'skema_id'      => $skema->id,
-            'pertanyaan'    => $request->pertanyaan,
-            'pilihan_a'     => $request->pilihan_a,
-            'pilihan_b'     => $request->pilihan_b,
-            'pilihan_c'     => $request->pilihan_c,
-            'pilihan_d'     => $request->pilihan_d,
-            'pilihan_e'     => $request->pilihan_e,
-            'jawaban_benar' => $request->jawaban_benar,
-            'dibuat_oleh'   => Auth::id(),
-        ]);
+    SoalTeori::create([
+        'skema_id'            => $skema->id,
+        'paket_soal_teori_id' => $request->paket_soal_teori_id ?: null,
+        'pertanyaan'          => $request->pertanyaan,
+        'pilihan_a'           => $request->pilihan_a,
+        'pilihan_b'           => $request->pilihan_b,
+        'pilihan_c'           => $request->pilihan_c,
+        'pilihan_d'           => $request->pilihan_d,
+        'pilihan_e'           => $request->pilihan_e,
+        'jawaban_benar'       => $request->jawaban_benar,
+        'dibuat_oleh'         => Auth::id(),
+    ]);
 
-        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
-            ->with('success', 'Soal teori berhasil ditambahkan.')
-            ->withFragment('pane-teori');
+    return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+        ->with('success', 'Soal teori berhasil ditambahkan.')
+        ->withFragment('pane-teori');
+}
+
+    public function storePaketSoalTeori(Request $request, Skema $skema): RedirectResponse
+{
+    $request->validate([
+        'kode_paket' => 'required|string|max:10',
+        'nama_paket' => 'nullable|string|max:255',
+        'tahun'      => 'required|integer|min:2020|max:2099',
+    ]);
+
+    $kode = strtoupper(trim($request->kode_paket));
+
+    // Cek duplikat kode+tahun per skema
+    $exists = PaketSoalTeori::where([
+        'skema_id'   => $skema->id,
+        'kode_paket' => $kode,
+        'tahun'      => $request->tahun,
+    ])->exists();
+
+    if ($exists) {
+        return back()->withErrors([
+            'kode_paket' => "Paket {$kode} tahun {$request->tahun} sudah ada untuk skema ini."
+        ])->withInput();
     }
 
-    public function updateSoalTeoriBySkema(Request $request, Skema $skema, SoalTeori $soalTeori): RedirectResponse
-    {
-        $request->validate([
-            'pertanyaan'    => 'required|string',
-            'pilihan_a'     => 'required|string|max:500',
-            'pilihan_b'     => 'required|string|max:500',
-            'pilihan_c'     => 'required|string|max:500',
-            'pilihan_d'     => 'required|string|max:500',
-            'pilihan_e'     => 'nullable|string|max:500',
-            'jawaban_benar' => 'required|in:a,b,c,d,e',
-        ]);
+    PaketSoalTeori::create([
+        'skema_id'    => $skema->id,
+        'kode_paket'  => $kode,
+        'nama_paket'  => $request->nama_paket,
+        'tahun'       => $request->tahun,
+        'dibuat_oleh' => Auth::id(),
+    ]);
 
-        $soalTeori->update($request->only([
-            'pertanyaan', 'pilihan_a', 'pilihan_b', 'pilihan_c', 'pilihan_d', 'pilihan_e', 'jawaban_benar',
-        ]));
+    return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+        ->with('success', "Paket {$kode} ({$request->tahun}) berhasil dibuat.")
+        ->withFragment('pane-teori');
+}
 
-        return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
-            ->with('success', 'Soal teori berhasil diperbarui.')
-            ->withFragment('pane-teori');
-    }
+public function destroyPaketSoalTeori(Skema $skema, PaketSoalTeori $paketSoalTeori): RedirectResponse
+{
+    // Soal di dalam paket ini akan jadi null (nullOnDelete di migration)
+    $paketSoalTeori->delete();
 
-    public function destroySoalTeoriBySkema(Skema $skema, SoalTeori $soalTeori): RedirectResponse
-    {
-        $soalTeori->delete();
-        return back()->with('success', 'Soal teori berhasil dihapus.');
-    }
+    return back()->with('success', 'Paket soal teori berhasil dihapus. Soal di dalamnya dipindah ke Arsip.');
+}
+
+   public function updateSoalTeoriBySkema(Request $request, Skema $skema, SoalTeori $soalTeori): RedirectResponse
+{
+    $request->validate([
+        'paket_soal_teori_id' => 'nullable|exists:paket_soal_teori,id',
+        'pertanyaan'          => 'required|string',
+        'pilihan_a'           => 'required|string|max:500',
+        'pilihan_b'           => 'required|string|max:500',
+        'pilihan_c'           => 'required|string|max:500',
+        'pilihan_d'           => 'required|string|max:500',
+        'pilihan_e'           => 'nullable|string|max:500',
+        'jawaban_benar'       => 'required|in:a,b,c,d,e',
+    ]);
+
+    $soalTeori->update([
+        'paket_soal_teori_id' => $request->paket_soal_teori_id ?: null,
+        'pertanyaan'          => $request->pertanyaan,
+        'pilihan_a'           => $request->pilihan_a,
+        'pilihan_b'           => $request->pilihan_b,
+        'pilihan_c'           => $request->pilihan_c,
+        'pilihan_d'           => $request->pilihan_d,
+        'pilihan_e'           => $request->pilihan_e,
+        'jawaban_benar'       => $request->jawaban_benar,
+    ]);
+
+    return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+        ->with('success', 'Soal teori berhasil diperbarui.')
+        ->withFragment('pane-teori');
+}
+
+
+public function destroySoalTeoriBySkema(Skema $skema, SoalTeori $soalTeori): RedirectResponse
+{
+    $soalTeori->delete();
+    return back()->with('success', 'Soal teori berhasil dihapus.');
+}
+
+// Bulk delete
+public function bulkDestroySoalTeori(Request $request, Skema $skema): RedirectResponse
+{
+    $request->validate([
+        'ids'   => 'required|array|min:1',
+        'ids.*' => 'exists:soal_teori,id',
+    ]);
+
+    // Pastikan soal milik skema ini
+    SoalTeori::whereIn('id', $request->ids)
+        ->where('skema_id', $skema->id)
+        ->delete();
+
+    $count = count($request->ids);
+    return back()->with('success', "{$count} soal teori berhasil dihapus.");
+}
+
+// Pindah paket (bulk)
+public function bulkPindahPaketSoalTeori(Request $request, Skema $skema): RedirectResponse
+{
+    $request->validate([
+        'ids'                 => 'required|array|min:1',
+        'ids.*'               => 'exists:soal_teori,id',
+        'paket_soal_teori_id' => 'nullable|exists:paket_soal_teori,id',
+    ]);
+
+    SoalTeori::whereIn('id', $request->ids)
+        ->where('skema_id', $skema->id)
+        ->update(['paket_soal_teori_id' => $request->paket_soal_teori_id ?: null]);
+
+    $count = count($request->ids);
+    $target = $request->paket_soal_teori_id
+        ? PaketSoalTeori::find($request->paket_soal_teori_id)?->label
+        : 'Arsip';
+
+    return back()->with('success', "{$count} soal dipindah ke {$target}.");
+}
 
     public function downloadTemplateSoalTeori(Skema $skema)
 {
@@ -464,29 +567,35 @@ public function importSoalTeori(Request $request, Skema $skema): RedirectRespons
     // =========================================================================
 
     public function show(Schedule $schedule): View
-    {
-        $schedule->load([
-            'skema', 'tuk', 'asesor.user', 'asesmens.user',
-            'distribusiSoalObservasi.soalObservasi.paket',
-            'distribusiSoalObservasi.paketSoalObservasi',
-            'distribusiSoalTeori.soalAsesi',
-            'distribusiPortofolio.portofolio',
-            'asesmens.apldua',
-            'asesmens.user',
-        ]);
+{
+    $schedule->load([
+        'skema', 'tuk', 'asesor.user', 'asesmens.user',
+        'distribusiSoalObservasi.soalObservasi.paket',
+        'distribusiSoalObservasi.paketSoalObservasi',
+        'distribusiSoalTeori.soalAsesi',
+        'distribusiSoalTeori.paketSoalTeori', // tambah ini
+        'distribusiPortofolio.portofolio',
+        'asesmens.apldua',
+        'asesmens.user',
+    ]);
 
-        $skemaId = $schedule->skema_id;
+    $skemaId = $schedule->skema_id;
 
-        return view('manajer-sertifikasi.show', [
-            'schedule'               => $schedule,
-            'soalObservasiTersedia'  => SoalObservasi::with('paket')->where('skema_id', $skemaId)->get(),
-            'portofolioTersedia'     => Portofolio::where('skema_id', $skemaId)->get(),
-            'jumlahBankSoalTeori'    => SoalTeori::where('skema_id', $skemaId)->count(),
-            'distribusiObservasiIds' => $schedule->distribusiSoalObservasi->pluck('soal_observasi_id'),
-            'distribusiPortofolioIds'=> $schedule->distribusiPortofolio->pluck('portofolio_id'),
-            'distribusiTeori'        => $schedule->distribusiSoalTeori,
-        ]);
-    }
+    return view('manajer-sertifikasi.show', [
+        'schedule'               => $schedule,
+        'soalObservasiTersedia'  => SoalObservasi::with('paket')->where('skema_id', $skemaId)->get(),
+        'portofolioTersedia'     => Portofolio::where('skema_id', $skemaId)->get(),
+        'paketSoalTeori'         => PaketSoalTeori::where('skema_id', $skemaId) // tambah ini
+                                        ->withCount('soalTeori')
+                                        ->orderBy('tahun', 'desc')
+                                        ->orderBy('kode_paket')
+                                        ->get(),
+        'jumlahBankSoalTeori'    => SoalTeori::where('skema_id', $skemaId)->count(),
+        'distribusiObservasiIds' => $schedule->distribusiSoalObservasi->pluck('soal_observasi_id'),
+        'distribusiPortofolioIds'=> $schedule->distribusiPortofolio->pluck('portofolio_id'),
+        'distribusiTeori'        => $schedule->distribusiSoalTeori,
+    ]);
+}
 
     // =========================================================================
     // SOAL OBSERVASI
@@ -892,53 +1001,62 @@ public function downloadLampiranObservasi(PaketSoalObservasi $paket)
      * [FIX #2] Distribusi soal teori — tambah field durasi_menit (default 30)
      */
     public function distribusiSoalTeori(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'schedule_id'  => 'required|exists:schedules,id',
-            'jumlah_soal'  => 'required|integer|min:1',
-            'durasi_menit' => 'nullable|integer|min:1|max:300',
+{
+    $request->validate([
+        'schedule_id'         => 'required|exists:schedules,id',
+        'paket_soal_teori_id' => 'required|exists:paket_soal_teori,id',
+        'jumlah_soal'         => 'required|integer|min:1',
+        'durasi_menit'        => 'nullable|integer|min:1|max:300',
+    ]);
+
+    $schedule = Schedule::with('asesmens')->findOrFail($request->schedule_id);
+    $paket    = PaketSoalTeori::findOrFail($request->paket_soal_teori_id);
+
+    // Soal dari paket yang dipilih saja
+    $bankSoalIds = SoalTeori::where('skema_id', $schedule->skema_id)
+        ->where('paket_soal_teori_id', $paket->id)
+        ->pluck('id')
+        ->toArray();
+
+    $totalBank = count($bankSoalIds);
+
+    if ($totalBank < $request->jumlah_soal) {
+        return back()->withErrors([
+            'jumlah_soal' => "Paket {$paket->kode_paket} hanya punya {$totalBank} soal, tidak cukup untuk {$request->jumlah_soal} soal.",
+        ])->withInput();
+    }
+
+    $durasi = $request->durasi_menit ?? 30;
+
+    DB::transaction(function () use ($request, $schedule, $bankSoalIds, $durasi, $paket) {
+        DistribusiSoalTeori::where('schedule_id', $schedule->id)->delete();
+
+        $distribusi = DistribusiSoalTeori::create([
+            'schedule_id'          => $schedule->id,
+            'paket_soal_teori_id'  => $paket->id,
+            'jumlah_soal'          => $request->jumlah_soal,
+            'durasi_menit'         => $durasi,
+            'didistribusikan_oleh' => Auth::id(),
         ]);
 
-        $schedule    = Schedule::with('asesmens')->findOrFail($request->schedule_id);
-        $bankSoalIds = SoalTeori::where('skema_id', $schedule->skema_id)->pluck('id')->toArray();
-        $totalBank   = count($bankSoalIds);
+        foreach ($schedule->asesmens as $asesmen) {
+            $terpilih = collect($bankSoalIds)->shuffle()->take($request->jumlah_soal)->values();
 
-        if ($totalBank < $request->jumlah_soal) {
-            return back()->withErrors([
-                'jumlah_soal' => "Bank soal hanya punya {$totalBank} soal, tidak cukup untuk {$request->jumlah_soal} soal.",
-            ])->withInput();
+            SoalTeoriAsesi::insert($terpilih->map(fn($id, $idx) => [
+                'distribusi_soal_teori_id' => $distribusi->id,
+                'asesmen_id'               => $asesmen->id,
+                'soal_teori_id'            => $id,
+                'urutan'                   => $idx + 1,
+                'jawaban'                  => null,
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ])->toArray());
         }
+    });
 
-        $durasi = $request->durasi_menit ?? 30;
-
-        DB::transaction(function () use ($request, $schedule, $bankSoalIds, $durasi) {
-            DistribusiSoalTeori::where('schedule_id', $schedule->id)->delete();
-
-            $distribusi = DistribusiSoalTeori::create([
-                'schedule_id'          => $schedule->id,
-                'jumlah_soal'          => $request->jumlah_soal,
-                'durasi_menit'         => $durasi,
-                'didistribusikan_oleh' => Auth::id(),
-            ]);
-
-            foreach ($schedule->asesmens as $asesmen) {
-                $terpilih = collect($bankSoalIds)->shuffle()->take($request->jumlah_soal)->values();
-
-                SoalTeoriAsesi::insert($terpilih->map(fn ($id, $idx) => [
-                    'distribusi_soal_teori_id' => $distribusi->id,
-                    'asesmen_id'               => $asesmen->id,
-                    'soal_teori_id'            => $id,
-                    'urutan'                   => $idx + 1,
-                    'jawaban'                  => null,
-                    'created_at'               => now(),
-                    'updated_at'               => now(),
-                ])->toArray());
-            }
-        });
-
-        return redirect()->route('manajer-sertifikasi.jadwal.show', $schedule)
-            ->with('success', "{$request->jumlah_soal} soal teori ({$durasi} menit) berhasil didistribusikan ke {$schedule->asesmens->count()} asesi.");
-    }
+    return redirect()->route('manajer-sertifikasi.jadwal.show', $schedule)
+        ->with('success', "Paket {$paket->kode_paket} — {$request->jumlah_soal} soal ({$durasi} menit) berhasil didistribusikan ke {$schedule->asesmens->count()} asesi.");
+}
 
     // =========================================================================
     // DAFTAR HADIR

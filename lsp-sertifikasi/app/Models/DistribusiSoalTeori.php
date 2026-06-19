@@ -15,14 +15,20 @@ class DistribusiSoalTeori extends Model
 
     protected $fillable = [
         'schedule_id',
+        'paket_soal_teori_id',
         'jumlah_soal',
-        'durasi_menit',   // ← TAMBAHKAN INI
+        'durasi_menit',
         'didistribusikan_oleh',
     ];
 
     public function schedule(): BelongsTo
     {
         return $this->belongsTo(Schedule::class);
+    }
+
+    public function paketSoalTeori(): BelongsTo
+    {
+        return $this->belongsTo(PaketSoalTeori::class);
     }
 
     public function didistribusikanOleh(): BelongsTo

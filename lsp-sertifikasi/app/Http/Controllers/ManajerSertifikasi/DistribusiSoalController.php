@@ -1243,7 +1243,7 @@ public function pdfBeritaAcara(Schedule $schedule): \Illuminate\Http\Response
 public function uploadKisiKisiPortofolio(Request $request, Schedule $schedule, Portofolio $portofolio): RedirectResponse
 {
     $request->validate([
-        'file' => 'required|file|mimes:xlsx,xlsm,xls,pdf,doc,docx|max:20480',
+        'file' => 'required|file|max:20480',
     ]);
 
     $dist = DistribusiPortofolio::where([

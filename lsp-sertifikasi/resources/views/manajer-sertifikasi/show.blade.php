@@ -899,6 +899,7 @@ if (hash) {
     const t = document.querySelector(`[data-bs-target="${hash}"]`);
     if (t) new bootstrap.Tab(t).show();
 }
+
 document.querySelectorAll('[data-bs-toggle="tab"]').forEach(t => {
     t.addEventListener('shown.bs.tab', e => {
         history.replaceState(null, null, e.target.getAttribute('data-bs-target'));

@@ -48,7 +48,7 @@
 </nav>
 
 @php
-    @php $peserta = $schedule->asesmens->sortBy('full_name')->values() @endphp
+    @php $peserta = $schedule->asesmens->sortBy('full_name')->values(); @endphp
 
     $pesertaCount = $peserta->count();
     $isPending    = $schedule->isPendingApproval();

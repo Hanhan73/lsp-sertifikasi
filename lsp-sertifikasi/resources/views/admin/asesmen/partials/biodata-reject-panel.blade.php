@@ -122,12 +122,13 @@
 <script>
 const BIODATA_CSRF       = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 const BIODATA_ASESMEN_ID = {{ $asesmen->id }};
+const BIODATA_NAMA       = {{ Js::from($asesmen->full_name) }};
 
 // ── Verify Biodata ──────────────────────────────────────────
 async function verifyBiodata() {
     const result = await Swal.fire({
         title: 'Verifikasi Biodata?',
-        html : `Biodata dan dokumen <strong>{{ $asesmen->full_name }}</strong> sudah sesuai dan dapat dilanjutkan.`,
+        html : `Biodata dan dokumen <strong>${BIODATA_NAMA}</strong> sudah sesuai dan dapat dilanjutkan.`,
         icon : 'question',
         showCancelButton  : true,
         confirmButtonText : '<i class="bi bi-check-circle me-1"></i> Verifikasi',

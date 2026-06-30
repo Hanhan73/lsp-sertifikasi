@@ -4,116 +4,116 @@
 <head>
     <meta charset="UTF-8">
     <style>
-    @page {
-        margin: 0;
-        size: A4 portrait;
-    }
+        @page {
+            margin: 0;
+            size: A4 portrait;
+        }
 
-    * {
-        box-sizing: border-box;
-    }
+        * {
+            box-sizing: border-box;
+        }
 
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 11pt;
-        color: #000;
-        margin: 0;
-        padding: 2cm 2.5cm 2cm 2.5cm;
-        line-height: 1.5;
-    }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            color: #000;
+            margin: 0;
+            padding: 2cm 2.5cm 2cm 2.5cm;
+            line-height: 1.5;
+        }
 
-    .kop-garis {
-        border-top: 3pt solid #000;
-        border-bottom: 1pt solid #000;
-        height: 4pt;
-        margin-bottom: 14pt;
-    }
+        .kop-garis {
+            border-top: 3pt solid #000;
+            border-bottom: 1pt solid #000;
+            height: 4pt;
+            margin-bottom: 14pt;
+        }
 
-    .judul-wrap {
-        text-align: center;
-        margin-bottom: 12pt;
-    }
+        .judul-wrap {
+            text-align: center;
+            margin-bottom: 12pt;
+        }
 
-    .judul-wrap p {
-        margin: 0;
-        padding: 0;
-    }
+        .judul-wrap p {
+            margin: 0;
+            padding: 0;
+        }
 
-    .lbl-sk {
-        font-size: 12pt;
-        font-weight: bold;
-    }
+        .lbl-sk {
+            font-size: 12pt;
+            font-weight: bold;
+        }
 
-    .lbl-tentang {
-        font-size: 11pt;
-        font-weight: bold;
-        margin-top: 6pt;
-        line-height: 1.5;
-    }
+        .lbl-tentang {
+            font-size: 11pt;
+            font-weight: bold;
+            margin-top: 6pt;
+            line-height: 1.5;
+        }
 
-    .body-text {
-        text-align: justify;
-        margin-bottom: 8pt;
-    }
+        .body-text {
+            text-align: justify;
+            margin-bottom: 8pt;
+        }
 
-    .dasar-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10pt;
-    }
+        .dasar-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10pt;
+        }
 
-    .dasar-table td {
-        border: none;
-        vertical-align: top;
-        padding: 1pt 0;
-    }
+        .dasar-table td {
+            border: none;
+            vertical-align: top;
+            padding: 1pt 0;
+        }
 
-    .dasar-no {
-        width: 20pt;
-    }
+        .dasar-no {
+            width: 20pt;
+        }
 
-    /* ── TABEL PESERTA ── */
-    .tbl-peserta {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 10pt 0 12pt 0;
-        font-size: 10.5pt;
-    }
+        /* ── TABEL PESERTA ── */
+        .tbl-peserta {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10pt 0 12pt 0;
+            font-size: 10.5pt;
+        }
 
-    .tbl-peserta th {
-        border: 1pt solid #000;
-        background: #f0f0f0;
-        text-align: center;
-        padding: 4pt 6pt;
-        font-weight: bold;
-    }
+        .tbl-peserta th {
+            border: 1pt solid #000;
+            background: #f0f0f0;
+            text-align: center;
+            padding: 4pt 6pt;
+            font-weight: bold;
+        }
 
-    .tbl-peserta td {
-        border: 1pt solid #000;
-        padding: 3pt 6pt;
-        vertical-align: middle;
-    }
+        .tbl-peserta td {
+            border: 1pt solid #000;
+            padding: 3pt 6pt;
+            vertical-align: middle;
+        }
 
-    .tbl-peserta td.tc {
-        text-align: center;
-    }
+        .tbl-peserta td.tc {
+            text-align: center;
+        }
 
-    .tbl-peserta td.asesor-cell {
-        text-align: center;
-        vertical-align: middle;
-        font-size: 10pt;
-        line-height: 1.4;
-    }
+        .tbl-peserta td.asesor-cell {
+            text-align: center;
+            vertical-align: middle;
+            font-size: 10pt;
+            line-height: 1.4;
+        }
 
-    .penutup {
-        text-align: justify;
-        margin-bottom: 10pt;
-    }
+        .penutup {
+            text-align: justify;
+            margin-bottom: 10pt;
+        }
 
-    .tembusan {
-        margin-top: 20pt;
-        font-size: 10.5pt;
-    }
+        .tembusan {
+            margin-top: 20pt;
+            font-size: 10.5pt;
+        }
     </style>
 </head>
 
@@ -122,9 +122,9 @@
     {{-- ══ KOP SURAT ══ --}}
     @php
     $bnspPath = public_path('images/bnsp.png');
-    $lspPath  = public_path('images/icon-lsp.png');
-    $bnspSrc  = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
-    $lspSrc   = file_exists($lspPath)  ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath))  : '';
+    $lspPath = public_path('images/icon-lsp.png');
+    $bnspSrc = file_exists($bnspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($bnspPath)) : '';
+    $lspSrc = file_exists($lspPath) ? 'data:image/png;base64,' . base64_encode(file_get_contents($lspPath)) : '';
     @endphp
 
     <table style="width:100%; border:none; border-collapse:collapse;">
@@ -147,16 +147,16 @@
 
     {{-- ══ JUDUL SK ══ --}}
     @php
-    $first    = $first ?? $schedules->first()?->asesmens->first();
-    $skema    = $first?->skema;
-    $tuk      = $first?->tuk;
+    $first = $first ?? $schedules->first()?->asesmens->first();
+    $skema = $first?->skema;
+    $tuk = $first?->tuk;
 
     $tanggalList = $schedules->map(fn($s) => \Carbon\Carbon::parse($s->assessment_date));
-    $tanggalMin  = $tanggalList->min();
-    $tanggalMax  = $tanggalList->max();
-    $tanggalStr  = $tanggalMin->eq($tanggalMax)
-        ? $tanggalMin->translatedFormat('d F Y')
-        : $tanggalMin->translatedFormat('d') . '-' . $tanggalMax->translatedFormat('d F Y');
+    $tanggalMin = $tanggalList->min();
+    $tanggalMax = $tanggalList->max();
+    $tanggalStr = $tanggalMin->eq($tanggalMax)
+    ? $tanggalMin->translatedFormat('d F Y')
+    : $tanggalMin->translatedFormat('d') . '-' . $tanggalMax->translatedFormat('d F Y');
     @endphp
 
     <div class="judul-wrap">
@@ -205,14 +205,16 @@
         Dengan ini memutuskan, bahwa peserta uji kompetensi dengan daftar nama sebagai berikut:
     </p>
 
-    {{-- ══ TABEL PESERTA — dengan kolom Asesor (rowspan per grup) ══ --}}
+    {{--
+        ══ TABEL PESERTA — kolom Asesor TANPA rowspan ══
+        CATATAN PENTING: rowspan SENGAJA tidak dipakai di sini.
+        DomPDF tidak mendukung rowspan yang terpotong oleh page-break,
+        sehingga jika grup asesor terpotong ke halaman berikutnya,
+        sel "Nama Asesor" akan tampil KOSONG pada baris-baris sisa di
+        halaman baru. Solusinya: nama asesor dicetak ulang di SETIAP
+        baris asesi, supaya konsisten tampil meski tabel pindah halaman.
+    --}}
     @php
-    /*
-     * $pesertaPerAsesor = array of:
-     *   ['asesor' => Asesor|null, 'asesis' => Collection, 'count' => int]
-     *
-     * Jika variable tidak tersedia (misal dari manajer flow lama), fallback ke loop biasa tanpa asesor.
-     */
     $hasAsesorData = isset($pesertaPerAsesor) && !empty($pesertaPerAsesor);
     $noUrut = 1;
     @endphp
@@ -228,44 +230,37 @@
         </thead>
         <tbody>
             @if($hasAsesorData)
-                @foreach($pesertaPerAsesor as $grup)
-                    @php
-                        $asesor    = $grup['asesor'];
-                        $asesis    = $grup['asesis'];
-                        $rowspan   = $grup['count'];
-                        $firstRow  = true;
-                        // Format asesor cell: nama + no reg + tahun (jika ada)
-                        $asesorNama   = $asesor?->nama ?? '-';
-                        $asesorRegMet = $asesor?->no_reg_met ?? '';
-                        // no_reg_met format: "000.010993 2018" — tampilkan apa adanya
-                    @endphp
-                    @foreach($asesis as $asesi)
-                    <tr>
-                        <td class="tc">{{ $noUrut++ }}.</td>
-                        <td>{{ $asesi->full_name }}</td>
-                        @if($firstRow)
-                        <td class="asesor-cell" rowspan="{{ $rowspan }}">
-                            {{ $asesorNama }}
-                            @if($asesorRegMet)
-                            <br>{{ $asesorRegMet }}
-                            @endif
-                        </td>
-                        @php $firstRow = false; @endphp
-                        @endif
-                        <td class="tc">K</td>
-                    </tr>
-                    @endforeach
-                @endforeach
+            @foreach($pesertaPerAsesor as $grup)
+            @php
+            $asesor = $grup['asesor'];
+            $asesis = $grup['asesis'];
+            $asesorNama = $asesor?->nama ?? '-';
+            $asesorRegMet = $asesor?->no_reg_met ?? '';
+            @endphp
+            @foreach($asesis as $asesi)
+            <tr>
+                <td class="tc">{{ $noUrut++ }}.</td>
+                <td>{{ $asesi->full_name }}</td>
+                <td class="asesor-cell">
+                    {{ $asesorNama }}
+                    @if($asesorRegMet)
+                    <br>{{ $asesorRegMet }}
+                    @endif
+                </td>
+                <td class="tc">K</td>
+            </tr>
+            @endforeach
+            @endforeach
             @else
-                {{-- Fallback: tanpa kolom asesor (kompatibel dengan view lama) --}}
-                @foreach($pesertaKompeten as $i => $asesi)
-                <tr>
-                    <td class="tc">{{ $i + 1 }}.</td>
-                    <td>{{ $asesi->full_name }}</td>
-                    <td class="tc">-</td>
-                    <td class="tc">K</td>
-                </tr>
-                @endforeach
+            {{-- Fallback: tanpa kolom asesor (kompatibel dengan view lama) --}}
+            @foreach($pesertaKompeten as $i => $asesi)
+            <tr>
+                <td class="tc">{{ $i + 1 }}.</td>
+                <td>{{ $asesi->full_name }}</td>
+                <td class="tc">-</td>
+                <td class="tc">K</td>
+            </tr>
+            @endforeach
             @endif
         </tbody>
     </table>
@@ -280,10 +275,10 @@
     {{-- ══ TTD ══ --}}
     @php
     $isPreview = $preview ?? false;
-    $sigPath   = storage_path('app/private/direktur/ttd.png');
-    $sigSrc    = (!$isPreview && file_exists($sigPath))
-        ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
-        : '';
+    $sigPath = storage_path('app/private/direktur/ttd.png');
+    $sigSrc = (!$isPreview && file_exists($sigPath))
+    ? 'data:image/png;base64,' . base64_encode(file_get_contents($sigPath))
+    : '';
     @endphp
 
     @if($isPreview)
@@ -320,4 +315,5 @@
     </div>
 
 </body>
+
 </html>

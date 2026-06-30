@@ -45,14 +45,8 @@ class DirekturSkUjikomController extends Controller
             ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $skUjikom->collective_batch_id))
             ->get();
 
-        $scheduleIds = $schedules->pluck('id');
-
-        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(fn($baa) => $baa->asesmen)
-            ->filter();
+        $scheduleIds     = $schedules->pluck('id');
+        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
@@ -72,26 +66,24 @@ class DirekturSkUjikomController extends Controller
             ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $skUjikom->collective_batch_id))
             ->get();
 
-        $scheduleIds = $schedules->pluck('id');
+        $scheduleIds     = $schedules->pluck('id');
+        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
 
-        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(fn($baa) => $baa->asesmen)
-            ->filter();
+        // Kelompokkan peserta per asesor untuk rowspan di PDF
+        $pesertaPerAsesor = $this->groupByAsesor($pesertaKompeten, $schedules);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
             ->first();
 
         $pdf = Pdf::loadView('pdf.sk-hasil-ujikom', [
-            'skUjikom'        => $skUjikom,
-            'pesertaKompeten' => $pesertaKompeten,
-            'schedules'       => $schedules,
-            'first'           => $first,
-            'direktur'        => auth()->user(),
-            'preview'         => true,   // ← tidak load TTD
+            'skUjikom'         => $skUjikom,
+            'pesertaKompeten'  => $pesertaKompeten,
+            'pesertaPerAsesor' => $pesertaPerAsesor,
+            'schedules'        => $schedules,
+            'first'            => $first,
+            'direktur'         => auth()->user(),
+            'preview'          => true,   // ← tidak load TTD
         ])->setPaper('A4', 'portrait');
 
         $filename = 'DRAFT_SK_' . $skUjikom->collective_batch_id . '.pdf';
@@ -218,20 +210,65 @@ class DirekturSkUjikomController extends Controller
         ];
     }
 
+    /**
+     * Ambil peserta kompeten dari schedule IDs, dengan asesor masing-masing
+     * disisipkan ke property sementara `_asesor` (dipakai untuk grouping rowspan di PDF).
+     */
+    private function getPesertaKompeten($scheduleIds)
+    {
+        return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->where('rekomendasi', 'K')
+            ->get()
+            ->map(function ($baa) {
+                $asesi = $baa->asesmen;
+                if ($asesi) {
+                    $asesi->_asesor = $baa->beritaAcara?->schedule?->asesor;
+                }
+                return $asesi;
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * Kelompokkan peserta berdasarkan asesor jadwalnya.
+     * Return: array of ['asesor' => Asesor|null, 'asesis' => Collection, 'count' => int]
+     */
+    private function groupByAsesor($pesertaKompeten, $schedules): array
+    {
+        $groups = [];
+        foreach ($pesertaKompeten as $asesi) {
+            $asesor    = $asesi->_asesor;
+            $asesorKey = $asesor?->id ?? 'tanpa_asesor';
+
+            if (!isset($groups[$asesorKey])) {
+                $groups[$asesorKey] = [
+                    'asesor' => $asesor,
+                    'asesis' => collect(),
+                ];
+            }
+            $groups[$asesorKey]['asesis']->push($asesi);
+        }
+
+        foreach ($groups as &$g) {
+            $g['count'] = $g['asesis']->count();
+        }
+
+        return array_values($groups);
+    }
+
     private function generatePdf(SkHasilUjikom $skUjikom): string
     {
         $schedules = Schedule::with(['tuk', 'skema', 'asesor.user', 'beritaAcara'])
             ->whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $skUjikom->collective_batch_id))
             ->get();
 
-        $scheduleIds = $schedules->pluck('id');
+        $scheduleIds     = $schedules->pluck('id');
+        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
 
-        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(fn($baa) => $baa->asesmen)
-            ->filter();
+        // Kelompokkan peserta per asesor untuk rowspan di PDF
+        $pesertaPerAsesor = $this->groupByAsesor($pesertaKompeten, $schedules);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
@@ -240,11 +277,13 @@ class DirekturSkUjikomController extends Controller
         $direktur = auth()->user();
 
         $pdf = Pdf::loadView('pdf.sk-hasil-ujikom', [
-            'skUjikom'        => $skUjikom,
-            'pesertaKompeten' => $pesertaKompeten,
-            'schedules'       => $schedules,
-            'first'           => $first,
-            'direktur'        => $direktur,
+            'skUjikom'         => $skUjikom,
+            'pesertaKompeten'  => $pesertaKompeten,
+            'pesertaPerAsesor' => $pesertaPerAsesor,
+            'schedules'        => $schedules,
+            'first'            => $first,
+            'direktur'         => $direktur,
+            'preview'          => false,
         ])->setPaper('A4', 'portrait');
 
         $path = "sk-hasil-ujikom/{$skUjikom->collective_batch_id}.pdf";

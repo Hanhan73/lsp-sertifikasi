@@ -389,7 +389,8 @@ class HonorAsesorController extends Controller
      * Hapus kwitansi honor sepenuhnya (termasuk yang sudah ada bukti transfer),
      * untuk kasus salah bayar. Hanya boleh selama BELUM dikonfirmasi asesor.
      * Membalikkan cicilan hutang (jika ada), menghapus file bukti, dan menghapus
-     * jurnal terkait sebelum menghapus kwitansi.
+     * jurnal terkait (jurnal "dibuat" & "dibayar") sebelum menghapus kwitansi —
+     * supaya Buku Besar, Laba Rugi, Neraca, Arus Kas ikut otomatis terkoreksi.
      */
     public function destroy(HonorPayment $honor)
     {
@@ -423,10 +424,19 @@ class HonorAsesorController extends Controller
                 Storage::disk('private')->delete($honor->bukti_transfer_path);
             }
 
-            // Hapus jurnal terkait kwitansi ini (jurnal dibuat & jurnal dibayar)
-            \App\Models\JournalEntry::where('reference_id', $honor->id)
-                ->where('reference_type', 'like', '%HonorPayment%')
-                ->delete();
+            // Hapus SEMUA jurnal terkait kwitansi ini — jurnal "dibuat" (beban honor)
+            // dan jurnal "dibayar" (pelunasan bank), beserta baris-barisnya.
+            $refTypes = [
+                \App\Models\HonorPayment::class . '_dibuat', // jurnalHonorDibuat
+                \App\Models\HonorPayment::class,              // jurnalHonorDibayar
+            ];
+
+            $entryIds = \App\Models\JournalEntry::where('ref_id', $honor->id)
+                ->whereIn('ref_type', $refTypes)
+                ->pluck('id');
+
+            \App\Models\JournalEntryLine::whereIn('journal_entry_id', $entryIds)->delete();
+            \App\Models\JournalEntry::whereIn('id', $entryIds)->delete();
 
             $honor->details()->delete();
             $honor->delete();
@@ -435,7 +445,7 @@ class HonorAsesorController extends Controller
 
             return response()->json([
                 'success'  => true,
-                'message'  => 'Kwitansi honor berhasil dihapus.',
+                'message'  => 'Kwitansi honor & jurnal terkait berhasil dihapus.',
                 'redirect' => route('bendahara.honor.show', $asesorId),
             ]);
         } catch (\Exception $e) {

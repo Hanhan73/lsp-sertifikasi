@@ -31,9 +31,26 @@
 <a href="{{ route('bendahara.honor.index') }}"
     class="nav-link {{ str_starts_with($route, 'bendahara.honor') ? 'active' : '' }}">
     <i class="bi bi-person-badge"></i> Honor Asesmen Asesor
-    @php $honorPending = \App\Models\HonorPayment::where('status','menunggu_pembayaran')->count(); @endphp
-    @if($honorPending > 0)
-    <span class="badge bg-warning text-dark ms-1">{{ $honorPending }}</span>
+    @php
+        $honorMenunggu = \App\Models\HonorPayment::where('status', 'menunggu_pembayaran')->count();
+
+        $scheduleIdsSudahKwitansi = \App\Models\HonorPaymentDetail::whereHas('honorPayment', function ($q) {
+            $q->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
+        })->pluck('schedule_id');
+
+        $jadwalBelumDibuat = \App\Models\Schedule::whereHas('beritaAcara')
+            ->whereNotIn('id', $scheduleIdsSudahKwitansi)
+            ->count();
+    @endphp
+    @if($honorMenunggu > 0)
+    <span class="badge bg-danger ms-1" title="{{ $honorMenunggu }} kwitansi belum dibayar">
+        {{ $honorMenunggu }}
+    </span>
+    @endif
+    @if($jadwalBelumDibuat > 0)
+    <span class="badge bg-secondary ms-1" title="{{ $jadwalBelumDibuat }} jadwal belum dibuat kwitansi">
+        {{ $jadwalBelumDibuat }}
+    </span>
     @endif
 </a>
 

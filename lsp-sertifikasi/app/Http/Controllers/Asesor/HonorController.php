@@ -23,7 +23,21 @@ class HonorController extends Controller
             ->latest()
             ->get();
 
-        return view('asesor.honor.index', compact('honors'));
+        // Ringkasan hutang aktif (pinjaman) milik asesor ini — supaya asesor
+        // bisa lihat sendiri sisa hutangnya tanpa perlu tanya ke bendahara.
+        $hutangAktif = \App\Models\OtherReceivable::where('asesor_id', $asesor->id)
+            ->where('jenis', 'pinjaman')
+            ->whereIn('status', ['outstanding', 'cicilan'])
+            ->orderByDesc('tanggal')
+            ->get();
+
+        $totalHutangAwal   = $hutangAktif->sum('jumlah');
+        $totalSudahDicicil = $hutangAktif->sum('jumlah_lunas');
+        $totalSisaHutang   = $hutangAktif->sum('sisa');
+
+        return view('asesor.honor.index', compact(
+            'honors', 'hutangAktif', 'totalHutangAwal', 'totalSudahDicicil', 'totalSisaHutang'
+        ));
     }
 
     /**

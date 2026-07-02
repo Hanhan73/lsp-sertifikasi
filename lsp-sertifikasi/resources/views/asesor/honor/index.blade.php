@@ -14,14 +14,66 @@
         class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
 
-{{-- Warning kalau ada yang perlu dikonfirmasi --}}
-@php $adaMenungguKonfirmasi = $honors->where('status', 'sudah_dibayar')->isNotEmpty(); @endphp
 @if($adaMenungguKonfirmasi)
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-exclamation-triangle-fill fs-5"></i>
     <div>
         <strong>Ada honor yang menunggu konfirmasi Anda.</strong>
         Silakan buka detail dan konfirmasi penerimaan honor.
+    </div>
+</div>
+@endif
+
+@if($hutangAktif->isNotEmpty())
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold">
+        <i class="bi bi-wallet2 me-1 text-warning"></i>Ringkasan Hutang Anda
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-4">
+                <div class="text-muted small">Total Hutang</div>
+                <div class="fw-semibold">Rp {{ number_format($totalHutangAwal, 0, ',', '.') }}</div>
+            </div>
+            <div class="col-4">
+                <div class="text-muted small">Sudah Dicicil</div>
+                <div class="fw-semibold text-success">Rp {{ number_format($totalSudahDicicil, 0, ',', '.') }}</div>
+            </div>
+            <div class="col-4">
+                <div class="text-muted small">Sisa Hutang</div>
+                <div class="fw-bold text-danger fs-6">Rp {{ number_format($totalSisaHutang, 0, ',', '.') }}</div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Uraian</th>
+                        <th>Tanggal</th>
+                        <th class="text-end">Jumlah</th>
+                        <th class="text-end">Sudah Dicicil</th>
+                        <th class="text-end">Sisa</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($hutangAktif as $h)
+                    <tr>
+                        <td class="small">{{ $h->uraian ?? $h->jenis_label }}</td>
+                        <td class="small">{{ optional($h->tanggal)->translatedFormat('d M Y') }}</td>
+                        <td class="text-end small">Rp {{ number_format($h->jumlah, 0, ',', '.') }}</td>
+                        <td class="text-end small text-success">Rp {{ number_format($h->jumlah_lunas ?? 0, 0, ',', '.') }}</td>
+                        <td class="text-end small fw-semibold text-danger">Rp {{ number_format($h->sisa, 0, ',', '.') }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-{{ $h->status === 'cicilan' ? 'warning text-dark' : 'secondary' }}" style="font-size:.65rem;">
+                                {{ $h->status === 'cicilan' ? 'Sedang Dicicil' : 'Belum Dicicil' }}
+                            </span>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endif

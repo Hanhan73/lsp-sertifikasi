@@ -25,7 +25,8 @@
                     <div class="fw-bold fs-4 lh-1 {{ $rekapStats['belum_dibuat_count'] > 0 ? 'text-secondary' : 'text-muted' }}">
                         {{ $rekapStats['belum_dibuat_count'] }}
                     </div>
-                    <div class="text-muted" style="font-size:.72rem;">asesor</div>
+                    <div class="text-muted" style="font-size:.72rem;">jadwal</div>
+
                 </div>
             </div>
         </div>
@@ -154,63 +155,55 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($asesors as $i => $asesor)
-                    @php
-                        $rekapAsesor = $rekapStats['per_asesor']->firstWhere('asesor_id', $asesor->id);
-
-                        // Cek apakah asesor ini punya jadwal yang belum dibuatkan kwitansi
-                        $adaJadwalBelumDibuat = $asesor->schedules->contains(function ($s) {
-                            // Jadwal tanpa honorPaymentDetails active
-                            // Pendekatan: cek dari relasi yang sudah di-load di show()
-                            // Di sini cukup kita tandai jika belum ada kwitansi sama sekali
-                            return true; // placeholder — lihat catatan di bawah
-                        });
-                        // Cara lebih tepat: asesor punya schedules tanpa kwitansi
-                        // jika total_kwitansi == 0 ATAU ada jadwal baru setelah kwitansi terakhir
-                        // Untuk simplicity: tandai jika belum ada kwitansi sama sekali
-                        $belumAdaKwitansi = !$rekapAsesor || $rekapAsesor['total_kwitansi'] === 0;
-                    @endphp
-                    <tr>
-                        <td class="text-muted small">{{ $i + 1 }}</td>
-                        <td>
-                            <div class="fw-semibold">{{ $asesor->nama }}</div>
-                            <div class="text-muted small">{{ $asesor->email }}</div>
-                        </td>
-                        <td class="small">{{ $asesor->no_reg_met ?? '-' }}</td>
-                        <td class="text-center">
-                            <span class="badge bg-success">{{ $asesor->schedules->count() }} Jadwal</span>
-                        </td>
-                        <td class="text-center">
-                            @if($belumAdaKwitansi)
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                                <i class="bi bi-file-earmark-plus me-1"></i>Belum Ada Kwitansi
-                            </span>
-                            @else
-                                @if($rekapAsesor['menunggu'] > 0)
-                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">
-                                    {{ $rekapAsesor['menunggu'] }} Belum Bayar
-                                </span>
-                                @endif
-                                @if(($rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi']) > 0)
-                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">
-                                    {{ $rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi'] }} Menunggu Konfirmasi
-                                </span>
-                                @endif
-                                @if($rekapAsesor['dikonfirmasi'] > 0)
-                                <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                    {{ $rekapAsesor['dikonfirmasi'] }} Selesai
-                                </span>
-                                @endif
-                            @endif
-                        </td>
-                        <td class="text-center">
-                            <a href="{{ route('bendahara.honor.show', $asesor) }}"
-                                class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-eye me-1"></i>Detail
-                            </a>
-                        </td>
-                    </tr>
-                    @endforeach
+                   @foreach($asesors as $i => $asesor)
+@php
+    $rekapAsesor = $rekapStats['per_asesor']->firstWhere('asesor_id', $asesor->id);
+@endphp
+<tr>
+    <td class="text-muted small">{{ $i + 1 }}</td>
+    <td>
+        <div class="fw-semibold">{{ $asesor->nama }}</div>
+        <div class="text-muted small">{{ $asesor->email }}</div>
+    </td>
+    <td class="small">{{ $asesor->no_reg_met ?? '-' }}</td>
+    <td class="text-center">
+        <span class="badge bg-success">{{ $asesor->schedules->count() }} Jadwal</span>
+    </td>
+    <td class="text-center">
+        @if($rekapAsesor)
+            @if($rekapAsesor['menunggu'] > 0)
+            <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">
+                {{ $rekapAsesor['menunggu'] }} Belum Bayar
+            </span>
+            @endif
+            @if(($rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi']) > 0)
+            <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">
+                {{ $rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi'] }} Menunggu Konfirmasi
+            </span>
+            @endif
+            @if($rekapAsesor['dikonfirmasi'] > 0)
+            <span class="badge bg-success-subtle text-success border border-success-subtle me-1">
+                {{ $rekapAsesor['dikonfirmasi'] }} Selesai
+            </span>
+            @endif
+        @endif
+        @if($asesor->jadwal_belum_dibuat > 0)
+        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+            <i class="bi bi-file-earmark-plus me-1"></i>{{ $asesor->jadwal_belum_dibuat }} Jadwal Belum Dibuat
+        </span>
+        @endif
+        @if(!$rekapAsesor && $asesor->jadwal_belum_dibuat == 0)
+        <span class="text-muted">-</span>
+        @endif
+    </td>
+    <td class="text-center">
+        <a href="{{ route('bendahara.honor.show', $asesor) }}"
+            class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-eye me-1"></i>Detail
+        </a>
+    </td>
+</tr>
+@endforeach
                 </tbody>
             </table>
         </div>
@@ -278,8 +271,11 @@
                             <span class="badge bg-secondary">{{ $row['total_kwitansi'] }}</span>
                         </td>
                         <td class="text-center">
-                            {{-- belum dibuat per baris tidak dihitung di sini, sudah di stat card --}}
+                            @if($row['jadwal_belum_dibuat'] > 0)
+                            <span class="badge bg-secondary">{{ $row['jadwal_belum_dibuat'] }}</span>
+                            @else
                             <span class="text-muted">—</span>
+                            @endif
                         </td>
                         <td class="text-center">
                             @if($row['menunggu'] > 0)
@@ -335,7 +331,7 @@
                         <td class="text-center"><span class="badge bg-secondary">0</span></td>
                         <td class="text-center">
                             <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-                                Belum Dibuat
+                                {{ $asesor->jadwal_belum_dibuat }} Belum Dibuat
                             </span>
                         </td>
                         <td class="text-center"><span class="text-muted">—</span></td>

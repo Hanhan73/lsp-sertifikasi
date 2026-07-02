@@ -21,60 +21,69 @@ class HonorAsesorController extends Controller
      * List asesor yang punya berita acara (jadwal selesai).
      */
     public function index()
-    {
-        $asesors = Asesor::whereHas('schedules', function ($q) {
-            $q->whereHas('beritaAcara');
-        })
-            ->with([
-                'schedules' => function ($q) {
-                    $q->whereHas('beritaAcara')
-                        ->with(['skema', 'tuk', 'beritaAcara']);
-                },
-            ])
-            ->orderBy('nama')
-            ->get();
+{
+    $asesors = Asesor::whereHas('schedules', function ($q) {
+        $q->whereHas('beritaAcara');
+    })
+        ->with([
+            'schedules' => function ($q) {
+                $q->whereHas('beritaAcara')
+                    ->with(['skema', 'tuk', 'beritaAcara']);
+            },
+        ])
+        ->orderBy('nama')
+        ->get();
 
-        $allHonors = HonorPayment::with(['asesor', 'details'])->get();
+    $allHonors = HonorPayment::with(['asesor', 'details'])->get();
 
-        $belumDibuatCount = Asesor::whereHas('schedules', function ($q) {
-            $q->whereHas('beritaAcara')
-                ->whereDoesntHave('honorPaymentDetails', function ($q2) {
-                    $q2->whereHas('honorPayment', function ($q3) {
-                        $q3->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
-                    });
-                });
-        })->count();
+    // Semua schedule_id yang SUDAH masuk ke kwitansi yang masih aktif
+    // (menunggu_pembayaran / sudah_dibayar / dikonfirmasi) — dipakai untuk
+    // menghitung jadwal per asesor yang belum dibuatkan kwitansi sama sekali.
+    $scheduleIdsSudahKwitansi = HonorPaymentDetail::whereHas('honorPayment', function ($q) {
+        $q->whereIn('status', ['menunggu_pembayaran', 'sudah_dibayar', 'dikonfirmasi']);
+    })->pluck('schedule_id')->unique();
 
-        $rekapStats = [
-            'total_honor'           => $allHonors->count(),
-            'total_asesor_honor'    => $allHonors->pluck('asesor_id')->unique()->count(),
-            'total_nominal'         => $allHonors->sum('total'),
-            'belum_dibuat_count'    => $belumDibuatCount,
-            'belum_dibayar_count'   => $allHonors->where('status', 'menunggu_pembayaran')->count(),
-            'belum_dibayar_nominal' => $allHonors->where('status', 'menunggu_pembayaran')->sum('total'),
-            'sudah_dibayar_count'   => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
-            'sudah_dibayar_nominal' => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
-            'dikonfirmasi_count'    => $allHonors->where('status', 'dikonfirmasi')->count(),
-            'dikonfirmasi_nominal'  => $allHonors->where('status', 'dikonfirmasi')->sum('total'),
-            'per_asesor'            => $allHonors->groupBy('asesor_id')->map(function ($honors) {
-                $asesor = $honors->first()->asesor;
-                return [
-                    'asesor_id'        => $asesor?->id,
-                    'nama'             => $asesor?->nama ?? '-',
-                    'no_reg_met'       => $asesor?->no_reg_met ?? '-',
-                    'total_kwitansi'   => $honors->count(),
-                    'menunggu'         => $honors->where('status', 'menunggu_pembayaran')->count(),
-                    'sudah_dibayar'    => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
-                    'dikonfirmasi'     => $honors->where('status', 'dikonfirmasi')->count(),
-                    'total_nominal'    => $honors->sum('total'),
-                    'dibayar_nominal'  => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
-                    'menunggu_nominal' => $honors->where('status', 'menunggu_pembayaran')->sum('total'),
-                ];
-            })->sortByDesc('total_nominal')->values(),
-        ];
-
-        return view('bendahara.honor.index', compact('asesors', 'rekapStats'));
+    // Tempel jumlah "jadwal belum dibuat kwitansi" langsung ke tiap asesor,
+    // supaya bisa dipakai di blade tanpa query tambahan per baris tabel.
+    foreach ($asesors as $asesor) {
+        $eligibleIds = $asesor->schedules->pluck('id');
+        $asesor->jadwal_belum_dibuat = $eligibleIds->diff($scheduleIdsSudahKwitansi)->count();
     }
+
+    $belumDibuatCount = $asesors->sum('jadwal_belum_dibuat');
+
+    $rekapStats = [
+        'total_honor'           => $allHonors->count(),
+        'total_asesor_honor'    => $allHonors->pluck('asesor_id')->unique()->count(),
+        'total_nominal'         => $allHonors->sum('total'),
+        'belum_dibuat_count'    => $belumDibuatCount,
+        'belum_dibayar_count'   => $allHonors->where('status', 'menunggu_pembayaran')->count(),
+        'belum_dibayar_nominal' => $allHonors->where('status', 'menunggu_pembayaran')->sum('total'),
+        'sudah_dibayar_count'   => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
+        'sudah_dibayar_nominal' => $allHonors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
+        'dikonfirmasi_count'    => $allHonors->where('status', 'dikonfirmasi')->count(),
+        'dikonfirmasi_nominal'  => $allHonors->where('status', 'dikonfirmasi')->sum('total'),
+        'per_asesor'            => $allHonors->groupBy('asesor_id')->map(function ($honors) use ($asesors) {
+            $asesor = $honors->first()->asesor;
+            $asesorObj = $asesor ? $asesors->firstWhere('id', $asesor->id) : null;
+            return [
+                'asesor_id'           => $asesor?->id,
+                'nama'                => $asesor?->nama ?? '-',
+                'no_reg_met'          => $asesor?->no_reg_met ?? '-',
+                'total_kwitansi'      => $honors->count(),
+                'menunggu'            => $honors->where('status', 'menunggu_pembayaran')->count(),
+                'sudah_dibayar'       => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->count(),
+                'dikonfirmasi'        => $honors->where('status', 'dikonfirmasi')->count(),
+                'total_nominal'       => $honors->sum('total'),
+                'dibayar_nominal'     => $honors->whereIn('status', ['sudah_dibayar', 'dikonfirmasi'])->sum('total'),
+                'menunggu_nominal'    => $honors->where('status', 'menunggu_pembayaran')->sum('total'),
+                'jadwal_belum_dibuat' => $asesorObj->jadwal_belum_dibuat ?? 0,
+            ];
+        })->sortByDesc('total_nominal')->values(),
+    ];
+
+    return view('bendahara.honor.index', compact('asesors', 'rekapStats'));
+}
 
     /**
      * Detail asesor: list jadwal yang bisa dipilih untuk dibayar.

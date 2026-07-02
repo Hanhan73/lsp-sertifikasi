@@ -14,6 +14,8 @@
         class="btn-close" data-bs-dismiss="alert"></button></div>
 @endif
 
+{{-- Warning kalau ada yang perlu dikonfirmasi --}}
+@php $adaMenungguKonfirmasi = $honors->where('status', 'sudah_dibayar')->isNotEmpty(); @endphp
 @if($adaMenungguKonfirmasi)
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
     <i class="bi bi-exclamation-triangle-fill fs-5"></i>

@@ -129,6 +129,17 @@
                                         TUK: {{ $jadwal->tuk->name ?? '-' }} &bull;
                                         {{ optional($jadwal->assessment_date)->translatedFormat('d F Y') }}
                                     </div>
+                                    <div class="text-muted small">
+                                        <i class="bi bi-geo-alt me-1"></i>
+                                        @if($jadwal->location_type === 'online')
+                                            <span class="badge bg-info-subtle text-info border border-info-subtle" style="font-size:.65rem;">Online</span>
+                                            @if($jadwal->meeting_link)
+                                            <a href="{{ $jadwal->meeting_link }}" target="_blank" class="small ms-1">Link Meeting</a>
+                                            @endif
+                                        @else
+                                            {{ $jadwal->location ?? '-' }}
+                                        @endif
+                                    </div>
                                     @php
                                         $batchIds   = $jadwal->asesmens->where('is_collective', true)
                                                                         ->pluck('collective_batch_id')

@@ -1080,7 +1080,7 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/payment/{honor}/bukti',         [HonorAsesorController::class, 'uploadBukti'])->name('payment.bukti');
         Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
         Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
-
+        Route::delete('/bendahara/honor/payment/{honor}', [HonorAsesorController::class, 'destroy'])->name('payment.destroy');
         // Ganti dari /payments/{honor}/nomor → /payment/{honor}/nomor (konsisten)
         Route::patch('/payment/{honor}/nomor',        [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
     });

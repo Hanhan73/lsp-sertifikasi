@@ -67,6 +67,7 @@
                                 <th>#</th>
                                 <th>Skema</th>
                                 <th>TUK</th>
+                                <th>Lokasi</th>
                                 <th>Tanggal</th>
                                 <th>Batch</th>
                                 <th class="text-center">Asesi</th>
@@ -74,47 +75,56 @@
                                 <th class="text-end">Subtotal</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            @foreach($honor->details as $i => $detail)
-                            @php
-                                $asesmens   = $detail->schedule->asesmens ?? collect();
-                                $batches    = $asesmens->where('is_collective', true)
-                                                ->pluck('collective_batch_id')->filter()->unique()->values();
-                                $adaMandiri = $asesmens->where('is_collective', false)->isNotEmpty();
-                            @endphp
-                            <tr>
-                                <td class="text-muted small">{{ $i+1 }}</td>
-                                <td class="small fw-semibold">{{ $detail->schedule->skema->name }}</td>
-                                <td class="small">{{ $detail->schedule->tuk->name ?? '-' }}</td>
-                                <td class="small">{{ optional($detail->schedule->assessment_date)->translatedFormat('d M Y') }}</td>
-                                <td class="small">
-                                    @forelse($batches as $batch)
-                                        <span class="badge bg-primary bg-opacity-75 font-monospace" style="font-size:.65rem;">
-                                            <i class="bi bi-people-fill me-1"></i>{{ $batch }}
-                                        </span>
-                                        @if(!$loop->last)<br>@endif
-                                    @empty
-                                        @if($adaMandiri)
-                                        <span class="badge bg-secondary" style="font-size:.65rem;">Mandiri</span>
-                                        @else
-                                        <span class="text-muted">-</span>
-                                        @endif
-                                    @endforelse
-                                </td>
-                                <td class="text-center small">{{ $detail->jumlah_asesi }}</td>
-                                <td class="text-end small">Rp {{ number_format($detail->honor_per_asesi, 0, ',', '.') }}</td>
-                                <td class="text-end small fw-semibold">Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
-                            </tr>
-                            @endforeach
-                        </tbody>
+                        @foreach($honor->details as $i => $detail)
+                        @php
+                            $sch        = $detail->schedule;
+                            $asesmens   = $sch->asesmens ?? collect();
+                            $batches    = $asesmens->where('is_collective', true)
+                                            ->pluck('collective_batch_id')->filter()->unique()->values();
+                            $adaMandiri = $asesmens->where('is_collective', false)->isNotEmpty();
+                        @endphp
+                        <tr>
+                            <td class="text-muted small">{{ $i+1 }}</td>
+                            <td class="small fw-semibold">{{ $sch->skema->name }}</td>
+                            <td class="small">{{ $sch->tuk->name ?? '-' }}</td>
+                            <td class="small">
+                                @if($sch->location_type === 'online')
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle">Online</span>
+                                    @if($sch->meeting_link)
+                                    <br><a href="{{ $sch->meeting_link }}" target="_blank" class="small">Link Meeting</a>
+                                    @endif
+                                @else
+                                    {{ $sch->location ?? '-' }}
+                                @endif
+                            </td>
+                            <td class="small">{{ optional($sch->assessment_date)->translatedFormat('d M Y') }}</td>
+                            <td class="small">
+                                @forelse($batches as $batch)
+                                    <span class="badge bg-primary bg-opacity-75 font-monospace" style="font-size:.65rem;">
+                                        <i class="bi bi-people-fill me-1"></i>{{ $batch }}
+                                    </span>
+                                    @if(!$loop->last)<br>@endif
+                                @empty
+                                    @if($adaMandiri)
+                                    <span class="badge bg-secondary" style="font-size:.65rem;">Mandiri</span>
+                                    @else
+                                    <span class="text-muted">-</span>
+                                    @endif
+                                @endforelse
+                            </td>
+                            <td class="text-center small">{{ $detail->jumlah_asesi }}</td>
+                            <td class="text-end small">Rp {{ number_format($detail->honor_per_asesi, 0, ',', '.') }}</td>
+                            <td class="text-end small fw-semibold">Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                        </tr>
+                        @endforeach
                         <tfoot>
                             <tr class="table-light">
-                                <td colspan="7" class="fw-bold text-end">Total Honor</td>
+                                <td colspan="8" class="fw-bold text-end">Total Honor</td>
                                 <td class="text-end fw-bold">Rp {{ number_format($honor->total, 0, ',', '.') }}</td>
                             </tr>
                             @if($honor->has_deduction)
                             <tr class="table-warning">
-                                <td colspan="7" class="text-end" style="color:#dc3545;">
+                                <td colspan="8" class="text-end" style="color:#dc3545;">
                                     <i class="bi bi-dash-circle me-1"></i>Cicilan Hutang
                                     @if($honor->deductionReceivable)
                                     <small class="ms-1">({{ $honor->deductionReceivable->uraian ?? $honor->deductionReceivable->jenis_label }})</small>
@@ -125,12 +135,12 @@
                                 </td>
                             </tr>
                             <tr class="table-success">
-                                <td colspan="7" class="fw-bold text-end">Transfer Bersih ke Asesor</td>
+                                <td colspan="8" class="fw-bold text-end">Transfer Bersih ke Asesor</td>
                                 <td class="text-end fw-bold text-success">Rp {{ number_format($honor->jumlah_transfer, 0, ',', '.') }}</td>
                             </tr>
                             @if($honor->deduction_note)
                             <tr>
-                                <td colspan="8" class="text-muted small fst-italic py-1">
+                                <td colspan="9" class="text-muted small fst-italic py-1">
                                     <i class="bi bi-chat-left-text me-1"></i>{{ $honor->deduction_note }}
                                 </td>
                             </tr>
@@ -142,7 +152,7 @@
 
                 <div class="d-flex gap-2 mt-3 flex-wrap">
                     <a href="{{ route('bendahara.honor.payment.kwitansi', ['honor' => $honor, 'preview' => 1]) }}"
-                       target="_blank" class="btn btn-sm btn-outline-secondary">
+                    target="_blank" class="btn btn-sm btn-outline-secondary">
                         <i class="bi bi-eye me-1"></i>Preview Draft
                     </a>
                     @if($honor->isDikonfirmasi())
@@ -150,12 +160,21 @@
                         <i class="bi bi-download me-1"></i>Download Kwitansi Final
                     </a>
                     @endif
-                    @if($honor->can_reset)
-                    <button type="button" class="btn btn-sm btn-outline-danger ms-auto"
-                            onclick="confirmReset({{ $honor->id }})">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset & Edit Honor
-                    </button>
-                    @endif
+
+                    <div class="ms-auto d-flex gap-2">
+                        @if($honor->can_reset)
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="confirmReset({{ $honor->id }})">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i>Reset & Edit Honor
+                        </button>
+                        @endif
+                        @if(!$honor->isDikonfirmasi())
+                        <button type="button" class="btn btn-sm btn-danger"
+                                onclick="confirmDeleteHonor({{ $honor->id }})">
+                            <i class="bi bi-trash me-1"></i>Hapus Kwitansi
+                        </button>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -509,6 +528,38 @@ function confirmReset(id) {
     });
 }
 
+function confirmDeleteHonor(id) {
+    Swal.fire({
+        title: 'Hapus Kwitansi Ini?',
+        html: 'Kwitansi, bukti transfer, dan jurnal terkait akan dihapus permanen.<br>' +
+              '<small class="text-danger">Gunakan hanya untuk kasus salah bayar. Tindakan tidak dapat dibatalkan.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+    }).then(result => {
+        if (!result.isConfirmed) return;
+        fetch(`/bendahara/honor/payment/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire({ icon: 'success', title: 'Terhapus', text: data.message, timer: 2000, showConfirmButton: false })
+                    .then(() => window.location.href = data.redirect);
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: data.message });
+            }
+        })
+        .catch(() => Swal.fire({ icon: 'error', text: 'Terjadi kesalahan.' }));
+    });
+}
+
 // ── COA baru toggle (modal tambah hutang) ──────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
     const selectCoa = document.querySelector('#modalTambahHutang select[name="coa_id"]');
@@ -530,15 +581,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
         select.addEventListener('change', function () {
             panel.style.display = this.value ? 'block' : 'none';
-            const opt   = this.options[this.selectedIndex];
-            const maxEl = panel.querySelector('.deduction-max-label');
-            const amtEl = panel.querySelector('input[name="deduction_amount"]');
+            const opt        = this.options[this.selectedIndex];
+            const maxEl       = panel.querySelector('.deduction-max-label');
+            const amtEl       = panel.querySelector('input[name="deduction_amount"]');
+            const sisa        = parseFloat(opt?.dataset?.sisa) || 0;
+            const totalHonor  = {{ $honor->total }};
+            const maxAllowed  = Math.min(sisa, totalHonor);
             if (maxEl && opt?.dataset?.sisa) {
-                maxEl.textContent = 'Sisa hutang: Rp ' + new Intl.NumberFormat('id-ID').format(opt.dataset.sisa);
-                if (amtEl) amtEl.max = opt.dataset.sisa;
+                maxEl.textContent = 'Sisa hutang: Rp ' + new Intl.NumberFormat('id-ID').format(sisa);
             }
+            if (amtEl) amtEl.max = maxAllowed;
         });
-
         const amtEl = panel?.querySelector('input[name="deduction_amount"]');
         if (amtEl) {
             const total = {{ $honor->total }};

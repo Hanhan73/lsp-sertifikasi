@@ -258,9 +258,10 @@ class HonorAsesorController extends Controller
                             number_format($receivable->sisa, 0, ',', '.') . ').',
                     ])->withInput();
                 }
-                if ($request->deduction_amount >= $honor->total) {
+                // Nominal cicilan BOLEH sama dengan total honor, hanya tidak boleh melebihi.
+                if ($request->deduction_amount > $honor->total) {
                     return back()->withErrors([
-                        'deduction_amount' => 'Nominal cicilan tidak boleh melebihi atau sama dengan total honor.',
+                        'deduction_amount' => 'Nominal cicilan tidak boleh melebihi total honor.',
                     ])->withInput();
                 }
             }
@@ -381,6 +382,69 @@ class HonorAsesorController extends Controller
             DB::rollBack();
             \Log::error('[HonorAsesor][resetKwitansi] ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Gagal mereset kwitansi.'], 500);
+        }
+    }
+
+    /**
+     * Hapus kwitansi honor sepenuhnya (termasuk yang sudah ada bukti transfer),
+     * untuk kasus salah bayar. Hanya boleh selama BELUM dikonfirmasi asesor.
+     * Membalikkan cicilan hutang (jika ada), menghapus file bukti, dan menghapus
+     * jurnal terkait sebelum menghapus kwitansi.
+     */
+    public function destroy(HonorPayment $honor)
+    {
+        if ($honor->isDikonfirmasi()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Kwitansi yang sudah dikonfirmasi asesor tidak dapat dihapus dari sini.',
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $asesorId = $honor->asesor_id;
+
+            // Balikin cicilan hutang kalau kwitansi ini pernah dipakai untuk nyicil
+            if ($honor->deduction_receivable_id && $honor->deduction_amount) {
+                $receivable = OtherReceivable::find($honor->deduction_receivable_id);
+                if ($receivable) {
+                    $newLunas = max(0, (float) ($receivable->jumlah_lunas ?? 0) - (float) $honor->deduction_amount);
+                    $sisa     = (float) $receivable->jumlah - $newLunas;
+                    $receivable->update([
+                        'jumlah_lunas'  => $newLunas,
+                        'status'        => $sisa <= 0 ? 'lunas' : ($newLunas > 0 ? 'cicilan' : 'outstanding'),
+                        'tanggal_lunas' => $sisa <= 0 ? $receivable->tanggal_lunas : null,
+                    ]);
+                }
+            }
+
+            // Hapus file bukti transfer
+            if ($honor->bukti_transfer_path) {
+                Storage::disk('private')->delete($honor->bukti_transfer_path);
+            }
+
+            // Hapus jurnal terkait kwitansi ini (jurnal dibuat & jurnal dibayar)
+            \App\Models\JournalEntry::where('reference_id', $honor->id)
+                ->where('reference_type', 'like', '%HonorPayment%')
+                ->delete();
+
+            $honor->details()->delete();
+            $honor->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Kwitansi honor berhasil dihapus.',
+                'redirect' => route('bendahara.honor.show', $asesorId),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('[HonorAsesor][destroy] ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menghapus kwitansi: ' . $e->getMessage(),
+            ], 500);
         }
     }
 

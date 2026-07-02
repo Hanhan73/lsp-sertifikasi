@@ -25,7 +25,7 @@
                     <div class="fw-bold fs-4 lh-1 {{ $rekapStats['belum_dibuat_count'] > 0 ? 'text-secondary' : 'text-muted' }}">
                         {{ $rekapStats['belum_dibuat_count'] }}
                     </div>
-                    <div class="text-muted" style="font-size:.72rem;">jadwal</div>
+                    <div class="text-muted" style="font-size:.72rem;">Jadwal</div>
 
                 </div>
             </div>
@@ -170,32 +170,34 @@
         <span class="badge bg-success">{{ $asesor->schedules->count() }} Jadwal</span>
     </td>
     <td class="text-center">
-        @if($rekapAsesor)
-            @if($rekapAsesor['menunggu'] > 0)
-            <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">
-                {{ $rekapAsesor['menunggu'] }} Belum Bayar
-            </span>
-            @endif
-            @if(($rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi']) > 0)
-            <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">
-                {{ $rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi'] }} Menunggu Konfirmasi
-            </span>
-            @endif
-            @if($rekapAsesor['dikonfirmasi'] > 0)
-            <span class="badge bg-success-subtle text-success border border-success-subtle me-1">
-                {{ $rekapAsesor['dikonfirmasi'] }} Selesai
-            </span>
-            @endif
-        @endif
-        @if($asesor->jadwal_belum_dibuat > 0)
-        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
-            <i class="bi bi-file-earmark-plus me-1"></i>{{ $asesor->jadwal_belum_dibuat }} Jadwal Belum Dibuat
+    @if($rekapAsesor)
+        @if($rekapAsesor['menunggu'] > 0)
+        <span class="badge bg-danger-subtle text-danger border border-danger-subtle me-1">
+            {{ $rekapAsesor['menunggu'] }} Belum Bayar
         </span>
         @endif
-        @if(!$rekapAsesor && $asesor->jadwal_belum_dibuat == 0)
-        <span class="text-muted">-</span>
+        @if(($rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi']) > 0)
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle me-1">
+            {{ $rekapAsesor['sudah_dibayar'] - $rekapAsesor['dikonfirmasi'] }} Menunggu Konfirmasi
+        </span>
         @endif
-    </td>
+        @if($rekapAsesor['dikonfirmasi'] > 0)
+        <span class="badge bg-success-subtle text-success border border-success-subtle me-1">
+            {{ $rekapAsesor['dikonfirmasi'] }} Selesai
+        </span>
+        @endif
+    @endif
+
+    @if($asesor->jadwal_belum_dibuat > 0)
+    <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">
+        <i class="bi bi-file-earmark-plus me-1"></i>{{ $asesor->jadwal_belum_dibuat }} Jadwal Belum Dibuat
+    </span>
+    @else
+    <span class="badge bg-success-subtle text-success border border-success-subtle">
+        <i class="bi bi-check-circle me-1"></i>Semua Jadwal Sudah Dibuat Kwitansi
+    </span>
+    @endif
+</td>
     <td class="text-center">
         <a href="{{ route('bendahara.honor.show', $asesor) }}"
             class="btn btn-sm btn-outline-primary">

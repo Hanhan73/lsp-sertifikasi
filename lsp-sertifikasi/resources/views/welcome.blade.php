@@ -19,6 +19,8 @@
         --green:      #10b981;
         --amber:      #f59e0b;
         --indigo:     #6366f1;
+        --teal:       #14b8a6;
+        --purple:     #a855f7;
         --slate-900:  #0f172a;
         --slate-700:  #334155;
         --slate-500:  #64748b;
@@ -354,9 +356,21 @@
                 <a class="nav-btn nav-btn-primary" href="{{ route('asesor.dashboard') }}">
                     <i class="bi bi-speedometer2"></i> Dashboard Asesor
                 </a>
+                @elseif(Auth::user()->isManajerSertifikasi())
+                <a class="nav-btn nav-btn-primary" href="{{ route('manajer-sertifikasi.index') }}">
+                    <i class="bi bi-speedometer2"></i> Dashboard Manajer
+                </a>
+                @elseif(Auth::user()->isBendahara())
+                <a class="nav-btn nav-btn-primary" href="{{ route('bendahara.dashboard') }}">
+                    <i class="bi bi-speedometer2"></i> Dashboard Bendahara
+                </a>
                 @elseif(Auth::user()->isDirektur())
                 <a class="nav-btn nav-btn-primary" href="{{ route('direktur.dashboard') }}">
                     <i class="bi bi-speedometer2"></i> Dashboard Direktur
+                </a>
+                @elseif(Auth::user()->isDirekturKeuangan())
+                <a class="nav-btn nav-btn-primary" href="{{ route('direktur.keuangan.index') }}">
+                    <i class="bi bi-speedometer2"></i> Dashboard Keuangan
                 </a>
                 @endif
                 <form method="POST" action="{{ route('logout') }}" class="d-inline m-0">
@@ -438,6 +452,32 @@
                     </a>
                 </div>
 
+                @elseif(Auth::user()->isManajerSertifikasi())
+                <div class="hero-badge"><i class="bi bi-clipboard-data"></i> Manajer Sertifikasi</div>
+                <h1>Kelola <span class="c-blue">Distribusi Soal</span> & <span class="c-red">SK Ujikom</span></h1>
+                <p class="lead">Distribusikan soal ke jadwal asesmen, kelola bank soal, review hasil, dan terbitkan SK Hasil Ujikom per batch.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ route('manajer-sertifikasi.index') }}" class="btn-hero-primary">
+                        <i class="bi bi-speedometer2"></i> Buka Dashboard
+                    </a>
+                    <a href="{{ route('manajer-sertifikasi.sk-ujikom.index') }}" class="btn-hero-secondary">
+                        <i class="bi bi-award"></i> SK Ujikom
+                    </a>
+                </div>
+
+                @elseif(Auth::user()->isBendahara())
+                <div class="hero-badge"><i class="bi bi-cash-stack"></i> Bendahara</div>
+                <h1>Kelola <span class="c-blue">Keuangan</span> & <span class="c-red">Honor Asesor</span></h1>
+                <p class="lead">Verifikasi pembayaran asesi, proses honor asesor, dan susun laporan keuangan LSP secara akurat.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ route('bendahara.dashboard') }}" class="btn-hero-primary">
+                        <i class="bi bi-speedometer2"></i> Buka Dashboard
+                    </a>
+                    <a href="{{ route('bendahara.payments.index') }}" class="btn-hero-secondary">
+                        <i class="bi bi-cash-coin"></i> Verifikasi Pembayaran
+                    </a>
+                </div>
+
                 @elseif(Auth::user()->isDirektur())
                 <div class="hero-badge"><i class="bi bi-shield-check"></i> Direktur LSP</div>
                 <h1>Rekap & <span class="c-blue">Pengawasan</span> Sistem <span class="c-red">Sertifikasi</span></h1>
@@ -452,6 +492,19 @@
                         @if($pending > 0)
                         <span class="badge bg-warning text-dark ms-1" style="font-size:.7rem;">{{ $pending }}</span>
                         @endif
+                    </a>
+                </div>
+
+                @elseif(Auth::user()->isDirekturKeuangan())
+                <div class="hero-badge"><i class="bi bi-graph-up-arrow"></i> Direktur Keuangan</div>
+                <h1>Pantauan <span class="c-blue">Laporan Keuangan</span> Real-time</h1>
+                <p class="lead">Akses laporan Neraca, Laba Rugi, Arus Kas, dan Perubahan Modal LSP secara read-only, kapan saja.</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="{{ route('direktur.keuangan.index') }}" class="btn-hero-primary">
+                        <i class="bi bi-speedometer2"></i> Buka Dashboard
+                    </a>
+                    <a href="{{ route('direktur.keuangan.laba-rugi') }}" class="btn-hero-secondary">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Laba Rugi
                     </a>
                 </div>
 
@@ -500,7 +553,7 @@
             @foreach([
                 ['1','Kelola TUK & Skema','Tambah dan kelola data TUK serta skema sertifikasi yang aktif','bi-building','admin.tuks','Kelola TUK'],
                 ['2','Verifikasi Asesi','Verifikasi data asesi yang masuk dan mulai proses asesmen','bi-list-check','admin.praasesmen.index','Pra-Asesmen'],
-['3','Monitor Pembayaran','Pantau dan verifikasi pembayaran asesi mandiri','bi-cash-coin','admin.payments.index','Pembayaran'],
+                ['3','Monitor Pembayaran','Pantau dan verifikasi pembayaran asesi mandiri','bi-cash-coin','admin.payments.index','Pembayaran'],
                 ['4','Input Hasil & Laporan','Input hasil asesmen dan export laporan sistem','bi-file-earmark-bar-graph','admin.assessments','Asesmen'],
             ] as [$n, $title, $desc, $icon, $route, $label])
             <div class="col-lg-3 col-md-6">
@@ -601,6 +654,62 @@
             @endforeach
         </div>
 
+        @elseif(Auth::user()->isManajerSertifikasi())
+        <div class="section-head">
+            <div class="eyebrow"><i class="bi bi-clipboard-data"></i> Manajer Sertifikasi</div>
+            <h2>Tugas Manajer Sertifikasi</h2>
+            <div class="underline-accent"></div>
+        </div>
+        <div class="row g-4">
+            @foreach([
+                ['1','Distribusi Soal','Distribusikan soal teori, observasi, dan portofolio ke jadwal asesmen','bi-send-check','manajer-sertifikasi.distribusi','Distribusi Soal'],
+                ['2','Kelola Bank Soal','Kelola bank soal teori, observasi, dan portofolio per skema','bi-journal-bookmark','manajer-sertifikasi.bank-soal.index','Bank Soal'],
+                ['3','Review Hasil Asesmen','Periksa hasil observasi, portofolio, dan berita acara per jadwal','bi-clipboard-check','manajer-sertifikasi.hasil-asesmen.index','Hasil Asesmen'],
+                ['4','Terbitkan SK Ujikom','Buat dan ajukan SK Hasil Ujikom per batch untuk disetujui Direktur','bi-award','manajer-sertifikasi.sk-ujikom.index','SK Ujikom'],
+            ] as [$n, $title, $desc, $icon, $route, $label])
+            <div class="col-lg-3 col-md-6">
+                <div class="step-card">
+                    <div class="step-num">{{ $n }}</div>
+                    <h4>{{ $title }}</h4>
+                    <p>{{ $desc }}</p>
+                    <div class="step-action">
+                        <a href="{{ route($route) }}" class="btn btn-primary btn-sm w-100">
+                            <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        @elseif(Auth::user()->isBendahara())
+        <div class="section-head">
+            <div class="eyebrow"><i class="bi bi-cash-stack"></i> Bendahara</div>
+            <h2>Tugas Bendahara</h2>
+            <div class="underline-accent"></div>
+        </div>
+        <div class="row g-4">
+            @foreach([
+                ['1','Verifikasi Pembayaran','Verifikasi bukti transfer pembayaran asesi mandiri & kolektif','bi-cash-coin','bendahara.payments.index','Pembayaran'],
+                ['2','Proses Honor Asesor','Buat kwitansi dan proses pembayaran honor asesor','bi-wallet2','bendahara.honor.index','Honor Asesor'],
+                ['3','Rekap Pendapatan','Lihat rekap pendapatan dari seluruh sumber penerimaan','bi-graph-up','bendahara.rekap-pendapatan','Rekap Pendapatan'],
+                ['4','Laporan Keuangan','Susun Neraca, Laba Rugi, Arus Kas, dan Perubahan Modal','bi-file-earmark-bar-graph','bendahara.laporan-keuangan.index','Laporan Keuangan'],
+            ] as [$n, $title, $desc, $icon, $route, $label])
+            <div class="col-lg-3 col-md-6">
+                <div class="step-card">
+                    <div class="step-num">{{ $n }}</div>
+                    <h4>{{ $title }}</h4>
+                    <p>{{ $desc }}</p>
+                    <div class="step-action">
+                        <a href="{{ route($route) }}" class="btn btn-primary btn-sm w-100">
+                            <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
         @elseif(Auth::user()->isDirektur())
         <div class="section-head">
             <div class="eyebrow"><i class="bi bi-shield-check"></i> Direktur</div>
@@ -613,6 +722,35 @@
                 ['2','Pantau TUK & Batch','Rekap jumlah asesi per TUK, termasuk pendaftaran kolektif per batch','bi-building','direktur.dashboard','Lihat TUK'],
                 ['3','Data Asesor','Lihat asesor aktif, skema yang dikuasai, dan jumlah jadwal yang dimiliki','bi-person-badge','direktur.dashboard','Lihat Asesor'],
                 ['4','Approval Jadwal','Review dan setujui jadwal asesmen. SK otomatis ter-generate setelah disetujui','bi-calendar-check-fill','direktur.schedules.index','Review Jadwal'],
+            ] as [$n, $title, $desc, $icon, $route, $label])
+            <div class="col-lg-3 col-md-6">
+                <div class="step-card">
+                    <div class="step-num">{{ $n }}</div>
+                    <h4>{{ $title }}</h4>
+                    <p>{{ $desc }}</p>
+                    <div class="step-action">
+                        <a href="{{ route($route) }}" class="btn btn-primary btn-sm w-100">
+                            <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        @elseif(Auth::user()->isDirekturKeuangan())
+        <div class="section-head">
+            <div class="eyebrow"><i class="bi bi-graph-up-arrow"></i> Direktur Keuangan</div>
+            <h2>Akses Direktur Keuangan</h2>
+            <div class="underline-accent"></div>
+            <p class="mt-2">Akses laporan keuangan bersifat read-only (pantauan)</p>
+        </div>
+        <div class="row g-4">
+            @foreach([
+                ['1','Neraca','Pantau posisi aset, kewajiban, dan modal LSP terkini','bi-bar-chart-steps','direktur.keuangan.neraca','Lihat Neraca'],
+                ['2','Laba Rugi','Pantau pendapatan, beban, dan laba/rugi berjalan','bi-file-earmark-bar-graph','direktur.keuangan.laba-rugi','Lihat Laba Rugi'],
+                ['3','Arus Kas','Pantau arus kas masuk dan keluar dari seluruh aktivitas','bi-cash-stack','direktur.keuangan.arus-kas','Lihat Arus Kas'],
+                ['4','Rekap Pendapatan','Lihat rekap pendapatan dari seluruh sumber penerimaan','bi-graph-up','direktur.keuangan.rekap-pendapatan','Rekap Pendapatan'],
             ] as [$n, $title, $desc, $icon, $route, $label])
             <div class="col-lg-3 col-md-6">
                 <div class="step-card">
@@ -762,8 +900,14 @@
                     <a href="{{ route('asesi.dashboard') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Saya</a>
                     @elseif(Auth::user()->isAsesor())
                     <a href="{{ route('asesor.dashboard') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Asesor</a>
+                    @elseif(Auth::user()->isManajerSertifikasi())
+                    <a href="{{ route('manajer-sertifikasi.index') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Manajer</a>
+                    @elseif(Auth::user()->isBendahara())
+                    <a href="{{ route('bendahara.dashboard') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Bendahara</a>
                     @elseif(Auth::user()->isDirektur())
                     <a href="{{ route('direktur.dashboard') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Direktur</a>
+                    @elseif(Auth::user()->isDirekturKeuangan())
+                    <a href="{{ route('direktur.keuangan.index') }}" class="btn-cta-white"><i class="bi bi-speedometer2"></i> Dashboard Keuangan</a>
                     @endif
                 </div>
             </div>

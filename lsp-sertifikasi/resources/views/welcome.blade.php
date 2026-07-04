@@ -500,7 +500,7 @@
             @foreach([
                 ['1','Kelola TUK & Skema','Tambah dan kelola data TUK serta skema sertifikasi yang aktif','bi-building','admin.tuks','Kelola TUK'],
                 ['2','Verifikasi Asesi','Verifikasi data asesi yang masuk dan mulai proses asesmen','bi-list-check','admin.praasesmen.index','Pra-Asesmen'],
-                ['3','Monitor Pembayaran','Pantau dan verifikasi pembayaran asesi mandiri','bi-cash-coin','admin.payments','Pembayaran'],
+['3','Monitor Pembayaran','Pantau dan verifikasi pembayaran asesi mandiri','bi-cash-coin','admin.payments.index','Pembayaran'],
                 ['4','Input Hasil & Laporan','Input hasil asesmen dan export laporan sistem','bi-file-earmark-bar-graph','admin.assessments','Asesmen'],
             ] as [$n, $title, $desc, $icon, $route, $label])
             <div class="col-lg-3 col-md-6">

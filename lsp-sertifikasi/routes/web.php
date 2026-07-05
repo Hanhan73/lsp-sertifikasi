@@ -1046,6 +1046,7 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::post('/kolektif/invoice/store',             [BendaharaController::class, 'kolektifInvoiceStore'])->name('kolektif.invoice.store');
         Route::put('/kolektif/invoice/{invoice}',           [BendaharaController::class, 'kolektifInvoiceUpdate'])->name('kolektif.invoice.update');
         Route::post('/kolektif/invoice/{invoice}/send',     [BendaharaController::class, 'kolektifInvoiceSend'])->name('kolektif.invoice.send');
+        Route::post('/kolektif/invoice/{invoice}/unsend',   [BendaharaController::class, 'kolektifInvoiceUnsend'])->name('kolektif.invoice.unsend');
         Route::get('/kolektif/invoice/{invoice}/pdf',       [BendaharaController::class, 'kolektifInvoicePdf'])->name('kolektif.invoice.pdf');
         Route::get('/kolektif/invoice/{invoice}/kwitansi',  [BendaharaController::class, 'kolektifKwitansi'])->name('kolektif.invoice.kwitansi');
         Route::post('/kolektif/invoice/{invoice}/angsuran', [BendaharaController::class, 'kolektifAngsuranStore'])->name('kolektif.angsuran.store');

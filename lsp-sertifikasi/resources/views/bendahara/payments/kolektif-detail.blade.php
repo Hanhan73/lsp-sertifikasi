@@ -96,7 +96,7 @@
 
         <div class="d-flex gap-2 flex-wrap">
             <a href="{{ route('bendahara.payments.kolektif.invoice.pdf', $invoice) }}"
-               target="_blank" class="btn btn-sm btn-outline-danger">
+            target="_blank" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-file-pdf"></i> Download PDF
             </a>
             @if($invoice->status === 'draft')
@@ -107,6 +107,22 @@
                     <i class="bi bi-send"></i> Kirim ke TUK
                 </button>
             </form>
+            @endif
+            @if($invoice->status === 'sent')
+                @php
+                    $adaPembayaranBerjalan = $collectivePayments->contains(
+                        fn($cp) => $cp->proof_path || $cp->status === 'verified'
+                    );
+                @endphp
+                @if(!$adaPembayaranBerjalan)
+                <form action="{{ route('bendahara.payments.kolektif.invoice.unsend', $invoice) }}" method="POST">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-warning"
+                            onclick="return confirm('Tarik kembali invoice ini ke draft? Invoice tidak akan lagi berstatus Terkirim, dan jurnal piutangnya akan dihapus.')">
+                        <i class="bi bi-arrow-counterclockwise"></i> Tarik ke Draft
+                    </button>
+                </form>
+                @endif
             @endif
         </div>
     </div>

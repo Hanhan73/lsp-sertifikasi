@@ -556,6 +556,48 @@ class BendaharaController extends Controller
             ->with('success', 'Invoice telah dikirim ke TUK.');
     }
 
+    /**
+ * Tarik kembali invoice yang sudah terkirim ke status draft.
+ * Hanya boleh selama BELUM ada angsuran yang diproses (upload bukti/verified) —
+ * kalau sudah ada pembayaran berjalan, terlalu berisiko untuk ditarik kembali.
+ */
+public function kolektifInvoiceUnsend(Invoice $invoice)
+{
+    abort_if($invoice->status !== 'sent', 403, 'Invoice ini tidak dalam status terkirim.');
+
+    $adaPembayaranBerjalan = $invoice->collectivePayments()
+        ->where(function ($q) {
+            $q->whereNotNull('proof_path')->orWhere('status', 'verified');
+        })->exists();
+
+    abort_if($adaPembayaranBerjalan, 403, 'Invoice tidak bisa ditarik kembali karena sudah ada angsuran yang diproses.');
+
+    DB::beginTransaction();
+    try {
+        // Hapus jurnal piutang yang dibuat saat invoice dikirim
+        $entryIds = \App\Models\JournalEntry::where('ref_type', Invoice::class . '_piutang')
+            ->where('ref_id', $invoice->id)
+            ->pluck('id');
+
+        \App\Models\JournalEntryLine::whereIn('journal_entry_id', $entryIds)->delete();
+        \App\Models\JournalEntry::whereIn('id', $entryIds)->delete();
+
+        // Hapus draft angsuran kosong (belum ada bukti bayar sama sekali)
+        $invoice->collectivePayments()->whereNull('proof_path')->delete();
+
+        $invoice->update(['status' => 'draft']);
+
+        DB::commit();
+
+        return redirect()->route('bendahara.payments.kolektif.detail', $invoice)
+            ->with('success', 'Invoice berhasil ditarik kembali ke draft. Silakan periksa/edit lalu kirim ulang.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('[INVOICE-UNSEND] ' . $e->getMessage());
+        return back()->with('error', 'Gagal menarik kembali invoice: ' . $e->getMessage());
+    }
+}
+
     public function kolektifInvoicePdf(Invoice $invoice)
     {
         $pdf      = Pdf::loadView('pdf.invoice-kolektif', compact('invoice'))->setPaper('A4');

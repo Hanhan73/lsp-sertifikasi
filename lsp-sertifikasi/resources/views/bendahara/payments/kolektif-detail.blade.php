@@ -529,8 +529,8 @@
                     <div class="input-group">
                         <span class="input-group-text">Rp</span>
                         <input type="number" name="amount" class="form-control"
-                               max="{{ $sisaTagihan }}" min="1" step="1000"
-                               value="{{ $sisaTagihan }}" required>
+                            max="{{ $sisaTagihan }}" min="0" step="1000"
+                            value="{{ $sisaTagihan }}" required>
                     </div>
                 </div>
                 <div class="mb-3">

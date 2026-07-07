@@ -456,12 +456,18 @@
                         $paketList = $paketDist ? collect([$paketDist]) : $obs->paket;
                     @endphp
                     <div class="border-bottom px-4 py-3">
-                        <div class="fw-semibold mb-2" style="font-size:.875rem;">
-                            <i class="bi bi-file-earmark-pdf text-danger me-2"></i>{{ $obs->judul }}
+                        <div class="fw-semibold mb-2 d-flex align-items-center gap-2 flex-wrap" style="font-size:.875rem;">
+                            <span><i class="bi bi-file-earmark-pdf text-danger me-2"></i>{{ $obs->judul }}</span>
                             @if(!$paketDist)
-                            <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem;">
+                            <span class="badge bg-warning text-dark" style="font-size:.65rem;">
                                 <i class="bi bi-exclamation-triangle me-1"></i>Paket belum dipilih di distribusi
                             </span>
+                            @else
+                            <a href="{{ route('asesor.observasi.download-paket', $paketDist) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:.7rem;">
+                                <i class="bi bi-download me-1"></i>Download Soal (Paket {{ $paketDist->kode_paket }})
+                            </a>
                             @endif
                         </div>
                         @if($paketList->isEmpty())

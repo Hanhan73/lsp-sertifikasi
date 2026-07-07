@@ -1392,11 +1392,8 @@ if ($soal->whereNotNull('submitted_at')->count() > 0) $teoriSubmit++;
 @push('scripts')
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content;
-const TOTAL_ASESI = {
-    {
-        $totalAsesi
-    }
-};
+const TOTAL_ASESI = {{ $totalAsesi }};
+
 
 document.addEventListener('DOMContentLoaded', function() {
     const hash = window.location.hash;
@@ -1410,9 +1407,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    SigPadManager.init('daftar-hadir-ttd', @json($asesor ? - > user ? - > signature_image));
-    SigPadManager.init('ba-asesor-ttd', @json($asesor ? - > user ? - > signature_image));
-    SigPadManager.init('asesor-ttd', @json($asesor ? - > user ? - > signature_image));
+SigPadManager.init('daftar-hadir-ttd', @json($asesor?->user?->signature_image));
+SigPadManager.init('ba-asesor-ttd',    @json($asesor?->user?->signature_image));
+SigPadManager.init('asesor-ttd',       @json($asesor?->user?->signature_image));
 });
 
 // ── Foto Dokumentasi Modal ──

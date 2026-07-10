@@ -114,7 +114,7 @@ class Asesor extends Model
     {
         return $this->foto_path
             ? asset('storage/' . $this->foto_path)
-            : asset('images/default-avatar.png');
+            : null;
     }
 
     public function honorPayments()

@@ -141,8 +141,15 @@
                         <td class="text-center text-muted">{{ $i + 1 }}</td>
                         <td>
                             <div class="d-flex align-items-center gap-2">
+                                @if($asesor->foto_url)
                                 <img src="{{ $asesor->foto_url }}" alt="Foto"
                                     style="width:40px; height:40px; border-radius:50%; object-fit:cover; border:2px solid #e2e8f0;">
+                                @else
+                                <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+                                    style="width:40px;height:40px;font-size:.9rem;">
+                                    {{ strtoupper(substr($asesor->nama, 0, 1)) }}
+                                </div>
+                                @endif
                                 <div>
                                     <strong>{{ $asesor->nama }}</strong>
                                     <br>

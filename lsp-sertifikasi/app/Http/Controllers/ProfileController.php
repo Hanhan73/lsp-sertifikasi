@@ -70,7 +70,6 @@ class ProfileController extends Controller
             'email' => $request->email,
         ]);
 
-        // Sinkronisasi ke tabel terkait per role
         if ($user->isTuk() && $user->tuk) {
             $user->tuk->update(['name' => $request->name]);
         }
@@ -118,12 +117,10 @@ class ProfileController extends Controller
 
         $user = auth()->user();
 
-        // hapus foto lama
         if ($user->photo_path) {
             Storage::disk('public')->delete($user->photo_path);
         }
 
-        // simpan foto baru
         $path = $request->file('photo')->store('profile-photos', 'public');
 
         $user->update([
@@ -150,32 +147,52 @@ class ProfileController extends Controller
     }
 
     /**
-     * Upload foto profil untuk Asesor (Asesor.foto_path, disk public)
+     * Upload foto profil untuk Asesor (Asesor.foto_path, disk public_html)
      */
-public function uploadFotoAsesor(Request $request)
-{
-    $request->validate([
-        'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-    ], [
-        'foto.required' => 'File foto wajib dipilih.',
-        'foto.image'    => 'File harus berupa gambar.',
-        'foto.mimes'    => 'Format foto harus JPG atau PNG.',
-        'foto.max'      => 'Ukuran foto maksimal 2 MB.',
-    ]);
+    public function uploadFotoAsesor(Request $request)
+    {
+        $request->validate([
+            'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ], [
+            'foto.required' => 'File foto wajib dipilih.',
+            'foto.image'    => 'File harus berupa gambar.',
+            'foto.mimes'    => 'Format foto harus JPG atau PNG.',
+            'foto.max'      => 'Ukuran foto maksimal 2 MB.',
+        ]);
 
-    $user   = auth()->user();
-    $asesor = $user->asesor;
+        $user   = auth()->user();
+        $asesor = $user->asesor;
 
-    abort_unless($asesor, 403, 'Data asesor tidak ditemukan.');
+        abort_unless($asesor, 403, 'Data asesor tidak ditemukan.');
 
-    if ($asesor->foto_path) {
-        Storage::disk('public_html')->delete($asesor->foto_path);
+        if ($asesor->foto_path) {
+            Storage::disk('public_html')->delete($asesor->foto_path);
+        }
+
+        $path = $request->file('foto')->store('asesors/foto', 'public_html');
+
+        $asesor->update(['foto_path' => $path]);
+
+        return back()->with('success', 'Foto profil berhasil diupdate!');
     }
 
-    $path = $request->file('foto')->store('asesors/foto', 'public_html');
+    /**
+     * Hapus foto profil Asesor (Asesor.foto_path, disk public_html)
+     */
+    public function deleteFotoAsesor()
+    {
+        $user   = auth()->user();
+        $asesor = $user->asesor;
 
-    $asesor->update(['foto_path' => $path]);
+        abort_unless($asesor, 403, 'Data asesor tidak ditemukan.');
 
-    return back()->with('success', 'Foto profil berhasil diupdate!');
-}
+        if (!$asesor->foto_path) {
+            return back()->with('error', 'Tidak ada foto profil untuk dihapus.');
+        }
+
+        Storage::disk('public_html')->delete($asesor->foto_path);
+        $asesor->update(['foto_path' => null]);
+
+        return back()->with('success', 'Foto profil berhasil dihapus!');
+    }
 }

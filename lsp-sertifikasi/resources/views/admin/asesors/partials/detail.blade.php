@@ -1,11 +1,19 @@
 <div class="row">
     {{-- Kolom Kiri: Foto + Identitas Utama --}}
     <div class="col-md-4 text-center border-end">
+        @if($asesor->foto_url)
         <img src="{{ $asesor->foto_url }}" alt="Foto {{ $asesor->nama }}"
             style="width:150px; height:160px; object-fit:cover; border-radius:10px; border:3px solid #e2e8f0;"
             class="mb-3">
 
         <h5 class="fw-bold mb-1">{{ $asesor->nama }}</h5>
+        @else
+        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+            style="width:150px;height:160px;font-size:2rem;margin:0 auto 1rem;">
+            {{ strtoupper(substr($asesor->nama, 0, 1)) }}
+        </div>
+        <h5 class="fw-bold mb-1">{{ $asesor->nama }}</h5>
+        @endif
         <p class="text-muted mb-2">{{ $asesor->jenis_kelamin_label }} &bull; {{ $asesor->umur }} tahun</p>
 
         <span class="badge bg-{{ $asesor->status_badge }} fs-6 mb-2">

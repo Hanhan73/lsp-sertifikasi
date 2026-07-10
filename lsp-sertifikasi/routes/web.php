@@ -751,7 +751,10 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
 Route::post('/profile/foto-asesor', [ProfileController::class, 'uploadFotoAsesor'])
     ->name('profile.upload-foto-asesor')
     ->middleware('role:asesor');
-
+Route::delete('/profile/foto-asesor', [ProfileController::class, 'deleteFotoAsesor'])
+    ->name('profile.delete-foto-asesor')    
+    ->middleware('role:asesor');
+    
 // ── Routes Direktur ─────────────────────────────────────────
 Route::prefix('direktur')
     ->name('direktur.')

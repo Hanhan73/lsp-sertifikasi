@@ -19,13 +19,13 @@
                 {{-- Foto --}}
                 <div class="mb-3">
                     @if($asesor?->foto_path)
-                    <img src="{{ asset('storage/' . $asesor->foto_path) }}"
+                    <img src="{{ $asesor->foto_url }}"
                          class="rounded-circle border shadow-sm"
                          style="width:90px;height:90px;object-fit:cover;" alt="Foto">
                     @else
-                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold mx-auto"
-                         style="width:90px;height:90px;font-size:2rem;">
-                        {{ strtoupper(substr($asesor?->nama ?? $user->name, 0, 1)) }}
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+                        style="width:38px;height:38px;font-size:.9rem;">
+                        {{ strtoupper(substr($asesor?->nama ?? 'A', 0, 1)) }}
                     </div>
                     @endif
                 </div>
@@ -43,11 +43,25 @@
                     <input type="file" name="foto" id="foto-asesor" class="d-none"
                            accept="image/jpeg,image/png,image/jpg"
                            onchange="document.getElementById('form-foto-asesor').submit()">
+                </form>
+
+                <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-outline-primary w-100"
                             onclick="document.getElementById('foto-asesor').click()">
                         <i class="bi bi-camera me-1"></i> Ganti Foto
                     </button>
-                </form>
+
+                    @if($asesor?->foto_path)
+                    <form action="{{ route('profile.delete-foto-asesor') }}" method="POST"
+                          onsubmit="return confirm('Hapus foto profil ini?')">
+                        @csrf @method('DELETE')
+                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Hapus Foto">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
+                    @endif
+                </div>
+
                 @error('foto')
                 <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror

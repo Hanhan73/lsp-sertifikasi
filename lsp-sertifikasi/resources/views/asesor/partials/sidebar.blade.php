@@ -9,7 +9,10 @@ $currentRoute = request()->route()->getName();
         <img src="{{ asset('storage/' . $asesor->foto_path) }}" class="rounded-circle border"
             style="width:38px;height:38px;object-fit:cover;" alt="foto">
         @else
-            <i class="bi bi-person-circle text-secondary" style="font-size:150px;"></i>
+        <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
+            style="width:38px;height:38px;font-size:.9rem;">
+            {{ strtoupper(substr($asesor?->nama ?? 'A', 0, 1)) }}
+        </div>
         @endif
         <div style="line-height:1.2;">
             <div class="fw-semibold small">{{ $asesor?->nama ?? auth()->user()->name }}</div>

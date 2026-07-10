@@ -83,10 +83,13 @@
     </div>
 </div>
 
-@once
-@push('scripts')
 <script>
 (function () {
+    // Guard supaya listener tidak didaftarkan berkali-kali
+    // (partial ini bisa dirender lebih dari sekali dalam satu request: index → modal → edit, dst.)
+    if (window.__asesorDocsListenersInit) return;
+    window.__asesorDocsListenersInit = true;
+
     function csrfToken() {
         return document.querySelector('meta[name="csrf-token"]')?.content
             ?? document.querySelector('input[name="_token"]')?.value;
@@ -153,7 +156,12 @@
         const card  = input.closest('#asesor-documents-card');
         const row   = input.closest('tr');
         const jenis = input.dataset.jenis;
-        const storeUrl = card.dataset.storeUrl || @json($storeUrl);
+        const storeUrl = card.dataset.storeUrl;
+
+        if (!storeUrl) {
+            toast('error', 'URL upload tidak ditemukan.');
+            return;
+        }
 
         const formData = new FormData();
         formData.append('jenis_dokumen', jenis);
@@ -239,5 +247,3 @@
     });
 })();
 </script>
-@endpush
-@endonce

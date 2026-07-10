@@ -12,7 +12,7 @@ class ProfileController extends Controller
     /**
      * Show profile — redirect ke view sesuai role
      */
-public function show()
+    public function show()
     {
         $user = auth()->user();
 
@@ -149,4 +149,33 @@ public function show()
         return back()->with('error', 'Tidak ada foto profil untuk dihapus.');
     }
 
+    /**
+     * Upload foto profil untuk Asesor (Asesor.foto_path, disk public)
+     */
+    public function uploadFotoAsesor(Request $request)
+    {
+        $request->validate([
+            'foto' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ], [
+            'foto.required' => 'File foto wajib dipilih.',
+            'foto.image'    => 'File harus berupa gambar.',
+            'foto.mimes'    => 'Format foto harus JPG atau PNG.',
+            'foto.max'      => 'Ukuran foto maksimal 2 MB.',
+        ]);
+
+        $user   = auth()->user();
+        $asesor = $user->asesor;
+
+        abort_unless($asesor, 403, 'Data asesor tidak ditemukan.');
+
+        if ($asesor->foto_path) {
+            Storage::disk('public')->delete($asesor->foto_path);
+        }
+
+        $path = $request->file('foto')->store('asesors/foto', 'public');
+
+        $asesor->update(['foto_path' => $path]);
+
+        return back()->with('success', 'Foto profil berhasil diupdate!');
+    }
 }

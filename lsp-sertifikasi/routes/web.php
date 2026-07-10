@@ -231,6 +231,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ── Skema ──────────────────────────────────────────────────────────────
     Route::prefix('skemas')->name('skemas.')->group(function () {
+        
         Route::get('/',                    [SkemaController::class, 'index'])->name('index');
         Route::get('/create',              [SkemaController::class, 'create'])->name('create');
         Route::post('/',                   [SkemaController::class, 'store'])->name('store');
@@ -255,6 +256,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ── Asesor (master data) ───────────────────────────────────────────────
     Route::prefix('asesors')->name('asesors.')->group(function () {
+        Route::get('/export', [AdminAsesorController::class, 'export'])
+            ->name('export');
         Route::get('/',              [AdminAsesorController::class, 'index'])->name('index');
         Route::get('/create',        [AdminAsesorController::class, 'create'])->name('create');
         Route::post('/',             [AdminAsesorController::class, 'store'])->name('store');

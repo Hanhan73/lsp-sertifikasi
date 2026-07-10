@@ -61,6 +61,10 @@
     <div class="card-header bg-white d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="mb-0"><i class="bi bi-person-badge"></i> Daftar Asesor</h5>
         <div class="d-flex gap-2 flex-wrap">
+            {{-- Export --}}
+            <a href="{{ route('admin.asesors.export', request()->query()) }}" class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-spreadsheet"></i> Export Excel
+            </a>
             {{-- Import --}}
             <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
                 <i class="bi bi-file-earmark-excel"></i> Import Excel

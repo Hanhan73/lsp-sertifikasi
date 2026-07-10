@@ -387,4 +387,23 @@ class AdminAsesorController extends Controller
             echo Storage::disk('private')->get($asesor->sk_pengangkatan_path);
         }, $asesor->sk_pengangkatan_filename ?? 'SK_Asesor.pdf', ['Content-Type' => 'application/pdf']);
     }
+
+        /**
+     * Export rekap data Asesor ke Excel (mengikuti filter yang aktif)
+     */
+    public function export(Request $request)
+    {
+        $filters = [
+            'search'        => $request->input('search'),
+            'status_reg'    => $request->input('status_reg'),
+            'jenis_kelamin' => $request->input('jenis_kelamin'),
+        ];
+
+        $filename = 'Rekap_Asesor_' . now()->format('Ymd_His') . '.xlsx';
+
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\AsesorExport($filters),
+            $filename
+        );
+    }
 }

@@ -9,15 +9,51 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class AsesorExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize
+class AsesorExport implements FromCollection, WithHeadings, WithMapping, WithStyles, ShouldAutoSize, WithCustomValueBinder, WithEvents
 {
     protected array $filters;
 
     public function __construct(array $filters = [])
     {
         $this->filters = $filters;
+    }
+
+    /**
+     * Paksa kolom NIK (kolom C) selalu tersimpan sebagai string —
+     * mencegah Excel menampilkannya dalam notasi ilmiah (3.2E+15).
+     */
+    public function bindValue(Cell $cell, $value)
+    {
+        if ($cell->getColumn() === 'C') {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+            return true;
+        }
+
+        return (new DefaultValueBinder())->bindValue($cell, $value);
+    }
+
+    /**
+     * Set format kolom NIK jadi Text supaya tampilannya juga rapi.
+     */
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                $event->sheet->getDelegate()
+                    ->getStyle('C:C')
+                    ->getNumberFormat()
+                    ->setFormatCode(NumberFormat::FORMAT_TEXT);
+            },
+        ];
     }
 
     public function collection(): Collection

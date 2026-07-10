@@ -119,7 +119,7 @@ class AsesorExport implements FromCollection, WithHeadings, WithMapping, WithSty
             $no,
             $asesor->nama,
             $asesor->nik,
-            $asesor->jenis_kelamin_label,
+            $asesor->jenis_kelamin,
             $asesor->tempat_lahir,
             $asesor->tanggal_lahir?->translatedFormat('d-m-Y'),
             $asesor->umur,

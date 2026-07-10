@@ -20,12 +20,12 @@
                 <div class="mb-3">
                     @if($asesor?->foto_path)
                     <img src="{{ $asesor->foto_url }}"
-                         class="rounded-circle border shadow-sm"
-                         style="width:90px;height:90px;object-fit:cover;" alt="Foto">
+                        class="rounded-circle border shadow-sm"
+                        style="width:90px;height:90px;object-fit:cover;" alt="Foto">
                     @else
-                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"
-                        style="width:38px;height:38px;font-size:.9rem;">
-                        {{ strtoupper(substr($asesor?->nama ?? 'A', 0, 1)) }}
+                    <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold mx-auto"
+                        style="width:90px;height:90px;font-size:2rem;">
+                        {{ strtoupper(substr($asesor?->nama ?? $user->name, 0, 1)) }}
                     </div>
                     @endif
                 </div>

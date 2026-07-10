@@ -6,7 +6,7 @@ $currentRoute = request()->route()->getName();
 <div class="sidebar-header px-3 py-3 border-bottom">
     <div class="d-flex align-items-center gap-2">
         @if($asesor?->foto_path)
-        <img src="{{ asset('storage/' . $asesor->foto_path) }}" class="rounded-circle border"
+        <img src="{{ $asesor->foto_url }}" class="rounded-circle border"
             style="width:38px;height:38px;object-fit:cover;" alt="foto">
         @else
         <div class="rounded-circle bg-primary d-flex align-items-center justify-content-center text-white fw-bold"

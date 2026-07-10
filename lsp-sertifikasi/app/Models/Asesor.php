@@ -81,6 +81,16 @@ class Asesor extends Model
         return $this->hasOne(AsesorRekening::class)->where('is_utama', true);
     }
 
+    public function documents()
+    {
+        return $this->hasMany(AsesorDocument::class);
+    }
+
+    public function document(string $jenis): ?AsesorDocument
+    {
+        return $this->documents->firstWhere('jenis_dokumen', $jenis);
+    }
+
     // Accessor: label status
     public function getStatusLabelAttribute()
     {

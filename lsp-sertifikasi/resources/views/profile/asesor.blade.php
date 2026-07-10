@@ -133,7 +133,12 @@
 
         {{-- Form rekening asesor --}}
         @include('profile.partials.rekening-asesor')
-        
+
+        {{-- Dokumen Pendukung Asesor --}}
+        <div class="mb-4">
+            @include('partials.asesor-documents', ['asesor' => $asesor, 'context' => 'asesor'])
+        </div>
+
         {{-- Form Password --}}
         @include('profile.partials.form-password')
 

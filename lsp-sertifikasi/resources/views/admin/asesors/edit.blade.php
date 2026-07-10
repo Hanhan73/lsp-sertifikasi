@@ -237,6 +237,11 @@
                         </a>
                     </div>
                 </form>
+
+                {{-- Dokumen Pendukung — DI LUAR form update utama agar tidak nested <form> --}}
+                <hr>
+                @include('partials.asesor-documents', ['asesor' => $asesor, 'context' => 'admin'])
+
             </div>
         </div>
     </div>

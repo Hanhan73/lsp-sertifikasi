@@ -11,6 +11,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SignatureController;
 use App\Http\Controllers\AsesorRekeningController;
+use App\Http\Controllers\AsesorDocumentController;
 
 // Admin
 use App\Http\Controllers\Admin\AdminController;
@@ -264,6 +265,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::delete('/{asesor}',   [AdminAsesorController::class, 'destroy'])->name('destroy');
         Route::post('/{asesor}/buat-akun', [AdminAsesorController::class, 'buatAkun'])->name('buat-akun');
         Route::get('/{asesor}/sk/download', [AdminAsesorController::class, 'downloadSk'])->name('sk.download');
+        Route::post('/{asesor}/documents', [AsesorDocumentController::class, 'storeAdmin'])
+            ->name('documents.store');
+        Route::get('/{asesor}/documents/{document}/download', [AsesorDocumentController::class, 'downloadAdmin'])
+            ->name('documents.download');
+        Route::delete('/{asesor}/documents/{document}', [AsesorDocumentController::class, 'destroyAdmin'])
+            ->name('documents.destroy');
     });
 
     // ── Verifikasi kolektif & mandiri ──────────────────────────────────────
@@ -731,6 +738,13 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::put('/{rekening}',    [AsesorRekeningController::class, 'asesorUpdate'])->name('update');
         Route::delete('/{rekening}', [AsesorRekeningController::class, 'asesorDestroy'])->name('destroy');
     });
+
+    Route::post('/documents', [AsesorDocumentController::class, 'storeSelf'])
+        ->name('documents.store');
+    Route::get('/documents/{document}/download', [AsesorDocumentController::class, 'downloadSelf'])
+        ->name('documents.download');
+    Route::delete('/documents/{document}', [AsesorDocumentController::class, 'destroySelf'])
+        ->name('documents.destroy');
 });
 
 // Upload foto asesor — hanya untuk role asesor, karena terkait profile yang akan diverifikasi admin

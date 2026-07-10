@@ -145,7 +145,7 @@ class AdminAsesorController extends Controller
     public function show(Asesor $asesor)
     {
         try {
-            $asesor->load('user', 'rekenings');
+            $asesor->load('user', 'rekenings', 'documents');
             $html = view('admin.asesors.partials.detail', compact('asesor'))->render();
             return response()->json(['success' => true, 'html' => $html]);
         } catch (\Exception $e) {
@@ -161,6 +161,8 @@ class AdminAsesorController extends Controller
         $asesor->load('user');
         return view('admin.asesors.edit', compact('asesor'));
     }
+
+    
 
     /**
      * Update Asesor

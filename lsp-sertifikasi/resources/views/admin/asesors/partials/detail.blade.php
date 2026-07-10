@@ -87,46 +87,51 @@
                     @if($asesor->provinsi) / {{ $asesor->provinsi }} @endif
                 </td>
             </tr>
-            <div class="card border-0 shadow-sm mt-4">
-                <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
-                    <i class="bi bi-file-earmark-check text-primary"></i>SK Pengangkatan
-                    @if($asesor->sk_pengangkatan_path)
-                    <span class="badge bg-success ms-auto">Tersedia</span>
-                    @else
-                    <span class="badge bg-secondary ms-auto">Belum Diupload</span>
-                    @endif
-                </div>
-                <div class="card-body">
-                    @if($asesor->sk_pengangkatan_path)
-                    <table class="table table-sm table-borderless mb-3">
-                        <tr>
-                            <td class="text-muted" style="width:130px;">Nomor SK</td>
-                            <td class="fw-semibold font-monospace">{{ $asesor->sk_pengangkatan_number }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Tanggal</td>
-                            <td>{{ $asesor->sk_pengangkatan_date?->translatedFormat('d M Y') }}</td>
-                        </tr>
-                        <tr>
-                            <td class="text-muted">Berlaku Hingga</td>
-                            <td
-                                class="{{ $asesor->sk_pengangkatan_valid_until?->isPast() ? 'text-danger fw-bold' : '' }}">
-                                {{ $asesor->sk_pengangkatan_valid_until?->translatedFormat('d M Y') ?? 'Tidak ditentukan' }}
-                            </td>
-                        </tr>
-                    </table>
-                    <a href="{{ route('admin.asesors.sk.download', $asesor) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-download me-1"></i>Download SK
-                    </a>
-                    @else
-                    <p class="text-muted small mb-0">Asesor belum mengupload SK Pengangkatan.</p>
-                    @endif
-                </div>
-            </div>
         </table>
 
+        {{-- SK Pengangkatan --}}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white fw-semibold d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-check text-primary"></i>SK Pengangkatan
+                @if($asesor->sk_pengangkatan_path)
+                <span class="badge bg-success ms-auto">Tersedia</span>
+                @else
+                <span class="badge bg-secondary ms-auto">Belum Diupload</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if($asesor->sk_pengangkatan_path)
+                <table class="table table-sm table-borderless mb-3">
+                    <tr>
+                        <td class="text-muted" style="width:130px;">Nomor SK</td>
+                        <td class="fw-semibold font-monospace">{{ $asesor->sk_pengangkatan_number }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Tanggal</td>
+                        <td>{{ $asesor->sk_pengangkatan_date?->translatedFormat('d M Y') }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">Berlaku Hingga</td>
+                        <td
+                            class="{{ $asesor->sk_pengangkatan_valid_until?->isPast() ? 'text-danger fw-bold' : '' }}">
+                            {{ $asesor->sk_pengangkatan_valid_until?->translatedFormat('d M Y') ?? 'Tidak ditentukan' }}
+                        </td>
+                    </tr>
+                </table>
+                <a href="{{ route('admin.asesors.sk.download', $asesor) }}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-download me-1"></i>Download SK
+                </a>
+                @else
+                <p class="text-muted small mb-0">Asesor belum mengupload SK Pengangkatan.</p>
+                @endif
+            </div>
+        </div>
+
+        {{-- Dokumen Pendukung --}}
+        @include('partials.asesor-documents', ['asesor' => $asesor, 'context' => 'admin'])
+
         {{-- KONTAK --}}
-        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">
+        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3 mt-4">
             <i class="bi bi-envelope"></i> Kontak
         </h6>
         <table class="table table-sm table-borderless mb-4">
@@ -177,14 +182,14 @@
 
         {{-- KETERANGAN --}}
         @if($asesor->keterangan)
-        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">
+        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3 mt-4">
             <i class="bi bi-chat-left-text"></i> Keterangan
         </h6>
         <p class="text-muted">{{ $asesor->keterangan }}</p>
         @endif
 
         {{-- SISTEM --}}
-        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">
+        <h6 class="fw-bold text-primary border-bottom pb-1 mb-3 mt-4">
             <i class="bi bi-info-circle"></i> Informasi Sistem
         </h6>
         <table class="table table-sm table-borderless mb-0">

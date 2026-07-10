@@ -12,7 +12,7 @@ class ProfileController extends Controller
     /**
      * Show profile — redirect ke view sesuai role
      */
-    public function show()
+public function show()
     {
         $user = auth()->user();
 
@@ -29,6 +29,7 @@ class ProfileController extends Controller
             $user->load('asesor');
             $user->load('asesor.rekenings');
             $user->load('asesor.rekeningUtama');
+            $user->load('asesor.documents');
             return view('profile.asesor', compact('user'));
         }
 

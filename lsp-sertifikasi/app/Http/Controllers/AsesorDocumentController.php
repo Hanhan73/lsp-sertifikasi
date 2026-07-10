@@ -18,7 +18,7 @@ class AsesorDocumentController extends Controller
         ];
     }
 
-    private function upload(Request $request, Asesor $asesor, ?int $uploadedBy): string
+    private function upload(Request $request, Asesor $asesor, ?int $uploadedBy): AsesorDocument
     {
         $request->validate($this->rules(), [
             'jenis_dokumen.required' => 'Jenis dokumen tidak valid.',
@@ -28,7 +28,6 @@ class AsesorDocumentController extends Controller
         ]);
 
         $jenis = $request->jenis_dokumen;
-        $label = AsesorDocument::JENIS_LABELS[$jenis];
 
         $existing = $asesor->documents()->where('jenis_dokumen', $jenis)->first();
         if ($existing) {
@@ -39,7 +38,7 @@ class AsesorDocumentController extends Controller
         $filename = $jenis . '_' . str_replace(' ', '_', $asesor->nama) . '_' . now()->format('YmdHis') . '.pdf';
         $path     = $file->storeAs("asesors/documents/{$asesor->id}", $filename, 'private');
 
-        AsesorDocument::updateOrCreate(
+        $document = AsesorDocument::updateOrCreate(
             ['asesor_id' => $asesor->id, 'jenis_dokumen' => $jenis],
             [
                 'file_path'   => $path,
@@ -55,7 +54,7 @@ class AsesorDocumentController extends Controller
             'uploaded_by' => $uploadedBy,
         ]);
 
-        return $label;
+        return $document;
     }
 
     private function download(AsesorDocument $document)
@@ -73,12 +72,40 @@ class AsesorDocumentController extends Controller
         $document->delete();
     }
 
+    /**
+     * Bentuk payload JSON yang dipakai JS untuk update baris tabel
+     */
+    private function documentPayload(Asesor $asesor, AsesorDocument $document, bool $isAdmin): array
+    {
+        return [
+            'success'  => true,
+            'message'  => "{$document->label} berhasil diupload.",
+            'document' => [
+                'jenis_dokumen'   => $document->jenis_dokumen,
+                'label'           => $document->label,
+                'file_name'       => $document->file_name,
+                'file_size_human' => $document->file_size_human,
+                'download_url'    => $isAdmin
+                    ? route('admin.asesors.documents.download', [$asesor, $document])
+                    : route('asesor.documents.download', $document),
+                'delete_url'      => $isAdmin
+                    ? route('admin.asesors.documents.destroy', [$asesor, $document])
+                    : route('asesor.documents.destroy', $document),
+            ],
+        ];
+    }
+
     // ── ADMIN ──
 
     public function storeAdmin(Request $request, Asesor $asesor)
     {
-        $label = $this->upload($request, $asesor, auth()->id());
-        return back()->with('success', "{$label} berhasil diupload.");
+        $document = $this->upload($request, $asesor, auth()->id());
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($this->documentPayload($asesor, $document, true));
+        }
+
+        return back()->with('success', "{$document->label} berhasil diupload.");
     }
 
     public function downloadAdmin(Asesor $asesor, AsesorDocument $document)
@@ -87,10 +114,16 @@ class AsesorDocumentController extends Controller
         return $this->download($document);
     }
 
-    public function destroyAdmin(Asesor $asesor, AsesorDocument $document)
+    public function destroyAdmin(Request $request, Asesor $asesor, AsesorDocument $document)
     {
         abort_if($document->asesor_id !== $asesor->id, 403);
+        $jenis = $document->jenis_dokumen;
         $this->delete($document);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'jenis_dokumen' => $jenis, 'message' => 'Dokumen berhasil dihapus.']);
+        }
+
         return back()->with('success', 'Dokumen berhasil dihapus.');
     }
 
@@ -101,8 +134,13 @@ class AsesorDocumentController extends Controller
         $asesor = auth()->user()->asesor;
         abort_unless($asesor, 403);
 
-        $label = $this->upload($request, $asesor, auth()->id());
-        return back()->with('success', "{$label} berhasil diupload.");
+        $document = $this->upload($request, $asesor, auth()->id());
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($this->documentPayload($asesor, $document, false));
+        }
+
+        return back()->with('success', "{$document->label} berhasil diupload.");
     }
 
     public function downloadSelf(AsesorDocument $document)
@@ -112,11 +150,18 @@ class AsesorDocumentController extends Controller
         return $this->download($document);
     }
 
-    public function destroySelf(AsesorDocument $document)
+    public function destroySelf(Request $request, AsesorDocument $document)
     {
         $asesor = auth()->user()->asesor;
         abort_if(!$asesor || $document->asesor_id !== $asesor->id, 403);
+
+        $jenis = $document->jenis_dokumen;
         $this->delete($document);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'jenis_dokumen' => $jenis, 'message' => 'Dokumen berhasil dihapus.']);
+        }
+
         return back()->with('success', 'Dokumen berhasil dihapus.');
     }
 }

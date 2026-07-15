@@ -757,7 +757,9 @@ Route::post('/profile/foto-asesor', [ProfileController::class, 'uploadFotoAsesor
 Route::delete('/profile/foto-asesor', [ProfileController::class, 'deleteFotoAsesor'])
     ->name('profile.delete-foto-asesor')    
     ->middleware('role:asesor');
-    
+    Route::put('/profile/asesor-data', [ProfileController::class, 'updateAsesorData'])
+    ->name('profile.update-asesor-data')
+    ->middleware('role:asesor');
 // ── Routes Direktur ─────────────────────────────────────────
 Route::prefix('direktur')
     ->name('direktur.')

@@ -81,6 +81,43 @@ class ProfileController extends Controller
         return back()->with('success', 'Informasi profil berhasil diupdate!');
     }
 
+/**
+     * Update data identitas Asesor (nama, NIK, TTL, alamat, dll) — self-service oleh asesor sendiri
+     * Data registrasi (no_reg_met, no_blanko, siap_kerja) juga bisa diubah asesor sendiri.
+     * status_reg & expire_date TETAP dikelola Admin karena itu status resmi/administratif.
+     */
+    public function updateAsesorData(Request $request)
+    {
+        $user   = auth()->user();
+        $asesor = $user->asesor;
+
+        abort_unless($asesor, 403, 'Data asesor tidak ditemukan.');
+
+        $validated = $request->validate([
+            'nama'          => 'required|string|max:255',
+            'nik'           => 'required|string|max:16|unique:asesors,nik,' . $asesor->id,
+            'tempat_lahir'  => 'required|string|max:255',
+            'tanggal_lahir' => 'required|date',
+            'jenis_kelamin' => 'required|in:L,P',
+            'alamat'        => 'nullable|string',
+            'kota'          => 'nullable|string|max:255',
+            'provinsi'      => 'nullable|string|max:255',
+            'telepon'       => 'nullable|string|max:20',
+            'no_reg_met'    => 'nullable|string|max:255',
+            'no_blanko'     => 'nullable|string|max:255',
+            'siap_kerja'    => 'required|in:Memiliki,Tidak',
+        ], [
+            'nik.unique' => 'NIK ini sudah terdaftar untuk asesor lain.',
+        ]);
+
+        $asesor->update($validated);
+
+        // Sinkronkan nama ke akun user juga (biar konsisten sama pola updateInfo)
+        $user->update(['name' => $validated['nama']]);
+
+        return back()->with('success', 'Data identitas berhasil diupdate!');
+    }
+
     /**
      * Update password — berlaku untuk semua role
      */

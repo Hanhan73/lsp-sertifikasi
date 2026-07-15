@@ -68,12 +68,152 @@
 
                 <hr>
 
-                {{-- Data asesor (readonly) --}}
-                <div class="text-start small">
+                {{-- Data identitas: view / edit toggle --}}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold small text-primary">
+                        <i class="bi bi-person-vcard me-1"></i>Data Identitas
+                    </span>
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none" onclick="toggleEditAsesor()">
+                        <span id="edit-asesor-label"><i class="bi bi-pencil"></i> Edit</span>
+                    </button>
+                </div>
+
+                {{-- Mode: view --}}
+                <div id="asesor-view" class="text-start small">
                     <div class="d-flex justify-content-between py-1 border-bottom">
                         <span class="text-muted">NIK</span>
                         <span class="fw-semibold font-monospace">{{ $asesor?->nik ?? '-' }}</span>
                     </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">TTL</span>
+                        <span>{{ $asesor?->tempat_lahir ?? '-' }}, {{ $asesor?->tanggal_lahir?->translatedFormat('d M Y') ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">Jenis Kelamin</span>
+                        <span>{{ $asesor?->jenis_kelamin === 'L' ? 'Laki-laki' : ($asesor?->jenis_kelamin === 'P' ? 'Perempuan' : '-') }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">Alamat</span>
+                        <span class="text-end">{{ $asesor?->alamat ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">Kota / Provinsi</span>
+                        <span>{{ $asesor?->kota ?? '-' }}, {{ $asesor?->provinsi ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Telepon</span>
+                        <span>{{ $asesor?->telepon ?? '-' }}</span>
+                    </div>
+                </div>
+
+{{-- Mode: edit --}}
+                <form id="asesor-edit" action="{{ route('profile.update-asesor-data') }}" method="POST"
+                      class="text-start small d-none">
+                    @csrf @method('PUT')
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Nama Lengkap</label>
+                        <input type="text" name="nama"
+                               class="form-control form-control-sm @error('nama') is-invalid @enderror"
+                               value="{{ old('nama', $asesor?->nama) }}" required>
+                        @error('nama')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">NIK</label>
+                        <input type="text" name="nik" maxlength="16"
+                               class="form-control form-control-sm @error('nik') is-invalid @enderror"
+                               value="{{ old('nik', $asesor?->nik) }}" required>
+                        @error('nik')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-7">
+                            <label class="form-label small mb-1">Tempat Lahir</label>
+                            <input type="text" name="tempat_lahir"
+                                   class="form-control form-control-sm @error('tempat_lahir') is-invalid @enderror"
+                                   value="{{ old('tempat_lahir', $asesor?->tempat_lahir) }}" required>
+                            @error('tempat_lahir')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-5">
+                            <label class="form-label small mb-1">Tgl Lahir</label>
+                            <input type="date" name="tanggal_lahir"
+                                   class="form-control form-control-sm @error('tanggal_lahir') is-invalid @enderror"
+                                   value="{{ old('tanggal_lahir', $asesor?->tanggal_lahir?->format('Y-m-d')) }}" required>
+                            @error('tanggal_lahir')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Jenis Kelamin</label>
+                        <select name="jenis_kelamin" class="form-select form-select-sm" required>
+                            <option value="L" {{ old('jenis_kelamin', $asesor?->jenis_kelamin) === 'L' ? 'selected' : '' }}>Laki-laki</option>
+                            <option value="P" {{ old('jenis_kelamin', $asesor?->jenis_kelamin) === 'P' ? 'selected' : '' }}>Perempuan</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Alamat</label>
+                        <textarea name="alamat" rows="2" class="form-control form-control-sm">{{ old('alamat', $asesor?->alamat) }}</textarea>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Kota</label>
+                            <input type="text" name="kota" class="form-control form-control-sm"
+                                   value="{{ old('kota', $asesor?->kota) }}">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">Provinsi</label>
+                            <input type="text" name="provinsi" class="form-control form-control-sm"
+                                   value="{{ old('provinsi', $asesor?->provinsi) }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small mb-1">No. Telepon</label>
+                        <input type="text" name="telepon" class="form-control form-control-sm"
+                               value="{{ old('telepon', $asesor?->telepon) }}">
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small mb-1">No. Reg. Met.</label>
+                            <input type="text" name="no_reg_met" class="form-control form-control-sm @error('no_reg_met') is-invalid @enderror"
+                                   value="{{ old('no_reg_met', $asesor?->no_reg_met) }}">
+                            @error('no_reg_met')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small mb-1">No. Blanko</label>
+                            <input type="text" name="no_blanko" class="form-control form-control-sm @error('no_blanko') is-invalid @enderror"
+                                   value="{{ old('no_blanko', $asesor?->no_blanko) }}">
+                            @error('no_blanko')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small mb-1">SIAPKerja</label>
+                        <select name="siap_kerja" class="form-select form-select-sm @error('siap_kerja') is-invalid @enderror" required>
+                            <option value="Memiliki" {{ old('siap_kerja', $asesor?->siap_kerja) === 'Memiliki' ? 'selected' : '' }}>✅ Memiliki</option>
+                            <option value="Tidak" {{ old('siap_kerja', $asesor?->siap_kerja) === 'Tidak' ? 'selected' : '' }}>❌ Tidak Memiliki</option>
+                        </select>
+                        @error('siap_kerja')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-save me-1"></i> Simpan
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleEditAsesor()">
+                            Batal
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                {{-- Data registrasi — view mode, TETAP tampil di sini juga untuk quick-glance --}}
+                <div class="text-start small">
                     <div class="d-flex justify-content-between py-1 border-bottom">
                         <span class="text-muted">No. Reg. Met.</span>
                         <span class="fw-semibold">{{ $asesor?->no_reg_met ?? '-' }}</span>
@@ -81,14 +221,6 @@
                     <div class="d-flex justify-content-between py-1 border-bottom">
                         <span class="text-muted">No. Blanko</span>
                         <span class="fw-semibold">{{ $asesor?->no_blanko ?? '-' }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between py-1 border-bottom">
-                        <span class="text-muted">Jenis Kelamin</span>
-                        <span>{{ $asesor?->jenis_kelamin === 'L' ? 'Laki-laki' : ($asesor?->jenis_kelamin === 'P' ? 'Perempuan' : '-') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between py-1 border-bottom">
-                        <span class="text-muted">Telepon</span>
-                        <span>{{ $asesor?->telepon ?? '-' }}</span>
                     </div>
                     <div class="d-flex justify-content-between py-1">
                         <span class="text-muted">SIAPKerja</span>
@@ -98,11 +230,6 @@
                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Tidak</span>
                         @endif
                     </div>
-                </div>
-
-                <div class="alert alert-light border mt-3 mb-0 text-start small">
-                    <i class="bi bi-info-circle text-primary me-1"></i>
-                    Data identitas dikelola oleh Admin LSP. Hubungi admin untuk perubahan data.
                 </div>
             </div>
         </div>
@@ -159,3 +286,20 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function toggleEditAsesor() {
+    document.getElementById('asesor-view').classList.toggle('d-none');
+    document.getElementById('asesor-edit').classList.toggle('d-none');
+    const isEditing = !document.getElementById('asesor-edit').classList.contains('d-none');
+    document.getElementById('edit-asesor-label').innerHTML = isEditing
+        ? '<i class="bi bi-x-lg"></i> Batal'
+        : '<i class="bi bi-pencil"></i> Edit';
+}
+
+@if($errors->has('nama') || $errors->has('nik') || $errors->has('tempat_lahir') || $errors->has('tanggal_lahir') || $errors->has('jenis_kelamin') || $errors->has('no_reg_met') || $errors->has('no_blanko') || $errors->has('siap_kerja'))
+document.addEventListener('DOMContentLoaded', toggleEditAsesor);
+@endif
+</script>
+@endpush

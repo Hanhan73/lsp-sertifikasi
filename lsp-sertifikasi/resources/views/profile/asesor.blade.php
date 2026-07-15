@@ -200,6 +200,25 @@
                         @error('siap_kerja')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">Status Registrasi</label>
+                        <select name="status_reg" id="status_reg" class="form-select form-select-sm @error('status_reg') is-invalid @enderror" required>
+                            <option value="aktif" {{ old('status_reg', $asesor?->status_reg) === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                            <option value="expire" {{ old('status_reg', $asesor?->status_reg) === 'expire' ? 'selected' : '' }}>Expire</option>
+                            <option value="nonaktif" {{ old('status_reg', $asesor?->status_reg) === 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                        </select>
+                        @error('status_reg')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3" id="expire-date-wrapper"
+                         style="display: {{ old('status_reg', $asesor?->status_reg) === 'expire' ? 'block' : 'none' }};">
+                        <label class="form-label small mb-1">Tanggal Expire</label>
+                        <input type="date" name="expire_date"
+                               class="form-control form-control-sm @error('expire_date') is-invalid @enderror"
+                               value="{{ old('expire_date', $asesor?->expire_date?->format('Y-m-d')) }}">
+                        @error('expire_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary btn-sm w-100">
                             <i class="bi bi-save me-1"></i> Simpan

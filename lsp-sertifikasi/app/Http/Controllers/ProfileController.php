@@ -82,9 +82,8 @@ class ProfileController extends Controller
     }
 
 /**
-     * Update data identitas Asesor (nama, NIK, TTL, alamat, dll) — self-service oleh asesor sendiri
-     * Data registrasi (no_reg_met, no_blanko, siap_kerja) juga bisa diubah asesor sendiri.
-     * status_reg & expire_date TETAP dikelola Admin karena itu status resmi/administratif.
+     * Update data identitas Asesor (nama, NIK, TTL, alamat, dll) — self-service oleh asesor sendiri.
+     * Semua field data asesor termasuk status_reg & expire_date sekarang bisa diubah asesor sendiri.
      */
     public function updateAsesorData(Request $request)
     {
@@ -106,9 +105,17 @@ class ProfileController extends Controller
             'no_reg_met'    => 'nullable|string|max:255',
             'no_blanko'     => 'nullable|string|max:255',
             'siap_kerja'    => 'required|in:Memiliki,Tidak',
+            'status_reg'    => 'required|in:aktif,expire,nonaktif',
+            'expire_date'   => 'nullable|required_if:status_reg,expire|date',
         ], [
             'nik.unique' => 'NIK ini sudah terdaftar untuk asesor lain.',
+            'expire_date.required_if' => 'Tanggal expire wajib diisi jika status Expire.',
         ]);
+
+        // Kalau status bukan expire, kosongkan expire_date biar nggak nyangkut data lama
+        if ($validated['status_reg'] !== 'expire') {
+            $validated['expire_date'] = null;
+        }
 
         $asesor->update($validated);
 
@@ -117,7 +124,6 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Data identitas berhasil diupdate!');
     }
-
     /**
      * Update password — berlaku untuk semua role
      */

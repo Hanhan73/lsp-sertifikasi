@@ -10,11 +10,13 @@ class AsesorDocument extends Model
     use HasFactory;
 
     public const JENIS_LABELS = [
-        'sertifikat_bnsp'   => 'Sertifikat Asesor BNSP',
-        'sertifikat_teknis' => 'Sertifikat Teknis',
-        'ijazah'            => 'Ijazah / Transkrip Nilai',
-        'cv'                => 'Curriculum Vitae',
-        'ktp'               => 'KTP',
+        'sertifikat_bnsp'    => 'Sertifikat Asesor BNSP',
+        'sertifikat_teknis'  => 'Sertifikat Teknis',
+        'kartu_aspapi'       => 'Kartu ASPAPI',
+        'sertifikat_aspapi'  => 'Sertifikat Asesor ASPAPI',
+        'ijazah'             => 'Ijazah / Transkrip Nilai',
+        'cv'                 => 'Curriculum Vitae',
+        'ktp'                => 'KTP',
     ];
 
     protected $fillable = [

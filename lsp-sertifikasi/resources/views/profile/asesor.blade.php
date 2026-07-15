@@ -104,6 +104,28 @@
                         <span class="text-muted">Telepon</span>
                         <span>{{ $asesor?->telepon ?? '-' }}</span>
                     </div>
+                    <div class="text-start small">
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">No. Reg. Met.</span>
+                        <span class="fw-semibold">{{ $asesor?->no_reg_met ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">No. Blanko</span>
+                        <span class="fw-semibold">{{ $asesor?->no_blanko ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">SIAPKerja</span>
+                        @if($asesor?->siap_kerja === 'Memiliki')
+                        <span class="badge bg-success-subtle text-success border border-success-subtle">Memiliki</span>
+                        @else
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Tidak</span>
+                        @endif
+                    </div>
+                    <div class="d-flex justify-content-between py-1">
+                        <span class="text-muted">Status Registrasi</span>
+                        <span class="badge bg-{{ $asesor?->status_badge ?? 'secondary' }}">{{ $asesor?->status_label ?? '-' }}</span>
+                    </div>
+                </div>
                 </div>
 
 {{-- Mode: edit --}}

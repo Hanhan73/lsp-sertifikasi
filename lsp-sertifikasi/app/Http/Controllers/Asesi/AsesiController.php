@@ -843,17 +843,13 @@ public function aplsatuBuktiSave(Request $request)
         ]);
     }
 
-    /**
+/**
      * Submit APL-02 dengan tanda tangan asesi
      */
     public function apldua_submit(Request $request)
     {
         $request->validate([
             'signature' => 'required|string',
-            'rows'      => 'nullable|array',
-            'rows.*.elemen_id' => 'integer|exists:elemens,id',
-            'rows.*.jawaban'   => 'nullable|in:K,BK',
-            'rows.*.bukti'     => 'nullable|string|max:1000',
         ]);
 
         $asesmen = auth()->user()->asesmens()->latest()->first();
@@ -869,20 +865,53 @@ public function aplsatuBuktiSave(Request $request)
             return response()->json(['success' => false, 'message' => 'APL-02 sudah disubmit.'], 400);
         }
 
-        // ✅ Simpan jawaban dari request sebelum validasi (atomic)
-        if ($request->has('rows') && is_array($request->rows)) {
-            foreach ($request->rows as $row) {
+        // ✅ FIX: rows dikirim via FormData sebagai JSON string, decode dulu.
+        // Ini jaring pengaman utama kalau autosave sebelumnya gagal (sesi putus, dsb).
+        $rows = null;
+        if ($request->has('rows')) {
+            $rawRows = $request->input('rows');
+            $rows = is_string($rawRows) ? json_decode($rawRows, true) : $rawRows;
+        }
+
+        if (is_array($rows)) {
+            // Validasi manual tiap row (karena datang dari JSON string, bukan array biasa)
+            $validElemenIds = $apldua->jawabans()->pluck('elemen_id')->toArray();
+
+            foreach ($rows as $row) {
+                if (!isset($row['elemen_id']) || !in_array((int) $row['elemen_id'], $validElemenIds)) {
+                    continue;
+                }
+                $jawabanVal = $row['jawaban'] ?? null;
+                if ($jawabanVal !== null && !in_array($jawabanVal, ['K', 'BK'])) {
+                    continue;
+                }
+
                 AplDuaJawaban::updateOrCreate(
-                    ['apl_02_id' => $apldua->id, 'elemen_id' => $row['elemen_id']],
-                    ['jawaban' => $row['jawaban'] ?? null, 'bukti' => $row['bukti'] ?? null]
+                    ['apl_02_id' => $apldua->id, 'elemen_id' => (int) $row['elemen_id']],
+                    [
+                        'jawaban' => $jawabanVal,
+                        'bukti'   => isset($row['bukti']) ? substr($row['bukti'], 0, 1000) : null,
+                    ]
                 );
             }
+
+            Log::info('[APL02-SUBMIT] Rows disimpan via fallback submit', [
+                'apldua_id' => $apldua->id,
+                'jumlah_rows' => count($rows),
+            ]);
         }
 
         // Validasi semua elemen sudah dijawab
         $total    = $apldua->jawabans()->count();
         $answered = $apldua->jawabans()->whereNotNull('jawaban')->count();
         if ($answered < $total) {
+            Log::warning('[APL02-SUBMIT] Gagal — belum semua elemen terisi', [
+                'apldua_id' => $apldua->id,
+                'answered'  => $answered,
+                'total'     => $total,
+                'had_rows_payload' => is_array($rows),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => "Semua elemen harus dijawab terlebih dahulu. ({$answered}/{$total} sudah diisi)",
@@ -902,8 +931,7 @@ public function aplsatuBuktiSave(Request $request)
         Log::info('[APL02-SUBMIT] Submitted', ['apldua_id' => $apldua->id]);
 
         return response()->json(['success' => true, 'message' => 'APL-02 berhasil disubmit!']);
-    }
-        
+    }        
     
     /**
      * Preview / Download PDF APL-02 (hanya jika sudah verified)

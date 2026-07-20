@@ -469,6 +469,10 @@ unitElemenMap[{{ $unit->id }}] = [
 ];
 @endforeach
 
+// ── Flag: autosave terakhir berhasil atau tidak ─────────────
+let lastSaveOk = true;
+let sessionExpiredWarned = false;
+
 window.addEventListener('DOMContentLoaded', () => {
     SigPadManager.init('asesi-apl02', @json(auth()->user()->signature_image));
     updateAllProgress();
@@ -567,6 +571,15 @@ function updateAllProgress() {
     });
 }
 
+// ── Build payload rows dari state JS saat ini ───────────────
+function buildRowsPayload() {
+    return Object.entries(jawaban).map(([elemenId, data]) => ({
+        elemen_id: parseInt(elemenId),
+        jawaban:   data.jawaban ?? null,
+        bukti:     data.bukti ?? '',
+    }));
+}
+
 // ── Auto-save (debounced) ───────────────────────────────────
 let saveTimer = null;
 
@@ -575,12 +588,10 @@ function debouncedSave() {
     saveTimer = setTimeout(doSave, 1200);
 }
 
+// ✅ FIX: doSave sekarang return boolean sukses/gagal,
+// dan kasih peringatan ke user kalau sesi habis / gagal simpan
 async function doSave() {
-    const rows = Object.entries(jawaban).map(([elemenId, data]) => ({
-        elemen_id: parseInt(elemenId),
-        jawaban:   data.jawaban ?? null,
-        bukti:     data.bukti ?? '',
-    }));
+    const rows = buildRowsPayload();
 
     try {
         const res = await fetch(SAVE_URL, {
@@ -592,12 +603,40 @@ async function doSave() {
             },
             body: JSON.stringify({ rows }),
         });
+
+        // Sesi habis / CSRF mismatch — beri tahu user, jangan diam-diam gagal
+        if (res.status === 419 || res.status === 401) {
+            lastSaveOk = false;
+            if (!sessionExpiredWarned) {
+                sessionExpiredWarned = true;
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Sesi Hampir Habis',
+                    html: 'Data terbaru gagal tersimpan otomatis (sesi login sudah tidak valid).<br><br><strong>Salin dulu jawaban penting Anda</strong>, lalu refresh halaman dan login ulang sebelum melanjutkan.',
+                    confirmButtonText: 'Mengerti',
+                });
+            }
+            return false;
+        }
+
+        if (!res.ok) {
+            lastSaveOk = false;
+            return false;
+        }
+
         const data = await res.json();
         if (data.success) {
+            lastSaveOk = true;
             showSaveIndicator();
+            return true;
         }
+
+        lastSaveOk = false;
+        return false;
     } catch (e) {
         console.error('[APL02] save error:', e);
+        lastSaveOk = false;
+        return false;
     }
 }
 
@@ -740,18 +779,41 @@ async function submitApldua() {
     try {
         // Pastikan auto-save selesai dulu sebelum submit
         clearTimeout(saveTimer);
-        await doSave();
+        const saveOk = await doSave();
+
+        if (!saveOk) {
+            // ✅ FIX: kalau autosave gagal, jangan lanjut submit dengan asumsi
+            // data sudah tersimpan di server — tapi tetap bisa lanjut karena
+            // rows akan dikirim ulang bareng request submit (fallback di bawah).
+            console.warn('[APL02] Autosave gagal sebelum submit, mengandalkan payload rows di request submit.');
+        }
 
         const signature = await SigPadManager.prepareAndGet('asesi-apl02');
 
+        // ✅ FIX UTAMA: kirim rows juga di request submit, jangan cuma signature.
+        // Ini jaring pengaman kalau autosave sebelumnya gagal / sesi sempat putus.
+        const rows = buildRowsPayload();
+
         const fd = new FormData();
         fd.append('signature', signature);
+        fd.append('rows', JSON.stringify(rows));
 
         const res = await fetch(SUBMIT_URL, {
             method: 'POST',
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
             body: fd,
         });
+
+        if (res.status === 419 || res.status === 401) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Sesi Berakhir',
+                html: 'Sesi login Anda sudah habis sehingga submit gagal.<br><br>Silakan <strong>refresh halaman dan login ulang</strong>, lalu submit kembali.',
+            });
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Submit APL-02'; }
+            return;
+        }
+
         const data = await res.json();
         if (data.success) {
             await Swal.fire({

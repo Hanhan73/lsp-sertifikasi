@@ -9,6 +9,7 @@ use App\Models\Tuk;
 use App\Models\Asesmen;
 use App\Models\Schedule;
 use App\Models\Payment;
+use App\Models\Skema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -34,17 +35,13 @@ class TukController extends Controller
         $stats = [
             'total_asesi'         => Asesmen::where('tuk_id', $tuk->id)->count(),
 
-            // Kolektif: perlu dijadwalkan setelah verified (skip paid)
-            // Mandiri : perlu dijadwalkan setelah paid
             'pending_schedule'    => Asesmen::where('tuk_id', $tuk->id)
                 ->where(function ($q) {
                     $q->where(function ($sq) {
-                        // Kolektif → verified sudah cukup
                         $sq->where('is_collective', true)
                             ->where('collective_paid_by_tuk', true)
                             ->where('status', 'verified');
                     })->orWhere(function ($sq) {
-                        // Mandiri → harus sudah paid
                         $sq->where(function ($mq) {
                             $mq->where('is_collective', false)
                                 ->orWhere('collective_paid_by_tuk', false);
@@ -56,7 +53,6 @@ class TukController extends Controller
             'scheduled'  => Asesmen::where('tuk_id', $tuk->id)->where('status', 'scheduled')->count(),
             'completed'  => Asesmen::where('tuk_id', $tuk->id)->whereIn('status', ['assessed', 'certified'])->count(),
 
-            // Pending verifikasi TUK
             'pending_verification' => Asesmen::where('tuk_id', $tuk->id)
                 ->where('status', 'data_completed')->count(),
         ];
@@ -80,177 +76,164 @@ class TukController extends Controller
         return view('tuk.collective.form', compact('tuk'));
     }
 
-    /**
-     * Store collective registration.
-     *
-     * Semua akun asesi dibuat otomatis, status dimulai dari 'registered'.
-     * Tidak ada proses pembayaran di flow utama — TUK membayar secara manual di luar sistem.
-     */
-public function storeCollectiveRegistration(Request $request)
-{
-    $participants = collect($request->participants ?? [])->map(function ($p) {
-        $email = strtolower(trim($p['email'] ?? ''));
-        // Buang semua karakter non-printable dan non-ASCII
-        $email = preg_replace('/[^\x20-\x7E]/', '', $email);
-        $email = trim($email); // trim lagi setelah strip
+    public function storeCollectiveRegistration(Request $request)
+    {
+        $participants = collect($request->participants ?? [])->map(function ($p) {
+            $email = strtolower(trim($p['email'] ?? ''));
+            $email = preg_replace('/[^\x20-\x7E]/', '', $email);
+            $email = trim($email);
 
-        $name = trim($p['name'] ?? '');
-        $name = preg_replace('/[^\x20-\x7E\p{L}\p{N}]/u', ' ', $name);
-        $name = trim($name);
+            $name = trim($p['name'] ?? '');
+            $name = preg_replace('/[^\x20-\x7E\p{L}\p{N}]/u', ' ', $name);
+            $name = trim($name);
 
-        return ['name' => $name, 'email' => $email];
-    })->filter(fn($p) => $p['name'] && $p['email'] && str_contains($p['email'], '@') && str_contains($p['email'], '.'))
-    ->values()
-    ->toArray();
+            return ['name' => $name, 'email' => $email];
+        })->filter(fn($p) => $p['name'] && $p['email'] && str_contains($p['email'], '@') && str_contains($p['email'], '.'))
+        ->values()
+        ->toArray();
 
-    Log::info('Collective Reg - participants diterima: ' . count($participants), [
-        'raw_count'    => count($request->participants ?? []),
-        'after_filter' => count($participants),
-    ]);
+        Log::info('Collective Reg - participants diterima: ' . count($participants), [
+            'raw_count'    => count($request->participants ?? []),
+            'after_filter' => count($participants),
+        ]);
 
-    $request->merge(['participants' => $participants]);
+        $request->merge(['participants' => $participants]);
 
-    if (empty($participants)) {
-        return redirect()->back()
-            ->withErrors(['participants' => 'Tidak ada data peserta yang valid.']);
-    }
+        if (empty($participants)) {
+            return redirect()->back()
+                ->withErrors(['participants' => 'Tidak ada data peserta yang valid.']);
+        }
 
-    // ← TAMBAH LOG INI
-    Log::info('Collective Reg - mulai validasi');
+        Log::info('Collective Reg - mulai validasi');
 
-    $request->validate([
-        'batch_name'           => 'nullable|string|max:255',
-        'participants'         => 'required|array|min:1',
-        'participants.*.name'  => 'required|string|max:255',
-        'participants.*.email' => 'required|string|email',
-        'skema_id'             => 'required|exists:skemas,id',
-        'payment_phases'       => 'required|in:single,two_phase',
-        'preferred_date'       => 'required|date|after:today',
-        'training_flag'        => 'required|boolean',
-    ]);
+        $request->validate([
+            'batch_name'           => 'nullable|string|max:255',
+            'participants'         => 'required|array|min:1',
+            'participants.*.name'  => 'required|string|max:255',
+            'participants.*.email' => 'required|string|email',
+            'skema_id'             => 'required|exists:skemas,id',
+            'payment_phases'       => 'required|in:single,two_phase',
+            'preferred_date'       => 'required|date|after:today',
+            'training_flag'        => 'required|boolean',
+        ]);
 
-    // ← TAMBAH LOG INI
-    Log::info('Collective Reg - validasi OK, mulai DB transaction');
+        Log::info('Collective Reg - validasi OK, mulai DB transaction');
 
-    $tuk       = auth()->user()->tuk;
-    $batchName = $request->batch_name
-        ? \Illuminate\Support\Str::slug($request->batch_name, '-')
-        : 'BATCH';
-    $suffix    = strtoupper(\Illuminate\Support\Str::random(6));
-    $batchId   = strtoupper($batchName) . '-' . $tuk->code . '-' . $suffix;
+        $tuk       = auth()->user()->tuk;
+        $batchName = $request->batch_name
+            ? \Illuminate\Support\Str::slug($request->batch_name, '-')
+            : 'BATCH';
+        $suffix    = strtoupper(\Illuminate\Support\Str::random(6));
+        $batchId   = strtoupper($batchName) . '-' . $tuk->code . '-' . $suffix;
 
-    $registeredCount = 0;
-    $errors          = [];
-    $skippedEmails   = [];
+        $registeredCount = 0;
+        $errors          = [];
+        $skippedEmails   = [];
 
-    DB::beginTransaction();
-    try {
-        foreach ($request->participants as $index => $participant) {
-            $email = strtolower(trim($participant['email']));
-            $name  = trim($participant['name']);
+        DB::beginTransaction();
+        try {
+            foreach ($request->participants as $index => $participant) {
+                $email = strtolower(trim($participant['email']));
+                $name  = trim($participant['name']);
 
-            // ← LOG SETIAP 10 PESERTA
-            if ($index % 10 === 0) {
-                Log::info("Collective Reg - progress: peserta ke-{$index}");
-            }
+                if ($index % 10 === 0) {
+                    Log::info("Collective Reg - progress: peserta ke-{$index}");
+                }
 
-            $user = User::where('email', $email)->first();
+                $user = User::where('email', $email)->first();
 
-            if ($user) {
-                $existingAsesmen = Asesmen::where('user_id', $user->id)
-                    ->whereNotIn('status', ['certified', 'assessed'])
-                    ->first();
+                if ($user) {
+                    $existingAsesmen = Asesmen::where('user_id', $user->id)
+                        ->whereNotIn('status', ['certified', 'assessed'])
+                        ->first();
 
-                if ($existingAsesmen) {
-                    // Hanya convert kalau status memungkinkan
-                    if (in_array($existingAsesmen->status, ['registered', 'data_completed'])) {
-                        $existingAsesmen->update([
-                            'tuk_id'                 => $tuk->id,
-                            'skema_id'               => $request->skema_id,
-                            'full_name'              => $name,
-                            'preferred_date'         => $request->preferred_date,
-                            'training_flag'          => $request->training_flag,
-                            'registration_date'      => now(),
-                            'status'                 => 'registered',
-                            'registered_by'          => auth()->id(),
-                            'is_collective'          => true,
-                            'collective_batch_id'    => $batchId,
-                            'payment_phases'         => $request->payment_phases,
-                            'collective_paid_by_tuk' => true,
-                            'skip_payment'           => true,
-                            'fee_amount'             => null,
-                            'admin_verified_at'      => null,
-                            'admin_verified_by'      => null,
-                        ]);
-                        Log::info("Collective Reg CONVERT: asesmen #{$existingAsesmen->id} ({$email}) → batch {$batchId}");
-                        $registeredCount++;
+                    if ($existingAsesmen) {
+                        if (in_array($existingAsesmen->status, ['registered', 'data_completed'])) {
+                            $existingAsesmen->update([
+                                'tuk_id'                 => $tuk->id,
+                                'skema_id'               => $request->skema_id,
+                                'full_name'              => $name,
+                                'preferred_date'         => $request->preferred_date,
+                                'training_flag'          => $request->training_flag,
+                                'registration_date'      => now(),
+                                'status'                 => 'registered',
+                                'registered_by'          => auth()->id(),
+                                'is_collective'          => true,
+                                'collective_batch_id'    => $batchId,
+                                'payment_phases'         => $request->payment_phases,
+                                'collective_paid_by_tuk' => true,
+                                'skip_payment'           => true,
+                                'fee_amount'             => null,
+                                'admin_verified_at'      => null,
+                                'admin_verified_by'      => null,
+                            ]);
+                            Log::info("Collective Reg CONVERT: asesmen #{$existingAsesmen->id} ({$email}) → batch {$batchId}");
+                            $registeredCount++;
+                            continue;
+                        }
+
+                        $errors[]        = "Baris " . ($index + 1) . ": {$name} ({$email}) sudah terdaftar dengan status {$existingAsesmen->status_label}, tidak bisa dikonversi";
+                        $skippedEmails[] = $email;
+                        Log::warning("Collective Reg SKIP (status tidak bisa convert): {$email} status={$existingAsesmen->status}");
                         continue;
                     }
 
-                    // Status tidak memungkinkan convert → skip
-                    $errors[]        = "Baris " . ($index + 1) . ": {$name} ({$email}) sudah terdaftar dengan status {$existingAsesmen->status_label}, tidak bisa dikonversi";
-                    $skippedEmails[] = $email;
-                    Log::warning("Collective Reg SKIP (status tidak bisa convert): {$email} status={$existingAsesmen->status}");
-                    continue;
+                    Log::info("Collective Reg REUSE user (no asesmen): {$email}");
+                } else {
+                    $user = User::create([
+                        'name'                => $name,
+                        'email'               => $email,
+                        'password'            => Hash::make('password123'),
+                        'role'                => 'asesi',
+                        'is_active'           => true,
+                        'password_changed_at' => null,
+                        'email_verified_at'   => now(),
+                    ]);
                 }
-
-                Log::info("Collective Reg REUSE user (no asesmen): {$email}");
-            } else {
-                $user = User::create([
-                    'name'                => $name,
-                    'email'               => $email,
-                    'password'            => Hash::make('password123'),
-                    'role'                => 'asesi',
-                    'is_active'           => true,
-                    'password_changed_at' => null,
-                    'email_verified_at'   => now(),
+                Asesmen::create([
+                    'user_id'                => $user->id,
+                    'tuk_id'                 => $tuk->id,
+                    'skema_id'               => $request->skema_id,
+                    'full_name'              => $name,
+                    'preferred_date'         => $request->preferred_date,
+                    'training_flag'          => $request->training_flag,
+                    'registration_date'      => now(),
+                    'status'                 => 'registered',
+                    'registered_by'          => auth()->id(),
+                    'is_collective'          => true,
+                    'collective_batch_id'    => $batchId,
+                    'payment_phases'         => $request->payment_phases,
+                    'collective_paid_by_tuk' => true,
+                    'skip_payment'           => true,
                 ]);
+
+                $registeredCount++;
             }
-            Asesmen::create([
-                'user_id'                => $user->id,
-                'tuk_id'                 => $tuk->id,
-                'skema_id'               => $request->skema_id,
-                'full_name'              => $name,
-                'preferred_date'         => $request->preferred_date,
-                'training_flag'          => $request->training_flag,
-                'registration_date'      => now(),
-                'status'                 => 'registered',
-                'registered_by'          => auth()->id(),
-                'is_collective'          => true,
-                'collective_batch_id'    => $batchId,
-                'payment_phases'         => $request->payment_phases,
-                'collective_paid_by_tuk' => true,
-                'skip_payment'           => true,
+
+            Log::info("Collective Reg - loop selesai, registeredCount: {$registeredCount}");
+
+            DB::commit();
+
+            Log::info("Collective Reg - DB commit OK");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Collective Registration Error: ' . $e->getMessage(), [
+                'batch_id'    => $batchId ?? null,
+                'tuk_id'      => $tuk->id,
+                'participant' => $participant ?? null,
+                'trace'       => $e->getTraceAsString(),
             ]);
 
-            $registeredCount++;
+            return redirect()->back()
+                ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
         }
 
-        // ← TAMBAH LOG INI
-        Log::info("Collective Reg - loop selesai, registeredCount: {$registeredCount}");
+        $message = "{$registeredCount} dari " . count($request->participants) . " peserta berhasil didaftarkan.";
+        $message .= ' Password default: "password123".';
 
-        DB::commit();
-
-        Log::info("Collective Reg - DB commit OK");
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Collective Registration Error: ' . $e->getMessage(), [
-            'batch_id'    => $batchId ?? null,
-            'tuk_id'      => $tuk->id,
-            'participant' => $participant ?? null,
-            'trace'       => $e->getTraceAsString(),
-        ]);
-
-        return redirect()->back()
-            ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
+        return redirect()->route('tuk.asesi')->with('success', $message);
     }
-
-    $message = "{$registeredCount} dari " . count($request->participants) . " peserta berhasil didaftarkan.";
-    $message .= ' Password default: "password123".';
-
-    return redirect()->route('tuk.asesi')->with('success', $message);
-}
 
     // =========================================================================
     // Asesi List
@@ -302,17 +285,10 @@ public function storeCollectiveRegistration(Request $request)
     // Scheduling
     // =========================================================================
 
-    /**
-     * Daftar asesi yang perlu dijadwalkan.
-     *
-     * Kolektif : status 'verified' (skip paid)
-     * Mandiri  : status 'paid'
-     */
     public function schedules()
     {
         $tuk = auth()->user()->tuk;
 
-        // Kolektif yang sudah verified (tidak perlu paid dulu)
         $collectiveReady = Asesmen::with(['user', 'skema'])
             ->where('tuk_id', $tuk->id)
             ->where('is_collective', true)
@@ -321,7 +297,6 @@ public function storeCollectiveRegistration(Request $request)
             ->whereNull('schedule_id')
             ->get();
 
-        // Mandiri yang sudah paid
         $mandiriPaid = Asesmen::with(['user', 'skema'])
             ->where('tuk_id', $tuk->id)
             ->where(function ($q) {
@@ -332,7 +307,6 @@ public function storeCollectiveRegistration(Request $request)
             ->whereNull('schedule_id')
             ->get();
 
-        // Gabung semua yang perlu dijadwalkan
         $asesmens = $collectiveReady->merge($mandiriPaid);
 
         $scheduled = Schedule::with(['asesmens.user', 'asesmens.skema', 'tuk', 'skema'])
@@ -343,11 +317,6 @@ public function storeCollectiveRegistration(Request $request)
         return view('tuk.schedules.index', compact('asesmens', 'scheduled', 'tuk'));
     }
 
-    /**
-     * Batch create schedule.
-     *
-     * Menerima asesi dengan status 'verified' (kolektif) ATAU 'paid' (mandiri).
-     */
     public function batchCreateSchedule(Request $request)
     {
         $tuk = auth()->user()->tuk;
@@ -389,7 +358,6 @@ public function storeCollectiveRegistration(Request $request)
                     continue;
                 }
 
-                // Izinkan 'verified' (kolektif) atau 'paid' (mandiri)
                 $allowedStatuses = $asesmen->shouldSkipPayment()
                     ? ['verified']
                     : ['paid'];
@@ -483,10 +451,6 @@ public function storeCollectiveRegistration(Request $request)
         ]);
     }
 
-    /**
-     * Delete schedule — kembalikan asesi ke status sebelum scheduled.
-     * Kolektif → verified, Mandiri → paid.
-     */
     public function deleteSchedule(Schedule $schedule)
     {
         $tuk = auth()->user()->tuk;
@@ -654,10 +618,6 @@ public function storeCollectiveRegistration(Request $request)
     // Collective Payment (Manual TF/QRIS) — Midtrans disembunyikan sementara
     // =========================================================================
 
-    /**
-     * Daftar batch — halaman ringkasan pembayaran kolektif.
-     * Midtrans dinonaktifkan sementara; TUK membayar via TF/QRIS di luar sistem.
-     */
     public function collectivePayments()
     {
         $tuk = auth()->user()->tuk;
@@ -672,8 +632,7 @@ public function storeCollectiveRegistration(Request $request)
             ->map(function ($batch) {
                 $firstAsesmen = $batch->first();
 
-                // Hitung status berdasarkan payment record manual
-                $paymentStatus  = 'manual';  // Default: pembayaran manual di luar sistem
+                $paymentStatus  = 'manual';
                 $canPayPhase1   = false;
                 $canPayPhase2   = false;
                 $currentPhase   = 'full';
@@ -719,9 +678,6 @@ public function storeCollectiveRegistration(Request $request)
         return view('tuk.payments.index', compact('batches', 'tuk'));
     }
 
-    /**
-     * Detail batch — view status pembayaran manual.
-     */
     public function collectivePayment($batchId)
     {
         $tuk = auth()->user()->tuk;
@@ -738,7 +694,6 @@ public function storeCollectiveRegistration(Request $request)
         $firstAsesmen  = $asesmens->first();
         $paymentPhases = $firstAsesmen->payment_phases ?? 'single';
 
-        // Hitung status phase
         $phase1Status = 'not_paid';
         $phase2Status = 'not_paid';
         $currentPhase = 'full';
@@ -772,7 +727,6 @@ public function storeCollectiveRegistration(Request $request)
             'totalAmount'   => $totalAmount,
             'allPaid'       => $allPaid,
             'tuk'           => $tuk,
-            // Midtrans-related: selalu false untuk saat ini
             'canPay'        => false,
             'paymentStatus' => $firstAsesmen->getBatchPaymentStatus() ?? 'manual',
         ]);
@@ -782,30 +736,20 @@ public function storeCollectiveRegistration(Request $request)
     // Midtrans Collective Payment — DISEMBUNYIKAN SEMENTARA (kode tetap ada)
     // =========================================================================
 
-    /**
-     * @deprecated Midtrans dinonaktifkan sementara. Gunakan pembayaran manual (TF/QRIS).
-     */
     public function createCollectiveSnapToken(Request $request, $batchId)
     {
-        // Blokir akses selama Midtrans dinonaktifkan
         return response()->json([
             'success' => false,
             'message' => 'Pembayaran via gateway sementara tidak tersedia. Silakan hubungi admin untuk melakukan pembayaran manual.',
         ], 503);
     }
 
-    /**
-     * @deprecated
-     */
     public function collectivePaymentFinish($batchId)
     {
         return redirect()->route('tuk.asesi')
             ->with('info', 'Pembayaran via gateway sementara tidak tersedia.');
     }
 
-    /**
-     * @deprecated
-     */
     public function checkCollectivePaymentStatus(Request $request, $batchId)
     {
         return response()->json([
@@ -833,6 +777,7 @@ public function storeCollectiveRegistration(Request $request)
 
         $firstAsesmen  = $asesmens->first();
         $paymentPhases = $firstAsesmen->payment_phases ?? 'single';
+        $skemas        = Skema::orderBy('name')->get(); // ← baru
 
         $phase1Status = 'not_paid';
         $phase2Status = 'not_paid';
@@ -869,73 +814,59 @@ public function storeCollectiveRegistration(Request $request)
             'hasVerifiedPayment',
             'payments',
             'totalAmount',
-            'tuk'
+            'tuk',
+            'skemas' // ← baru
         ));
     }
 
-    // =========================================================================
-    // Invoice
-    // =========================================================================
-
-    public function downloadCollectiveInvoice($batchId)
+    /**
+     * Ganti skema untuk seluruh member dalam batch kolektif milik TUK ini.
+     * Diblok kalau ada peserta yang sudah dijadwalkan/diases/tersertifikasi.
+     */
+    public function changeBatchSkema(Request $request, string $batchId)
     {
         $tuk = auth()->user()->tuk;
 
-        $asesmens = Asesmen::with(['skema', 'payments'])
-            ->where('collective_batch_id', $batchId)
+        $asesmens = Asesmen::where('collective_batch_id', $batchId)
             ->where('tuk_id', $tuk->id)
             ->get();
 
         if ($asesmens->isEmpty()) {
-            return redirect()->route('tuk.asesi')->with('error', 'Batch tidak ditemukan');
+            return response()->json(['success' => false, 'message' => 'Batch tidak ditemukan.'], 404);
         }
 
-        $payment = Payment::whereIn('asesmen_id', $asesmens->pluck('id'))
-            ->where('status', 'verified')
-            ->orderBy('created_at', 'desc')
-            ->first();
+        $request->validate([
+            'skema_id' => 'required|exists:skemas,id',
+        ]);
 
-        if (!$payment) {
-            return redirect()->back()->with('error', 'Belum ada pembayaran yang terverifikasi untuk batch ini');
+        $lockedStatuses = ['scheduled', 'pre_assessment_completed', 'assessed', 'certified'];
+        if ($asesmens->contains(fn($a) => in_array($a->status, $lockedStatuses))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Skema tidak bisa diubah karena sebagian/semua peserta sudah dijadwalkan atau diases.',
+            ], 422);
         }
 
-        $invoiceNumber = 'INV-BATCH-' . $payment->order_id;
-        $isCollective  = true;
-        $phase         = $payment->payment_phase ?? 'full';
-        $asesmen       = $asesmens->first();
+        $newSkema = Skema::find($request->skema_id);
 
-        $pdf      = Pdf::loadView('pdf.invoice', compact(
-            'payment',
-            'invoiceNumber',
-            'isCollective',
-            'phase',
-            'asesmen',
-            'asesmens',
-            'batchId',
-            'tuk'
-        ));
-        $filename = 'Invoice_Kolektif_' . $batchId . '_' . date('Ymd') . '.pdf';
+        DB::transaction(function () use ($asesmens, $request) {
+            foreach ($asesmens as $asesmen) {
+                $asesmen->update(['skema_id' => $request->skema_id]);
+            }
+        });
 
-        return $pdf->download($filename);
+        Log::info("TUK {$tuk->name} changed skema for batch '{$batchId}' → skema #{$request->skema_id} ({$newSkema->name})");
+
+        return response()->json([
+            'success'    => true,
+            'message'    => 'Skema batch berhasil diubah.',
+            'skema_id'   => $newSkema->id,
+            'skema_name' => $newSkema->name ?? '-',
+        ]);
     }
 
     // =========================================================================
-    // Verification (single)
-    // =========================================================================
-
-    public function showVerification(Asesmen $asesmen)
-    {
-        $tuk = auth()->user()->tuk;
-
-        if ($asesmen->tuk_id != $tuk->id) {
-            abort(403);
-        }
-
-        return view('tuk.verifications.show', compact('asesmen', 'tuk'));
-    }
-
-    // =========================================================================
-    // File Helpers
+    // Export
     // =========================================================================
 
     public function downloadTemplate($type = 'excel')
@@ -1034,183 +965,172 @@ public function storeCollectiveRegistration(Request $request)
         }
     }
 
-public function checkDuplicates(Request $request)
-{
-    $participants = $request->participants ?? [];
-    $duplicates   = [];
+    public function checkDuplicates(Request $request)
+    {
+        $participants = $request->participants ?? [];
+        $duplicates   = [];
 
-    foreach ($participants as $index => $p) {
-        $email = strtolower(trim($p['email'] ?? ''));
+        foreach ($participants as $index => $p) {
+            $email = strtolower(trim($p['email'] ?? ''));
 
-        // Hanya cek duplikat berdasarkan EMAIL saja
-        // Nama sama tapi email beda = orang berbeda, bukan duplikat
-        $match = Asesmen::with(['user', 'skema', 'tuk'])
-            ->whereHas('user', fn($q) => $q->where('email', $email))
+            $match = Asesmen::with(['user', 'skema', 'tuk'])
+                ->whereHas('user', fn($q) => $q->where('email', $email))
+                ->first();
+
+            if ($match) {
+                $canConvert = in_array($match->status, ['registered', 'data_completed']);
+
+                $duplicates[] = [
+                    'index'       => $index,
+                    'input_name'  => $p['name'],
+                    'input_email' => $p['email'],
+                    'match_type'  => 'email',
+                    'can_convert' => $canConvert,
+                    'existing'    => [
+                        'id'            => $match->id,
+                        'nama'          => $match->full_name,
+                        'email'         => $match->user->email ?? '-',
+                        'skema'         => $match->skema->name ?? '-',
+                        'tuk'           => $match->tuk->name ?? '-',
+                        'status'        => $match->status_label,
+                        'status_raw'    => $match->status,
+                        'is_collective' => $match->is_collective,
+                        'batch_id'      => $match->collective_batch_id ?? '-',
+                    ],
+                ];
+            }
+        }
+
+        return response()->json(['duplicates' => $duplicates]);
+    }
+
+    public function requestHapusMandiri(Request $request, Asesmen $asesmen)
+    {
+        $tuk = auth()->user()->tuk;
+
+        if ($asesmen->tuk_id === $tuk->id) {
+            return response()->json(['success' => false, 'message' => 'Tidak bisa request hapus asesi sendiri.'], 422);
+        }
+
+        if ($asesmen->delete_requested) {
+            return response()->json(['success' => true, 'message' => 'Request sudah pernah dikirim.']);
+        }
+
+        $asesmen->update([
+            'delete_requested'       => true,
+            'delete_request_reason'  => $request->reason ?? 'Duplikat dengan pendaftaran kolektif dari TUK ' . $tuk->name,
+            'delete_requested_at'    => now(),
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Request hapus berhasil dikirim ke admin.']);
+    }
+
+    public function addParticipantToBatch(Request $request, string $batchId)
+    {
+        $tuk = auth()->user()->tuk;
+
+        $existingBatch = Asesmen::where('collective_batch_id', $batchId)
+            ->where('tuk_id', $tuk->id)
             ->first();
 
-        if ($match) {
-            $canConvert = in_array($match->status, ['registered', 'data_completed']);
+        abort_if(!$existingBatch, 404, 'Batch tidak ditemukan.');
 
-            $duplicates[] = [
-                'index'       => $index,
-                'input_name'  => $p['name'],
-                'input_email' => $p['email'],
-                'match_type'  => 'email',
-                'can_convert' => $canConvert,
-                'existing'    => [
-                    'id'            => $match->id,
-                    'nama'          => $match->full_name,
-                    'email'         => $match->user->email ?? '-',
-                    'skema'         => $match->skema->name ?? '-',
-                    'tuk'           => $match->tuk->name ?? '-',
-                    'status'        => $match->status_label,
-                    'status_raw'    => $match->status,
-                    'is_collective' => $match->is_collective,
-                    'batch_id'      => $match->collective_batch_id ?? '-',
-                ],
-            ];
+        $request->validate([
+            'name'  => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+        ], [
+            'name.required'  => 'Nama lengkap wajib diisi.',
+            'email.required' => 'Email wajib diisi.',
+            'email.email'    => 'Format email tidak valid.',
+            'email.unique'   => 'Email sudah terdaftar di sistem.',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $name  = trim($request->name);
+            $email = strtolower(trim($request->email));
+
+            $user = User::create([
+                'name'                => $name,
+                'email'               => $email,
+                'password'            => Hash::make('password123'),
+                'role'                => 'asesi',
+                'is_active'           => true,
+                'password_changed_at' => null,
+                'email_verified_at'   => now(),
+            ]);
+
+            Asesmen::create([
+                'user_id'                => $user->id,
+                'tuk_id'                 => $tuk->id,
+                'skema_id'               => $existingBatch->skema_id,
+                'full_name'              => $name,
+                'preferred_date'         => $existingBatch->preferred_date,
+                'training_flag'          => $existingBatch->training_flag,
+                'registration_date'      => now(),
+                'status'                 => 'registered',
+                'registered_by'          => auth()->id(),
+                'is_collective'          => true,
+                'collective_batch_id'    => $batchId,
+                'payment_phases'         => $existingBatch->payment_phases,
+                'collective_paid_by_tuk' => true,
+                'skip_payment'           => true,
+            ]);
+
+            DB::commit();
+
+            return redirect()->route('tuk.batch.detail', $batchId)
+                ->with('success', "Peserta {$name} berhasil ditambahkan ke batch.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Add Participant To Batch Error: ' . $e->getMessage());
+
+            return redirect()->back()
+                ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
         }
     }
 
-    return response()->json(['duplicates' => $duplicates]);
-}
+    public function removeParticipantFromBatch(Request $request, string $batchId, Asesmen $asesmen)
+    {
+        $tuk = auth()->user()->tuk;
 
-public function requestHapusMandiri(Request $request, Asesmen $asesmen)
-{
-    $tuk = auth()->user()->tuk;
+        abort_if($asesmen->collective_batch_id !== $batchId || $asesmen->tuk_id !== $tuk->id, 403, 'Akses ditolak.');
 
-    // Pastikan yang direquest bukan milik TUK ini sendiri
-    if ($asesmen->tuk_id === $tuk->id) {
-        return response()->json(['success' => false, 'message' => 'Tidak bisa request hapus asesi sendiri.'], 422);
-    }
-
-    // Jangan duplikat request
-    if ($asesmen->delete_requested) {
-        return response()->json(['success' => true, 'message' => 'Request sudah pernah dikirim.']);
-    }
-
-    $asesmen->update([
-        'delete_requested'       => true,
-        'delete_request_reason'  => $request->reason ?? 'Duplikat dengan pendaftaran kolektif dari TUK ' . $tuk->name,
-        'delete_requested_at'    => now(),
-    ]);
-
-    return response()->json(['success' => true, 'message' => 'Request hapus berhasil dikirim ke admin.']);
-}
-
-public function addParticipantToBatch(Request $request, string $batchId)
-{
-    $tuk = auth()->user()->tuk;
-
-    // Pastikan batch ini milik TUK ini
-    $existingBatch = Asesmen::where('collective_batch_id', $batchId)
-        ->where('tuk_id', $tuk->id)
-        ->first();
-
-    abort_if(!$existingBatch, 404, 'Batch tidak ditemukan.');
-
-    $request->validate([
-        'name'  => 'required|string|max:255',
-        'email' => 'required|email|unique:users,email',
-    ], [
-        'name.required'  => 'Nama lengkap wajib diisi.',
-        'email.required' => 'Email wajib diisi.',
-        'email.email'    => 'Format email tidak valid.',
-        'email.unique'   => 'Email sudah terdaftar di sistem.',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        $name  = trim($request->name);
-        $email = strtolower(trim($request->email));
-
-        $user = User::create([
-            'name'                => $name,
-            'email'               => $email,
-            'password'            => Hash::make('password123'),
-            'role'                => 'asesi',
-            'is_active'           => true,
-            'password_changed_at' => null,
-            'email_verified_at'   => now(),
-        ]);
-
-        Asesmen::create([
-            'user_id'                => $user->id,
-            'tuk_id'                 => $tuk->id,
-            'skema_id'               => $existingBatch->skema_id,
-            'full_name'              => $name,
-            'preferred_date'         => $existingBatch->preferred_date,
-            'training_flag'          => $existingBatch->training_flag,
-            'registration_date'      => now(),
-            'status'                 => 'registered',
-            'registered_by'          => auth()->id(),
-            'is_collective'          => true,
-            'collective_batch_id'    => $batchId,
-            'payment_phases'         => $existingBatch->payment_phases,
-            'collective_paid_by_tuk' => true,
-            'skip_payment'           => true,
-        ]);
-
-        DB::commit();
-
-        return redirect()->route('tuk.batch.detail', $batchId)
-            ->with('success', "Peserta {$name} berhasil ditambahkan ke batch.");
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Add Participant To Batch Error: ' . $e->getMessage());
-
-        return redirect()->back()
-            ->withErrors(['error' => 'Terjadi kesalahan: ' . $e->getMessage()]);
-    }
-}
-
-public function removeParticipantFromBatch(Request $request, string $batchId, Asesmen $asesmen)
-{
-    $tuk = auth()->user()->tuk;
-
-    // Pastikan batch ini milik TUK ini
-    abort_if($asesmen->collective_batch_id !== $batchId || $asesmen->tuk_id !== $tuk->id, 403, 'Akses ditolak.');
-
-    // Jangan hapus kalau batch hanya tersisa 1 orang
-    $batchCount = Asesmen::where('collective_batch_id', $batchId)->count();
-    if ($batchCount <= 1) {
-        return redirect()->route('tuk.batch.detail', $batchId)
-            ->with('error', 'Tidak bisa menghapus peserta terakhir dalam batch.');
-    }
-
-    // Hanya boleh hapus jika status masih awal (belum diproses lebih lanjut)
-    $allowedStatuses = ['registered', 'data_completed', 'pra_asesmen_started'];
-    if (!in_array($asesmen->status, $allowedStatuses)) {
-        return redirect()->route('tuk.batch.detail', $batchId)
-            ->with('error', "Peserta {$asesmen->full_name} tidak bisa dihapus karena sudah dalam status: {$asesmen->status_label}.");
-    }
-
-    DB::beginTransaction();
-    try {
-        $name = $asesmen->full_name ?? $asesmen->user->name;
-        $user = $asesmen->user;
-
-        // Hapus asesmen
-        $asesmen->delete();
-
-        // Hapus user juga jika user ini tidak punya asesmen lain
-        // dan memang dibuat oleh TUK (kolektif)
-        if ($user && $user->asesmens()->count() === 0) {
-            $user->delete();
+        $batchCount = Asesmen::where('collective_batch_id', $batchId)->count();
+        if ($batchCount <= 1) {
+            return redirect()->route('tuk.batch.detail', $batchId)
+                ->with('error', 'Tidak bisa menghapus peserta terakhir dalam batch.');
         }
 
-        DB::commit();
+        $allowedStatuses = ['registered', 'data_completed', 'pra_asesmen_started'];
+        if (!in_array($asesmen->status, $allowedStatuses)) {
+            return redirect()->route('tuk.batch.detail', $batchId)
+                ->with('error', "Peserta {$asesmen->full_name} tidak bisa dihapus karena sudah dalam status: {$asesmen->status_label}.");
+        }
 
-        return redirect()->route('tuk.batch.detail', $batchId)
-            ->with('success', "Peserta {$name} berhasil dihapus dari batch.");
+        DB::beginTransaction();
+        try {
+            $name = $asesmen->full_name ?? $asesmen->user->name;
+            $user = $asesmen->user;
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Remove Participant From Batch Error: ' . $e->getMessage());
+            $asesmen->delete();
 
-        return redirect()->route('tuk.batch.detail', $batchId)
-            ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            if ($user && $user->asesmens()->count() === 0) {
+                $user->delete();
+            }
+
+            DB::commit();
+
+            return redirect()->route('tuk.batch.detail', $batchId)
+                ->with('success', "Peserta {$name} berhasil dihapus dari batch.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Remove Participant From Batch Error: ' . $e->getMessage());
+
+            return redirect()->route('tuk.batch.detail', $batchId)
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-}
 }

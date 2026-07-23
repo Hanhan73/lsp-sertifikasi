@@ -147,6 +147,7 @@ class AsesmenController extends Controller
         abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
 
         $firstBatch = $asesmens->first();
+        $skemas     = Skema::orderBy('name')->get(); // ← baru: untuk dropdown ganti skema
 
         $allDataCompleted = $asesmens->every(fn($a) => $a->status === 'data_completed');
         $asesmenStarted   = $asesmens->contains(
@@ -195,6 +196,7 @@ class AsesmenController extends Controller
             'batchId',
             'asesmens',
             'firstBatch',
+            'skemas', // ← baru
             'allDataCompleted',
             'asesmenStarted',
             'docProgress',
@@ -239,8 +241,8 @@ class AsesmenController extends Controller
 
         return view('admin.asesi.mandiri-per-tuk', compact('tuk', 'asesmens'));
     }
- 
-    
+
+
     // =========================================================
     // EXPORT BIODATA BATCH KE EXCEL
     // =========================================================
@@ -474,6 +476,52 @@ class AsesmenController extends Controller
             'success'      => true,
             'message'      => 'Nama batch berhasil diubah.',
             'new_batch_id' => $newBatchId,
+        ]);
+    }
+
+    // =========================================================
+    // CHANGE SKEMA BATCH
+    // =========================================================
+
+    /**
+     * Ganti skema untuk seluruh member dalam batch kolektif.
+     * Diblok kalau ada peserta yang sudah dijadwalkan/diases/tersertifikasi,
+     * karena FR.AK.01/04, jadwal, dan unit kompetensi sudah terikat ke skema lama.
+     */
+    public function changeBatchSkema(Request $request, string $batchId)
+    {
+        $request->validate([
+            'skema_id' => 'required|exists:skemas,id',
+        ]);
+
+        $asesmens = Asesmen::where('collective_batch_id', $batchId)->get();
+        abort_if($asesmens->isEmpty(), 404, 'Batch tidak ditemukan.');
+
+        $lockedStatuses = ['scheduled', 'pre_assessment_completed', 'assessed', 'certified'];
+        if ($asesmens->contains(fn($a) => in_array($a->status, $lockedStatuses))) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Skema tidak bisa diubah karena sebagian/semua peserta sudah dijadwalkan atau diases.',
+            ], 422);
+        }
+
+        $newSkema = Skema::find($request->skema_id);
+
+        DB::transaction(function () use ($asesmens, $request) {
+            foreach ($asesmens as $asesmen) {
+                $asesmen->update(['skema_id' => $request->skema_id]);
+            }
+        });
+
+        Log::info(
+            "Admin #" . auth()->id() . " changed skema for batch '{$batchId}' → skema #{$request->skema_id} ({$newSkema->name})"
+        );
+
+        return response()->json([
+            'success'    => true,
+            'message'    => 'Skema batch berhasil diubah.',
+            'skema_id'   => $newSkema->id,
+            'skema_name' => $newSkema->name ?? '-',
         ]);
     }
 

@@ -357,6 +357,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             ->name('batch.export-blanko');
         Route::get('/batch/{batchId}/export',      [AsesmenController::class, 'exportBatchBiodata'])->name('batch.export');
         Route::patch('/batch/{batchId}/rename',    [AsesmenController::class, 'renameBatch'])->name('batch.rename');
+        Route::patch('/batch/{batchId}/change-skema', [AsesmenController::class, 'changeBatchSkema'])  ->name('batch.change-skema');
         Route::get('/export', [AsesmenController::class, 'exportAllBiodata'])->name('export');
         Route::get('/{asesmen}',                   [AsesmenController::class, 'show'])->name('show');
         Route::get('/{asesmen}/detail',            [AsesmenController::class, 'detail'])->name('detail');
@@ -573,6 +574,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::get('/asesi',           [TukController::class, 'asesi'])->name('asesi');
     Route::get('/asesi/{asesmen}', [TukController::class, 'asesiDetail'])->name('asesi.show');
     Route::get('/batch/{batchId}', [TukController::class, 'batchDetail'])->name('batch.detail');
+    Route::patch('/batch/{batchId}/change-skema', [TukController::class, 'changeBatchSkema'])    ->name('batch.change-skema'); // ← baru
     Route::post('/asesi/{asesmen}/request-hapus', [TukController::class, 'requestHapusMandiri'])->name('asesi.request-hapus');
 
     // Jadwal

@@ -35,10 +35,16 @@
             <div
                 class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
                 <span><i class="bi bi-info-circle me-2 text-primary"></i>Informasi Batch</span>
-                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
-                    data-bs-target="#renameBatchModal">
-                    <i class="bi bi-pencil me-1"></i> Ubah Nama
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                        data-bs-target="#changeSkemaModal">
+                        <i class="bi bi-arrow-left-right me-1"></i> Ganti Skema
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                        data-bs-target="#renameBatchModal">
+                        <i class="bi bi-pencil me-1"></i> Ubah Nama
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row g-3">
@@ -54,7 +60,7 @@
                             </tr>
                             <tr>
                                 <td class="text-muted">Skema</td>
-                                <td>: {{ $firstBatch->skema->name ?? '-' }}</td>
+                                <td>: <span id="current-skema-name">{{ $firstBatch->skema->name ?? '-' }}</span></td>
                             </tr>
                         </table>
                     </div>
@@ -456,6 +462,47 @@
 
 </div>
 
+{{-- ── MODAL GANTI SKEMA ── --}}
+<div class="modal fade" id="changeSkemaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Ganti Skema Batch</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">SKEMA SAAT INI</label>
+                    <div class="form-control bg-light">{{ $firstBatch->skema->name ?? '-' }}</div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Skema Baru <span class="text-danger">*</span></label>
+                    <select id="skema-select" class="form-select">
+                        @foreach($skemas as $skema)
+                        <option value="{{ $skema->id }}" @selected($skema->id === $firstBatch->skema_id)>
+                            {{ $skema->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0 py-2">
+                    <small>
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Semua <strong>{{ $asesmens->count() }} peserta</strong> dalam batch ini akan pindah skema.
+                        Hanya bisa dilakukan jika belum ada yang dijadwalkan/diases.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="change-skema-confirm-btn">
+                    <i class="bi bi-check-circle me-1"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- ── MODAL RENAME ── --}}
 <div class="modal fade" id="renameBatchModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -632,6 +679,7 @@
         const suffix = '{{ substr($batchId, -6) }}';
         const batchId = @json($batchId);
         const renameUrl = '{{ route("admin.asesi.batch.rename", $batchId) }}';
+        const changeSkemaUrl = '{{ route("admin.asesi.batch.change-skema", $batchId) }}'; // ← baru
 
         function slugify(text) {
             return text.toString().toUpperCase().trim()
@@ -689,6 +737,53 @@
                                 .replace(encodeURIComponent(batchId),
                                     encodeURIComponent(newId));
                         });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: res.message
+                        });
+                        $btn.prop('disabled', false).html(
+                            '<i class="bi bi-check-circle me-1"></i> Simpan');
+                    }
+                },
+                error: function(xhr) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.'
+                    });
+                    $btn.prop('disabled', false).html(
+                        '<i class="bi bi-check-circle me-1"></i> Simpan');
+                },
+            });
+        });
+
+        // ── Ganti Skema ── (baru)
+        $('#change-skema-confirm-btn').on('click', function() {
+            const skemaId = $('#skema-select').val();
+            const skemaName = $('#skema-select option:selected').text().trim();
+            const $btn = $(this).prop('disabled', true)
+                .html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
+
+            $.ajax({
+                url: changeSkemaUrl,
+                method: 'PATCH',
+                data: {
+                    _token: $('meta[name="csrf-token"]').attr('content'),
+                    skema_id: skemaId,
+                },
+                success: function(res) {
+                    if (res.success) {
+                        $('#current-skema-name').text(res.skema_name);
+                        $('#changeSkemaModal').modal('hide');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: 'Skema diubah ke: ' + res.skema_name,
+                            timer: 1800,
+                            showConfirmButton: false,
+                        }).then(() => window.location.reload());
                     } else {
                         Swal.fire({
                             icon: 'error',

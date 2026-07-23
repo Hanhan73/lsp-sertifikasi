@@ -15,8 +15,11 @@
 
         {{-- Info Batch --}}
         <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-collection"></i> Informasi Batch</h5>
+                <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#changeSkemaModal">
+                    <i class="bi bi-arrow-left-right"></i> Ganti Skema
+                </button>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -32,7 +35,7 @@
                             </tr>
                             <tr>
                                 <td><strong>Skema</strong></td>
-                                <td>: {{ $firstAsesmen->skema->name ?? '-' }}</td>
+                                <td>: <span id="current-skema-name">{{ $firstAsesmen->skema->name ?? '-' }}</span></td>
                             </tr>
                             <tr>
                                 <td><strong>Tanggal Daftar</strong></td>
@@ -278,6 +281,49 @@
     </div>
 </div>
 
+{{-- Modal Ganti Skema --}}
+<div class="modal fade" id="changeSkemaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-left-right"></i> Ganti Skema Batch
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold text-muted">SKEMA SAAT INI</label>
+                    <div class="form-control bg-light">{{ $firstAsesmen->skema->name ?? '-' }}</div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-semibold">Skema Baru <span class="text-danger">*</span></label>
+                    <select id="skema-select" class="form-select">
+                        @foreach($skemas as $skema)
+                        <option value="{{ $skema->id }}" @selected($skema->id === $firstAsesmen->skema_id)>
+                            {{ $skema->name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="alert alert-warning mt-3 mb-0 py-2">
+                    <small>
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Semua <strong>{{ $asesmens->count() }} peserta</strong> dalam batch ini akan pindah skema.
+                        Hanya bisa dilakukan jika belum ada yang dijadwalkan/diases.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="change-skema-confirm-btn">
+                    <i class="bi bi-check-circle"></i> Simpan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{-- Modal Tambah Peserta Manual --}}
 <div class="modal fade" id="modalTambahPeserta" tabindex="-1">
     <div class="modal-dialog">
@@ -345,4 +391,45 @@
     });
 </script>
 @endif
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+    const changeSkemaUrl = '{{ route("tuk.batch.change-skema", $batchId) }}';
+
+    $('#change-skema-confirm-btn').on('click', function () {
+        const skemaId = $('#skema-select').val();
+        const $btn = $(this).prop('disabled', true)
+            .html('<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...');
+
+        $.ajax({
+            url: changeSkemaUrl,
+            method: 'PATCH',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content'),
+                skema_id: skemaId,
+            },
+            success: function (res) {
+                if (res.success) {
+                    $('#current-skema-name').text(res.skema_name);
+                    $('#changeSkemaModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success', title: 'Berhasil!',
+                        text: 'Skema diubah ke: ' + res.skema_name,
+                        timer: 1800, showConfirmButton: false,
+                    }).then(() => window.location.reload());
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: res.message });
+                    $btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Simpan');
+                }
+            },
+            error: function (xhr) {
+                Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message ?? 'Terjadi kesalahan.' });
+                $btn.prop('disabled', false).html('<i class="bi bi-check-circle me-1"></i> Simpan');
+            },
+        });
+    });
+});
+</script>
+@endpush
 @endsection

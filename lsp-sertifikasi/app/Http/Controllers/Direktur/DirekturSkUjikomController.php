@@ -46,14 +46,14 @@ class DirekturSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
+        $peserta = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
             ->first();
 
         return view('direktur.sk-ujikom.show', compact(
-            'skUjikom', 'schedules', 'pesertaKompeten', 'first'
+            'skUjikom', 'schedules', 'peserta', 'first'
         ));
     }
 
@@ -203,7 +203,7 @@ class DirekturSkUjikomController extends Controller
             ->where('rekomendasi', 'K')->count();
         $totalBK = BeritaAcaraAsesi::whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
             ->where('rekomendasi', 'BK')->count();
-            
+
         return [
             'sk'        => $sk,
             'tuk'       => $first?->tuk,

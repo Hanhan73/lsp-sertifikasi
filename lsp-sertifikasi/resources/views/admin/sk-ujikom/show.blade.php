@@ -121,7 +121,7 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white d-flex align-items-center justify-content-between">
                 <span class="fw-semibold">
-                    <i class="bi bi-people me-2 text-success"></i>Peserta Kompeten (K)
+                    <i class="bi bi-people me-2 text-success"></i>Peserta Kompeten
                 </span>
                 <span class="badge bg-success px-3">{{ $peserta->count() }} orang</span>
             </div>

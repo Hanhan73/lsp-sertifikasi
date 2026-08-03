@@ -144,15 +144,38 @@
                         <tr>
                             <th class="ps-3" style="width:40px;">No</th>
                             <th>Nama Lengkap</th>
-                            <th>Instansi</th>
+                            <th>Asesor</th>
+                            <th class="text-center" style="width:60px;">B/BK</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @php $lastAsesorId = null; @endphp
                         @foreach($peserta as $i => $asesi)
+                        @php
+                        $asesor = $asesi->_asesor;
+                        $asesorId = $asesor?->id;
+                        @endphp
                         <tr>
                             <td class="ps-3 text-muted">{{ $i + 1 }}.</td>
                             <td class="fw-semibold">{{ $asesi->full_name }}</td>
-                            <td class="text-muted">{{ $asesi->institution ?? $first?->tuk?->name ?? '-' }}</td>
+                            <td class="text-muted small">
+                                @if($asesorId !== $lastAsesorId)
+                                {{ $asesor?->nama ?? '-' }}
+                                @if($asesor?->no_reg_met)
+                                <br>{{ $asesor->no_reg_met }}
+                                @endif
+                                @php $lastAsesorId = $asesorId; @endphp
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($asesi->rekomendasi === 'K')
+                                <span class="badge bg-success px-2 py-1">K</span>
+                                @elseif($asesi->rekomendasi === 'BK')
+                                <span class="badge bg-danger px-2 py-1">BK</span>
+                                @else
+                                <span class="badge bg-secondary px-2 py-1">-</span>
+                                @endif
+                            </td>
                         </tr>
                         @endforeach
                     </tbody>

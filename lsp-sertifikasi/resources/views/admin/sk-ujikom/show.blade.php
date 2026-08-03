@@ -132,6 +132,7 @@
                             <th class="ps-3" style="width:40px;">No</th>
                             <th>Nama Lengkap</th>
                             <th>Asesor</th>
+                            <th class="text-center" style="width:60px;">B/BK</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -151,6 +152,15 @@
                                 <br>{{ $asesor->no_reg_met }}
                                 @endif
                                 @php $lastAsesorId = $asesorId; @endphp
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                @if($asesi->rekomendasi === 'K')
+                                <span class="badge bg-success px-2 py-1">K</span>
+                                @elseif($asesi->rekomendasi === 'BK')
+                                <span class="badge bg-danger px-2 py-1">BK</span>
+                                @else
+                                <span class="badge bg-secondary px-2 py-1">-</span>
                                 @endif
                             </td>
                         </tr>

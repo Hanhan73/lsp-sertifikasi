@@ -201,7 +201,7 @@
                 <span class="fw-semibold">
                     <i class="bi bi-people me-2 text-success"></i>Peserta yang akan Mendapat SK
                 </span>
-                <span class="badge bg-success px-3">{{ $pesertaKompeten->count() }} Kompeten</span>
+                <span class="badge bg-success px-3">{{ $peserta->count() }} Kompeten</span>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0 align-middle" style="font-size:.85rem;">
@@ -213,7 +213,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($pesertaKompeten as $i => $asesi)
+                        @foreach($peserta as $i => $asesi)
                         <tr>
                             <td class="ps-3 text-muted">{{ $i + 1 }}.</td>
                             <td class="fw-semibold">{{ $asesi->full_name }}</td>
@@ -234,7 +234,7 @@ function confirmApprove() {
     Swal.fire({
         title: 'Setujui Pengajuan SK?',
         html: `Dokumen SK PDF akan otomatis digenerate setelah Anda menyetujui.<br>
-               <strong>{{ $pesertaKompeten->count() }} peserta kompeten</strong> akan tercantum dalam SK.`,
+               <strong>{{ $peserta->count() }} peserta kompeten</strong> akan tercantum dalam SK.`,
         icon: 'question',
         showCancelButton: true,
         confirmButtonText: '<i class="bi bi-check-lg me-1"></i>Ya, Setujui',

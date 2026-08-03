@@ -123,7 +123,7 @@
                 <span class="fw-semibold">
                     <i class="bi bi-people me-2 text-success"></i>Peserta Kompeten (K)
                 </span>
-                <span class="badge bg-success px-3">{{ $pesertaKompeten->count() }} orang</span>
+                <span class="badge bg-success px-3">{{ $peserta->count() }} orang</span>
             </div>
             <div class="card-body p-0">
                 <table class="table table-sm mb-0 align-middle" style="font-size:.85rem;">
@@ -136,7 +136,7 @@
                     </thead>
                     <tbody>
                         @php $lastAsesorId = null; @endphp
-                        @foreach($pesertaKompeten as $i => $asesi)
+                        @foreach($peserta as $i => $asesi)
                         @php
                         $asesor = $asesi->_asesor;
                         $asesorId = $asesor?->id;

@@ -145,7 +145,7 @@
                             <th class="ps-3" style="width:40px;">No</th>
                             <th>Nama Lengkap</th>
                             <th>Asesor</th>
-                            <th class="text-center" style="width:60px;">B/BK</th>
+                            <th class="text-center" style="width:20px;">B/BK</th>
                         </tr>
                     </thead>
                     <tbody>

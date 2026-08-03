@@ -168,9 +168,9 @@
                                 @endif
                             </td>
                             <td class="text-center">
-                                @if($asesi->rekomendasi === 'K')
+                                @if($asesi->_rekomendasi === 'K')
                                 <span class="badge bg-success px-2 py-1">K</span>
-                                @elseif($asesi->rekomendasi === 'BK')
+                                @elseif($asesi->_rekomendasi === 'BK')
                                 <span class="badge bg-danger px-2 py-1">BK</span>
                                 @else
                                 <span class="badge bg-secondary px-2 py-1">-</span>

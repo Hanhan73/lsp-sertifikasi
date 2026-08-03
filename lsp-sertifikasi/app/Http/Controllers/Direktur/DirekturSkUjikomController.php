@@ -46,7 +46,7 @@ class DirekturSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
@@ -67,7 +67,7 @@ class DirekturSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         // Kelompokkan peserta per asesor untuk rowspan di PDF
         $pesertaPerAsesor = $this->groupByAsesor($pesertaKompeten, $schedules);
@@ -201,35 +201,39 @@ class DirekturSkUjikomController extends Controller
 
         $totalK = BeritaAcaraAsesi::whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
             ->where('rekomendasi', 'K')->count();
-
+        $totalBK = BeritaAcaraAsesi::whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->where('rekomendasi', 'BK')->count();
+            
         return [
             'sk'        => $sk,
             'tuk'       => $first?->tuk,
             'skema'     => $first?->skema,
             'total_k'   => $totalK,
+            'total_bk'  => $totalBK,
         ];
     }
 
-    /**
-     * Ambil peserta kompeten dari schedule IDs, dengan asesor masing-masing
-     * disisipkan ke property sementara `_asesor` (dipakai untuk grouping rowspan di PDF).
-     */
-    private function getPesertaKompeten($scheduleIds)
-    {
-        return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(function ($baa) {
-                $asesi = $baa->asesmen;
-                if ($asesi) {
-                    $asesi->_asesor = $baa->beritaAcara?->schedule?->asesor;
-                }
-                return $asesi;
-            })
-            ->filter()
-            ->values();
-    }
+/**
+ * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
+ * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
+ */
+private function getPesertaSemua($scheduleIds)
+{
+    return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
+        ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+        ->whereIn('rekomendasi', ['K', 'BK'])
+        ->get()
+        ->map(function ($baa) {
+            $asesi = $baa->asesmen;
+            if ($asesi) {
+                $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
+                $asesi->_rekomendasi = $baa->rekomendasi; // 'K' atau 'BK'
+            }
+            return $asesi;
+        })
+        ->filter()
+        ->values();
+}
 
     /**
      * Kelompokkan peserta berdasarkan asesor jadwalnya.
@@ -265,7 +269,7 @@ class DirekturSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         // Kelompokkan peserta per asesor untuk rowspan di PDF
         $pesertaPerAsesor = $this->groupByAsesor($pesertaKompeten, $schedules);

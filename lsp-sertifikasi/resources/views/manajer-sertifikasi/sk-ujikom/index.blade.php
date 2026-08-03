@@ -107,7 +107,7 @@
 
                 {{-- Aksi --}}
                 <div class="col-lg-4 d-flex justify-content-end gap-2 flex-wrap">
-                    @if(!$sk && $item['siap'] && $item['total_k'] > 0)
+                    @if(!$sk && $item['siap'] && ($item['total_k'] > 0 || $item['total_bk'] > 0))
                     <a href="{{ route('manajer-sertifikasi.sk-ujikom.create', $item['batch_id']) }}"
                        class="btn btn-primary btn-sm">
                         <i class="bi bi-send me-1"></i>Ajukan SK

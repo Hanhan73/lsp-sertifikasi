@@ -85,7 +85,7 @@ class AdminSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         abort_if($pesertaKompeten->isEmpty(), 422, 'Belum ada peserta kompeten di batch ini.');
 
@@ -156,7 +156,7 @@ class AdminSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
@@ -202,27 +202,27 @@ class AdminSkUjikomController extends Controller
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * Ambil peserta kompeten dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
-     * Return: collection of Asesmen, dengan tambahan relasi schedule->asesor.
-     */
-    private function getPesertaKompeten($scheduleIds)
-    {
-        return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(function ($baa) {
-                $asesi = $baa->asesmen;
-                if ($asesi) {
-                    $asesi->_asesor = $baa->beritaAcara?->schedule?->asesor;
-                }
-                return $asesi;
-            })
-            ->filter()
-            ->values();
-    }
-
+   /**
+ * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
+ * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
+ */
+private function getPesertaSemua($scheduleIds)
+{
+    return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
+        ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+        ->whereIn('rekomendasi', ['K', 'BK'])
+        ->get()
+        ->map(function ($baa) {
+            $asesi = $baa->asesmen;
+            if ($asesi) {
+                $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
+                $asesi->_rekomendasi = $baa->rekomendasi; // 'K' atau 'BK'
+            }
+            return $asesi;
+        })
+        ->filter()
+        ->values();
+}
     /**
      * Generate PDF SK dan simpan ke storage private.
      * Return path file.
@@ -234,7 +234,7 @@ class AdminSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaKompeten($scheduleIds);
+        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $sk->collective_batch_id)

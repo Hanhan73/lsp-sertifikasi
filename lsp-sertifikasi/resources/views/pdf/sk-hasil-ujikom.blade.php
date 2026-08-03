@@ -247,18 +247,17 @@
                     <br>{{ $asesorRegMet }}
                     @endif
                 </td>
-                <td class="tc">K</td>
+                <td class="tc">{{ $asesi->_rekomendasi ?? 'K' }}</td>
             </tr>
             @endforeach
             @endforeach
             @else
-            {{-- Fallback: tanpa kolom asesor (kompatibel dengan view lama) --}}
             @foreach($pesertaKompeten as $i => $asesi)
             <tr>
                 <td class="tc">{{ $i + 1 }}.</td>
                 <td>{{ $asesi->full_name }}</td>
                 <td class="tc">-</td>
-                <td class="tc">K</td>
+                <td class="tc">{{ $asesi->_rekomendasi ?? 'K' }}</td>
             </tr>
             @endforeach
             @endif

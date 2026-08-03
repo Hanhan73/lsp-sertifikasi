@@ -71,7 +71,7 @@
                     @if($sk)
                     <span class="badge bg-success px-3 py-2">SK Tersedia</span>
                     <div class="small text-muted mt-1 font-monospace">{{ $sk->nomor_sk }}</div>
-                    @elseif($item['siap'] && $item['total_k'] > 0)
+                    @elseif($item['siap'] && ($item['total_k'] > 0 || $item['total_bk'] > 0))
                     <span class="badge bg-light text-secondary border px-3 py-2">Belum di-generate</span>
                     @else
                     <span class="badge bg-light text-muted border px-3 py-2">
@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="col-lg-4 d-flex justify-content-end gap-2 flex-wrap">
-                    @if(!$sk && $item['siap'] && $item['total_k'] > 0)
+                    @if(!$sk && $item['siap'] && ($item['total_k'] > 0 || $item['total_bk'] > 0))
                     <a href="{{ route('admin.sk-ujikom.create', $item['batch_id']) }}"
                        class="btn btn-primary btn-sm">
                         <i class="bi bi-file-earmark-plus me-1"></i>Generate SK

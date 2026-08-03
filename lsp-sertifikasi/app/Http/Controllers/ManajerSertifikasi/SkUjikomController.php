@@ -155,19 +155,14 @@ class SkUjikomController extends Controller
 
         $scheduleIds = $schedules->pluck('id');
 
-        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(fn($baa) => $baa->asesmen)
-            ->filter();
+        $peserta = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
             ->first();
 
         return view('manajer-sertifikasi.sk-ujikom.show', compact(
-            'skUjikom', 'schedules', 'pesertaKompeten', 'first'
+            'skUjikom', 'schedules', 'peserta', 'first'
         ));
     }
 
@@ -182,24 +177,17 @@ class SkUjikomController extends Controller
 
         $scheduleIds = $schedules->pluck('id');
 
-        $pesertaKompeten = BeritaAcaraAsesi::with(['asesmen'])
-            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-            ->where('rekomendasi', 'K')
-            ->get()
-            ->map(fn($baa) => $baa->asesmen)
-            ->filter();
-
-        $first = Asesmen::with(['tuk', 'skema'])
-            ->where('collective_batch_id', $skUjikom->collective_batch_id)
-            ->first();
+        $peserta = $this->getPesertaSemua($scheduleIds);
+        $pesertaPerAsesor = $this->groupByAsesor($peserta); // lihat helper di bawah
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sk-hasil-ujikom', [
-            'skUjikom'        => $skUjikom,
-            'pesertaKompeten' => $pesertaKompeten,
-            'schedules'       => $schedules,
-            'first'           => $first,
-            'direktur'        => Auth::user(),
-            'preview'         => true,
+            'skUjikom'         => $skUjikom,
+            'pesertaKompeten'  => $peserta, // fallback var, boleh dipertahankan
+            'pesertaPerAsesor' => $pesertaPerAsesor,
+            'schedules'        => $schedules,
+            'first'            => $first,
+            'direktur'         => Auth::user(),
+            'preview'          => true,
         ])->setPaper('A4', 'portrait');
 
         return $pdf->stream('DRAFT_SK_' . $skUjikom->collective_batch_id . '.pdf');
@@ -218,5 +206,55 @@ class SkUjikomController extends Controller
         return response()->streamDownload(function () use ($skUjikom) {
             echo Storage::disk('private')->get($skUjikom->sk_path);
         }, $filename, ['Content-Type' => 'application/pdf']);
+    }
+
+
+    /**
+     * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
+     * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
+     */
+    private function getPesertaSemua($scheduleIds)
+    {
+        return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->whereIn('rekomendasi', ['K', 'BK'])
+            ->get()
+            ->map(function ($baa) {
+                $asesi = $baa->asesmen;
+                if ($asesi) {
+                    $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
+                    $asesi->_rekomendasi = $baa->rekomendasi; // 'K' atau 'BK'
+                }
+                return $asesi;
+            })
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * Kelompokkan peserta berdasarkan asesor jadwalnya.
+     * Return: array of ['asesor' => Asesor|null, 'asesis' => Collection, 'count' => int]
+     */
+    private function groupByAsesor($pesertaKompeten, $schedules): array
+    {
+        $groups = [];
+        foreach ($pesertaKompeten as $asesi) {
+            $asesor    = $asesi->_asesor;
+            $asesorKey = $asesor?->id ?? 'tanpa_asesor';
+
+            if (!isset($groups[$asesorKey])) {
+                $groups[$asesorKey] = [
+                    'asesor' => $asesor,
+                    'asesis' => collect(),
+                ];
+            }
+            $groups[$asesorKey]['asesis']->push($asesi);
+        }
+
+        foreach ($groups as &$g) {
+            $g['count'] = $g['asesis']->count();
+        }
+
+        return array_values($groups);
     }
 }

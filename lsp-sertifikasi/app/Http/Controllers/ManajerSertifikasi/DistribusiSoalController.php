@@ -1347,9 +1347,13 @@ public function pdfBeritaAcara(Schedule $schedule): \Illuminate\Http\Response
         'asesor'      => $schedule->asesor,
     ])->setPaper('A4', 'portrait');
 
-    $filename = 'Berita_Acara_'
-        . str_replace(' ', '_', $schedule->skema->name ?? 'Asesmen')
-        . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
+    $skemaNama = str_replace(
+        ['/', '\\', ' '],
+        ['-', '-', '_'],
+        $schedule->skema->name ?? 'Asesmen'
+    );
+
+    $filename = 'Berita_Acara_' . $skemaNama . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
 
     return $pdf->stream($filename);
 }

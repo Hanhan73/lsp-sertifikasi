@@ -85,12 +85,12 @@ class AdminSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
+        $peserta = $this->getPesertaSemua($scheduleIds);
 
-        abort_if($pesertaKompeten->isEmpty(), 422, 'Belum ada peserta kompeten di batch ini.');
+        abort_if($peserta->isEmpty(), 422, 'Belum ada peserta yang dinilai (K/BK) di batch ini.');
 
         return view('admin.sk-ujikom.create', compact(
-            'batchId', 'first', 'schedules', 'pesertaKompeten'
+            'batchId', 'first', 'schedules', 'peserta'
         ));
     }
 
@@ -156,14 +156,14 @@ class AdminSkUjikomController extends Controller
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
+        $peserta = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $skUjikom->collective_batch_id)
             ->first();
 
         return view('admin.sk-ujikom.show', compact(
-            'skUjikom', 'schedules', 'pesertaKompeten', 'first'
+            'skUjikom', 'schedules', 'peserta', 'first'
         ));
     }
 
@@ -202,7 +202,7 @@ class AdminSkUjikomController extends Controller
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────────────────
 
-   /**
+/**
  * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
  * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
  */
@@ -216,7 +216,7 @@ private function getPesertaSemua($scheduleIds)
             $asesi = $baa->asesmen;
             if ($asesi) {
                 $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
-                $asesi->_rekomendasi = $baa->rekomendasi; // 'K' atau 'BK'
+                $asesi->_rekomendasi = $baa->rekomendasi;
             }
             return $asesi;
         })
@@ -234,18 +234,18 @@ private function getPesertaSemua($scheduleIds)
             ->get();
 
         $scheduleIds     = $schedules->pluck('id');
-        $pesertaKompeten = $this->getPesertaSemua($scheduleIds);
+        $peserta = $this->getPesertaSemua($scheduleIds);
 
         $first = Asesmen::with(['tuk', 'skema'])
             ->where('collective_batch_id', $sk->collective_batch_id)
             ->first();
 
         // Kelompokkan peserta per asesor untuk rowspan di PDF
-        $pesertaPerAsesor = $this->groupByAsesor($pesertaKompeten, $schedules);
+        $pesertaPerAsesor = $this->groupByAsesor($peserta, $schedules);
 
         $pdf = Pdf::loadView('pdf.sk-hasil-ujikom', [
             'skUjikom'         => $sk,
-            'pesertaKompeten'  => $pesertaKompeten,
+            'pesertaKompeten'  => $peserta, // nama var dipertahankan di PDF template
             'pesertaPerAsesor' => $pesertaPerAsesor,
             'schedules'        => $schedules,
             'first'            => $first,

@@ -23,9 +23,9 @@ class AdminAsesorController extends Controller
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->where('nama', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('nik', 'like', "%{$search}%")
-                  ->orWhere('no_reg_met', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('nik', 'like', "%{$search}%")
+                    ->orWhere('no_reg_met', 'like', "%{$search}%");
             });
         }
 
@@ -130,7 +130,6 @@ class AdminAsesorController extends Controller
             return redirect()->route('admin.asesors.index')
                 ->with('success', 'Asesor ' . $request->nama . ' berhasil ditambahkan!' .
                     ($userId ? ' Akun login dibuat dengan password: asesor123' : ''));
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error creating Asesor: ' . $e->getMessage());
@@ -162,7 +161,7 @@ class AdminAsesorController extends Controller
         return view('admin.asesors.edit', compact('asesor'));
     }
 
-    
+
 
     /**
      * Update Asesor
@@ -227,7 +226,6 @@ class AdminAsesorController extends Controller
 
             return redirect()->route('admin.asesors.index')
                 ->with('success', 'Data asesor ' . $request->nama . ' berhasil diupdate!');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error updating Asesor: ' . $e->getMessage());
@@ -258,7 +256,6 @@ class AdminAsesorController extends Controller
 
             return redirect()->route('admin.asesors.index')
                 ->with('success', "Asesor {$nama} berhasil dihapus.");
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error deleting Asesor: ' . $e->getMessage());
@@ -298,7 +295,6 @@ class AdminAsesorController extends Controller
             }
 
             return redirect()->route('admin.asesors.index')->with($sessionData);
-
         } catch (\Exception $e) {
             Log::error('Asesor Import Error: ' . $e->getMessage());
             return redirect()->back()
@@ -365,10 +361,44 @@ class AdminAsesorController extends Controller
                 'info'     => 'created',
                 'email'    => $user->email,
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Error buatAkun Asesor #' . $asesor->id . ': ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reset password asesor ke default (AJAX)
+     */
+    public function resetPassword(Asesor $asesor)
+    {
+        try {
+            if (!$asesor->user_id || !$asesor->user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Asesor ini belum memiliki akun login.',
+                ], 422);
+            }
+
+            $defaultPassword = 'asesor123';
+
+            $asesor->user->update([
+                'password'             => Hash::make($defaultPassword),
+                'password_changed_at'  => null,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "Password {$asesor->nama} berhasil direset ke default.",
+                'email'   => $asesor->user->email,
+                'password' => $defaultPassword,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error resetPassword Asesor #' . $asesor->id . ': ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
@@ -381,14 +411,15 @@ class AdminAsesorController extends Controller
         abort_unless($asesor->sk_pengangkatan_path, 404, 'SK belum tersedia.');
         abort_unless(
             Storage::disk('private')->exists($asesor->sk_pengangkatan_path),
-            404, 'File tidak ditemukan.'
+            404,
+            'File tidak ditemukan.'
         );
         return response()->streamDownload(function () use ($asesor) {
             echo Storage::disk('private')->get($asesor->sk_pengangkatan_path);
         }, $asesor->sk_pengangkatan_filename ?? 'SK_Asesor.pdf', ['Content-Type' => 'application/pdf']);
     }
 
-        /**
+    /**
      * Export rekap data Asesor ke Excel (mengikuti filter yang aktif)
      */
     public function export(Request $request)

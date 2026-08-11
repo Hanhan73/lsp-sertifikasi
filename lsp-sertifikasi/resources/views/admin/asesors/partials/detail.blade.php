@@ -46,13 +46,18 @@
         <hr>
 
         {{-- ── Akun Login ── --}}
-        @if($asesor->user)
-        <div class="alert alert-success py-2 text-start mb-0">
-            <i class="bi bi-person-circle"></i>
-            <strong>Punya Akun Login</strong><br>
-            <small>{{ $asesor->user->email }}</small>
-        </div>
-        @else
+@if($asesor->user)
+<div class="alert alert-success py-2 text-start mb-2">
+    <i class="bi bi-person-circle"></i>
+    <strong>Punya Akun Login</strong><br>
+    <small>{{ $asesor->user->email }}</small>
+</div>
+<button type="button" class="btn btn-sm btn-outline-warning w-100" id="btn-reset-pass-{{ $asesor->id }}"
+    onclick="resetPasswordAsesor({{ $asesor->id }}, '{{ addslashes($asesor->nama) }}')">
+    <i class="bi bi-key"></i> Reset Password ke Default
+</button>
+<div id="reset-pass-result-{{ $asesor->id }}" class="mt-2"></div>
+@else
         {{-- Belum punya akun — tampilkan tombol buat akun --}}
         <div class="alert alert-secondary py-2 text-start mb-2">
             <i class="bi bi-person-x"></i> Belum ada akun login

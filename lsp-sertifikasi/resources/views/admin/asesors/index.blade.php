@@ -553,5 +553,50 @@ function buatAkunAsesor(asesorId, nama) {
         });
     });
 }
+
+function resetPasswordAsesor(id, nama) {
+    Swal.fire({
+        title: 'Reset Password?',
+        html: `Password login untuk <strong>${nama}</strong> akan direset ke default: <code>asesor123</code>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#ffc107',
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const btn = document.getElementById(`btn-reset-pass-${id}`);
+        const resultDiv = document.getElementById(`reset-pass-result-${id}`);
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Memproses...';
+
+        fetch(`/admin/asesors/${id}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                Swal.fire('Berhasil!', data.message + ` Password baru: <code>${data.password}</code>`, 'success');
+                resultDiv.innerHTML = `<div class="alert alert-info py-1 small mb-0">Password baru: <code>${data.password}</code></div>`;
+                btn.innerHTML = '<i class="bi bi-check"></i> Password Direset';
+            } else {
+                Swal.fire('Gagal', data.message, 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-key"></i> Reset Password ke Default';
+            }
+        })
+        .catch(() => {
+            Swal.fire('Error', 'Terjadi kesalahan koneksi.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-key"></i> Reset Password ke Default';
+        });
+    });
+}
+
 </script>
 @endpush

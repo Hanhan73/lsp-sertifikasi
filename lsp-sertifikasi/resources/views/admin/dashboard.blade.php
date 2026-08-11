@@ -284,22 +284,28 @@
             Setelah selesai sesi simulasi, klik reset untuk mengembalikan akun ke kondisi bersih.
         </p>
         <div class="row g-2 mb-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="p-2 bg-light rounded small">
                     <div class="text-muted">TUK</div>
                     <code>dummy.tuk@sikaplsp.local</code>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="p-2 bg-light rounded small">
                     <div class="text-muted">Asesor</div>
                     <code>dummy.asesor@sikaplsp.local</code>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="p-2 bg-light rounded small">
-                    <div class="text-muted">Asesi</div>
-                    <code>dummy.asesi@sikaplsp.local</code>
+                    <div class="text-muted">Asesi Mandiri</div>
+                    <code>dummy.asesi.mandiri@sikaplsp.local</code>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-2 bg-light rounded small">
+                    <div class="text-muted">Asesi Kolektif</div>
+                    <code>dummy.asesi.kolektif@sikaplsp.local</code>
                 </div>
             </div>
         </div>

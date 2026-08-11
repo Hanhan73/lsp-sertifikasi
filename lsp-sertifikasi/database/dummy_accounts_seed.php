@@ -27,7 +27,7 @@ try {
     );
     $tukUser->forceFill(['is_dummy' => true])->save();
 
-    Tuk::firstOrCreate(
+    $tuk = Tuk::firstOrCreate(
         ['user_id' => $tukUser->id],
         [
             'code'         => 'DUMMY-TUK',
@@ -58,7 +58,7 @@ try {
         ['user_id' => $asesorUser->id],
         [
             'nama'          => 'Asesor Dummy (Simulasi)',
-            'nik'           => '1234567891011121',
+            'nik'           => '0000000000000001',
             'tempat_lahir'  => 'Simulasi',
             'tanggal_lahir' => '1990-01-01',
             'jenis_kelamin' => 'L',
@@ -69,11 +69,11 @@ try {
         ]
     );
 
-    // ===== 3. Dummy Asesi =====
-    $asesiUser = User::firstOrCreate(
-        ['email' => 'dummy.asesi@sikaplsp.local'],
+    // ===== 3. Dummy Asesi — Mandiri =====
+    $asesiMandiri = User::firstOrCreate(
+        ['email' => 'dummy.asesi.mandiri@sikaplsp.local'],
         [
-            'name'              => 'Asesi Dummy (Simulasi)',
+            'name'              => 'Asesi Dummy Mandiri (Simulasi)',
             'password'          => Hash::make($defaultPassword),
             'role'              => 'asesi',
             'is_active'         => true,
@@ -81,15 +81,30 @@ try {
             'email_verified_at' => now(),
         ]
     );
-    $asesiUser->forceFill(['is_dummy' => true])->save();
+    $asesiMandiri->forceFill(['is_dummy' => true])->save();
+
+    // ===== 4. Dummy Asesi — Kolektif (tetap lewat TUK dummy yang sama) =====
+    $asesiKolektif = User::firstOrCreate(
+        ['email' => 'dummy.asesi.kolektif@sikaplsp.local'],
+        [
+            'name'              => 'Asesi Dummy Kolektif (Simulasi)',
+            'password'          => Hash::make($defaultPassword),
+            'role'              => 'asesi',
+            'is_active'         => true,
+            'is_dummy'          => true,
+            'email_verified_at' => now(),
+        ]
+    );
+    $asesiKolektif->forceFill(['is_dummy' => true])->save();
 
     DB::commit();
 
     echo "✅ Akun dummy siap:\n";
-    echo "   TUK    : dummy.tuk@sikaplsp.local\n";
-    echo "   Asesor : dummy.asesor@sikaplsp.local\n";
-    echo "   Asesi  : dummy.asesi@sikaplsp.local\n";
-    echo "   Password: {$defaultPassword}\n";
+    echo "   TUK             : dummy.tuk@sikaplsp.local\n";
+    echo "   Asesor          : dummy.asesor@sikaplsp.local\n";
+    echo "   Asesi Mandiri   : dummy.asesi.mandiri@sikaplsp.local\n";
+    echo "   Asesi Kolektif  : dummy.asesi.kolektif@sikaplsp.local\n";
+    echo "   Password semua  : {$defaultPassword}\n";
 
 } catch (\Throwable $e) {
     DB::rollBack();

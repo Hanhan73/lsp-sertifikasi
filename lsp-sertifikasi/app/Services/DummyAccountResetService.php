@@ -19,26 +19,28 @@ class DummyAccountResetService
     protected array $disksToTry = ['public', 'public_html', 'private'];
 
     public function reset(): array
-    {
-        $result = [
-            'asesmen_deleted'  => 0,
-            'schedule_deleted' => 0,
-        ];
+{
+    $result = [
+        'asesmen_deleted'  => 0,
+        'schedule_deleted' => 0,
+        'asesi_direset'    => 0,
+    ];
 
-        DB::beginTransaction();
-        try {
-            $asesiUser  = User::where('role', 'asesi')->where('is_dummy', true)->first();
-            $asesorUser = User::where('role', 'asesor')->where('is_dummy', true)->first();
-            $tukUser    = User::where('role', 'tuk')->where('is_dummy', true)->first();
+    DB::beginTransaction();
+    try {
+        $asesiUsers = User::where('role', 'asesi')->where('is_dummy', true)->get();
+        $asesorUser = User::where('role', 'asesor')->where('is_dummy', true)->first();
+        $tukUser    = User::where('role', 'tuk')->where('is_dummy', true)->first();
 
-            if (!$asesiUser || !$asesorUser || !$tukUser) {
-                throw new \RuntimeException('Akun dummy belum lengkap. Jalankan seeder dummy_accounts_seed.php dulu.');
-            }
+        if ($asesiUsers->count() < 2 || !$asesorUser || !$tukUser) {
+            throw new \RuntimeException('Akun dummy belum lengkap (butuh 2 asesi dummy: mandiri & kolektif). Jalankan seeder dummy_accounts_seed.php dulu.');
+        }
 
-            $asesor = Asesor::where('user_id', $asesorUser->id)->first();
-            $tuk    = Tuk::where('user_id', $tukUser->id)->first();
+        $asesor = Asesor::where('user_id', $asesorUser->id)->first();
+        $tuk    = Tuk::where('user_id', $tukUser->id)->first();
 
-            // ===== 1. Bersihkan semua Asesmen milik asesi dummy =====
+        // ===== 1. Bersihkan semua Asesmen milik SETIAP asesi dummy =====
+        foreach ($asesiUsers as $asesiUser) {
             $asesmens = \App\Models\Asesmen::where('user_id', $asesiUser->id)->get();
 
             foreach ($asesmens as $asesmen) {
@@ -62,8 +64,6 @@ class DummyAccountResetService
                 $asesmen->delete();
                 $result['asesmen_deleted']++;
 
-                // Hapus schedule HANYA jika sudah tidak dipakai asesmen lain
-                // dan schedule tsb memang bagian dari trio dummy (tuk/asesor dummy)
                 if ($scheduleId) {
                     $schedule = Schedule::find($scheduleId);
                     if (
@@ -77,7 +77,7 @@ class DummyAccountResetService
                 }
             }
 
-            // ===== 2. Reset akun Asesi dummy =====
+            // Reset akun asesi ini
             $this->deleteFileSafely($asesiUser->photo_path);
             $asesiUser->update([
                 'password'             => Hash::make($this->defaultPassword),
@@ -86,51 +86,53 @@ class DummyAccountResetService
                 'signature'            => null,
                 'email_verified_at'    => now(),
             ]);
-
-            // ===== 3. Reset akun & data Asesor dummy =====
-            if ($asesor) {
-                foreach ($asesor->documents as $doc) {
-                    $this->deleteFileSafely($doc->file_path);
-                    $doc->delete();
-                }
-                $this->deleteFileSafely($asesor->foto_path);
-                $this->deleteFileSafely($asesor->sk_pengangkatan_path);
-
-                $asesor->update([
-                    'foto_path'                    => null,
-                    'sk_pengangkatan_number'       => null,
-                    'sk_pengangkatan_date'         => null,
-                    'sk_pengangkatan_valid_until'  => null,
-                    'sk_pengangkatan_path'         => null,
-                    'sk_pengangkatan_filename'     => null,
-                ]);
-            }
-            $asesorUser->update([
-                'password'             => Hash::make($this->defaultPassword),
-                'password_changed_at'  => null,
-                'photo_path'           => null,
-                'signature'            => null,
-                'email_verified_at'    => now(),
-            ]);
-
-            // ===== 4. Reset akun TUK dummy =====
-            $tukUser->update([
-                'password'             => Hash::make($this->defaultPassword),
-                'password_changed_at'  => null,
-                'photo_path'           => null,
-                'signature'            => null,
-                'email_verified_at'    => now(),
-            ]);
-
-            DB::commit();
-            return $result;
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('DummyAccountResetService error: ' . $e->getMessage());
-            throw $e;
+            $result['asesi_direset']++;
         }
+
+        // ===== 2. Reset akun & data Asesor dummy =====
+        if ($asesor) {
+            foreach ($asesor->documents as $doc) {
+                $this->deleteFileSafely($doc->file_path);
+                $doc->delete();
+            }
+            $this->deleteFileSafely($asesor->foto_path);
+            $this->deleteFileSafely($asesor->sk_pengangkatan_path);
+
+            $asesor->update([
+                'foto_path'                    => null,
+                'sk_pengangkatan_number'       => null,
+                'sk_pengangkatan_date'         => null,
+                'sk_pengangkatan_valid_until'  => null,
+                'sk_pengangkatan_path'         => null,
+                'sk_pengangkatan_filename'     => null,
+            ]);
+        }
+        $asesorUser->update([
+            'password'             => Hash::make($this->defaultPassword),
+            'password_changed_at'  => null,
+            'photo_path'           => null,
+            'signature'            => null,
+            'email_verified_at'    => now(),
+        ]);
+
+        // ===== 3. Reset akun TUK dummy =====
+        $tukUser->update([
+            'password'             => Hash::make($this->defaultPassword),
+            'password_changed_at'  => null,
+            'photo_path'           => null,
+            'signature'            => null,
+            'email_verified_at'    => now(),
+        ]);
+
+        DB::commit();
+        return $result;
+
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        Log::error('DummyAccountResetService error: ' . $e->getMessage());
+        throw $e;
     }
+}
 
     protected function deleteScheduleAndChildren(Schedule $schedule): void
     {

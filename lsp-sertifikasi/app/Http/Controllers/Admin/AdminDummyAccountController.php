@@ -13,10 +13,10 @@ class AdminDummyAccountController extends Controller
         try {
             $result = $service->reset();
 
-            return response()->json([
-                'success' => true,
-                'message' => "Akun dummy berhasil direset. {$result['asesmen_deleted']} asesmen dan {$result['schedule_deleted']} jadwal simulasi dihapus.",
-            ]);
+        return response()->json([
+            'success' => true,
+            'message' => "Akun dummy berhasil direset. {$result['asesi_direset']} akun asesi, {$result['asesmen_deleted']} asesmen, dan {$result['schedule_deleted']} jadwal simulasi dihapus/dibersihkan.",
+        ]);
         } catch (\Throwable $e) {
             Log::error('Reset dummy account gagal: ' . $e->getMessage());
             return response()->json([

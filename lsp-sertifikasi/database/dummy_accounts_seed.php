@@ -58,7 +58,7 @@ try {
         ['user_id' => $asesorUser->id],
         [
             'nama'          => 'Asesor Dummy (Simulasi)',
-            'nik'           => '0000000000000001',
+            'nik'           => '1234567891011121',
             'tempat_lahir'  => 'Simulasi',
             'tanggal_lahir' => '1990-01-01',
             'jenis_kelamin' => 'L',

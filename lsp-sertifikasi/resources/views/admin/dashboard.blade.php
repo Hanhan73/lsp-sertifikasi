@@ -273,6 +273,43 @@
     </div>
 </div>
 
+
+<div class="card border-0 shadow-sm mt-4 border-start border-4 border-info">
+    <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-arrow-repeat me-2 text-info"></i>Akun Dummy Simulasi Pra-Asesmen</span>
+    </div>
+    <div class="card-body">
+        <p class="small text-muted mb-3">
+            Dipakai untuk simulasi pra-asesmen berulang tanpa buat akun baru tiap kali.
+            Setelah selesai sesi simulasi, klik reset untuk mengembalikan akun ke kondisi bersih.
+        </p>
+        <div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded small">
+                    <div class="text-muted">TUK</div>
+                    <code>dummy.tuk@sikaplsp.local</code>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded small">
+                    <div class="text-muted">Asesor</div>
+                    <code>dummy.asesor@sikaplsp.local</code>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-2 bg-light rounded small">
+                    <div class="text-muted">Asesi</div>
+                    <code>dummy.asesi@sikaplsp.local</code>
+                </div>
+            </div>
+        </div>
+        <p class="small mb-3">Password default semua akun: <code>dummy123</code></p>
+        <button type="button" class="btn btn-sm btn-outline-info" id="btn-reset-dummy" onclick="resetDummyAccounts()">
+            <i class="bi bi-arrow-repeat"></i> Reset Akun Dummy
+        </button>
+    </div>
+</div>
+
 {{-- Modal Detail --}}
 <div class="modal fade" id="detailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -332,6 +369,43 @@ function viewDetail(asesmenId) {
             document.getElementById('detail-content').innerHTML =
                 `<div class="alert alert-danger">Terjadi kesalahan saat memuat data.</div>`;
         });
+}
+
+function resetDummyAccounts() {
+    Swal.fire({
+        title: 'Reset Akun Dummy?',
+        html: 'Semua data asesmen, APL, jadwal, dan dokumen upload milik akun dummy akan <strong>dihapus permanen</strong>. Password dikembalikan ke default.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reset',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#0dcaf0',
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+
+        const btn = document.getElementById('btn-reset-dummy');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Mereset...';
+
+        fetch("{{ route('admin.dummy-accounts.reset') }}", {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Reset Akun Dummy';
+            Swal.fire(data.success ? 'Berhasil!' : 'Gagal', data.message, data.success ? 'success' : 'error');
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Reset Akun Dummy';
+            Swal.fire('Error', 'Terjadi kesalahan koneksi.', 'error');
+        });
+    });
 }
 </script>
 @endpush

@@ -31,6 +31,7 @@ use App\Http\Controllers\Admin\AdminRejectController;
 use App\Http\Controllers\Admin\SuratController;
 use App\Http\Controllers\Admin\AdminSkUjikomController;
 use App\Http\Controllers\Admin\AdminBeritaAcaraController;
+use App\Http\Controllers\Admin\AdminDummyAccountController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -451,6 +452,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/mandiri',                              [AdminBeritaAcaraController::class, 'indexMandiri'])->name('mandiri.index');
         Route::get('/mandiri/{asesmen}/download',           [AdminBeritaAcaraController::class, 'downloadMandiri'])->name('mandiri.download');
     });
+
+
+    Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
+    ->name('dummy-accounts.reset');
 });
 
 /*

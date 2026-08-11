@@ -277,42 +277,72 @@
 <div class="card border-0 shadow-sm mt-4 border-start border-4 border-info">
     <div class="card-header bg-white fw-semibold border-bottom d-flex justify-content-between align-items-center">
         <span><i class="bi bi-arrow-repeat me-2 text-info"></i>Akun Dummy Simulasi Pra-Asesmen</span>
+        <button type="button" class="btn btn-sm btn-info text-white" data-bs-toggle="modal" data-bs-target="#modalSimulasi">
+            <i class="bi bi-plus-circle"></i> Buat Asesmen Simulasi
+        </button>
     </div>
     <div class="card-body">
-        <p class="small text-muted mb-3">
-            Dipakai untuk simulasi pra-asesmen berulang tanpa buat akun baru tiap kali.
-            Setelah selesai sesi simulasi, klik reset untuk mengembalikan akun ke kondisi bersih.
-        </p>
-        <div class="row g-2 mb-3">
+        <p class="small text-muted mb-3">Password default semua akun: <code>dummy123</code></p>
+
+        <div class="row g-2">
+            @foreach([
+                ['label' => 'TUK', 'email' => 'dummy.tuk@sikaplsp.local', 'scope' => 'tuk'],
+                ['label' => 'Asesor', 'email' => 'dummy.asesor@sikaplsp.local', 'scope' => 'asesor'],
+                ['label' => 'Asesi Mandiri', 'email' => 'dummy.asesi.mandiri@sikaplsp.local', 'scope' => 'asesi_mandiri'],
+                ['label' => 'Asesi Kolektif', 'email' => 'dummy.asesi.kolektif@sikaplsp.local', 'scope' => 'asesi_kolektif'],
+            ] as $d)
             <div class="col-md-3">
-                <div class="p-2 bg-light rounded small">
-                    <div class="text-muted">TUK</div>
-                    <code>dummy.tuk@sikaplsp.local</code>
+                <div class="p-2 bg-light rounded small mb-2">
+                    <div class="text-muted">{{ $d['label'] }}</div>
+                    <code style="font-size:.7rem;">{{ $d['email'] }}</code>
                 </div>
+                <button type="button" class="btn btn-outline-info btn-sm w-100" onclick="resetDummyAccounts('{{ $d['scope'] }}', '{{ $d['label'] }}')">
+                    <i class="bi bi-arrow-repeat"></i> Reset {{ $d['label'] }}
+                </button>
             </div>
-            <div class="col-md-3">
-                <div class="p-2 bg-light rounded small">
-                    <div class="text-muted">Asesor</div>
-                    <code>dummy.asesor@sikaplsp.local</code>
-                </div>
+            @endforeach
+        </div>
+
+        <hr>
+        <button type="button" class="btn btn-outline-danger btn-sm" onclick="resetDummyAccounts('all', 'Semua Akun')">
+            <i class="bi bi-arrow-repeat"></i> Reset Semua Sekaligus
+        </button>
+    </div>
+</div>
+
+{{-- Modal Buat Asesmen Simulasi --}}
+<div class="modal fade" id="modalSimulasi" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Buat Asesmen Simulasi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="col-md-3">
-                <div class="p-2 bg-light rounded small">
-                    <div class="text-muted">Asesi Mandiri</div>
-                    <code>dummy.asesi.mandiri@sikaplsp.local</code>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Jenis Simulasi</label>
+                    <select id="sim-jenis" class="form-select">
+                        <option value="mandiri">Mandiri</option>
+                        <option value="kolektif">Kolektif (via TUK Dummy)</option>
+                    </select>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Skema</label>
+                    <select id="sim-skema" class="form-select">
+                        @foreach($skemas as $s)
+                        <option value="{{ $s->id }}">{{ $s->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <p class="small text-muted mb-0">
+                    Kalau asesi jenis ini masih punya asesmen aktif, reset dulu akunnya sebelum bikin yang baru.
+                </p>
             </div>
-            <div class="col-md-3">
-                <div class="p-2 bg-light rounded small">
-                    <div class="text-muted">Asesi Kolektif</div>
-                    <code>dummy.asesi.kolektif@sikaplsp.local</code>
-                </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-info text-white" onclick="buatSimulasi()">Buat</button>
             </div>
         </div>
-        <p class="small mb-3">Password default semua akun: <code>dummy123</code></p>
-        <button type="button" class="btn btn-sm btn-outline-info" id="btn-reset-dummy" onclick="resetDummyAccounts()">
-            <i class="bi bi-arrow-repeat"></i> Reset Akun Dummy
-        </button>
     </div>
 </div>
 
@@ -377,10 +407,10 @@ function viewDetail(asesmenId) {
         });
 }
 
-function resetDummyAccounts() {
+function resetDummyAccounts(scope, label) {
     Swal.fire({
-        title: 'Reset Akun Dummy?',
-        html: 'Semua data asesmen, APL, jadwal, dan dokumen upload milik akun dummy akan <strong>dihapus permanen</strong>. Password dikembalikan ke default.',
+        title: `Reset ${label}?`,
+        html: 'Data asesmen, APL, jadwal, dan file upload terkait akan <strong>dihapus permanen</strong>. Password dikembalikan ke default.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Ya, Reset',
@@ -389,29 +419,41 @@ function resetDummyAccounts() {
     }).then((result) => {
         if (!result.isConfirmed) return;
 
-        const btn = document.getElementById('btn-reset-dummy');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Mereset...';
-
         fetch("{{ route('admin.dummy-accounts.reset') }}", {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Content-Type': 'application/json',
                 'Accept': 'application/json',
             },
+            body: JSON.stringify({ scope }),
         })
         .then(r => r.json())
-        .then(data => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Reset Akun Dummy';
-            Swal.fire(data.success ? 'Berhasil!' : 'Gagal', data.message, data.success ? 'success' : 'error');
-        })
-        .catch(() => {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Reset Akun Dummy';
-            Swal.fire('Error', 'Terjadi kesalahan koneksi.', 'error');
-        });
+        .then(data => Swal.fire(data.success ? 'Berhasil!' : 'Gagal', data.message, data.success ? 'success' : 'error'))
+        .catch(() => Swal.fire('Error', 'Terjadi kesalahan koneksi.', 'error'));
     });
+}
+
+function buatSimulasi() {
+    const jenis = document.getElementById('sim-jenis').value;
+    const skemaId = document.getElementById('sim-skema').value;
+
+    fetch("{{ route('admin.dummy-accounts.simulasi') }}", {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ jenis, skema_id: skemaId }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        bootstrap.Modal.getInstance(document.getElementById('modalSimulasi')).hide();
+        Swal.fire(data.success ? 'Berhasil!' : 'Gagal', data.message, data.success ? 'success' : 'error')
+            .then(() => { if (data.success) location.reload(); });
+    })
+    .catch(() => Swal.fire('Error', 'Terjadi kesalahan koneksi.', 'error'));
 }
 </script>
 @endpush

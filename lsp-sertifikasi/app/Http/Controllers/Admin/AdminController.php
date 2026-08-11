@@ -58,7 +58,9 @@ class AdminController extends Controller
                 ->get(),
         ];
 
-        return view('admin.dashboard', compact('stats', 'asesmens', 'latestBatch', 'needsAttention'));
+        $skemas = \App\Models\Skema::orderBy('name')->get(['id', 'name']);
+
+        return view('admin.dashboard', compact('stats', 'asesmens', 'latestBatch', 'needsAttention', 'skemas'));
     }
 
     private function getLatestBatchInfo(): ?array

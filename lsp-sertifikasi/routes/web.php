@@ -454,8 +454,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     });
 
 
-    Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
+Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
     ->name('dummy-accounts.reset');
+Route::post('dummy-accounts/simulasi', [AdminDummyAccountController::class, 'createSimulasi'])
+    ->name('dummy-accounts.simulasi');
 });
 
 /*

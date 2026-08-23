@@ -25,6 +25,7 @@ class Schedule extends Model
         'meeting_link',    // ← baru: URL meeting jika online
         'notes',
         'created_by',
+        'institution_name', // ← baru: nama lembaga/instansi
         // Approval workflow
         'approval_status',
         'approval_notes',
@@ -164,6 +165,36 @@ class Schedule extends Model
         };
     }
 
+
+/**
+ * Hitung nama lembaga otomatis dari kumpulan asesmen (modus/terbanyak).
+ * Dipakai saat schedule BELUM dibuat (di form create Admin).
+ */
+public static function computeInstitutionNameFromAsesmens($asesmens): ?string
+{
+    return collect($asesmens)
+        ->pluck('institution')
+        ->filter()
+        ->countBy()
+        ->sortDesc()
+        ->keys()
+        ->first();
+}
+
+/**
+ * Tentukan nama lembaga untuk surat tugas.
+ * - Kalau institution_name sudah pernah diisi, pakai itu.
+ * - Kalau belum, hitung otomatis dari institution asesi di schedule ini.
+ * - Fallback terakhir: nama TUK.
+ */
+public function resolveInstitutionName(): ?string
+{
+    if (!empty($this->institution_name)) {
+        return $this->institution_name;
+    }
+
+    return static::computeInstitutionNameFromAsesmens($this->asesmens) ?? $this->tuk?->name;
+}
     // =========================================================================
     // Approval helpers
     // =========================================================================

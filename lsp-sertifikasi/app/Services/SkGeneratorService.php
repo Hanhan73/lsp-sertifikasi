@@ -208,10 +208,7 @@ class SkGeneratorService
 
         // Nama lembaga diambil dari data asesi (batch ujikom), bukan dari TUK.
         // Ambil institution non-kosong pertama dari peserta di batch ini.
-        $lembagaName = $schedule->asesmens
-            ->pluck('institution')
-            ->filter()
-            ->first() ?? $tukName;
+        $lembagaName = $schedule->resolveInstitutionName() ?? $tukName;
 
         $kopHtml = $this->buildKop();
         $ttdHtml = $this->buildTtd($tanggalSurat, $direkturName, $direkturNip);

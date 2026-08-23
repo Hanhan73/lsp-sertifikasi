@@ -269,6 +269,16 @@
             </select>
         </div>
 
+        <div class="mb-3">
+            <label class="form-label small fw-semibold">Nama Lembaga (untuk Surat Tugas)</label>
+            <input type="text" name="institution_name" class="form-control form-control-sm"
+                value="{{ old('institution_name', $autoInstitutionName) }}"
+                placeholder="Otomatis dari data asesi, bisa diubah">
+            <small class="text-muted" style="font-size:.72rem;">
+                Otomatis terisi dari lembaga asal asesi yang dipilih. Ubah jika perlu.
+            </small>
+        </div>
+
         {{-- Tanggal --}}
         <div class="mb-3">
             <label class="form-label small fw-semibold">Tanggal Asesmen <span class="text-danger">*</span></label>

@@ -85,65 +85,70 @@ public function show(Schedule $schedule)
      * - Update approval_status ke 'approved'
      */
     public function approve(Request $request, Schedule $schedule)
-    {
-        if (!$schedule->isPendingApproval()) {
-            return $this->jsonOrRedirect(
-                $request,
-                false,
-                'Jadwal ini sudah diproses sebelumnya.',
-                route('direktur.schedules.show', $schedule)
-            );
-        }
-
-        DB::beginTransaction();
-        try {
-
-            // 1. set dulu approved_at
-            $schedule->update([
-                'approval_status' => 'approved',
-                'approval_notes'  => $request->input('notes'),
-                'approved_by'     => auth()->id(),
-                'approved_at'     => now(),
-            ]);
-
-            // 2. baru generate nomor SK
-            $skNumber = $this->skGenerator->generateSkNumber($schedule);
-
-            // 3. update sk_number
-            $schedule->update([
-                'sk_number' => $skNumber,
-            ]);
-
-
-            // 4. Update semua asesi ke 'scheduled'
-            $schedule->asesmens()->update(['status' => 'scheduled']);
-
-            // 5. Generate SK PDF
-            $skPath = $this->skGenerator->generate($schedule->fresh(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy']));
-            $schedule->update(['sk_path' => $skPath]);
-
-            DB::commit();
-
-            Log::info("Direktur #{auth()->id()} menyetujui jadwal #{$schedule->id}. SK: {$skNumber}");
-
-            return $this->jsonOrRedirect(
-                $request,
-                true,
-                "Jadwal disetujui. Nomor SK: {$skNumber}. Status {$schedule->asesmens->count()} asesi berubah ke Terjadwal.",
-                route('direktur.schedules.show', $schedule)
-            );
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Direktur approve schedule error: {$e->getMessage()}");
-
-            return $this->jsonOrRedirect(
-                $request,
-                false,
-                'Terjadi kesalahan: ' . $e->getMessage(),
-                route('direktur.schedules.show', $schedule)
-            );
-        }
+{
+    if (!$schedule->isPendingApproval()) {
+        return $this->jsonOrRedirect(
+            $request,
+            false,
+            'Jadwal ini sudah diproses sebelumnya.',
+            route('direktur.schedules.show', $schedule)
+        );
     }
+
+    $request->validate([
+        'institution_name' => 'nullable|string|max:255',
+    ]);
+
+    DB::beginTransaction();
+    try {
+
+        // 1. set dulu approved_at + institution_name hasil edit Direktur (atau auto kalau kosong)
+        $schedule->update([
+            'approval_status'  => 'approved',
+            'approval_notes'   => $request->input('notes'),
+            'approved_by'      => auth()->id(),
+            'approved_at'      => now(),
+            'institution_name' => $request->input('institution_name') ?: $schedule->resolveInstitutionName(),
+        ]);
+
+        // 2. baru generate nomor SK
+        $skNumber = $this->skGenerator->generateSkNumber($schedule);
+
+        // 3. update sk_number
+        $schedule->update([
+            'sk_number' => $skNumber,
+        ]);
+
+        // 4. Update semua asesi ke 'scheduled'
+        $schedule->asesmens()->update(['status' => 'scheduled']);
+
+        // 5. Generate SK PDF
+        $skPath = $this->skGenerator->generate($schedule->fresh(['tuk', 'skema', 'asesor', 'asesmens', 'approvedBy']));
+        $schedule->update(['sk_path' => $skPath]);
+
+        DB::commit();
+
+        Log::info("Direktur #{auth()->id()} menyetujui jadwal #{$schedule->id}. SK: {$skNumber}");
+
+        return $this->jsonOrRedirect(
+            $request,
+            true,
+            "Jadwal disetujui. Nomor SK: {$skNumber}. Status {$schedule->asesmens->count()} asesi berubah ke Terjadwal.",
+            route('direktur.schedules.show', $schedule)
+        );
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Direktur approve schedule error: {$e->getMessage()}");
+
+        return $this->jsonOrRedirect(
+            $request,
+            false,
+            'Terjadi kesalahan: ' . $e->getMessage(),
+            route('direktur.schedules.show', $schedule)
+        );
+    }
+}
 
     /**
      * Tolak jadwal.

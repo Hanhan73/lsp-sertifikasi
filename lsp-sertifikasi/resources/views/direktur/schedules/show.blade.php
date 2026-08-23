@@ -187,8 +187,7 @@
         {{-- Action Buttons --}}
         <div class="d-grid gap-2">
             <button class="btn btn-success"
-                    onclick="approveSchedule({{ $schedule->id }}, {{ $pesertaCount }}, '{{ addslashes($schedule->skema?->name ?? '') }}')">
-                <i class="bi bi-check-lg me-1"></i>Setujui Jadwal
+onclick="approveSchedule({{ $schedule->id }}, {{ $schedule->asesmens->count() }}, '{{ addslashes($schedule->skema->name ?? '-') }}', '{{ addslashes($schedule->resolveInstitutionName() ?? '') }}')"                <i class="bi bi-check-lg me-1"></i>Setujui Jadwal
             </button>
             <button class="btn btn-outline-danger"
                     onclick="rejectSchedule({{ $schedule->id }})">
@@ -289,7 +288,7 @@ document.getElementById('search-peserta')?.addEventListener('input', function() 
     });
 });
 
-async function approveSchedule(id, count, skema) {
+async function approveSchedule(id, count, skema, autoInstitutionName) {
     const result = await Swal.fire({
         title: 'Setujui Jadwal?',
         html: `<div class="text-start small">
@@ -301,6 +300,9 @@ async function approveSchedule(id, count, skema) {
                     <span class="text-muted">Peserta</span><strong>${count} orang</strong>
                 </div>
             </div>
+            <div class="mb-2 fw-semibold">Nama Lembaga (untuk Surat Tugas):</div>
+            <input id="approval-institution" type="text" class="form-control form-control-sm mb-3"
+                   value="${autoInstitutionName ?? ''}" placeholder="Nama lembaga...">
             <div class="mb-2 fw-semibold">Catatan (opsional):</div>
             <textarea id="approval-notes" class="form-control form-control-sm" rows="2"
                       placeholder="Catatan untuk admin..."></textarea>
@@ -315,7 +317,10 @@ async function approveSchedule(id, count, skema) {
         cancelButtonText: 'Batal',
         confirmButtonColor: '#16a34a',
         reverseButtons: true,
-        preConfirm: () => document.getElementById('approval-notes')?.value ?? '',
+        preConfirm: () => ({
+            notes: document.getElementById('approval-notes')?.value ?? '',
+            institution_name: document.getElementById('approval-institution')?.value ?? '',
+        }),
     });
 
     if (!result.isConfirmed) return;
@@ -327,7 +332,7 @@ async function approveSchedule(id, count, skema) {
         const res  = await fetch(`/direktur/schedules/${id}/approve`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
-            body: JSON.stringify({ notes: result.value }),
+            body: JSON.stringify(result.value),
         });
         const data = await res.json();
 

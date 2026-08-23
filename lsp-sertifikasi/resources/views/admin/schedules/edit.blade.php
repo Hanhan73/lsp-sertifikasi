@@ -303,6 +303,20 @@
                     </div>
                 </div>
 
+                                <div class="mb-3">
+                    <label class="form-label small fw-semibold">
+                        Nama Lembaga <span class="text-muted fw-normal">(untuk Surat Tugas)</span>
+                    </label>
+                    <input type="text" name="institution_name" id="input-institution"
+                           class="form-control form-control-sm @error('institution_name') is-invalid @enderror"
+                           value="{{ old('institution_name', $schedule->resolveInstitutionName()) }}"
+                           placeholder="Otomatis dari data asesi, bisa diubah">
+                    @error('institution_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="form-text text-muted small">
+                        Otomatis terisi dari lembaga asal asesi. Ubah jika ejaan/nama resminya berbeda.
+                    </div>
+                </div>
+
                 {{-- Catatan --}}
                 <div class="mb-0">
                     <label class="form-label small fw-semibold">
@@ -352,6 +366,10 @@
                     <div class="summary-row">
                         <span class="s-label">Lokasi</span>
                         <span class="s-value" id="s-location">{{ $schedule->location ?? '-' }}</span>
+                    </div>
+                                        <div class="summary-row">
+                        <span class="s-label">Lembaga</span>
+                        <span class="s-value" id="s-institution">{{ $schedule->resolveInstitutionName() ?? '-' }}</span>
                     </div>
                     @if($schedule->asesor)
                     <div class="summary-row">
@@ -505,12 +523,14 @@ function updateSummary() {
     const startEl = document.getElementById('input-start');
     const endEl   = document.getElementById('input-end');
     const locEl   = document.getElementById('input-location');
+    const instEl  = document.getElementById('input-institution'); // ← tambah
     const locType = document.querySelector('input[name="location_type"]:checked')?.value ?? 'offline';
 
     const sDate   = document.getElementById('s-date');
     const sTime   = document.getElementById('s-time');
     const sLocType= document.getElementById('s-loc-type');
     const sLoc    = document.getElementById('s-location');
+    const sInst   = document.getElementById('s-institution'); // ← tambah
 
     if (dateEl.value && sDate) {
         const d = new Date(dateEl.value + 'T00:00:00');
@@ -519,6 +539,7 @@ function updateSummary() {
     if (startEl.value && endEl.value && sTime) sTime.textContent = `${startEl.value} – ${endEl.value}`;
     if (sLocType) sLocType.textContent = locType === 'online' ? '🌐 Online' : '🏢 Offline';
     if (locEl.value.trim() && sLoc) sLoc.textContent = locEl.value.trim();
+    if (instEl && instEl.value.trim() && sInst) sInst.textContent = instEl.value.trim(); // ← tambah
 }
 
 // ── Confirm save ──────────────────────────────────────────────
@@ -590,7 +611,7 @@ document.addEventListener('DOMContentLoaded', () => {
     @endif
 
     // Live update summary saat user mengetik
-    ['input-date', 'input-start', 'input-end', 'input-location'].forEach(id => {
+    ['input-date', 'input-start', 'input-end', 'input-location', 'input-institution'].forEach(id => { // ← tambah 'input-institution'
         document.getElementById(id)?.addEventListener('input', updateSummary);
         document.getElementById(id)?.addEventListener('change', updateSummary);
     });

@@ -1080,4 +1080,183 @@ class AsesmenController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }
+
+        // =========================================================
+    // EXPORT BLANKO PENGAJUAN — MANDIRI PER TUK
+    // =========================================================
+
+    /**
+     * Export blanko pengajuan BNSP untuk semua asesi MANDIRI di satu TUK.
+     * Beda dengan batch kolektif: tiap asesi mandiri bisa punya jadwal & asesor
+     * yang berbeda-beda, jadi kolom TANGGAL UJI & NOMOR REGISTRASI ASESOR
+     * diambil per-baris (bukan satu nilai untuk semua peserta).
+     */
+    public function exportMandiriPerTukBlanko(Request $request, int $tukId)
+    {
+        $tuk = Tuk::findOrFail($tukId);
+
+        $query = Asesmen::with(['user', 'tuk', 'assignedTuk', 'skema', 'frak04', 'schedule.asesor', 'schedule.beritaAcara.asesis'])
+            ->where('is_collective', false)
+            ->where(function ($q) use ($tukId) {
+                $q->where('assigned_tuk_id', $tukId)
+                    ->orWhere(function ($q2) use ($tukId) {
+                        $q2->where('tuk_id', $tukId)->whereNull('assigned_tuk_id');
+                    });
+            });
+
+        // ← BARU: filter berdasarkan checkbox yang dipilih admin
+        $selectedIds = array_filter((array) $request->input('ids', []));
+        if (!empty($selectedIds)) {
+            $query->whereIn('id', $selectedIds);
+        }
+
+        $asesmens = $query->orderBy('full_name')->get();
+
+        abort_if($asesmens->isEmpty(), 404, empty($selectedIds)
+            ? 'Tidak ada asesi mandiri untuk TUK ini.'
+            : 'Tidak ada asesi yang dipilih ditemukan untuk TUK ini.');
+
+        if (!class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class)) {
+            abort(500, 'PhpSpreadsheet tidak tersedia. Hubungi administrator.');
+        }
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet       = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Blanko Pengajuan Mandiri');
+
+        $headers = [
+            'No',
+            'NAMA ASESI',
+            'NIK',
+            'TEMPAT LAHIR',
+            'TANGGAL LAHIR (dd/mm/yyyy)',
+            'JENIS KELAMIN (L/P)',
+            'TEMPAT TINGGAL',
+            'KODE KOTA',
+            'KODE PROVINSI',
+            'TELP',
+            'EMAIL',
+            'KODE PENDIDIKAN',
+            'KODE PEKERJAAN',
+            'KODE JADWAL',
+            'TANGGAL UJI (hh/bb/yyyy)',
+            'NOMOR REGISTRASI ASESOR',
+            'KODE SUMBER ANGGARAN',
+            'KODE KEMENTERIAN',
+            'K/BK',
+            'ASAL SEKOLAH/LEMBAGA',
+        ];
+
+        $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
+        $sheet->fromArray($headers, null, 'A1');
+
+        $sheet->getStyle("A1:{$lastCol}1")->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF'], 'name' => 'Arial', 'size' => 10],
+            'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => '1F4E79']],
+            'alignment' => ['horizontal' => 'center', 'vertical' => 'center', 'wrapText' => true],
+            'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'CCCCCC']]],
+        ]);
+        $sheet->getStyle('T1')->getFill()->setFillType('solid')->getStartColor()->setRGB('2E75B6');
+        $sheet->getRowDimension(1)->setRowHeight(32);
+
+        foreach ($asesmens as $i => $a) {
+            $row = $i + 2;
+
+            // K/BK: BeritaAcara jadwal asesi ini → frak04 → result
+            $rek = $a->schedule?->beritaAcara?->asesis
+                ->where('asesmen_id', $a->id)->first()?->rekomendasi;
+
+            if ($rek) {
+                $kbk = strtoupper(trim($rek));
+            } elseif ($a->frak04 && isset($a->frak04->rekomendasi)) {
+                $kbk = strtoupper($a->frak04->rekomendasi) === 'K' ? 'K' : 'BK';
+            } elseif ($a->result) {
+                $kbk = $a->result === 'kompeten' ? 'K' : 'BK';
+            } else {
+                $kbk = '';
+            }
+
+            $nomorAsesor = $a->schedule?->asesor?->no_reg_met
+                ? 'MET.' . $a->schedule->asesor->no_reg_met
+                : '';
+
+            $sheet->setCellValue("A{$row}", $i + 1);
+            $sheet->setCellValue("B{$row}", strtoupper($a->full_name ?? $a->user->name ?? ''));
+
+            foreach (
+                [
+                    "C{$row}" => $a->nik ?? '',
+                    "H{$row}" => $a->city_code ?? '',
+                    "I{$row}" => $a->province_code ?? '',
+                ] as $cell => $val
+            ) {
+                $sheet->setCellValueExplicit(
+                    $cell,
+                    $val,
+                    \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                );
+            }
+
+            $sheet->setCellValue("D{$row}", strtoupper($a->birth_place ?? ''));
+            $sheet->setCellValue("E{$row}", $a->birth_date ? $a->birth_date->format('d/m/Y') : '');
+            $sheet->setCellValue("F{$row}", $a->gender ?? '');
+            $sheet->setCellValue("G{$row}", $a->address ?? '');
+            $sheet->setCellValue("J{$row}", $a->phone ?? '');
+            $sheet->setCellValue("K{$row}", $a->email ?? $a->user->email ?? '');
+            $sheet->setCellValue("L{$row}", $a->education ?? '');
+            $sheet->setCellValue("M{$row}", $a->occupation ?? '');
+            $sheet->setCellValue("N{$row}", ''); // Kode Jadwal — kosong
+            $sheet->setCellValue("O{$row}", $a->schedule?->assessment_date ? $a->schedule->assessment_date->format('d/m/Y') : '');
+            $sheet->setCellValue("P{$row}", $nomorAsesor);
+            $sheet->setCellValue("Q{$row}", $a->budget_source ?? '');
+            $sheet->setCellValue("R{$row}", ''); // Kode Kementerian — kosong
+            $sheet->setCellValue("S{$row}", $kbk);
+            $sheet->setCellValue("T{$row}", $a->institution ?? '');
+
+            $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
+            $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => $bgColor]],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
+            ]);
+            $sheet->getStyle("T{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFDE7']],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
+            ]);
+        }
+
+        $totalRows = $asesmens->count() + 1;
+        $sheet->getStyle("S2:S{$totalRows}")->applyFromArray([
+            'font'      => ['bold' => true],
+            'alignment' => ['horizontal' => 'center'],
+        ]);
+        $sheet->getStyle("O2:P{$totalRows}")->applyFromArray(['font' => ['bold' => true]]);
+        $sheet->getStyle("A2:A{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
+        $sheet->getStyle("F2:F{$totalRows}")->applyFromArray(['alignment' => ['horizontal' => 'center']]);
+
+        foreach (
+            [
+                'A' => 5, 'B' => 32, 'C' => 22, 'D' => 18, 'E' => 16, 'F' => 8,
+                'G' => 42, 'H' => 12, 'I' => 12, 'J' => 16, 'K' => 28, 'L' => 14,
+                'M' => 14, 'N' => 16, 'O' => 18, 'P' => 26, 'Q' => 18, 'R' => 16,
+                'S' => 8, 'T' => 35,
+            ] as $col => $width
+        ) {
+            $sheet->getColumnDimension($col)->setWidth($width);
+        }
+
+        $sheet->freezePane('A2');
+
+        $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'blanko_pengajuan_mandiri_' . \Illuminate\Support\Str::slug($tuk->code ?: $tuk->name) . '_' . date('Ymd') . '.xlsx';
+        $tmpPath  = storage_path('app/tmp_blanko_mandiri_' . $filename);
+        $writer->save($tmpPath);
+
+        return response()->download($tmpPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
 }

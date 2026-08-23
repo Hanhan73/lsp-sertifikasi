@@ -206,6 +206,13 @@ class SkGeneratorService
         $asesorNama  = $schedule->asesor?->nama ?? '-';
         $asesorNoReg = $schedule->asesor?->no_reg_met ?? '-';
 
+        // Nama lembaga diambil dari data asesi (batch ujikom), bukan dari TUK.
+        // Ambil institution non-kosong pertama dari peserta di batch ini.
+        $lembagaName = $schedule->asesmens
+            ->pluck('institution')
+            ->filter()
+            ->first() ?? $tukName;
+
         $kopHtml = $this->buildKop();
         $ttdHtml = $this->buildTtd($tanggalSurat, $direkturName, $direkturNip);
 
@@ -218,7 +225,7 @@ class SkGeneratorService
             </div>
 
             <div class="body-text">
-                <p>Berdasarkan permohonan dari ' . htmlspecialchars($tukName) . '
+                <p>Berdasarkan permohonan dari ' . htmlspecialchars($lembagaName) . '
                 dan tentang Sertifikasi Kompetensi, maka Kami menugaskan:</p>
             </div>
 

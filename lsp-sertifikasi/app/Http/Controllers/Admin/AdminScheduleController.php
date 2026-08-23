@@ -115,6 +115,13 @@ class AdminScheduleController extends Controller
         ->orderBy('full_name')
         ->get();
 
+    // Daftar batch kolektif unik untuk dropdown filter
+    $batches = $availableAsesmens
+        ->pluck('collective_batch_id')
+        ->filter()
+        ->unique()
+        ->values();
+
     // Auto-hitung nama lembaga dari asesi yang sudah dipilih (modus)
     $autoInstitutionName = Schedule::computeInstitutionNameFromAsesmens($selectedAsesmens);
 
@@ -123,6 +130,7 @@ class AdminScheduleController extends Controller
         'availableAsesmens',
         'tuks',
         'skemas',
+        'batches',
         'autoInstitutionName'
     ));
 }

@@ -18,23 +18,23 @@
 </div>
 
 {{-- Filter & Sort Bar --}}
-<form method="GET" action="{{ route('manajer-sertifikasi.distribusi') }}" class="d-flex flex-wrap gap-2 mb-4 align-items-center">
+<form method="GET" action="{{ route('manajer-sertifikasi.distribusi') }}"
+    class="d-flex flex-wrap gap-2 mb-4 align-items-center">
     <input type="text" name="search" id="searchJadwal" class="form-control form-control-sm"
-           placeholder="&#xF52A; Cari skema / TUK..."
-           value="{{ request('search') }}" style="width:200px;">
+        placeholder="&#xF52A; Cari skema / TUK..." value="{{ request('search') }}" style="width:200px;">
 
     {{-- Filter Status Jadwal --}}
     <div class="btn-group btn-group-sm" role="group">
         <a href="{{ request()->fullUrlWithQuery(['status' => '', 'page' => 1]) }}"
-           class="btn {{ !$filterStatus ? 'btn-primary' : 'btn-outline-secondary' }}">
+            class="btn {{ !$filterStatus ? 'btn-primary' : 'btn-outline-secondary' }}">
             Semua
         </a>
         <a href="{{ request()->fullUrlWithQuery(['status' => 'mendatang', 'page' => 1]) }}"
-           class="btn {{ $filterStatus === 'mendatang' ? 'btn-primary' : 'btn-outline-secondary' }}">
+            class="btn {{ $filterStatus === 'mendatang' ? 'btn-primary' : 'btn-outline-secondary' }}">
             <i class="bi bi-calendar-check me-1"></i>Mendatang
         </a>
         <a href="{{ request()->fullUrlWithQuery(['status' => 'selesai', 'page' => 1]) }}"
-           class="btn {{ $filterStatus === 'selesai' ? 'btn-primary' : 'btn-outline-secondary' }}">
+            class="btn {{ $filterStatus === 'selesai' ? 'btn-primary' : 'btn-outline-secondary' }}">
             <i class="bi bi-check2-circle me-1"></i>Selesai
         </a>
     </div>
@@ -42,9 +42,9 @@
     {{-- Sort --}}
     <select name="sort" class="form-select form-select-sm" style="width:auto;" onchange="this.form.submit()">
         <option value="date_desc" {{ $sortBy === 'date_desc' ? 'selected' : '' }}>Tanggal (Terbaru)</option>
-        <option value="date_asc"  {{ $sortBy === 'date_asc'  ? 'selected' : '' }}>Tanggal (Terlama)</option>
+        <option value="date_asc" {{ $sortBy === 'date_asc'  ? 'selected' : '' }}>Tanggal (Terlama)</option>
         <option value="skema_asc" {{ $sortBy === 'skema_asc' ? 'selected' : '' }}>Skema (A→Z)</option>
-        <option value="skema_desc"{{ $sortBy === 'skema_desc'? 'selected' : '' }}>Skema (Z→A)</option>
+        <option value="skema_desc" {{ $sortBy === 'skema_desc'? 'selected' : '' }}>Skema (Z→A)</option>
     </select>
 
     <button type="submit" class="btn btn-sm btn-outline-primary">
@@ -63,7 +63,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:44px;height:44px;background:#eff6ff;">
+                    style="width:44px;height:44px;background:#eff6ff;">
                     <i class="bi bi-calendar-event text-primary" style="font-size:1.2rem;"></i>
                 </div>
                 <div>
@@ -77,7 +77,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:44px;height:44px;background:#f0fdf4;">
+                    style="width:44px;height:44px;background:#f0fdf4;">
                     <i class="bi bi-check-circle text-success" style="font-size:1.2rem;"></i>
                 </div>
                 <div>
@@ -91,7 +91,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3 p-3">
                 <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
-                     style="width:44px;height:44px;background:#fffbeb;">
+                    style="width:44px;height:44px;background:#fffbeb;">
                     <i class="bi bi-exclamation-circle text-warning" style="font-size:1.2rem;"></i>
                 </div>
                 <div>
@@ -139,15 +139,15 @@
                 </thead>
                 <tbody>
                     @foreach($schedules as $i => $s)
-@php
-    $hasObservasi = $s->distribusiSoalObservasi->isNotEmpty();
-    $hasTeori     = $s->distribusiSoalTeori !== null;
-    $hasPorto     = $s->distribusiPortofolio->isNotEmpty();
-    $portoWajib   = $skemaIdsWithPortofolio->contains($s->skema_id);
-    $portoOk      = !$portoWajib || $hasPorto;
-    $lengkap      = $hasObservasi && $hasTeori && $portoOk;
-    $daysLeft     = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
-@endphp
+                    @php
+                    $hasObservasi = $s->distribusiSoalObservasi->isNotEmpty();
+                    $hasTeori = $s->distribusiSoalTeori !== null;
+                    $hasPorto = $s->distribusiPortofolio->isNotEmpty();
+                    $portoWajib = $skemaIdsWithPortofolio->contains($s->skema_id);
+                    $portoOk = !$portoWajib || $hasPorto;
+                    $lengkap = $hasObservasi && $hasTeori && $portoOk;
+                    $daysLeft = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
+                    @endphp
                     <tr>
                         <td class="ps-4 text-muted small">{{ $schedules->firstItem() + $i }}</td>
                         <td>
@@ -164,13 +164,13 @@
                             <div class="small mt-1">
                                 @if($daysLeft === 0)
                                 <span class="badge bg-warning text-dark" style="font-size:.65rem;">Hari ini</span>
-                                @elseif($daysLeft > 0 && $daysLeft <= 7)
-                                <span class="badge bg-danger" style="font-size:.65rem;">{{ $daysLeft }}h lagi</span>
-                                @elseif($daysLeft > 0)
-                                <span class="text-muted" style="font-size:.75rem;">{{ $daysLeft }} hari lagi</span>
-                                @else
-                                <span class="text-muted" style="font-size:.75rem;">Selesai</span>
-                                @endif
+                                @elseif($daysLeft > 0 && $daysLeft <= 7) <span class="badge bg-danger"
+                                    style="font-size:.65rem;">{{ $daysLeft }}h lagi</span>
+                                    @elseif($daysLeft > 0)
+                                    <span class="text-muted" style="font-size:.75rem;">{{ $daysLeft }} hari lagi</span>
+                                    @else
+                                    <span class="text-muted" style="font-size:.75rem;">Selesai</span>
+                                    @endif
                             </div>
                         </td>
                         <td class="text-center">
@@ -180,7 +180,8 @@
                         {{-- Observasi --}}
                         <td class="text-center">
                             @if($hasObservasi)
-                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
+                            <span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
                                 <i class="bi bi-check-lg me-1"></i>{{ $s->distribusiSoalObservasi->count() }}
                             </span>
                             @else
@@ -191,11 +192,13 @@
                         {{-- Teori --}}
                         <td class="text-center">
                             @if($hasTeori)
-                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
+                            <span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
                                 <i class="bi bi-check-lg me-1"></i>{{ $s->distribusiSoalTeori->jumlah_soal }}
                             </span>
                             @else
-                            <span class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle px-2">
+                            <span
+                                class="badge rounded-pill bg-warning-subtle text-warning border border-warning-subtle px-2">
                                 <i class="bi bi-exclamation me-1"></i>Belum
                             </span>
                             @endif
@@ -204,7 +207,8 @@
                         {{-- Portofolio --}}
                         <td class="text-center">
                             @if($hasPorto)
-                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
+                            <span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-2">
                                 <i class="bi bi-check-lg me-1"></i>{{ $s->distribusiPortofolio->count() }}
                             </span>
                             @else
@@ -215,15 +219,21 @@
                         {{-- Status --}}
                         <td class="text-center">
                             @if($lengkap)
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2" style="font-size:.7rem;">
+                            <span
+                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2"
+                                style="font-size:.7rem;">
                                 <i class="bi bi-check-circle me-1"></i>Lengkap
                             </span>
                             @elseif($hasObservasi || $hasTeori)
-                            <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2" style="font-size:.7rem;">
+                            <span
+                                class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill px-2"
+                                style="font-size:.7rem;">
                                 Sebagian
                             </span>
                             @else
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2" style="font-size:.7rem;">
+                            <span
+                                class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2"
+                                style="font-size:.7rem;">
                                 Kosong
                             </span>
                             @endif
@@ -231,7 +241,7 @@
 
                         <td class="text-center pe-4">
                             <a href="{{ route('manajer-sertifikasi.jadwal.show', $s) }}"
-                               class="btn btn-sm btn-primary px-3">
+                                class="btn btn-sm btn-primary px-3">
                                 Kelola
                             </a>
                         </td>
@@ -252,7 +262,7 @@
 @push('scripts')
 <script>
 // Submit form saat user tekan Enter di kolom search
-document.getElementById('searchJadwal')?.addEventListener('keydown', function (e) {
+document.getElementById('searchJadwal')?.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         this.closest('form').submit();

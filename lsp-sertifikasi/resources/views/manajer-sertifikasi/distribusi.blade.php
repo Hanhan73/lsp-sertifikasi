@@ -139,13 +139,15 @@
                 </thead>
                 <tbody>
                     @foreach($schedules as $i => $s)
-                    @php
-                        $hasObservasi = $s->distribusiSoalObservasi->isNotEmpty();
-                        $hasTeori     = $s->distribusiSoalTeori !== null;
-                        $hasPorto     = $s->distribusiPortofolio->isNotEmpty();
-                        $lengkap      = $hasObservasi && $hasTeori;
-                        $daysLeft     = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
-                    @endphp
+@php
+    $hasObservasi = $s->distribusiSoalObservasi->isNotEmpty();
+    $hasTeori     = $s->distribusiSoalTeori !== null;
+    $hasPorto     = $s->distribusiPortofolio->isNotEmpty();
+    $portoWajib   = $skemaIdsWithPortofolio->contains($s->skema_id);
+    $portoOk      = !$portoWajib || $hasPorto;
+    $lengkap      = $hasObservasi && $hasTeori && $portoOk;
+    $daysLeft     = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
+@endphp
                     <tr>
                         <td class="ps-4 text-muted small">{{ $schedules->firstItem() + $i }}</td>
                         <td>

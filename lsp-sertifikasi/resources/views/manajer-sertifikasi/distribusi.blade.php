@@ -143,9 +143,7 @@
                     $hasObservasi = $s->distribusiSoalObservasi->isNotEmpty();
                     $hasTeori = $s->distribusiSoalTeori !== null;
                     $hasPorto = $s->distribusiPortofolio->isNotEmpty();
-                    $portoWajib = $skemaIdsWithPortofolio->contains($s->skema_id);
-                    $portoOk = !$portoWajib || $hasPorto;
-                    $lengkap = $hasTeori  || $hasObservasi && $portoOk;
+                    $lengkap = $hasTeori && ($hasObservasi || $hasPorto);
                     $daysLeft = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
                     @endphp
                     <tr>
@@ -261,12 +259,12 @@
 
 @push('scripts')
 <script>
-// Submit form saat user tekan Enter di kolom search
-document.getElementById('searchJadwal')?.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        this.closest('form').submit();
-    }
-});
+    // Submit form saat user tekan Enter di kolom search
+    document.getElementById('searchJadwal')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            this.closest('form').submit();
+        }
+    });
 </script>
 @endpush

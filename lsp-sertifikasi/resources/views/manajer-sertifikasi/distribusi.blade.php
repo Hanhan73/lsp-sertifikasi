@@ -145,7 +145,7 @@
                     $hasPorto = $s->distribusiPortofolio->isNotEmpty();
                     $portoWajib = $skemaIdsWithPortofolio->contains($s->skema_id);
                     $portoOk = !$portoWajib || $hasPorto;
-                    $lengkap = $hasObservasi && $hasTeori && $portoOk;
+                    $lengkap = $hasTeori  || $hasObservasi && $portoOk;
                     $daysLeft = now()->startOfDay()->diffInDays($s->assessment_date->startOfDay(), false);
                     @endphp
                     <tr>

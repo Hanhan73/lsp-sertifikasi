@@ -90,10 +90,12 @@ class AdminSkUjikomController extends Controller
         abort_if($peserta->isEmpty(), 422, 'Belum ada peserta yang dinilai (K/BK) di batch ini.');
 
         return view('admin.sk-ujikom.create', compact(
-            'batchId', 'first', 'schedules', 'peserta'
-        ));
+            'batchId',
+            'first',
+            'schedules',
+            'peserta'
+        ) + ['pesertaKompeten' => $peserta]);
     }
-
     /**
      * Generate SK langsung approved + PDF.
      */
@@ -138,7 +140,6 @@ class AdminSkUjikomController extends Controller
 
             return redirect()->route('admin.sk-ujikom.show', $sk)
                 ->with('success', 'SK berhasil digenerate dan disetujui.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('[AdminSkUjikom][store] ' . $e->getMessage());
@@ -163,7 +164,10 @@ class AdminSkUjikomController extends Controller
             ->first();
 
         return view('admin.sk-ujikom.show', compact(
-            'skUjikom', 'schedules', 'peserta', 'first'
+            'skUjikom',
+            'schedules',
+            'peserta',
+            'first'
         ));
     }
 
@@ -202,27 +206,27 @@ class AdminSkUjikomController extends Controller
     // PRIVATE HELPERS
     // ─────────────────────────────────────────────────────────────────────
 
-/**
- * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
- * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
- */
-private function getPesertaSemua($scheduleIds)
-{
-    return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
-        ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
-        ->whereIn('rekomendasi', ['K', 'BK'])
-        ->get()
-        ->map(function ($baa) {
-            $asesi = $baa->asesmen;
-            if ($asesi) {
-                $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
-                $asesi->_rekomendasi = $baa->rekomendasi;
-            }
-            return $asesi;
-        })
-        ->filter()
-        ->values();
-}
+    /**
+     * Ambil SEMUA peserta (K & BK) dari schedule IDs, dikelompokkan per jadwal (untuk asesor rowspan).
+     * Return: collection of Asesmen, dengan tambahan _asesor & _rekomendasi.
+     */
+    private function getPesertaSemua($scheduleIds)
+    {
+        return BeritaAcaraAsesi::with(['asesmen', 'beritaAcara.schedule.asesor'])
+            ->whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $scheduleIds))
+            ->whereIn('rekomendasi', ['K', 'BK'])
+            ->get()
+            ->map(function ($baa) {
+                $asesi = $baa->asesmen;
+                if ($asesi) {
+                    $asesi->_asesor      = $baa->beritaAcara?->schedule?->asesor;
+                    $asesi->_rekomendasi = $baa->rekomendasi;
+                }
+                return $asesi;
+            })
+            ->filter()
+            ->values();
+    }
     /**
      * Generate PDF SK dan simpan ke storage private.
      * Return path file.

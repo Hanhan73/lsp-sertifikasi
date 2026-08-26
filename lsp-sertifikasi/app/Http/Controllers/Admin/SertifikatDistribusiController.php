@@ -12,8 +12,6 @@ class SertifikatDistribusiController extends Controller
     /**
      * Resolusi hasil K/BK per asesmen.
      * Prioritas: $asesmen->result (kalau resmi sudah diisi) → fallback ke rekomendasi Berita Acara.
-     * Sumber kebenaran K/BK yang sebenarnya ada di BeritaAcaraAsesi->rekomendasi,
-     * karena kolom `result` di tabel asesmens sering tidak terisi oleh alur sistem saat ini.
      */
     private function resolveResult(Asesmen $m): ?string
     {
@@ -47,7 +45,6 @@ class SertifikatDistribusiController extends Controller
             ->map(function ($members) {
                 $first = $members->first();
 
-                // Resolusi hasil tiap member sekali aja, simpan biar nggak recompute
                 $resolved = $members->map(fn ($m) => [
                     'asesmen' => $m,
                     'result'  => $this->resolveResult($m),
@@ -81,10 +78,59 @@ class SertifikatDistribusiController extends Controller
             })
             ->values();
 
-        // ── Mandiri: sama, pakai resolveResult juga biar konsisten ──
         $mandiri = $asesmens->where('is_collective', false)->values();
 
         return view('admin.sertifikat-distribusi.index', compact('batches', 'mandiri'));
+    }
+
+    /**
+     * Detail lengkap satu batch — dipanggil via AJAX untuk mengisi modal.
+     */
+    public function batchDetail(string $batchId)
+    {
+        $members = Asesmen::with(['schedule.beritaAcara.asesis', 'schedule.asesor', 'tuk', 'skema'])
+            ->where('collective_batch_id', $batchId)
+            ->orderBy('full_name')
+            ->get();
+
+        if ($members->isEmpty()) {
+            return response()->json(['success' => false, 'message' => 'Batch tidak ditemukan.'], 404);
+        }
+
+        $first = $members->first();
+
+        $peserta = $members->map(function ($m) {
+            $result = $this->resolveResult($m);
+
+            return [
+                'id'                 => $m->id,
+                'full_name'          => $m->full_name,
+                'nik'                => $m->nik,
+                'institution'        => $m->institution,
+                'result'             => $result, // 'kompeten' | 'belum_kompeten' | null
+                'status'             => $m->status,
+                'status_label'       => $m->status_label,
+                'status_badge'       => $m->status_badge,
+                'schedule_date'      => $m->schedule?->assessment_date?->translatedFormat('d M Y'),
+                'asesor'             => $m->schedule?->asesor?->nama,
+                'uploaded_physical'  => $m->hasUploadedPhysicalCertificate(),
+                'physical_cert_no'   => $m->physical_certificate_number,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'batch'   => [
+                'batch_id' => $batchId,
+                'tuk'      => $first->tuk?->name,
+                'skema'    => $first->skema?->name,
+                'total'    => $members->count(),
+                'kompeten' => $peserta->where('result', 'kompeten')->count(),
+                'bk'       => $peserta->where('result', 'belum_kompeten')->count(),
+                'belum'    => $peserta->whereNull('result')->count(),
+            ],
+            'peserta' => $peserta->values(),
+        ]);
     }
 
     public function distributeBatch(Request $request, string $batchId)

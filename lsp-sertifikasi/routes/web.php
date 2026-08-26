@@ -463,7 +463,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         ->name('sertifikat-distribusi.batch');
     Route::post('sertifikat-distribusi/asesi/{asesmen}', [SertifikatDistribusiController::class, 'distributeIndividual'])
         ->name('sertifikat-distribusi.individual');
-
+    Route::get('sertifikat-distribusi/batch/{batchId}/detail', [SertifikatDistribusiController::class, 'batchDetail'])
+        ->name('sertifikat-distribusi.batch.detail');
 
 Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
     ->name('dummy-accounts.reset');

@@ -22,49 +22,62 @@ class DashboardController extends Controller
             ->whereHas('distribusiSoalTeori')
             ->count();
         $totalBankSoal = SoalTeori::count();
- 
+
         $bankSoalPerSkema = SoalTeori::select('soal_teori.skema_id', DB::raw('count(*) as total'))
             ->join('skemas', 'skemas.id', '=', 'soal_teori.skema_id')
             ->addSelect('skemas.name as skema_name', 'skemas.code as skema_code')
             ->groupBy('soal_teori.skema_id', 'skemas.name', 'skemas.code')
             ->orderByDesc('total')
             ->get();
- 
+
         $jadwalMendatang = Schedule::with(['skema', 'tuk', 'distribusiSoalTeori'])
             ->approved()
             ->upcoming()
             ->withCount('asesmens')
             ->take(6)
             ->get();
- 
+
         return view('manajer-sertifikasi.dashboard', compact(
-            'totalJadwal', 'jadwalBelumTeori', 'jadwalLengkap',
-            'totalBankSoal', 'bankSoalPerSkema', 'jadwalMendatang',
+            'totalJadwal',
+            'jadwalBelumTeori',
+            'jadwalLengkap',
+            'totalBankSoal',
+            'bankSoalPerSkema',
+            'jadwalMendatang',
         ));
     }
 
     public function distribusi(Request $request): \Illuminate\View\View
     {
         $jadwalBelumTeori = Schedule::approved()->whereDoesntHave('distribusiSoalTeori')->count();
-        $jadwalLengkap    = Schedule::approved()
+
+        // Portofolio hanya wajib untuk skema yang memang punya bank soal portofolio
+        $skemaIdsWithPortofolio = Portofolio::pluck('skema_id')->unique();
+
+        $jadwalLengkap = Schedule::approved()
             ->whereHas('distribusiSoalObservasi')
             ->whereHas('distribusiSoalTeori')
+            ->where(function ($q) use ($skemaIdsWithPortofolio) {
+                $q->whereNotIn('schedules.skema_id', $skemaIdsWithPortofolio)
+                    ->orWhereHas('distribusiPortofolio');
+            })
             ->count();
 
         $query = Schedule::with([
-            'skema', 'tuk',
+            'skema',
+            'tuk',
             'distribusiSoalObservasi',
             'distribusiSoalTeori',
             'distribusiPortofolio',
         ])
-        ->approved()
-        ->withCount('asesmens');
+            ->approved()
+            ->withCount('asesmens');
 
         // Filter: pencarian skema / tuk
         if ($search = $request->input('search')) {
             $query->where(function ($q) use ($search) {
                 $q->whereHas('skema', fn($s) => $s->where('name', 'like', "%{$search}%"))
-                  ->orWhereHas('tuk', fn($t) => $t->where('name', 'like', "%{$search}%"));
+                    ->orWhereHas('tuk', fn($t) => $t->where('name', 'like', "%{$search}%"));
             });
         }
 
@@ -80,8 +93,8 @@ class DashboardController extends Controller
         $sortBy  = $request->input('sort', 'date_desc');
         match ($sortBy) {
             'date_asc'   => $query->orderBy('assessment_date', 'asc'),
-            'skema_asc'  => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'asc'),
-            'skema_desc' => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'desc'),
+            'skema_asc'  => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'asc')->select('schedules.*'),
+            'skema_desc' => $query->join('skemas', 'skemas.id', '=', 'schedules.skema_id')->orderBy('skemas.name', 'desc')->select('schedules.*'),
             default      => $query->orderBy('assessment_date', 'desc'),
         };
 
@@ -93,6 +106,7 @@ class DashboardController extends Controller
             'jadwalLengkap',
             'filterStatus',
             'sortBy',
+            'skemaIdsWithPortofolio',
         ));
     }
 }

@@ -74,7 +74,7 @@ class AsesorController extends Controller
             'tuk',
             'skema',
             'asesmens.user',
-            'asesmens.aplsatu',
+            'asesmens.aplsatu.buktiKelengkapan',
             'asesmens.apldua.jawabans',
             'asesmens.soalTeoriAsesi.soalTeori',
             'asesmens.jawabanObservasi',
@@ -473,7 +473,7 @@ class AsesorController extends Controller
             'sk_date'        => 'required|date|before_or_equal:today',
             'sk_valid_until' => 'nullable|date|after:sk_date',
             'sk_file'        => ($asesor->sk_pengangkatan_path ? 'nullable' : 'required')
-                                . '|file|mimes:pdf|max:5120',
+                . '|file|mimes:pdf|max:5120',
         ], [
             'sk_file.required'        => 'File SK wajib diupload.',
             'sk_file.mimes'           => 'File harus berformat PDF.',
@@ -516,7 +516,8 @@ class AsesorController extends Controller
         abort_unless($asesor->sk_pengangkatan_path, 404, 'SK belum tersedia.');
         abort_unless(
             Storage::disk('private')->exists($asesor->sk_pengangkatan_path),
-            404, 'File SK tidak ditemukan.'
+            404,
+            'File SK tidak ditemukan.'
         );
 
         return response()->streamDownload(function () use ($asesor) {
@@ -577,7 +578,8 @@ class AsesorController extends Controller
         abort_if(!$boleh, 403, 'Akses ditolak.');
         abort_unless(
             $paket->lampiran_path && Storage::disk('private')->exists($paket->lampiran_path),
-            404, 'File lampiran tidak tersedia.'
+            404,
+            'File lampiran tidak tersedia.'
         );
 
         return response()->streamDownload(function () use ($paket) {
@@ -586,77 +588,76 @@ class AsesorController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         ]);
     }
-public function uploadFotoDokumentasi(Request $request, Schedule $schedule)
-{
-    $asesor = auth()->user()->asesor;
-    abort_if($schedule->asesor_id !== $asesor->id, 403);
+    public function uploadFotoDokumentasi(Request $request, Schedule $schedule)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
 
-    $request->validate([
-        'foto_1' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
-        'foto_2' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
-    ], [
-        'foto_1.image' => 'File harus berupa gambar.',
-        'foto_1.max'   => 'Ukuran foto maksimal 5 MB.',
-        'foto_2.image' => 'File harus berupa gambar.',
-        'foto_2.max'   => 'Ukuran foto maksimal 5 MB.',
-    ]);
+        $request->validate([
+            'foto_1' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+            'foto_2' => 'nullable|image|mimes:jpg,jpeg,png|max:5120',
+        ], [
+            'foto_1.image' => 'File harus berupa gambar.',
+            'foto_1.max'   => 'Ukuran foto maksimal 5 MB.',
+            'foto_2.image' => 'File harus berupa gambar.',
+            'foto_2.max'   => 'Ukuran foto maksimal 5 MB.',
+        ]);
 
-    $data = [];
+        $data = [];
 
-    foreach (['foto_1', 'foto_2'] as $slot) {
-        if ($request->hasFile($slot)) {
-            $col = 'foto_dokumentasi_' . substr($slot, -1);
-            // Hapus file lama
-            if ($schedule->$col) {
-                Storage::disk('private')->delete($schedule->$col);
+        foreach (['foto_1', 'foto_2'] as $slot) {
+            if ($request->hasFile($slot)) {
+                $col = 'foto_dokumentasi_' . substr($slot, -1);
+                // Hapus file lama
+                if ($schedule->$col) {
+                    Storage::disk('private')->delete($schedule->$col);
+                }
+                $data[$col] = $request->file($slot)->store("dokumentasi/{$schedule->id}", 'private');
             }
-            $data[$col] = $request->file($slot)->store("dokumentasi/{$schedule->id}", 'private');
         }
+
+        if (empty($data)) {
+            return back()->with('error', 'Tidak ada foto yang diupload.');
+        }
+
+        $data['foto_uploaded_by'] = auth()->id();
+        $data['foto_uploaded_at'] = now();
+        $schedule->update($data);
+
+        return back()->with('success', 'Foto dokumentasi berhasil diupload.');
     }
 
-    if (empty($data)) {
-        return back()->with('error', 'Tidak ada foto yang diupload.');
+    public function hapusFotoDokumentasi(Schedule $schedule, int $slot)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if(!in_array($slot, [1, 2]), 404);
+
+        $col = "foto_dokumentasi_{$slot}";
+        if ($schedule->$col) {
+            Storage::disk('private')->delete($schedule->$col);
+            $schedule->update([$col => null]);
+        }
+
+        return back()->with('success', "Foto dokumentasi {$slot} berhasil dihapus.");
     }
 
-    $data['foto_uploaded_by'] = auth()->id();
-    $data['foto_uploaded_at'] = now();
-    $schedule->update($data);
+    public function previewFotoDokumentasi(Schedule $schedule, int $slot)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if(!in_array($slot, [1, 2]), 404);
 
-    return back()->with('success', 'Foto dokumentasi berhasil diupload.');
-}
+        $col  = "foto_dokumentasi_{$slot}";
+        $path = $schedule->$col;
+        abort_unless($path && Storage::disk('private')->exists($path), 404);
 
-public function hapusFotoDokumentasi(Schedule $schedule, int $slot)
-{
-    $asesor = auth()->user()->asesor;
-    abort_if($schedule->asesor_id !== $asesor->id, 403);
-    abort_if(!in_array($slot, [1, 2]), 404);
-
-    $col = "foto_dokumentasi_{$slot}";
-    if ($schedule->$col) {
-        Storage::disk('private')->delete($schedule->$col);
-        $schedule->update([$col => null]);
+        return response(Storage::disk('private')->get($path), 200, [
+            'Content-Type' => Storage::disk('private')->mimeType($path),
+        ]);
     }
 
-    return back()->with('success', "Foto dokumentasi {$slot} berhasil dihapus.");
-
-}
-
-public function previewFotoDokumentasi(Schedule $schedule, int $slot)
-{
-    $asesor = auth()->user()->asesor;
-    abort_if($schedule->asesor_id !== $asesor->id, 403);
-    abort_if(!in_array($slot, [1, 2]), 404);
-
-    $col  = "foto_dokumentasi_{$slot}";
-    $path = $schedule->$col;
-    abort_unless($path && Storage::disk('private')->exists($path), 404);
-
-    return response(Storage::disk('private')->get($path), 200, [
-        'Content-Type' => Storage::disk('private')->mimeType($path),
-    ]);
-}
-
-/**
+    /**
      * Asesor membuka kembali pengumpulan link GDrive observasi untuk satu asesi.
      * POST /asesor/jadwal/{schedule}/asesi/{asesmen}/observasi/reopen
      */

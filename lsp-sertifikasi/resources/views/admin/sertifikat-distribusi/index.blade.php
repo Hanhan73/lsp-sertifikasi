@@ -49,6 +49,8 @@
                         @endif
                         @elseif($b->siap_distribusi)
                         <span class="badge bg-warning text-dark">Siap Distribusi</span>
+                        @elseif($b->total_kompeten === 0)
+                        <span class="badge bg-secondary">Belum ada hasil K</span>
                         @else
                         <span class="badge bg-secondary">Belum di-SK</span>
                         @endif
@@ -63,11 +65,15 @@
                                 <i class="bi bi-truck me-1"></i>Tandai Terdistribusi
                             </button>
                         </form>
-                        @if(!$b->ada_ba)
-                        <div class="small text-muted mt-1">Berita Acara belum ada</div>
-                        @elseif(!$b->siap_distribusi)
-                        <div class="small text-muted mt-1">Belum semua di-SK</div>
-                        @endif
+                        <div class="small text-muted mt-1">
+                            {{ $b->certified_count }}/{{ $b->total_kompeten }} peserta Kompeten sudah di-SK
+                            @if($b->bk_count > 0)
+                            <br><span class="text-danger">{{ $b->bk_count }} peserta BK (tidak disertifikasi)</span>
+                            @endif
+                            @if($b->belum_ada_hasil > 0)
+                            <br><span class="text-warning">{{ $b->belum_ada_hasil }} peserta belum ada hasil</span>
+                            @endif
+                        </div>
                         @else
                         <span class="text-muted small">—</span>
                         @endif

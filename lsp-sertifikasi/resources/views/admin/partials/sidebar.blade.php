@@ -94,6 +94,11 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     <i class="bi bi-file-earmark-pdf"></i> SK Ujikom
 </a>
 
+<a href="{{ route('admin.sertifikat-distribusi.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.sertifikat-distribusi') ? 'active' : '' }}">
+    <i class="bi bi-truck"></i> Distribusi Sertifikat
+</a>
+
 {{-- Divider: PERSURATAN --}}
 <div class="sidebar-divider">
     <span>PERSURATAN</span>
@@ -138,8 +143,4 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
 
 <a href="{{ route('admin.asesi') }}" class="nav-link {{ Str::startsWith($route, 'admin.asesi') ? 'active' : '' }}">
     <i class="bi bi-people"></i> Semua Asesi
-</a>
-
-<a href="{{ route('admin.reports') }}" class="nav-link {{ Str::startsWith($route, 'admin.reports') ? 'active' : '' }}">
-    <i class="bi bi-graph-up"></i> Laporan
 </a>

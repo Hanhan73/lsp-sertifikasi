@@ -32,6 +32,7 @@ use App\Http\Controllers\Admin\SuratController;
 use App\Http\Controllers\Admin\AdminSkUjikomController;
 use App\Http\Controllers\Admin\AdminBeritaAcaraController;
 use App\Http\Controllers\Admin\AdminDummyAccountController;
+use App\Http\Controllers\Admin\SertifikatDistribusiController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -456,11 +457,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/mandiri/{asesmen}/download',           [AdminBeritaAcaraController::class, 'downloadMandiri'])->name('mandiri.download');
     });
 
+    Route::get('sertifikat-distribusi', [SertifikatDistribusiController::class, 'index'])
+        ->name('sertifikat-distribusi.index');
+    Route::post('sertifikat-distribusi/batch/{batchId}', [SertifikatDistribusiController::class, 'distributeBatch'])
+        ->name('sertifikat-distribusi.batch');
+    Route::post('sertifikat-distribusi/asesi/{asesmen}', [SertifikatDistribusiController::class, 'distributeIndividual'])
+        ->name('sertifikat-distribusi.individual');
+
 
 Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
     ->name('dummy-accounts.reset');
 Route::post('dummy-accounts/simulasi', [AdminDummyAccountController::class, 'createSimulasi'])
     ->name('dummy-accounts.simulasi');
+
 });
 
 /*
@@ -553,6 +562,9 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
                 ->name('observasi.download-lampiran');
         });
     });
+
+    Route::get('sertifikat-fisik', [AsesiController::class, 'sertifikatFisikForm'])->name('sertifikat-fisik');
+    Route::post('sertifikat-fisik', [AsesiController::class, 'sertifikatFisikStore'])->name('sertifikat-fisik.store');
 });
 
 /*

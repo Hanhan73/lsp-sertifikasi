@@ -105,7 +105,7 @@
 
 @php
 $statusOrder =
-['registered','data_completed','payment_pending','pra_asesmen_started','scheduled','pre_assessment_completed','assessed','certified'];
+['registered','data_completed','payment_pending','pra_asesmen_started','scheduled','asesmen_started','assessed','certified','certificate_distributed'];
 $currentIdx = array_search($asesmen->status, $statusOrder) ?: 0;
 
 $progress = match($asesmen->status) {
@@ -128,8 +128,7 @@ default => 0,
         <div class="d-flex flex-wrap">
             {{-- Warna status --}}
             <div class="d-flex flex-column justify-content-center px-4 py-4 text-white flex-shrink-0"
-                style="min-width:140px; background:{{ $asesmen->status === 'certified' ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">
-                <div style="font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;">Status</div>
+                style="min-width:140px; background:{{ in_array($asesmen->status, ['certified','certificate_distributed']) ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">                <div style="font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;">Status</div>
                 <div class="fw-bold" style="font-size:1rem;line-height:1.3;">{{ $asesmen->status_label }}</div>
                 <div class="mt-2" style="font-size:.75rem;opacity:.8;">{{ $progress }}% selesai</div>
                 <div class="progress mt-1" style="height:4px;background:rgba(255,255,255,.3);">
@@ -176,13 +175,17 @@ default => 0,
                     <a href="{{ route('asesi.apl01') }}" class="btn btn-primary btn-sm flex-shrink-0">
                         <i class="bi bi-file-earmark-text me-1"></i>Isi Dokumen
                     </a>
+                    @elseif($asesmen->status === 'certificate_distributed' && !$asesmen->hasUploadedPhysicalCertificate())
+                    <a href="{{ route('asesi.sertifikat-fisik') }}" class="btn btn-warning btn-sm flex-shrink-0">
+                        <i class="bi bi-cloud-upload me-1"></i>Upload Sertifikat Fisik
+                    </a>
+                    @elseif(in_array($asesmen->status, ['certified', 'certificate_distributed']))
+                    <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm flex-shrink-0">
+                        <i class="bi bi-award me-1"></i>Download Sertifikat
+                    </a>
                     @elseif($asesmen->schedule_id)
                     <a href="{{ route('asesi.schedule') }}" class="btn btn-warning btn-sm flex-shrink-0">
                         <i class="bi bi-calendar2-check me-1"></i>Lihat Jadwal
-                    </a>
-                    @elseif($asesmen->status === 'certified')
-                    <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm flex-shrink-0">
-                        <i class="bi bi-award me-1"></i>Download Sertifikat
                     </a>
                     @endif
                 </div>
@@ -284,6 +287,24 @@ default => 0,
                     ? 'No. ' . $asesmen->certificate->certificate_number
                     : 'Belum terbit',
                     ],
+                    [
+                    'label' => 'Penerbitan Sertifikat',
+                    'status' => 'certified',
+                    'icon' => 'bi-award',
+                    'sub' => $asesmen->certificate
+                    ? 'No. ' . $asesmen->certificate->certificate_number
+                    : 'Belum terbit',
+                    ],
+                    [
+                    'label' => 'Distribusi Sertifikat Fisik',
+                    'status' => 'certificate_distributed',
+                    'icon' => 'bi-truck',
+                    'sub' => $asesmen->hasUploadedPhysicalCertificate()
+                        ? 'Sudah diupload — No. ' . $asesmen->physical_certificate_number
+                        : ($asesmen->status === 'certificate_distributed'
+                            ? 'Sudah didistribusikan, menunggu upload bukti'
+                            : 'Menunggu distribusi dari LSP'),
+                    ],
                     ]);
                     @endphp
 
@@ -293,6 +314,12 @@ default => 0,
                     $isDone = $idx !== false && $currentIdx > $idx;
                     $isNow = $asesmen->status === $step['status'] && !($step['indent'] ?? false && $currentIdx > 2);
                     $indent = $step['indent'] ?? false;
+
+                    // Override khusus step distribusi sertifikat fisik
+                    if ($step['status'] === 'certificate_distributed' && $asesmen->hasUploadedPhysicalCertificate()) {
+                        $isDone = true;
+                        $isNow = false;
+                    }
                     @endphp
                     <div class="tl-item {{ $isDone ? 'done' : ($isNow ? 'now' : '') }}"
                         style="{{ $indent ? 'padding-left:64px;' : '' }}">
@@ -385,6 +412,24 @@ default => 0,
                 </table>
             </div>
         </div>
+
+        {{-- Reminder Upload Sertifikat Fisik --}}
+        @if($asesmen->status === 'certificate_distributed' && !$asesmen->hasUploadedPhysicalCertificate())
+        <div class="card border-0 shadow-sm mb-4 border-warning" style="border-left:4px solid #f59e0b !important;">
+            <div class="card-body d-flex align-items-center gap-3 py-3">
+                <i class="bi bi-exclamation-triangle-fill text-warning fs-4 flex-shrink-0"></i>
+                <div class="flex-grow-1">
+                    <div class="fw-semibold" style="font-size:.875rem;">Sertifikat Fisik Sudah Didistribusikan</div>
+                    <div style="font-size:.75rem; color:#64748b;">
+                        Silakan upload foto/scan sertifikat fisik beserta No. Sertifikat dan No. Adm.
+                    </div>
+                </div>
+                <a href="{{ route('asesi.sertifikat-fisik') }}" class="btn btn-sm btn-warning text-dark ms-auto flex-shrink-0">
+                    <i class="bi bi-cloud-upload me-1"></i>Upload
+                </a>
+            </div>
+        </div>
+        @endif
 
         {{-- Pembayaran (mandiri) --}}
         @if(!$asesmen->is_collective)

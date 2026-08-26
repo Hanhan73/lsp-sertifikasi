@@ -182,17 +182,28 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
 @endif
 
 {{-- ── Sertifikat ── --}}
-@if($asesmen->status === 'certified')
+@if(in_array($asesmen->status, ['certified', 'certificate_distributed']))
 <a href="{{ route('asesi.certificate') }}" class="nav-link {{ $currentRoute === 'asesi.certificate' ? 'active' : '' }}">
     <i class="bi bi-award"></i> Sertifikat
     <span class="badge bg-success ms-1">✓</span>
 </a>
 @endif
 
+@if($asesmen->status === 'certificate_distributed')
+<a href="{{ route('asesi.sertifikat-fisik') }}" class="nav-link {{ $currentRoute === 'asesi.sertifikat-fisik' ? 'active' : '' }}">
+    <i class="bi bi-file-earmark-arrow-up"></i> Upload Sertifikat Fisik
+    @if($asesmen->hasUploadedPhysicalCertificate())
+    <span class="badge bg-success ms-1">✓</span>
+    @else
+    <span class="badge bg-danger ms-1">!</span>
+    @endif
+</a>
+@endif
+
 @endif {{-- end if $asesmen --}}
 
 {{-- ── Progress Bar ── --}}
-@if($asesmen && $asesmen->status !== 'certified')
+@if($asesmen && !in_array($asesmen->status, ['certified', 'certificate_distributed']))
 <div class="px-3 mt-4">
     <div class="card bg-dark bg-opacity-25 border-0 text-white">
         <div class="card-body py-2 px-3">
@@ -208,7 +219,7 @@ $needsAttention = ($asesmen->aplsatu?->status === 'returned') || ($asesmen->frak
             'pre_assessment_completed' => 70,
             'asesmen_started' => 75,
             'assessed' => 85,
-            'certified' => 100,
+            'certificate_distributed' => 100,
             default => 0,
             };
             @endphp

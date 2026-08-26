@@ -393,7 +393,7 @@ public function storeData(Request $request)
         $user = auth()->user();
         $asesmen = Asesmen::with('certificate')
             ->where('user_id', $user->id)
-            ->where('status', 'certified')
+            ->whereIn('status', ['certified', 'certificate_distributed'])
             ->firstOrFail();
 
         return view('asesi.certificate', compact('asesmen'));
@@ -407,7 +407,7 @@ public function storeData(Request $request)
         $user = auth()->user();
         $asesmen = Asesmen::with('certificate')
             ->where('user_id', $user->id)
-            ->where('status', 'certified')
+            ->whereIn('status', ['certified', 'certificate_distributed'])
             ->firstOrFail();
 
         if (!$asesmen->certificate) {
@@ -1041,4 +1041,40 @@ public function aplsatuBuktiSave(Request $request)
             'message' => $request->gdrive_ujikom ? 'Link berhasil disimpan.' : 'Link dihapus.',
         ]);
     }
+
+    public function sertifikatFisikForm()
+{
+    $user = auth()->user();
+    $asesmen = Asesmen::where('user_id', $user->id)
+        ->where('status', 'certificate_distributed')
+        ->firstOrFail();
+
+    return view('asesi.sertifikat-fisik.form', compact('asesmen'));
+}
+
+public function sertifikatFisikStore(Request $request)
+{
+    $user = auth()->user();
+    $asesmen = Asesmen::where('user_id', $user->id)
+        ->where('status', 'certificate_distributed')
+        ->firstOrFail();
+
+    $validated = $request->validate([
+        'no_sertifikat'    => 'required|string|max:100',
+        'no_adm'           => 'required|string|max:100',
+        'file_sertifikat'  => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240',
+    ]);
+
+    $path = $request->file('file_sertifikat')->store('uploads/sertifikat-fisik', 'public_html');
+
+    $asesmen->update([
+        'physical_certificate_number'      => $validated['no_sertifikat'],
+        'physical_certificate_adm_number'  => $validated['no_adm'],
+        'physical_certificate_path'        => $path,
+        'physical_certificate_uploaded_at' => now(),
+    ]);
+
+    return redirect()->route('asesi.dashboard')
+        ->with('success', 'Sertifikat fisik berhasil diupload!');
+}
 }

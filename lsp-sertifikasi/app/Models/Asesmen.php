@@ -72,6 +72,12 @@ class Asesmen extends Model
         'hadir',
         'observasi_reopen_until',
         'observasi_reopen_by',
+        'distributed_at',
+        'distributed_by',
+        'physical_certificate_number',
+        'physical_certificate_adm_number',
+        'physical_certificate_path',
+        'physical_certificate_uploaded_at',
     ];
 
     protected $casts = [
@@ -100,6 +106,8 @@ class Asesmen extends Model
         'biodata_verified_at'  => 'date:d-m-Y',
         'hadir'                 => 'boolean',
         'observasi_reopen_until' => 'datetime',
+        'distributed_at'                   => 'datetime',
+        'physical_certificate_uploaded_at' => 'datetime',
     ];
 
     // =========================================================================
@@ -144,6 +152,11 @@ class Asesmen extends Model
     public function registrar()
     {
         return $this->belongsTo(User::class, 'registered_by');
+    }
+
+    public function distributor()
+    {
+        return $this->belongsTo(User::class, 'distributed_by');
     }
 
     public function tukVerifier()
@@ -369,6 +382,16 @@ class Asesmen extends Model
         return 'not_paid';
     }
 
+    public function hasUploadedPhysicalCertificate(): bool
+    {
+        return $this->physical_certificate_uploaded_at !== null;
+    }
+
+    public function needsPhysicalCertificateUpload(): bool
+    {
+        return $this->status === 'certificate_distributed' && !$this->hasUploadedPhysicalCertificate();
+    }
+
     public function canShowFrAk03(): bool
 {
     $schedule = $this->schedule;
@@ -430,6 +453,7 @@ class Asesmen extends Model
             'asesmen_started'       => 'Asesmen Dimulai',
             'assessed'                 => 'Sudah Diases',
             'certified'                => 'Tersertifikasi',
+            'certificate_distributed'  => 'Sertifikat Didistribusikan',
             // legacy — masih mungkin ada data lama
             'verified'                 => 'Terverifikasi',
             'paid'                     => 'Sudah Bayar',
@@ -448,6 +472,7 @@ class Asesmen extends Model
             'asesmen_started'       => 'primary',
             'assessed'                 => 'primary',
             'certified'                => 'success',
+            'certificate_distributed'  => 'success',
             'verified'                 => 'primary',
             'paid'                     => 'success',
         ][$this->status] ?? 'secondary';
@@ -465,6 +490,9 @@ class Asesmen extends Model
             'asesmen_started'       => 'Asesmen Dimulai',
             'assessed'                 => 'Menunggu penerbitan sertifikat',
             'certified'                => 'Unduh sertifikat',
+            'certificate_distributed'  => $this->hasUploadedPhysicalCertificate()
+            ? 'Selesai'
+            : 'Upload sertifikat fisik Anda',
             default                    => '-',
         };
     }

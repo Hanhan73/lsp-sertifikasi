@@ -44,6 +44,7 @@ class AsesiController extends Controller
             'schedule.distribusiSoalObservasi',
             'schedule.distribusiPortofolio',
             'schedule.hasilPortofolio',
+            'schedule.beritaAcara.asesis',
         ])
         ->where('user_id', $user->id)
         ->first();

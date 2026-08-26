@@ -120,6 +120,18 @@ $progress = match($asesmen->status) {
 'certified' => 100,
 default => 0,
 };
+
+$rekomendasiBA = $asesmen->schedule?->beritaAcara?->asesis
+    ->where('asesmen_id', $asesmen->id)
+    ->first()?->rekomendasi; // 'K' atau 'BK'
+
+$hasilFinal   = $asesmen->result; // resmi, diisi setelah status 'assessed'/'certified'
+$hasilPreview = match($rekomendasiBA) {
+    'K'     => 'kompeten',
+    'BK'    => 'belum_kompeten',
+    default => null,
+};
+$hasilTampil = $hasilFinal ?? $hasilPreview;
 @endphp
 
 {{-- ── HEADER STRIP ── --}}
@@ -275,8 +287,8 @@ default => 0,
                     'label' => 'Hasil Asesmen',
                     'status' => 'assessed',
                     'icon' => 'bi-clipboard-check',
-                    'sub' => $asesmen->result
-                    ? ($asesmen->result === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten')
+                    'sub' => $hasilTampil
+                    ? (($hasilTampil === 'kompeten' ? '✓ Kompeten' : '✗ Belum Kompeten') . (!$hasilFinal ? ' (dari Berita Acara)' : ''))
                     : 'Belum dilakukan',
                     ],
                     [
@@ -307,11 +319,17 @@ default => 0,
                     $isNow = $asesmen->status === $step['status'] && !($step['indent'] ?? false && $currentIdx > 2);
                     $indent = $step['indent'] ?? false;
 
+                    if ($step['status'] === 'assessed' && $hasilTampil && !$hasilFinal) {
+                        $isDone = true;
+                        $isNow  = false;
+                    }
+
                     // Override khusus step distribusi sertifikat fisik
                     if ($step['status'] === 'certificate_distributed' && $asesmen->hasUploadedPhysicalCertificate()) {
                         $isDone = true;
                         $isNow = false;
                     }
+
                     @endphp
                     <div class="tl-item {{ $isDone ? 'done' : ($isNow ? 'now' : '') }}"
                         style="{{ $indent ? 'padding-left:64px;' : '' }}">
@@ -324,9 +342,9 @@ default => 0,
                         </div>
                         <div class="tl-label">{{ $step['label'] }}</div>
                         <div class="tl-sub">{{ $step['sub'] }}</div>
-                        @if($step['status'] === 'assessed' && $asesmen->result)
-                        <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
-                            {{ strtoupper($asesmen->result) }}
+                        @if($step['status'] === 'assessed' && $hasilTampil)
+                        <span class="badge bg-{{ $hasilTampil === 'kompeten' ? 'success' : 'danger' }} mt-1">
+                            {{ strtoupper($hasilTampil) }}
                         </span>
                         @endif
                         {{-- Detail tambahan untuk step yang aktif --}}
@@ -348,9 +366,9 @@ default => 0,
                             @endif
                         </div>
                         @endif
-                        @if($isDone && $step['status'] === 'asesmen_started' && $asesmen->result)
-                        <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
-                            {{ strtoupper($asesmen->result) }}
+                        @if($isDone && $step['status'] === 'asesmen_started' && $hasilTampil)
+                        <span class="badge bg-{{ $hasilTampil === 'kompeten' ? 'success' : 'danger' }} mt-1">
+                            {{ strtoupper($hasilTampil) }}
                         </span>
                         @endif
                     </div>
@@ -495,20 +513,25 @@ default => 0,
         @endif {{-- end !is_collective --}}
 
         {{-- Hasil asesmen --}}
-        @if($asesmen->result)
+        @if($hasilTampil)
         <div class="card border-0 shadow-sm mb-4
-            {{ $asesmen->result === 'kompeten' ? 'border-success' : 'border-danger' }}"
-            style="border-left:4px solid {{ $asesmen->result === 'kompeten' ? '#22c55e' : '#ef4444' }} !important;">
+            {{ $hasilTampil === 'kompeten' ? 'border-success' : 'border-danger' }}"
+            style="border-left:4px solid {{ $hasilTampil === 'kompeten' ? '#22c55e' : '#ef4444' }} !important;">
             <div class="card-body d-flex align-items-center gap-3">
                 <i
-                    class="bi {{ $asesmen->result === 'kompeten' ? 'bi-award-fill text-success' : 'bi-x-circle-fill text-danger' }} fs-3"></i>
+                    class="bi {{ $hasilTampil === 'kompeten' ? 'bi-award-fill text-success' : 'bi-x-circle-fill text-danger' }} fs-3"></i>
                 <div>
                     <div class="fw-bold">Hasil Asesmen</div>
-                    <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }} mt-1">
-                        {{ strtoupper($asesmen->result) }}
+                    <span class="badge bg-{{ $hasilTampil === 'kompeten' ? 'success' : 'danger' }} mt-1">
+                        {{ strtoupper($hasilTampil) }}
                     </span>
+                    @if(!$hasilFinal)
+                    <div class="text-muted mt-1" style="font-size:.72rem;">
+                        <i class="bi bi-info-circle me-1"></i>Rekomendasi awal dari Berita Acara, belum final
+                    </div>
+                    @endif
                 </div>
-                @if($asesmen->status === 'certified')
+                @if(in_array($asesmen->status, ['certified', 'certificate_distributed']))
                 <a href="{{ route('asesi.certificate') }}" class="btn btn-sm btn-success ms-auto">
                     <i class="bi bi-award me-1"></i>Sertifikat
                 </a>

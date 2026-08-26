@@ -9,55 +9,88 @@ use Illuminate\Support\Facades\DB;
 
 class SertifikatDistribusiController extends Controller
 {
-public function index()
-{
-    $asesmens = Asesmen::with(['schedule.beritaAcara', 'tuk', 'skema'])
-        ->whereIn('status', ['assessed', 'certified', 'certificate_distributed'])
-        ->orderByDesc('assessed_at')
-        ->get();
+    /**
+     * Resolusi hasil K/BK per asesmen.
+     * Prioritas: $asesmen->result (kalau resmi sudah diisi) → fallback ke rekomendasi Berita Acara.
+     * Sumber kebenaran K/BK yang sebenarnya ada di BeritaAcaraAsesi->rekomendasi,
+     * karena kolom `result` di tabel asesmens sering tidak terisi oleh alur sistem saat ini.
+     */
+    private function resolveResult(Asesmen $m): ?string
+    {
+        if ($m->result) {
+            return $m->result; // 'kompeten' | 'belum_kompeten'
+        }
 
-    $batches = $asesmens->where('is_collective', true)
-        ->groupBy('collective_batch_id')
-        ->map(function ($members) {
-            $first = $members->first();
+        $rekom = $m->schedule?->beritaAcara?->asesis
+            ->where('asesmen_id', $m->id)
+            ->first()?->rekomendasi; // 'K' | 'BK'
 
-            // ── Hanya peserta KOMPETEN yang relevan buat status SK/distribusi ──
-            // Peserta BK tidak pernah di-SK-kan / didistribusikan, jadi tidak dihitung
-            // dalam pengecekan "semua sudah di-SK".
-            $eligible   = $members->filter(fn ($m) => $m->result === 'kompeten');
-            $bkCount    = $members->filter(fn ($m) => $m->result === 'belum_kompeten')->count();
-            $belumAda   = $members->filter(fn ($m) => is_null($m->result))->count();
+        return match ($rekom) {
+            'K'     => 'kompeten',
+            'BK'    => 'belum_kompeten',
+            default => null,
+        };
+    }
 
-            $certifiedCount = $eligible->filter(fn ($m) => in_array($m->status, ['certified', 'certificate_distributed']))->count();
+    public function index()
+    {
+        $asesmens = Asesmen::with([
+                'schedule.beritaAcara.asesis',
+                'tuk', 'skema',
+            ])
+            ->whereIn('status', ['assessed', 'certified', 'certificate_distributed'])
+            ->orderByDesc('assessed_at')
+            ->get();
 
-            return (object) [
-                'batch_id'         => $first->collective_batch_id,
-                'tuk'              => $first->tuk,
-                'skema'            => $first->skema,
-                'total'            => $members->count(),
-                'total_kompeten'   => $eligible->count(),
-                'bk_count'         => $bkCount,
-                'belum_ada_hasil'  => $belumAda,
-                'certified_count'  => $certifiedCount,
-                'ada_ba'           => $members->contains(fn ($m) => $m->schedule?->beritaAcara !== null),
-                'siap_distribusi'  => $eligible->isNotEmpty()
-                    && $eligible->every(fn ($m) => $m->status === 'certified'),
-                'sudah_distribusi' => $eligible->isNotEmpty()
-                    && $eligible->every(fn ($m) => $m->status === 'certificate_distributed'),
-                'sudah_upload'     => $eligible->isNotEmpty()
-                    && $eligible->every(fn ($m) => $m->hasUploadedPhysicalCertificate()),
-            ];
-        })
-        ->values();
+        $batches = $asesmens->where('is_collective', true)
+            ->groupBy('collective_batch_id')
+            ->map(function ($members) {
+                $first = $members->first();
 
-    $mandiri = $asesmens->where('is_collective', false)->values();
+                // Resolusi hasil tiap member sekali aja, simpan biar nggak recompute
+                $resolved = $members->map(fn ($m) => [
+                    'asesmen' => $m,
+                    'result'  => $this->resolveResult($m),
+                ]);
 
-    return view('admin.sertifikat-distribusi.index', compact('batches', 'mandiri'));
-}
+                $eligible  = $resolved->filter(fn ($r) => $r['result'] === 'kompeten');
+                $bkCount   = $resolved->filter(fn ($r) => $r['result'] === 'belum_kompeten')->count();
+                $belumAda  = $resolved->filter(fn ($r) => is_null($r['result']))->count();
+
+                $certifiedCount = $eligible->filter(
+                    fn ($r) => in_array($r['asesmen']->status, ['certified', 'certificate_distributed'])
+                )->count();
+
+                return (object) [
+                    'batch_id'         => $first->collective_batch_id,
+                    'tuk'              => $first->tuk,
+                    'skema'            => $first->skema,
+                    'total'            => $members->count(),
+                    'total_kompeten'   => $eligible->count(),
+                    'bk_count'         => $bkCount,
+                    'belum_ada_hasil'  => $belumAda,
+                    'certified_count'  => $certifiedCount,
+                    'ada_ba'           => $members->contains(fn ($m) => $m->schedule?->beritaAcara !== null),
+                    'siap_distribusi'  => $eligible->isNotEmpty()
+                        && $eligible->every(fn ($r) => $r['asesmen']->status === 'certified'),
+                    'sudah_distribusi' => $eligible->isNotEmpty()
+                        && $eligible->every(fn ($r) => $r['asesmen']->status === 'certificate_distributed'),
+                    'sudah_upload'     => $eligible->isNotEmpty()
+                        && $eligible->every(fn ($r) => $r['asesmen']->hasUploadedPhysicalCertificate()),
+                ];
+            })
+            ->values();
+
+        // ── Mandiri: sama, pakai resolveResult juga biar konsisten ──
+        $mandiri = $asesmens->where('is_collective', false)->values();
+
+        return view('admin.sertifikat-distribusi.index', compact('batches', 'mandiri'));
+    }
 
     public function distributeBatch(Request $request, string $batchId)
     {
-        $members = Asesmen::where('collective_batch_id', $batchId)
+        $members = Asesmen::with('schedule.beritaAcara.asesis')
+            ->where('collective_batch_id', $batchId)
             ->where('status', 'certified')
             ->get();
 

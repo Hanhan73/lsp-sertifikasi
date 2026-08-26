@@ -288,14 +288,6 @@ default => 0,
                     : 'Belum terbit',
                     ],
                     [
-                    'label' => 'Penerbitan Sertifikat',
-                    'status' => 'certified',
-                    'icon' => 'bi-award',
-                    'sub' => $asesmen->certificate
-                    ? 'No. ' . $asesmen->certificate->certificate_number
-                    : 'Belum terbit',
-                    ],
-                    [
                     'label' => 'Distribusi Sertifikat Fisik',
                     'status' => 'certificate_distributed',
                     'icon' => 'bi-truck',

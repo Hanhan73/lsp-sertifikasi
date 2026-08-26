@@ -117,7 +117,8 @@ $progress = match($asesmen->status) {
 'pre_assessment_completed' => 70,
 'asesmen_started' => 75,
 'assessed' => 85,
-'certified' => 100,
+'certified' => 90,
+'certificate_distributed' => 100,
 default => 0,
 };
 
@@ -125,13 +126,27 @@ $rekomendasiBA = $asesmen->schedule?->beritaAcara?->asesis
     ->where('asesmen_id', $asesmen->id)
     ->first()?->rekomendasi; // 'K' atau 'BK'
 
-$hasilFinal   = $asesmen->result; // resmi, diisi setelah status 'assessed'/'certified'
+$hasilFinal   = $asesmen->result; // resmi, diisi setelah SK digenerate
 $hasilPreview = match($rekomendasiBA) {
     'K'     => 'kompeten',
     'BK'    => 'belum_kompeten',
     default => null,
 };
 $hasilTampil = $hasilFinal ?? $hasilPreview;
+
+// ── Step "Sertifikat" gabungan (karena sertifikat hanya versi fisik, bukan digital) ──
+$sertifikatUploaded = $asesmen->hasUploadedPhysicalCertificate();
+
+$sertifikatSub = match(true) {
+    $hasilTampil === 'belum_kompeten'              => 'Tidak terbit (Belum Kompeten)',
+    $sertifikatUploaded                             => 'Diterima — No. ' . $asesmen->physical_certificate_number,
+    $asesmen->status === 'certificate_distributed'  => 'Sudah didistribusikan, silakan upload bukti terima',
+    $asesmen->status === 'certified'                => 'Menunggu distribusi dari LSP',
+    default                                          => 'Menunggu penerbitan',
+};
+
+$sertifikatDone = $hasilTampil === 'belum_kompeten' || $sertifikatUploaded;
+$sertifikatNow  = !$sertifikatDone && in_array($asesmen->status, ['certified', 'certificate_distributed']);
 @endphp
 
 {{-- ── HEADER STRIP ── --}}
@@ -140,7 +155,8 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
         <div class="d-flex flex-wrap">
             {{-- Warna status --}}
             <div class="d-flex flex-column justify-content-center px-4 py-4 text-white flex-shrink-0"
-                style="min-width:140px; background:{{ in_array($asesmen->status, ['certified','certificate_distributed']) ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">                <div style="font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;">Status</div>
+                style="min-width:140px; background:{{ in_array($asesmen->status, ['certified','certificate_distributed']) ? '#16a34a' : ($asesmen->status === 'assessed' ? '#0284c7' : '#1e40af') }};">
+                <div style="font-size:.7rem;opacity:.75;text-transform:uppercase;letter-spacing:.06em;">Status</div>
                 <div class="fw-bold" style="font-size:1rem;line-height:1.3;">{{ $asesmen->status_label }}</div>
                 <div class="mt-2" style="font-size:.75rem;opacity:.8;">{{ $progress }}% selesai</div>
                 <div class="progress mt-1" style="height:4px;background:rgba(255,255,255,.3);">
@@ -192,9 +208,7 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
                         <i class="bi bi-cloud-upload me-1"></i>Upload Sertifikat Fisik
                     </a>
                     @elseif(in_array($asesmen->status, ['certified', 'certificate_distributed']))
-                    <a href="{{ route('asesi.certificate') }}" class="btn btn-success btn-sm flex-shrink-0">
-                        <i class="bi bi-award me-1"></i>Download Sertifikat
-                    </a>
+                    {{-- Sertifikat murni fisik — menunggu proses LSP, tidak ada aksi digital --}}
                     @elseif($asesmen->schedule_id)
                     <a href="{{ route('asesi.schedule') }}" class="btn btn-warning btn-sm flex-shrink-0">
                         <i class="bi bi-calendar2-check me-1"></i>Lihat Jadwal
@@ -292,22 +306,10 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
                     : 'Belum dilakukan',
                     ],
                     [
-                    'label' => 'Penerbitan Sertifikat',
-                    'status' => 'certified',
-                    'icon' => 'bi-award',
-                    'sub' => $asesmen->certificate
-                    ? 'No. ' . $asesmen->certificate->certificate_number
-                    : 'Belum terbit',
-                    ],
-                    [
-                    'label' => 'Distribusi Sertifikat Fisik',
-                    'status' => 'certificate_distributed',
-                    'icon' => 'bi-truck',
-                    'sub' => $asesmen->hasUploadedPhysicalCertificate()
-                        ? 'Sudah diupload — No. ' . $asesmen->physical_certificate_number
-                        : ($asesmen->status === 'certificate_distributed'
-                            ? 'Sudah didistribusikan, menunggu upload bukti'
-                            : 'Menunggu distribusi dari LSP'),
+                    'label' => 'Sertifikat',
+                    'status' => 'sertifikat',
+                    'icon'   => 'bi-award',
+                    'sub'    => $sertifikatSub,
                     ],
                     ]);
                     @endphp
@@ -319,17 +321,17 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
                     $isNow = $asesmen->status === $step['status'] && !($step['indent'] ?? false && $currentIdx > 2);
                     $indent = $step['indent'] ?? false;
 
+                    // Override: step "Hasil Asesmen" — sudah ada rekomendasi dari BA meski status belum resmi 'assessed'
                     if ($step['status'] === 'assessed' && $hasilTampil && !$hasilFinal) {
                         $isDone = true;
                         $isNow  = false;
                     }
 
-                    // Override khusus step distribusi sertifikat fisik
-                    if ($step['status'] === 'certificate_distributed' && $asesmen->hasUploadedPhysicalCertificate()) {
-                        $isDone = true;
-                        $isNow = false;
+                    // Override: step "Sertifikat" gabungan (menggantikan certified + certificate_distributed)
+                    if ($step['status'] === 'sertifikat') {
+                        $isDone = $sertifikatDone;
+                        $isNow  = $sertifikatNow;
                     }
-
                     @endphp
                     <div class="tl-item {{ $isDone ? 'done' : ($isNow ? 'now' : '') }}"
                         style="{{ $indent ? 'padding-left:64px;' : '' }}">
@@ -531,11 +533,6 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
                     </div>
                     @endif
                 </div>
-                @if(in_array($asesmen->status, ['certified', 'certificate_distributed']))
-                <a href="{{ route('asesi.certificate') }}" class="btn btn-sm btn-success ms-auto">
-                    <i class="bi bi-award me-1"></i>Sertifikat
-                </a>
-                @endif
             </div>
         </div>
         @endif
@@ -558,13 +555,13 @@ $hasilTampil = $hasilFinal ?? $hasilPreview;
             }
             $obsSelesai     = $obsTotal > 0 && $obsUpload === $obsTotal;
 
-            $adaWarning     = ($totalTeori > 0 && !$teoriSubmit) || ($obsTotal > 0 && !$obsSelesai);
-
             // Cek reopen aktif
             $reopenUntil    = $asesmen->observasi_reopen_until
                 ? \Carbon\Carbon::parse($asesmen->observasi_reopen_until)
                 : null;
             $isReopenActive = $reopenUntil && $reopenUntil->isFuture();
+
+            $adaWarning     = ($totalTeori > 0 && !$teoriSubmit) || ($obsTotal > 0 && !$obsSelesai);
         @endphp
 
     @if($adaWarning || $isReopenActive)

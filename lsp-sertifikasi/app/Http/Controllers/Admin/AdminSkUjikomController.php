@@ -99,53 +99,56 @@ class AdminSkUjikomController extends Controller
     /**
      * Generate SK langsung approved + PDF.
      */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'collective_batch_id' => 'required|string',
-            'nomor_sk'            => 'required|string|max:100',
-            'tanggal_pleno'       => 'required|date',
-            'tempat_dikeluarkan'  => 'required|string|max:100',
+public function store(Request $request)
+{
+    $request->validate([
+        'collective_batch_id' => 'required|string',
+        'nomor_sk'            => 'required|string|max:100',
+        'tanggal_pleno'       => 'required|date',
+        'tempat_dikeluarkan'  => 'required|string|max:100',
+    ]);
+
+    $batchId = $request->collective_batch_id;
+
+    abort_if(
+        SkHasilUjikom::where('collective_batch_id', $batchId)->exists(),
+        422,
+        'SK untuk batch ini sudah ada.'
+    );
+
+    DB::beginTransaction();
+    try {
+        $sk = SkHasilUjikom::create([
+            'collective_batch_id' => $batchId,
+            'nomor_sk'            => $request->nomor_sk,
+            'tanggal_pleno'       => $request->tanggal_pleno,
+            'tempat_dikeluarkan'  => $request->tempat_dikeluarkan,
+            'status'              => 'approved',
+            'submitted_at'        => now(),
+            'approved_at'         => now(),
+            'approved_by'         => Auth::id(),
+            'created_by'          => Auth::id(),
         ]);
 
-        $batchId = $request->collective_batch_id;
+        // Generate PDF langsung
+        $skPath = $this->generatePdf($sk);
+        $sk->update(['sk_path' => $skPath]);
 
-        abort_if(
-            SkHasilUjikom::where('collective_batch_id', $batchId)->exists(),
-            422,
-            'SK untuk batch ini sudah ada.'
-        );
+        // ── FIX: sinkronkan status & result Asesmen berdasarkan rekomendasi BA ──
+        $this->syncAsesmenStatusFromBa($batchId);
 
-        DB::beginTransaction();
-        try {
-            $sk = SkHasilUjikom::create([
-                'collective_batch_id' => $batchId,
-                'nomor_sk'            => $request->nomor_sk,
-                'tanggal_pleno'       => $request->tanggal_pleno,
-                'tempat_dikeluarkan'  => $request->tempat_dikeluarkan,
-                'status'              => 'approved',
-                'submitted_at'        => now(),
-                'approved_at'         => now(),
-                'approved_by'         => Auth::id(),
-                'created_by'          => Auth::id(),
-            ]);
+        DB::commit();
 
-            // Generate PDF langsung
-            $skPath = $this->generatePdf($sk);
-            $sk->update(['sk_path' => $skPath]);
+        Log::info("Admin #" . Auth::id() . " generate SK Ujikom batch {$batchId}. Nomor: {$request->nomor_sk}");
 
-            DB::commit();
-
-            Log::info("Admin #{Auth::id()} generate SK Ujikom batch {$batchId}. Nomor: {$request->nomor_sk}");
-
-            return redirect()->route('admin.sk-ujikom.show', $sk)
-                ->with('success', 'SK berhasil digenerate dan disetujui.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('[AdminSkUjikom][store] ' . $e->getMessage());
-            return back()->with('error', 'Gagal generate SK: ' . $e->getMessage())->withInput();
-        }
+        return redirect()->route('admin.sk-ujikom.show', $sk)
+            ->with('success', 'SK berhasil digenerate dan disetujui.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('[AdminSkUjikom][store] ' . $e->getMessage());
+        return back()->with('error', 'Gagal generate SK: ' . $e->getMessage())->withInput();
     }
+}
 
     /**
      * Detail SK.
@@ -227,6 +230,49 @@ class AdminSkUjikomController extends Controller
             ->filter()
             ->values();
     }
+
+
+    /**
+ * Sinkronkan status & result Asesmen berdasarkan rekomendasi K/BK di Berita Acara,
+ * dipanggil setelah SK Hasil Ujikom di-generate/approve.
+ *
+ * - Peserta rekomendasi K → status: 'certified', result: 'kompeten'
+ * - Peserta rekomendasi BK → status: 'assessed' (final, tanpa sertifikat), result: 'belum_kompeten'
+ */
+private function syncAsesmenStatusFromBa(string $batchId): void
+{
+    $schedules = Schedule::whereHas('asesmens', fn($q) => $q->where('collective_batch_id', $batchId))
+        ->pluck('id');
+
+    $rekomendasiMap = BeritaAcaraAsesi::whereHas('beritaAcara', fn($q) => $q->whereIn('schedule_id', $schedules))
+        ->whereIn('rekomendasi', ['K', 'BK'])
+        ->get()
+        ->pluck('rekomendasi', 'asesmen_id'); // [asesmen_id => 'K'|'BK']
+
+    $kIds  = $rekomendasiMap->filter(fn($r) => $r === 'K')->keys();
+    $bkIds = $rekomendasiMap->filter(fn($r) => $r === 'BK')->keys();
+
+    if ($kIds->isNotEmpty()) {
+        Asesmen::whereIn('id', $kIds)
+            ->where('collective_batch_id', $batchId)
+            ->update([
+                'status' => 'certified',
+                'result' => 'kompeten',
+            ]);
+    }
+
+    if ($bkIds->isNotEmpty()) {
+        Asesmen::whereIn('id', $bkIds)
+            ->where('collective_batch_id', $batchId)
+            ->update([
+                'status' => 'assessed', // tetap di 'assessed', tidak pernah certified
+                'result' => 'belum_kompeten',
+            ]);
+    }
+
+    Log::info("[SyncAsesmenStatus] Batch {$batchId}: {$kIds->count()} → certified, {$bkIds->count()} → assessed (BK)");
+}
+
     /**
      * Generate PDF SK dan simpan ke storage private.
      * Return path file.

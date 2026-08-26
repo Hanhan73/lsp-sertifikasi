@@ -154,11 +154,6 @@ class Asesmen extends Model
         return $this->belongsTo(User::class, 'registered_by');
     }
 
-    public function distributor()
-    {
-        return $this->belongsTo(User::class, 'distributed_by');
-    }
-
     public function tukVerifier()
     {
         return $this->belongsTo(User::class, 'tuk_verified_by');
@@ -172,6 +167,11 @@ class Asesmen extends Model
     public function assessorRegistrar()
     {
         return $this->belongsTo(User::class, 'admin_verified_by');
+    }
+
+    public function distributor()
+    {
+        return $this->belongsTo(User::class, 'distributed_by');
     }
 
     /** Single active payment (untuk backward-compat) */
@@ -382,16 +382,6 @@ class Asesmen extends Model
         return 'not_paid';
     }
 
-    public function hasUploadedPhysicalCertificate(): bool
-    {
-        return $this->physical_certificate_uploaded_at !== null;
-    }
-
-    public function needsPhysicalCertificateUpload(): bool
-    {
-        return $this->status === 'certificate_distributed' && !$this->hasUploadedPhysicalCertificate();
-    }
-
     public function canShowFrAk03(): bool
 {
     $schedule = $this->schedule;
@@ -436,6 +426,22 @@ class Asesmen extends Model
  
     return false;
 }
+
+    /**
+     * Apakah asesi sudah mengupload bukti sertifikat fisik.
+     */
+    public function hasUploadedPhysicalCertificate(): bool
+    {
+        return $this->physical_certificate_uploaded_at !== null;
+    }
+
+    /**
+     * Apakah asesi perlu diingatkan untuk upload sertifikat fisik.
+     */
+    public function needsPhysicalCertificateUpload(): bool
+    {
+        return $this->status === 'certificate_distributed' && !$this->hasUploadedPhysicalCertificate();
+    }
 
     // =========================================================================
     // Status helpers
@@ -489,10 +495,8 @@ class Asesmen extends Model
             'pra_asesmen_completed' => 'Menunggu proses asesmen',
             'asesmen_started'       => 'Asesmen Dimulai',
             'assessed'                 => 'Menunggu penerbitan sertifikat',
-            'certified'                => 'Unduh sertifikat',
-            'certificate_distributed'  => $this->hasUploadedPhysicalCertificate()
-            ? 'Selesai'
-            : 'Upload sertifikat fisik Anda',
+            'certified'                => 'Menunggu distribusi sertifikat oleh LSP',
+            'certificate_distributed'  => $this->hasUploadedPhysicalCertificate() ? 'Selesai' : 'Upload sertifikat fisik Anda',
             default                    => '-',
         };
     }

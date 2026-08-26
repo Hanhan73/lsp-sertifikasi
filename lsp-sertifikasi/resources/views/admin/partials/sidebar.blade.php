@@ -99,6 +99,11 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
     <i class="bi bi-truck"></i> Distribusi Sertifikat
 </a>
 
+<a href="{{ route('admin.arsip-sertifikat.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.arsip-sertifikat') ? 'active' : '' }}">
+    <i class="bi bi-archive"></i> Arsip Sertifikat
+</a>
+
 {{-- Divider: PERSURATAN --}}
 <div class="sidebar-divider">
     <span>PERSURATAN</span>

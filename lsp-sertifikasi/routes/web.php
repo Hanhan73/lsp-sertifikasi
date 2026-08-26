@@ -33,6 +33,7 @@ use App\Http\Controllers\Admin\AdminSkUjikomController;
 use App\Http\Controllers\Admin\AdminBeritaAcaraController;
 use App\Http\Controllers\Admin\AdminDummyAccountController;
 use App\Http\Controllers\Admin\SertifikatDistribusiController;
+use App\Http\Controllers\Admin\ArsipSertifikatController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -466,10 +467,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('sertifikat-distribusi/batch/{batchId}/detail', [SertifikatDistribusiController::class, 'batchDetail'])
         ->name('sertifikat-distribusi.batch.detail');
 
-Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
-    ->name('dummy-accounts.reset');
-Route::post('dummy-accounts/simulasi', [AdminDummyAccountController::class, 'createSimulasi'])
-    ->name('dummy-accounts.simulasi');
+    Route::get('arsip-sertifikat', [ArsipSertifikatController::class, 'index'])
+        ->name('arsip-sertifikat.index');
+    Route::get('arsip-sertifikat/batch/{batchId}/detail', [ArsipSertifikatController::class, 'batchDetail'])
+        ->name('arsip-sertifikat.batch.detail');
+    Route::get('arsip-sertifikat/asesi/{asesmen}/download', [ArsipSertifikatController::class, 'download'])
+        ->name('arsip-sertifikat.download');
+    Route::get('arsip-sertifikat/batch/{batchId}/download-zip', [ArsipSertifikatController::class, 'downloadBatchZip'])
+        ->name('arsip-sertifikat.batch.download-zip');
+
+    Route::post('dummy-accounts/reset', [AdminDummyAccountController::class, 'reset'])
+        ->name('dummy-accounts.reset');
+    Route::post('dummy-accounts/simulasi', [AdminDummyAccountController::class, 'createSimulasi'])
+        ->name('dummy-accounts.simulasi');
 
 });
 

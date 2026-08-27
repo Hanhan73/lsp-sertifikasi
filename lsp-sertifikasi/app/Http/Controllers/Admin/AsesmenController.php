@@ -1259,4 +1259,54 @@ class AsesmenController extends Controller
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         ])->deleteFileAfterSend(true);
     }
+
+    /**
+ * Detail batch + asesi mandiri untuk satu TUK — dipanggil via AJAX untuk mengisi modal.
+ */
+public function tukBatches(Tuk $tuk)
+{
+    $asesmens = Asesmen::with(['skema'])
+        ->where(function ($q) use ($tuk) {
+            $q->where('tuk_id', $tuk->id)
+                ->orWhere('assigned_tuk_id', $tuk->id);
+        })
+        ->get();
+
+    $batches = $asesmens
+        ->where('is_collective', true)
+        ->whereNotNull('collective_batch_id')
+        ->groupBy('collective_batch_id')
+        ->map(function ($members) {
+            $first = $members->first();
+            $allComplete = $members->every(fn($m) => $m->status === 'data_completed');
+            $anyStarted = $members->contains(
+                fn($m) => !in_array($m->status, ['registered', 'data_completed'])
+            );
+
+            return [
+                'batch_id'         => $first->collective_batch_id,
+                'skema'            => $first->skema->name ?? '-',
+                'total'            => $members->count(),
+                'registration_date'=> $first->registration_date?->translatedFormat('d M Y'),
+                'label'            => $anyStarted ? 'Berjalan' : ($allComplete ? 'Siap Mulai' : 'Dalam Proses'),
+                'badge'            => $anyStarted ? 'success' : ($allComplete ? 'warning' : 'secondary'),
+                'url'              => route('admin.asesi.batch.show', $first->collective_batch_id),
+            ];
+        })
+        ->sortByDesc('registration_date')
+        ->values();
+
+    $mandiri = $asesmens->where('is_collective', false)->values();
+
+    return response()->json([
+        'success' => true,
+        'tuk'     => [
+            'name' => $tuk->name,
+            'code' => $tuk->code,
+        ],
+        'batches' => $batches,
+        'mandiri_count' => $mandiri->count(),
+        'mandiri_url'   => $mandiri->isNotEmpty() ? route('admin.asesi.mandiri-per-tuk', $tuk->id) : null,
+    ]);
+}
 }

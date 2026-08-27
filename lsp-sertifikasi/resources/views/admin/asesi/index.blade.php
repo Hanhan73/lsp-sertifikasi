@@ -284,112 +284,120 @@
          TAB 2: PER TUK
     ══════════════════════════════════════════════════════════ --}}
     <div class="tab-pane fade" id="per-tuk" role="tabpanel">
-        <div class="row g-3">
-            @forelse($tuks as $tuk)
-            @php
-            $tukBatches = $asesmens
-            ->where('tuk_id', $tuk->id)
-            ->whereNotNull('collective_batch_id')
-            ->groupBy('collective_batch_id');
+    <div class="row g-3">
+        @forelse($tuks as $tuk)
+        @php
+        $tukBatchCount = $asesmens
+        ->where('tuk_id', $tuk->id)
+        ->whereNotNull('collective_batch_id')
+        ->pluck('collective_batch_id')
+        ->unique()
+        ->count();
 
-            $mandiriCount = $asesmens
-            ->where('tuk_id', $tuk->id)
-            ->where('is_collective', false)
-            ->count();
-            @endphp
-            <div class="col-md-6 col-xl-4">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white d-flex align-items-center gap-2 border-bottom">
-                        @if($tuk->logo_path)
-                        <img src="{{ asset('storage/' . $tuk->logo_path) }}"
-                            style="width:32px;height:32px;object-fit:cover;border-radius:4px;">
-                        @else
-                        <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded"
-                            style="width:32px;height:32px;font-size:0.8rem;font-weight:700;">
-                            {{ strtoupper(substr($tuk->name, 0, 2)) }}
-                        </div>
-                        @endif
-                        <div class="flex-grow-1 min-width-0">
-                            <div class="fw-semibold text-truncate">{{ $tuk->name }}</div>
-                            <small class="text-muted">{{ $tuk->code }}</small>
-                        </div>
-                        <span class="badge bg-primary rounded-pill">{{ $tuk->_total ?? $tuk->asesmens_count }}</span>
+        $mandiriCount = $asesmens
+        ->where('tuk_id', $tuk->id)
+        ->where('is_collective', false)
+        ->count();
+
+        $totalPeserta = $tuk->_total ?? $tuk->asesmens_count;
+        @endphp
+        <div class="col-md-6 col-xl-4">
+            <div class="card border-0 shadow-sm h-100 tuk-card" style="cursor:pointer;"
+                data-tuk-id="{{ $tuk->id }}" data-tuk-name="{{ $tuk->name }}">
+                <div class="card-body d-flex align-items-center gap-3">
+                    @if($tuk->logo_path)
+                    <img src="{{ asset('storage/' . $tuk->logo_path) }}"
+                        style="width:44px;height:44px;object-fit:cover;border-radius:8px;flex-shrink:0;">
+                    @else
+                    <div class="d-flex align-items-center justify-content-center bg-primary text-white rounded flex-shrink-0"
+                        style="width:44px;height:44px;font-size:0.9rem;font-weight:700;">
+                        {{ strtoupper(substr($tuk->name, 0, 2)) }}
                     </div>
-                    <div class="card-body p-0">
-
-                        @if($mandiriCount > 0)
-                        <div class="px-3 py-2 border-bottom bg-light">
-                            <small class="text-muted fw-semibold">MANDIRI</small>
-                            <div class="d-flex align-items-center justify-content-between mt-1">
-                                <span class="small">{{ $mandiriCount }} asesi mandiri</span>
-                                <a href="{{ route('admin.asesi.mandiri-per-tuk', $tuk->id) }}"
-                                    class="btn btn-xs btn-outline-secondary py-0 px-2" style="font-size:0.75rem;">
-                                    <i class="bi bi-eye"></i> Lihat
-                                </a>
-                            </div>
+                    @endif
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="fw-semibold text-truncate">{{ $tuk->name }}</div>
+                        <small class="text-muted">{{ $tuk->code }}</small>
+                        <div class="d-flex gap-2 mt-1">
+                            <span class="badge bg-primary rounded-pill">{{ $totalPeserta }} peserta</span>
+                            @if($tukBatchCount > 0)
+                            <span class="badge bg-light text-dark border">{{ $tukBatchCount }} batch</span>
+                            @endif
+                            @if($mandiriCount > 0)
+                            <span class="badge bg-light text-dark border">{{ $mandiriCount }} mandiri</span>
+                            @endif
                         </div>
-                        @endif
-
-                        @if($tukBatches->isEmpty())
-                        <div class="text-center text-muted py-3">
-                            <small>Tidak ada batch kolektif</small>
-                        </div>
-                        @else
-                        <div class="list-group list-group-flush">
-                            @foreach($tukBatches as $batchId => $members)
-                            @php
-                            $first = $members->first();
-                            $count = $members->count();
-                            $allComplete = $members->every(fn($m) => $m->status === 'data_completed');
-                            $anyStarted = $members->contains(
-                            fn($m) => !in_array($m->status, ['registered','data_completed'])
-                            );
-                            $batchBadge = $anyStarted ? 'success' : ($allComplete ? 'warning' : 'secondary');
-                            $batchLabel = $anyStarted ? 'Berjalan' : ($allComplete ? 'Siap Mulai' : 'Dalam Proses');
-                            @endphp
-                            <a href="{{ route('admin.asesi.batch.show', $batchId) }}"
-                                class="list-group-item list-group-item-action px-3 py-2">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="small fw-semibold text-truncate" style="max-width:160px;">
-                                            <i class="bi bi-layers me-1 text-primary"></i>
-                                            {{ $batchId }}
-                                        </div>
-                                        <div class="text-muted" style="font-size:0.72rem;">
-                                            {{ $count }} peserta
-                                            &bull;
-                                            {{ $first->skema->name ?? '-' }}
-                                        </div>
-                                        <div class="text-muted" style="font-size:0.72rem;">
-                                            {{ $first->registration_date->translatedFormat('d M Y') }}
-                                        </div>
-                                    </div>
-                                    <div class="d-flex flex-column align-items-end gap-1">
-                                        <span class="badge bg-{{ $batchBadge }} rounded-pill">
-                                            {{ $batchLabel }}
-                                        </span>
-                                        <i class="bi bi-chevron-right text-muted small"></i>
-                                    </div>
-                                </div>
-                            </a>
-                            @endforeach
-                        </div>
-                        @endif
                     </div>
+                    <i class="bi bi-chevron-right text-muted flex-shrink-0"></i>
                 </div>
             </div>
-            @empty
-            <div class="col-12">
-                <div class="text-center text-muted py-5">
-                    <i class="bi bi-building" style="font-size: 2.5rem;"></i>
-                    <p class="mt-2 mb-0">Belum ada TUK dengan data asesi</p>
-                </div>
-            </div>
-            @endforelse
         </div>
+        @empty
+        <div class="col-12">
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-building" style="font-size: 2.5rem;"></i>
+                <p class="mt-2 mb-0">Belum ada TUK dengan data asesi</p>
+            </div>
+        </div>
+        @endforelse
     </div>
+</div>
 
 </div>
+
+{{-- ══ MODAL DETAIL TUK — daftar batch + link mandiri ══ --}}
+<div class="modal fade" id="modalTukDetail" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-building me-2"></i><span id="modal-tuk-name">-</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <div id="tuk-modal-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2 mb-0">Memuat data...</p>
+                </div>
+
+                <div id="tuk-modal-content" style="display:none;">
+
+                    {{-- Link asesi mandiri --}}
+                    <div id="tuk-modal-mandiri-box" class="alert alert-light border d-flex align-items-center justify-content-between mb-3" style="display:none;">
+                        <span><i class="bi bi-person me-1"></i><span id="tuk-modal-mandiri-count">0</span> asesi mandiri</span>
+                        <a href="#" id="tuk-modal-mandiri-link" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-eye me-1"></i>Lihat
+                        </a>
+                    </div>
+
+                    {{-- Search batch --}}
+                    <div class="mb-3">
+                        <input type="text" id="tuk-modal-search" class="form-control form-control-sm"
+                            placeholder="Cari batch berdasarkan nama atau skema...">
+                    </div>
+
+                    {{-- List batch --}}
+                    <div class="list-group list-group-flush" id="tuk-modal-batch-list" style="max-height:400px; overflow-y:auto;"></div>
+
+                    <div id="tuk-modal-empty" class="text-center text-muted py-4" style="display:none;">
+                        <small>Tidak ada batch yang cocok.</small>
+                    </div>
+                </div>
+
+                <div id="tuk-modal-error" class="text-center py-5 text-danger" style="display:none;">
+                    <i class="bi bi-exclamation-triangle fs-1 opacity-50"></i>
+                    <p class="mt-2 mb-0">Gagal memuat data.</p>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 {{-- Detail Modal --}}
 <div class="modal fade" id="detailModal" tabindex="-1">
@@ -550,5 +558,103 @@
             Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
         }
     }
+
+    let currentTukBatches = [];
+
+document.querySelectorAll('.tuk-card').forEach(card => {
+    card.addEventListener('click', function () {
+        openTukModal(this.dataset.tukId, this.dataset.tukName);
+    });
+});
+
+function openTukModal(tukId, tukName) {
+    const modalEl = document.getElementById('modalTukDetail');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+    document.getElementById('modal-tuk-name').textContent = tukName;
+    document.getElementById('tuk-modal-loading').style.display = 'block';
+    document.getElementById('tuk-modal-content').style.display = 'none';
+    document.getElementById('tuk-modal-error').style.display = 'none';
+    document.getElementById('tuk-modal-search').value = '';
+
+    modal.show();
+
+    const url = `{{ url('admin/asesi/tuk') }}/${tukId}/batches`;
+
+    fetch(url, { headers: { 'Accept': 'application/json' } })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('tuk-modal-loading').style.display = 'none';
+
+            if (!data.success) {
+                document.getElementById('tuk-modal-error').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('tuk-modal-content').style.display = 'block';
+
+            const mandiriBox = document.getElementById('tuk-modal-mandiri-box');
+            if (data.mandiri_count > 0) {
+                mandiriBox.style.display = 'flex';
+                document.getElementById('tuk-modal-mandiri-count').textContent = data.mandiri_count;
+                document.getElementById('tuk-modal-mandiri-link').href = data.mandiri_url;
+            } else {
+                mandiriBox.style.display = 'none';
+            }
+
+            currentTukBatches = data.batches;
+            renderTukBatchList(currentTukBatches);
+        })
+        .catch(() => {
+            document.getElementById('tuk-modal-loading').style.display = 'none';
+            document.getElementById('tuk-modal-error').style.display = 'block';
+        });
+}
+
+function renderTukBatchList(list) {
+    const container = document.getElementById('tuk-modal-batch-list');
+    const emptyMsg = document.getElementById('tuk-modal-empty');
+    container.innerHTML = '';
+
+    if (list.length === 0) {
+        emptyMsg.style.display = 'block';
+        return;
+    }
+    emptyMsg.style.display = 'none';
+
+    list.forEach(b => {
+        const item = document.createElement('a');
+        item.href = b.url;
+        item.className = 'list-group-item list-group-item-action px-3 py-2';
+        item.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="min-width-0">
+                    <div class="small fw-semibold text-truncate"><i class="bi bi-layers me-1 text-primary"></i>${escapeHtmlTuk(b.batch_id)}</div>
+                    <div class="text-muted" style="font-size:0.75rem;">${b.total} peserta &bull; ${escapeHtmlTuk(b.skema)}</div>
+                    <div class="text-muted" style="font-size:0.72rem;">${b.registration_date ?? '-'}</div>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0 ms-2">
+                    <span class="badge bg-${b.badge} rounded-pill">${b.label}</span>
+                    <i class="bi bi-chevron-right text-muted small"></i>
+                </div>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+document.getElementById('tuk-modal-search').addEventListener('input', function () {
+    const term = this.value.toLowerCase();
+    const filtered = currentTukBatches.filter(b =>
+        b.batch_id.toLowerCase().includes(term) || b.skema.toLowerCase().includes(term)
+    );
+    renderTukBatchList(filtered);
+});
+
+function escapeHtmlTuk(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
 </script>
 @endpush

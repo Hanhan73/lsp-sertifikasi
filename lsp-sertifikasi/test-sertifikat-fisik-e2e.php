@@ -68,8 +68,11 @@ try {
 
     $batchId = 'TEST-BATCH-' . uniqid();
 
-    $admin = User::factory()->create(['name' => 'Test Admin']);
+$admin = User::factory()->create(['name' => 'Test Admin']);
+$tukUser = User::factory()->create(['name' => 'Test TUK Owner']);
+
 $tuk = Tuk::create(fillRequiredDefaults('tuks', [
+    'user_id'   => $tukUser->id,
     'name'      => 'TUK Test',
     'code'      => 'TESTTUK',
     'is_active' => true,

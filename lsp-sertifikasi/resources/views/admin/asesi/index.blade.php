@@ -79,41 +79,59 @@
             </div>
             <div class="card-body">
                 {{-- Statistics Row --}}
-                <div class="row mb-4">
-                    <div class="col-md-2">
+                <div class="row mb-4 g-2">
+                    <div class="col">
                         <div class="stat-card" style="--bg-color: #6c757d; --bg-color-end: #495057;">
-                            <p class="mb-1 small">Registered</p>
+                            <p class="mb-1 small">Terdaftar</p>
                             <h5 class="mb-0">{{ $asesmens->where('status', 'registered')->count() }}</h5>
                         </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col">
                         <div class="stat-card" style="--bg-color: #0dcaf0; --bg-color-end: #0aa2c0;">
-                            <p class="mb-1 small">Data Completed</p>
+                            <p class="mb-1 small">Data Lengkap</p>
                             <h5 class="mb-0">{{ $asesmens->where('status', 'data_completed')->count() }}</h5>
                         </div>
                     </div>
-                    <div class="col-md-2">
+                    <div class="col">
+                        <div class="stat-card" style="--bg-color: #f97316; --bg-color-end: #ea580c;">
+                            <p class="mb-1 small">Menunggu Bayar</p>
+                            <h5 class="mb-0">{{ $asesmens->where('status', 'payment_pending')->count() }}</h5>
+                        </div>
+                    </div>
+                    <div class="col">
                         <div class="stat-card" style="--bg-color: #0d6efd; --bg-color-end: #0a58ca;">
-                            <p class="mb-1 small">Verified</p>
-                            <h5 class="mb-0">{{ $asesmens->where('status', 'verified')->count() }}</h5>
+                            <p class="mb-1 small">Pra-Asesmen</p>
+                            <h5 class="mb-0">{{ $asesmens->where('status', 'pra_asesmen_started')->count() }}</h5>
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <div class="stat-card" style="--bg-color: #198754; --bg-color-end: #146c43;">
-                            <p class="mb-1 small">Paid</p>
-                            <h5 class="mb-0">{{ $asesmens->where('status', 'paid')->count() }}</h5>
-                        </div>
-                    </div>
-                    <div class="col-md-2">
+                    <div class="col">
                         <div class="stat-card" style="--bg-color: #ffc107; --bg-color-end: #cc9a06;">
-                            <p class="mb-1 small">Scheduled</p>
+                            <p class="mb-1 small">Terjadwal</p>
                             <h5 class="mb-0">{{ $asesmens->where('status', 'scheduled')->count() }}</h5>
                         </div>
                     </div>
-                    <div class="col-md-2">
-                        <div class="stat-card" style="--bg-color: #20c997; --bg-color-end: #19a077;">
-                            <p class="mb-1 small">Certified</p>
+                    <div class="col">
+                        <div class="stat-card" style="--bg-color: #6366f1; --bg-color-end: #4f46e5;">
+                            <p class="mb-1 small">Asesmen Dimulai</p>
+                            <h5 class="mb-0">{{ $asesmens->where('status', 'asesmen_started')->count() }}</h5>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-card" style="--bg-color: #0ea5e9; --bg-color-end: #0284c7;">
+                            <p class="mb-1 small">Sudah Diases</p>
+                            <h5 class="mb-0">{{ $asesmens->where('status', 'assessed')->count() }}</h5>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-card" style="--bg-color: #198754; --bg-color-end: #146c43;">
+                            <p class="mb-1 small">Tersertifikasi</p>
                             <h5 class="mb-0">{{ $asesmens->where('status', 'certified')->count() }}</h5>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="stat-card" style="--bg-color: #20c997; --bg-color-end: #19a077;">
+                            <p class="mb-1 small">Sertifikat Terdistribusi</p>
+                            <h5 class="mb-0">{{ $asesmens->where('status', 'certificate_distributed')->count() }}</h5>
                         </div>
                     </div>
                 </div>
@@ -122,17 +140,18 @@
                 <div class="row mb-3">
                     <div class="col-md-3">
                         <label class="form-label small">Filter Status</label>
-                        <select id="filter-status" class="form-select form-select-sm">
-                            <option value="">Semua Status</option>
-                            <option value="registered">Registered</option>
-                            <option value="data_completed">Data Completed</option>
-                            <option value="verified">Verified</option>
-                            <option value="paid">Paid</option>
-                            <option value="scheduled">Scheduled</option>
-                            <option value="pre_assessment_completed">Pra-Asesmen Selesai</option>
-                            <option value="assessed">Assessed</option>
-                            <option value="certified">Certified</option>
-                        </select>
+                            <select id="filter-status" class="form-select form-select-sm">
+                                <option value="">Semua Status</option>
+                                <option value="registered">Terdaftar</option>
+                                <option value="data_completed">Data Lengkap</option>
+                                <option value="payment_pending">Menunggu Verifikasi Pembayaran</option>
+                                <option value="pra_asesmen_started">Pra-Asesmen</option>
+                                <option value="scheduled">Terjadwal</option>
+                                <option value="asesmen_started">Asesmen Dimulai</option>
+                                <option value="assessed">Sudah Diases</option>
+                                <option value="certified">Tersertifikasi</option>
+                                <option value="certificate_distributed">Sertifikat Didistribusikan</option>
+                            </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-label small">Filter Jenis</label>

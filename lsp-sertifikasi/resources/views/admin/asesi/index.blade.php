@@ -93,12 +93,6 @@
                         </div>
                     </div>
                     <div class="col">
-                        <div class="stat-card" style="--bg-color: #f97316; --bg-color-end: #ea580c;">
-                            <p class="mb-1 small">Menunggu Bayar</p>
-                            <h5 class="mb-0">{{ $asesmens->where('status', 'payment_pending')->count() }}</h5>
-                        </div>
-                    </div>
-                    <div class="col">
                         <div class="stat-card" style="--bg-color: #0d6efd; --bg-color-end: #0a58ca;">
                             <p class="mb-1 small">Pra-Asesmen</p>
                             <h5 class="mb-0">{{ $asesmens->where('status', 'pra_asesmen_started')->count() }}</h5>
@@ -144,7 +138,6 @@
                                 <option value="">Semua Status</option>
                                 <option value="registered">Terdaftar</option>
                                 <option value="data_completed">Data Lengkap</option>
-                                <option value="payment_pending">Menunggu Verifikasi Pembayaran</option>
                                 <option value="pra_asesmen_started">Pra-Asesmen</option>
                                 <option value="scheduled">Terjadwal</option>
                                 <option value="asesmen_started">Asesmen Dimulai</option>

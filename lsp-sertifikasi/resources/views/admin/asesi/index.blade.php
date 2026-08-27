@@ -233,7 +233,7 @@
                                     <span class="text-muted">-</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td data-order="{{ $asesmen->schedule?->assessment_date?->format('Y-m-d') ?? '0000-00-00' }}">
                                     @if($asesmen->schedule)
                                     <small>{{ $asesmen->schedule->assessment_date->translatedFormat('d/m/Y') }}</small>
                                     @else
@@ -249,7 +249,9 @@
                                     <span class="text-muted">-</span>
                                     @endif
                                 </td>
-                                <td><small>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</small></td>
+                                <td data-order="{{ $asesmen->registration_date->format('Y-m-d') }}">
+                                    <small>{{ $asesmen->registration_date->translatedFormat('d/m/Y') }}</small>
+                                </td>
                                 <td>
                                     <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-info"
                                         data-bs-toggle="tooltip" title="Lihat Detail">

@@ -35,6 +35,30 @@ function check($label, $condition) {
     }
 }
 
+/**
+ * Isi otomatis kolom string/text NOT NULL yang belum di-set di $data,
+ * supaya insert tidak gagal karena field wajib kosong.
+ * Kolom numeric/boolean/date sengaja tidak disentuh — itu tetap harus diisi manual
+ * karena placeholder string bisa salah tipe.
+ */
+function fillRequiredDefaults(string $table, array $data): array
+{
+    $columns = DB::select("SHOW COLUMNS FROM {$table}");
+    foreach ($columns as $col) {
+        $field = $col->Field;
+        if (array_key_exists($field, $data)) continue;
+        if ($col->Null === 'YES') continue;
+        if ($col->Default !== null) continue;
+        if (in_array($field, ['id', 'created_at', 'updated_at', 'deleted_at'])) continue;
+
+        // Hanya auto-isi tipe yang jelas aman berupa string
+        if (str_contains($col->Type, 'varchar') || str_contains($col->Type, 'text')) {
+            $data[$field] = 'Test ' . ucfirst(str_replace('_', ' ', $field));
+        }
+    }
+    return $data;
+}
+
 DB::beginTransaction();
 $tmpZipPath = null;
 $uploadedFilePath = null;
@@ -45,49 +69,58 @@ try {
     $batchId = 'TEST-BATCH-' . uniqid();
 
     $admin = User::factory()->create(['name' => 'Test Admin']);
-    $tuk   = Tuk::create(['name' => 'TUK Test', 'code' => 'TESTTUK', 'is_active' => true]);
-    $skema = Skema::create(['name' => 'Skema Test', 'is_active' => true, 'fee' => 500000]);
+$tuk = Tuk::create(fillRequiredDefaults('tuks', [
+    'name'      => 'TUK Test',
+    'code'      => 'TESTTUK',
+    'is_active' => true,
+]));
 
-    $schedule = Schedule::create([
-        'tuk_id'           => $tuk->id,
-        'skema_id'         => $skema->id,
-        'assessment_date'  => now()->subDays(3),
-        'start_time'       => '08:00',
-        'end_time'         => '16:00',
-        'location'         => 'Ruang Test',
-        'created_by'       => $admin->id,
-        'approval_status'  => 'approved',
-    ]);
+$skema = Skema::create(fillRequiredDefaults('skemas', [
+    'name'      => 'Skema Test',
+    'is_active' => true,
+    'fee'       => 500000,
+]));
 
-    $ba = BeritaAcara::create([
-        'schedule_id'         => $schedule->id,
-        'tanggal_pelaksanaan' => now()->subDays(3),
-        'dibuat_oleh'         => $admin->id,
-    ]);
+$schedule = Schedule::create(fillRequiredDefaults('schedules', [
+    'tuk_id'           => $tuk->id,
+    'skema_id'         => $skema->id,
+    'assessment_date'  => now()->subDays(3),
+    'start_time'       => '08:00',
+    'end_time'         => '16:00',
+    'location'         => 'Ruang Test',
+    'created_by'       => $admin->id,
+    'approval_status'  => 'approved',
+]));
+
+$ba = BeritaAcara::create(fillRequiredDefaults('berita_acara', [
+    'schedule_id'         => $schedule->id,
+    'tanggal_pelaksanaan' => now()->subDays(3),
+    'dibuat_oleh'         => $admin->id,
+]));
 
     // ── Buat 3 asesi: 2 Kompeten, 1 Belum Kompeten ──
     $asesis = [];
     foreach (['K', 'K', 'BK'] as $i => $rekom) {
-        $u = User::factory()->create(['name' => "Test Asesi {$i}"]);
-        $a = Asesmen::create([
-            'user_id'            => $u->id,
-            'tuk_id'             => $tuk->id,
-            'skema_id'           => $skema->id,
-            'schedule_id'        => $schedule->id,
-            'full_name'          => "Test Asesi {$i}",
-            'nik'                => str_pad((string) random_int(1000000000000000, 9999999999999999 / 10), 16, '0'),
-            'registration_date'  => now()->subDays(30),
-            'status'             => 'assessed',
-            'is_collective'      => true,
-            'collective_batch_id'=> $batchId,
-        ]);
-        BeritaAcaraAsesi::create([
-            'berita_acara_id' => $ba->id,
-            'asesmen_id'      => $a->id,
-            'rekomendasi'     => $rekom,
-        ]);
-        $asesis[] = $a;
-    }
+    $u = User::factory()->create(['name' => "Test Asesi {$i}"]);
+    $a = Asesmen::create(fillRequiredDefaults('asesmens', [
+        'user_id'            => $u->id,
+        'tuk_id'             => $tuk->id,
+        'skema_id'           => $skema->id,
+        'schedule_id'        => $schedule->id,
+        'full_name'          => "Test Asesi {$i}",
+        'nik'                => str_pad((string) random_int(1000000000000000, 9999999999999999 / 10), 16, '0'),
+        'registration_date'  => now()->subDays(30),
+        'status'             => 'assessed',
+        'is_collective'      => true,
+        'collective_batch_id'=> $batchId,
+    ]));
+    BeritaAcaraAsesi::create(fillRequiredDefaults('berita_acara_asesis', [
+        'berita_acara_id' => $ba->id,
+        'asesmen_id'      => $a->id,
+        'rekomendasi'     => $rekom,
+    ]));
+    $asesis[] = $a;
+}
     [$asesiK1, $asesiK2, $asesiBK] = $asesis;
 
     echo "Batch: {$batchId} | Asesi K1=#{$asesiK1->id}, K2=#{$asesiK2->id}, BK=#{$asesiBK->id}\n\n";

@@ -384,7 +384,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
         Route::get('/mandiri-per-tuk/{tukId}/export-blanko', [AsesmenController::class, 'exportMandiriPerTukBlanko'])
             ->name('mandiri-per-tuk.export-blanko');
-        Route::get('asesi/tuk/{tuk}/batches', [AsesmenController::class, 'tukBatches'])
+        Route::get('/tuk/{tuk}/batches', [AsesmenController::class, 'tukBatches'])
             ->name('tuk.batches');
     });
     Route::get('/asesi', [AsesmenController::class, 'index'])->name('asesi'); // alias lama

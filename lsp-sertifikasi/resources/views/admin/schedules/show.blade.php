@@ -101,15 +101,15 @@
 </nav>
 
 @php
-    $isPast            = $schedule->assessment_date->isPast() && !$schedule->assessment_date->isToday();
-    $isToday           = $schedule->assessment_date->isToday();
-    $dateClass         = $isToday ? 'today' : ($isPast ? 'past' : 'future');
-    $isOnline          = $schedule->location_type === 'online';
+    $isPast     = $schedule->assessment_date->isPast() && !$schedule->assessment_date->isToday();
+    $isToday    = $schedule->assessment_date->isToday();
+    $dateClass  = $isToday ? 'today' : ($isPast ? 'past' : 'future');
+    $isOnline   = $schedule->location_type === 'online';
 
     $pakaiTeori = (bool) $schedule->distribusiSoalTeori
-    || collect($progress)->contains(fn($x) => $x['teori']['total'] > 0);
-    $totalObs          = $schedule->distribusiSoalObservasi->count();
-    $pakaiPorto        = $schedule->distribusiPortofolio->isNotEmpty();
+        || collect($progress)->contains(fn($x) => $x['teori']['total'] > 0);
+    $totalObs   = $schedule->distribusiSoalObservasi->count();
+    $pakaiPorto = $schedule->distribusiPortofolio->isNotEmpty();
 
     $allItems  = collect($checklist)->flatten(1)->reject(fn($i) => $i['optional'] ?? false);
     $doneItems = $allItems->where('done', true)->count();
@@ -462,12 +462,25 @@
                                             <div class="small fw-bold mt-1">Nilai {{ $pg['teori']['nilai'] }}</div>
                                             <div class="text-muted" style="font-size:.7rem;">{{ $pg['teori']['benar'] }}/{{ $pg['teori']['total'] }} benar</div>
                                             @break
+                                        @case('selesai_arsip')
+                                            <span class="badge bg-success">Selesai</span>
+                                            <div class="text-muted mt-1" style="font-size:.7rem;"
+                                                 title="Jadwal lama sebelum sistem paket soal. Status diambil dari berita acara, data jawaban tidak tersimpan.">
+                                                Nilai tidak tersimpan
+                                            </div>
+                                            @break
                                         @case('mengerjakan')
                                             <span class="badge bg-warning text-dark">Mengerjakan</span>
                                             <div class="text-muted" style="font-size:.7rem;">{{ $pg['teori']['dijawab'] }}/{{ $pg['teori']['total'] }} dijawab</div>
                                             @break
                                         @case('belum')
                                             <span class="badge bg-light text-muted border">Belum mulai</span>
+                                            @break
+                                        @case('hilang')
+                                            <span class="badge bg-light text-muted border"
+                                                  title="Distribusi ada, tapi data jawaban asesi tidak tersimpan di sistem">
+                                                Data tidak tersedia
+                                            </span>
                                             @break
                                         @default
                                             <span class="badge bg-secondary">Belum dapat soal</span>

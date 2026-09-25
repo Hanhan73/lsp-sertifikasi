@@ -40,14 +40,11 @@ class AdminScheduleController extends Controller
             // APL-01 harus sudah diverifikasi
             ->whereHas('aplsatu', function ($q) {
                 $q->where('status', 'verified');
-                // Sesuaikan nama kolom/nilai status APL-01 di project Anda
-                // Contoh alternatif: $q->whereIn('status', ['verified', 'approved']);
             })
             // APL-02 harus sudah disubmit (bukan draft)
             ->whereHas('apldua', function ($q) {
                 $q->whereNotIn('status', ['draft'])
                     ->whereNotNull('submitted_at');
-                // Sesuaikan: mungkin kolom submitted_at atau status != 'draft'
             })
             // FR.AK.01 harus sudah disubmit
             ->whereHas('frak01', function ($q) {
@@ -82,7 +79,6 @@ class AdminScheduleController extends Controller
 
         $schedules = $schedulesQuery->paginate(20)->appends($request->only('search'));
 
-
         $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
         $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
@@ -102,132 +98,132 @@ class AdminScheduleController extends Controller
      * Form buat jadwal baru.
      */
     public function create(Request $request)
-{
-    $selectedIds = $request->input('asesmen_ids', []);
-    $selectedAsesmens = $selectedIds
-        ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
-        : collect();
+    {
+        $selectedIds = $request->input('asesmen_ids', []);
+        $selectedAsesmens = $selectedIds
+            ? Asesmen::with(['tuk', 'skema'])->whereIn('id', $selectedIds)->get()
+            : collect();
 
-    $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
-    $skemas = Skema::where('is_active', true)->orderBy('name')->get();
+        $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
+        $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-    $availableAsesmens = $this->readyToScheduleQuery()
-        ->orderBy('full_name')
-        ->get();
+        $availableAsesmens = $this->readyToScheduleQuery()
+            ->orderBy('full_name')
+            ->get();
 
-    // Daftar batch kolektif unik untuk dropdown filter
-    $batches = $availableAsesmens
-        ->pluck('collective_batch_id')
-        ->filter()
-        ->unique()
-        ->values();
+        // Daftar batch kolektif unik untuk dropdown filter
+        $batches = $availableAsesmens
+            ->pluck('collective_batch_id')
+            ->filter()
+            ->unique()
+            ->values();
 
-    // Auto-hitung nama lembaga dari asesi yang sudah dipilih (modus)
-    $autoInstitutionName = Schedule::computeInstitutionNameFromAsesmens($selectedAsesmens);
+        // Auto-hitung nama lembaga dari asesi yang sudah dipilih (modus)
+        $autoInstitutionName = Schedule::computeInstitutionNameFromAsesmens($selectedAsesmens);
 
-    return view('admin.schedules.create', compact(
-        'selectedAsesmens',
-        'availableAsesmens',
-        'tuks',
-        'skemas',
-        'batches',
-        'autoInstitutionName'
-    ));
-}
+        return view('admin.schedules.create', compact(
+            'selectedAsesmens',
+            'availableAsesmens',
+            'tuks',
+            'skemas',
+            'batches',
+            'autoInstitutionName'
+        ));
+    }
 
     /**
      * Simpan jadwal baru.
      * Status asesi TIDAK berubah ke 'scheduled' dulu — menunggu approval Direktur.
      * Status asesi tetap, hanya schedule_id yang diisi.
      */
-   public function store(Request $request)
-{
-    $request->validate([
-        'asesmen_ids'      => 'required|array|min:1',
-        'asesmen_ids.*'    => 'exists:asesmens,id',
-        'tuk_id'           => 'required|exists:tuks,id',
-        'asesor_id'        => 'nullable|exists:asesors,id',
-        'assessment_date'  => 'required|date|after_or_equal:today',
-        'start_time'       => 'required',
-        'end_time'         => 'required|after:start_time',
-        'location_type'    => 'required|in:offline,online',
-        'location'         => 'required|string|max:255',
-        'meeting_link'     => 'nullable|url|max:500|required_if:location_type,online',
-        'notes'            => 'nullable|string',
-        'institution_name' => 'nullable|string|max:255',
-    ]);
-
-    // Validasi asesi: harus sudah memenuhi kriteria dan belum terjadwal
-    $asesmens = $this->readyToScheduleQuery()
-        ->whereIn('id', $request->asesmen_ids)
-        ->get();
-
-    if ($asesmens->count() !== count($request->asesmen_ids)) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Beberapa asesi tidak memenuhi syarat penjadwalan (APL-01 harus terverifikasi, APL-02 dan FR.AK.01 harus sudah disubmit).');
-    }
-
-    // Validasi semua asesi punya skema sama
-    $skemaIds = $asesmens->pluck('skema_id')->unique();
-    if ($skemaIds->count() > 1) {
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Asesi dalam satu jadwal harus memiliki skema yang sama.');
-    }
-
-    DB::beginTransaction();
-    try {
-        // Buat jadwal dengan status pending_approval
-        $schedule = Schedule::create([
-            'tuk_id'           => $request->tuk_id,
-            'skema_id'         => $skemaIds->first(),
-            'assessment_date'  => $request->assessment_date,
-            'start_time'       => $request->start_time,
-            'end_time'         => $request->end_time,
-            'location'         => $request->location,
-            'location_type'    => $request->location_type,
-            'meeting_link'     => $request->location_type === 'online'
-                                    ? $request->meeting_link
-                                    : null,
-            'notes'            => $request->notes,
-            'created_by'       => auth()->id(),
-            'approval_status'  => 'pending_approval',
-            'asesor_id'        => $request->asesor_id ?: null,
-            // Kalau admin kosongkan, hitung otomatis dari institution asesi terpilih
-            'institution_name' => $request->input('institution_name')
-                                    ?: Schedule::computeInstitutionNameFromAsesmens($asesmens),
+    public function store(Request $request)
+    {
+        $request->validate([
+            'asesmen_ids'      => 'required|array|min:1',
+            'asesmen_ids.*'    => 'exists:asesmens,id',
+            'tuk_id'           => 'required|exists:tuks,id',
+            'asesor_id'        => 'nullable|exists:asesors,id',
+            'assessment_date'  => 'required|date|after_or_equal:today',
+            'start_time'       => 'required',
+            'end_time'         => 'required|after:start_time',
+            'location_type'    => 'required|in:offline,online',
+            'location'         => 'required|string|max:255',
+            'meeting_link'     => 'nullable|url|max:500|required_if:location_type,online',
+            'notes'            => 'nullable|string',
+            'institution_name' => 'nullable|string|max:255',
         ]);
 
-        // Hubungkan asesi ke jadwal — status asesi BELUM berubah ke 'scheduled'
-        foreach ($asesmens as $asesmen) {
-            $asesmen->update(['schedule_id' => $schedule->id]);
+        // Validasi asesi: harus sudah memenuhi kriteria dan belum terjadwal
+        $asesmens = $this->readyToScheduleQuery()
+            ->whereIn('id', $request->asesmen_ids)
+            ->get();
+
+        if ($asesmens->count() !== count($request->asesmen_ids)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Beberapa asesi tidak memenuhi syarat penjadwalan (APL-01 harus terverifikasi, APL-02 dan FR.AK.01 harus sudah disubmit).');
         }
 
-        // Assign asesor jika dipilih
-        if ($request->asesor_id) {
-            $asesor = \App\Models\Asesor::findOrFail($request->asesor_id);
-            $this->assignmentService->assignAsesor($schedule, $asesor, 'Ditugaskan saat pembuatan jadwal');
+        // Validasi semua asesi punya skema sama
+        $skemaIds = $asesmens->pluck('skema_id')->unique();
+        if ($skemaIds->count() > 1) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Asesi dalam satu jadwal harus memiliki skema yang sama.');
         }
 
-        DB::commit();
+        DB::beginTransaction();
+        try {
+            // Buat jadwal dengan status pending_approval
+            $schedule = Schedule::create([
+                'tuk_id'           => $request->tuk_id,
+                'skema_id'         => $skemaIds->first(),
+                'assessment_date'  => $request->assessment_date,
+                'start_time'       => $request->start_time,
+                'end_time'         => $request->end_time,
+                'location'         => $request->location,
+                'location_type'    => $request->location_type,
+                'meeting_link'     => $request->location_type === 'online'
+                                        ? $request->meeting_link
+                                        : null,
+                'notes'            => $request->notes,
+                'created_by'       => auth()->id(),
+                'approval_status'  => 'pending_approval',
+                'asesor_id'        => $request->asesor_id ?: null,
+                // Kalau admin kosongkan, hitung otomatis dari institution asesi terpilih
+                'institution_name' => $request->input('institution_name')
+                                        ?: Schedule::computeInstitutionNameFromAsesmens($asesmens),
+            ]);
 
-        Log::info("Admin #{auth()->id()} membuat jadwal #{$schedule->id} untuk {$asesmens->count()} asesi. Menunggu approval Direktur.");
+            // Hubungkan asesi ke jadwal — status asesi BELUM berubah ke 'scheduled'
+            foreach ($asesmens as $asesmen) {
+                $asesmen->update(['schedule_id' => $schedule->id]);
+            }
 
-        return redirect()->route('admin.schedules.index')
-            ->with('success', "Jadwal berhasil dibuat untuk {$asesmens->count()} asesi dan sedang menunggu persetujuan Direktur.");
+            // Assign asesor jika dipilih
+            if ($request->asesor_id) {
+                $asesor = \App\Models\Asesor::findOrFail($request->asesor_id);
+                $this->assignmentService->assignAsesor($schedule, $asesor, 'Ditugaskan saat pembuatan jadwal');
+            }
 
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Admin create schedule error: ' . $e->getMessage());
-        return redirect()->back()
-            ->withInput()
-            ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            DB::commit();
+
+            Log::info("Admin #" . auth()->id() . " membuat jadwal #{$schedule->id} untuk {$asesmens->count()} asesi. Menunggu approval Direktur.");
+
+            return redirect()->route('admin.schedules.index')
+                ->with('success', "Jadwal berhasil dibuat untuk {$asesmens->count()} asesi dan sedang menunggu persetujuan Direktur.");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Admin create schedule error: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+        }
     }
-}
 
     /**
-     * Detail jadwal.
+     * Detail jadwal + progress asesmen.
      */
     public function show(Schedule $schedule)
     {
@@ -272,64 +268,64 @@ class AdminScheduleController extends Controller
      * Edit jadwal — hanya bisa diedit jika masih pending atau ditolak.
      */
     public function edit(Schedule $schedule)
-{
-    if ($schedule->isApproved()) {
-        return redirect()->route('admin.schedules.show', $schedule)
-            ->with('error', 'Jadwal yang sudah disetujui tidak dapat diedit.');
-    }
-
-    $schedule->load(['tuk', 'skema', 'asesor', 'asesmens']);
-    $tuks = Tuk::where('is_active', true)->orderBy('name')->get();
-
-    return view('admin.schedules.edit', compact('schedule', 'tuks'));
-}
-
-public function update(Request $request, Schedule $schedule)
-{
-    if ($schedule->isApproved()) {
-        if ($request->wantsJson()) {
-            return response()->json(['success' => false, 'message' => 'Jadwal sudah disetujui, tidak dapat diedit.'], 403);
+    {
+        if ($schedule->isApproved()) {
+            return redirect()->route('admin.schedules.show', $schedule)
+                ->with('error', 'Jadwal yang sudah disetujui tidak dapat diedit.');
         }
-        return redirect()->back()->with('error', 'Jadwal sudah disetujui, tidak dapat diedit.');
+
+        $schedule->load(['tuk', 'skema', 'asesor', 'asesmens']);
+        $tuks = Tuk::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.schedules.edit', compact('schedule', 'tuks'));
     }
 
-    $request->validate([
-        'assessment_date'  => 'required|date',
-        'start_time'       => 'required',
-        'end_time'         => 'required|after:start_time',
-        'location_type'    => 'required|in:offline,online',
-        'location'         => 'required|string|max:255',
-        'meeting_link'     => 'nullable|url|max:500|required_if:location_type,online',
-        'notes'            => 'nullable|string',
-        'institution_name' => 'nullable|string|max:255',
-    ]);
+    public function update(Request $request, Schedule $schedule)
+    {
+        if ($schedule->isApproved()) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Jadwal sudah disetujui, tidak dapat diedit.'], 403);
+            }
+            return redirect()->back()->with('error', 'Jadwal sudah disetujui, tidak dapat diedit.');
+        }
 
-    $data = $request->only([
-        'assessment_date', 'start_time', 'end_time', 'location',
-        'location_type', 'notes', 'institution_name',
-    ]);
-    $data['meeting_link'] = $request->location_type === 'online' ? $request->meeting_link : null;
-
-    // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
-    if ($schedule->isRejected()) {
-        $data['approval_status'] = 'pending_approval';
-        $data['approval_notes']  = null;
-        $data['rejected_at']     = null;
-    }
-
-    $schedule->update($data);
-
-    if ($request->wantsJson()) {
-        return response()->json([
-            'success'  => true,
-            'message'  => 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.',
-            'schedule' => $schedule->fresh()->toArray(),
+        $request->validate([
+            'assessment_date'  => 'required|date',
+            'start_time'       => 'required',
+            'end_time'         => 'required|after:start_time',
+            'location_type'    => 'required|in:offline,online',
+            'location'         => 'required|string|max:255',
+            'meeting_link'     => 'nullable|url|max:500|required_if:location_type,online',
+            'notes'            => 'nullable|string',
+            'institution_name' => 'nullable|string|max:255',
         ]);
-    }
 
-    return redirect()->route('admin.schedules.show', $schedule)
-        ->with('success', 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.');
-}
+        $data = $request->only([
+            'assessment_date', 'start_time', 'end_time', 'location',
+            'location_type', 'notes', 'institution_name',
+        ]);
+        $data['meeting_link'] = $request->location_type === 'online' ? $request->meeting_link : null;
+
+        // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
+        if ($schedule->isRejected()) {
+            $data['approval_status'] = 'pending_approval';
+            $data['approval_notes']  = null;
+            $data['rejected_at']     = null;
+        }
+
+        $schedule->update($data);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success'  => true,
+                'message'  => 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.',
+                'schedule' => $schedule->fresh()->toArray(),
+            ]);
+        }
+
+        return redirect()->route('admin.schedules.show', $schedule)
+            ->with('success', 'Jadwal berhasil diupdate dan dikembalikan ke antrian persetujuan Direktur.');
+    }
 
     /**
      * Hapus jadwal — kembalikan asesi ke status sebelumnya.
@@ -433,13 +429,35 @@ public function update(Request $request, Schedule $schedule)
         ]);
     }
 
+    // =========================================================================
+    // PROGRESS ASESMEN — helper untuk halaman detail jadwal
+    // =========================================================================
 
+    /**
+     * Progress per peserta: hadir, teori, observasi, dok. ujikom, umpan balik, rekomendasi BA.
+     *
+     * Status teori:
+     *  - selesai        : data soal ada & sudah submit
+     *  - selesai_arsip  : jadwal lama (distribusi tanpa paket), data soal tidak tersimpan,
+     *                     tapi asesi sudah punya rekomendasi di BA → dianggap selesai
+     *  - mengerjakan    : sudah mulai/menjawab tapi belum submit
+     *  - belum          : sudah dapat soal, belum mulai
+     *  - hilang         : distribusi ada, data soal seluruh jadwal tidak ada, BA belum keluar
+     *  - kosong         : distribusi ada, peserta ini saja yang tidak dapat soal
+     *  - na             : jadwal tidak memakai teori
+     */
     private function buildPesertaProgress(Schedule $schedule, $peserta): array
     {
         $distTeori = $schedule->distribusiSoalTeori;
         $distObs   = $schedule->distribusiSoalObservasi;
         $totalObs  = $distObs->count();
         $rekMap    = $schedule->beritaAcara?->asesis->pluck('rekomendasi', 'asesmen_id') ?? collect();
+
+        // Distribusi ada tapi tidak ada satu pun peserta yang punya data soal
+        $teoriHilang = $distTeori && $peserta->every(fn($a) => $a->soalTeoriAsesi->isEmpty());
+
+        // Distribusi versi lama (sebelum ada paket soal)
+        $teoriLegacy = $distTeori && $distTeori->paket_soal_teori_id === null;
 
         $result = [];
         foreach ($peserta as $a) {
@@ -458,10 +476,19 @@ public function update(Request $request, Schedule $schedule)
             $benar     = $soal->filter(fn($s) => filled($s->jawaban) && $s->soalTeori
                             && strtolower($s->jawaban) === strtolower($s->soalTeori->jawaban_benar))->count();
 
+            if ($total === 0) {
+                if ($teoriHilang) {
+                    // Jadwal lama tanpa paket + BA sudah keluar untuk asesi ini → anggap selesai
+                    $statusTeori = ($teoriLegacy && filled($rekMap[$a->id] ?? null)) ? 'selesai_arsip' : 'hilang';
+                } else {
+                    $statusTeori = $distTeori ? 'kosong' : 'na';
+                }
+            } else {
+                $statusTeori = $submitted ? 'selesai' : (($mulai || $dijawab > 0) ? 'mengerjakan' : 'belum');
+            }
+
             $teori = [
-                'status'  => $total === 0
-                    ? ($distTeori ? 'kosong' : 'na')
-                    : ($submitted ? 'selesai' : (($mulai || $dijawab > 0) ? 'mengerjakan' : 'belum')),
+                'status'  => $statusTeori,
                 'total'   => $total,
                 'dijawab' => $dijawab,
                 'benar'   => $benar,
@@ -491,6 +518,9 @@ public function update(Request $request, Schedule $schedule)
         return $result;
     }
 
+    /**
+     * Checklist progress jadwal: persiapan (manajer), pelaksanaan (asesor), rekap peserta.
+     */
     private function buildChecklist(Schedule $schedule, $peserta, array $progress, bool $asesmenDimulai, bool $daftarHadirSigned): array
     {
         $total     = $peserta->count();
@@ -501,7 +531,7 @@ public function update(Request $request, Schedule $schedule)
         $p         = collect($progress);
         $adaTeori  = $dt || $p->contains(fn($x) => $x['teori']['total'] > 0);
 
-        // ── Persiapan ──
+        // ── Persiapan ──────────────────────────────────────────
         $persiapan = [
             [
                 'label'  => 'Asesor ditugaskan',
@@ -518,7 +548,7 @@ public function update(Request $request, Schedule $schedule)
                 'done'   => $adaTeori,
                 'detail' => $dt
                     ? ($dt->paketSoalTeori ? 'Paket ' . $dt->paketSoalTeori->kode_paket . ' · ' : '')
-                    . "{$dt->jumlah_soal} soal · " . ($dt->durasi_menit ?? 30) . ' menit'
+                      . "{$dt->jumlah_soal} soal · " . ($dt->durasi_menit ?? 30) . ' menit'
                     : ($adaTeori ? 'Soal sudah ada di peserta' : null),
             ],
             [
@@ -551,7 +581,7 @@ public function update(Request $request, Schedule $schedule)
             ];
         }
 
-        // ── Pelaksanaan (Asesor) ──
+        // ── Pelaksanaan (Asesor) ───────────────────────────────
         $hadir = $p->where('hadir', true)->count();
 
         $pelaksanaan = [
@@ -613,17 +643,32 @@ public function update(Request $request, Schedule $schedule)
             'detail'   => $schedule->catatan_asesor ? \Illuminate\Support\Str::limit($schedule->catatan_asesor, 60) : null,
         ];
 
-        // ── Rekap Peserta ──
+        // ── Rekap Peserta ──────────────────────────────────────
         $rekapPeserta = [];
 
         if ($adaTeori) {
-            $selesai = $p->where('teori.status', 'selesai');
-            $avg     = $selesai->avg('teori.nilai');
-            $rekapPeserta[] = [
-                'label'  => 'Ujian teori selesai',
-                'done'   => $total > 0 && $selesai->count() === $total,
-                'detail' => "{$selesai->count()}/{$total} peserta" . ($avg !== null ? ' · rata-rata nilai ' . round($avg) : ''),
-            ];
+            $selesaiReal  = $p->where('teori.status', 'selesai');
+            $selesaiArsip = $p->where('teori.status', 'selesai_arsip');
+            $jmlSelesai   = $selesaiReal->count() + $selesaiArsip->count();
+            $semuaHilang  = $p->isNotEmpty() && $p->every(fn($x) => $x['teori']['status'] === 'hilang');
+
+            if ($semuaHilang) {
+                $rekapPeserta[] = [
+                    'label'    => 'Ujian teori',
+                    'done'     => false,
+                    'optional' => true, // tidak dihitung ke progress karena datanya sudah tidak ada
+                    'detail'   => 'Data jawaban tidak tersedia di sistem',
+                ];
+            } else {
+                $avg = $selesaiReal->avg('teori.nilai'); // rata-rata hanya dari nilai yang benar-benar ada
+                $rekapPeserta[] = [
+                    'label'  => 'Ujian teori selesai',
+                    'done'   => $total > 0 && $jmlSelesai === $total,
+                    'detail' => "{$jmlSelesai}/{$total} peserta"
+                        . ($avg !== null ? ' · rata-rata nilai ' . round($avg) : '')
+                        . ($selesaiArsip->isNotEmpty() ? ' · ' . $selesaiArsip->count() . ' dari data BA (nilai tidak tersimpan)' : ''),
+                ];
+            }
         }
 
         if ($distObs->isNotEmpty()) {

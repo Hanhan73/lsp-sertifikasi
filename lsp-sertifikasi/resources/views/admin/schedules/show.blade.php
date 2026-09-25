@@ -29,6 +29,11 @@
 /* Online badge */
 .loc-badge-online  { background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; border-radius:99px; padding:2px 10px; font-size:.72rem; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
 .loc-badge-offline { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; border-radius:99px; padding:2px 10px; font-size:.72rem; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
+
+/* Checklist progress */
+.checklist-item { display:flex; gap:8px; padding:8px 0; border-bottom:1px solid #f1f5f9; }
+.checklist-item:last-child { border-bottom:none; }
+.min-width-0 { min-width:0; }
 </style>
 @endpush
 
@@ -37,6 +42,12 @@
 @if(session('success'))
 <div class="alert alert-success alert-dismissible shadow-sm mb-4">
     <i class="bi bi-check-circle-fill me-2"></i>{{ session('success') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible shadow-sm mb-4">
+    <i class="bi bi-x-circle-fill me-2"></i>{{ session('error') }}
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
@@ -90,15 +101,24 @@
 </nav>
 
 @php
-    $isPast       = $schedule->assessment_date->isPast() && !$schedule->assessment_date->isToday();
-    $isToday      = $schedule->assessment_date->isToday();
-    $dateClass    = $isToday ? 'today' : ($isPast ? 'past' : 'future');
-    $peserta      = $schedule->asesmens->sortBy('full_name')->values();
-    $pesertaCount = $peserta->count();
-    $isOnline     = $schedule->location_type === 'online';
+    $isPast            = $schedule->assessment_date->isPast() && !$schedule->assessment_date->isToday();
+    $isToday           = $schedule->assessment_date->isToday();
+    $dateClass         = $isToday ? 'today' : ($isPast ? 'past' : 'future');
+    $isOnline          = $schedule->location_type === 'online';
+
+    $pakaiTeori        = (bool) $schedule->distribusiSoalTeori;
+    $totalObs          = $schedule->distribusiSoalObservasi->count();
+    $pakaiPorto        = $schedule->distribusiPortofolio->isNotEmpty();
+    $daftarHadirSigned = $schedule->isDaftarHadirSigned();
+
+    $allItems  = collect($checklist)->flatten(1)->reject(fn($i) => $i['optional'] ?? false);
+    $doneItems = $allItems->where('done', true)->count();
+    $pct       = $allItems->count() ? round($doneItems / $allItems->count() * 100) : 0;
 @endphp
 
-{{-- ── ROW 1: Header ── --}}
+{{-- ══════════════════════════════════════════════════════════
+     ROW 1: Header
+══════════════════════════════════════════════════════════ --}}
 <div class="row g-3 mb-4">
 
     {{-- Jadwal utama --}}
@@ -251,14 +271,76 @@
     </div>
 </div>
 
-{{-- ── ROW 2: Daftar Peserta ── --}}
+{{-- ══════════════════════════════════════════════════════════
+     ROW 2: Progress Asesmen (checklist)
+══════════════════════════════════════════════════════════ --}}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 flex-wrap">
+        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#eff6ff;">
+            <i class="bi bi-list-check text-primary" style="font-size:.8rem;"></i>
+        </div>
+        <span class="fw-semibold">Progress Asesmen</span>
+        <div class="ms-auto d-flex align-items-center gap-2" style="min-width:220px;">
+            <div class="progress flex-grow-1" style="height:8px;">
+                <div class="progress-bar {{ $pct === 100 ? 'bg-success' : '' }}" style="width:{{ $pct }}%"></div>
+            </div>
+            <span class="small fw-semibold">{{ $doneItems }}/{{ $allItems->count() }}</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-4">
+            @foreach($checklist as $group => $items)
+            <div class="col-lg-{{ intdiv(12, max(count($checklist), 1)) }}">
+                <div class="section-heading">{{ $group }}</div>
+                @foreach($items as $item)
+                @php $opt = $item['optional'] ?? false; @endphp
+                <div class="checklist-item">
+                    @if($item['done'])
+                    <i class="bi bi-check-circle-fill text-success" style="margin-top:2px;"></i>
+                    @else
+                    <i class="bi bi-circle text-muted {{ $opt ? 'opacity-50' : '' }}" style="margin-top:2px;"></i>
+                    @endif
+                    <div class="flex-grow-1 min-width-0">
+                        <div class="small fw-semibold {{ $item['done'] ? '' : 'text-muted' }}">
+                            {{ $item['label'] }}
+                            @if($opt)<span class="fw-normal text-muted">(opsional)</span>@endif
+                        </div>
+                        @if(!empty($item['detail']))
+                        <div class="text-muted text-truncate" style="font-size:.75rem;" title="{{ $item['detail'] }}">{{ $item['detail'] }}</div>
+                        @endif
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endforeach
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════════
+     ROW 3: Daftar Peserta (2 tab)
+══════════════════════════════════════════════════════════ --}}
 <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom d-flex align-items-center gap-2">
+    <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 flex-wrap">
         <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#f0fdf4;">
             <i class="bi bi-people-fill text-success" style="font-size:.75rem;"></i>
         </div>
-        <span class="fw-semibold">Daftar Peserta Asesmen</span>
+        <span class="fw-semibold">Daftar Peserta</span>
         <span class="badge bg-success ms-1">{{ $pesertaCount }}</span>
+
+        <ul class="nav nav-pills ms-3" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#tab-pra" type="button">
+                    Pra-Asesmen
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link py-1 px-3 small" data-bs-toggle="tab" data-bs-target="#tab-progress" type="button">
+                    Progress Asesmen
+                </button>
+            </li>
+        </ul>
+
         <div class="ms-auto">
             <input type="text" class="form-control form-control-sm" id="search-peserta" placeholder="Cari peserta..." style="max-width:200px;">
         </div>
@@ -270,63 +352,178 @@
             <p class="small">Belum ada peserta dalam jadwal ini.</p>
         </div>
         @else
-        <div class="table-responsive">
-            <table class="table align-middle mb-0" id="peserta-table">
-                <thead class="table-light" style="font-size:.78rem;">
-                    <tr>
-                        <th class="ps-3" width="40">#</th>
-                        <th>Asesi</th>
-                        <th>Status</th>
-                        <th class="text-center">APL-01</th>
-                        <th class="text-center">APL-02</th>
-                        <th class="text-center">FR.AK.01</th>
-                        <th class="text-center">Hasil</th>
-                        <th class="text-end pe-3">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($peserta as $i => $asesmen)
-                    <tr data-search="{{ strtolower($asesmen->full_name . ' ' . ($asesmen->user?->email ?? '')) }}">
-                        <td class="ps-3 text-muted small">{{ $i + 1 }}</td>
-                        <td>
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
-                                     style="width:32px;height:32px;background:#e0e7ff;color:#4f46e5;font-size:.72rem;font-weight:700;">
-                                    {{ strtoupper(substr($asesmen->full_name, 0, 1)) }}
-                                </div>
-                                <div>
+        <div class="tab-content">
+
+            {{-- ── TAB 1: Pra-Asesmen ── --}}
+            <div class="tab-pane fade show active" id="tab-pra">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 peserta-table">
+                        <thead class="table-light" style="font-size:.78rem;">
+                            <tr>
+                                <th class="ps-3" width="40">#</th>
+                                <th>Asesi</th>
+                                <th>Status</th>
+                                <th class="text-center">APL-01</th>
+                                <th class="text-center">APL-02</th>
+                                <th class="text-center">FR.AK.01</th>
+                                <th class="text-center">Hasil</th>
+                                <th class="text-end pe-3">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($peserta as $i => $asesmen)
+                            <tr data-search="{{ strtolower($asesmen->full_name . ' ' . ($asesmen->user?->email ?? '') . ' ' . ($asesmen->institution ?? '')) }}">
+                                <td class="ps-3 text-muted small">{{ $i + 1 }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                             style="width:32px;height:32px;background:#e0e7ff;color:#4f46e5;font-size:.72rem;font-weight:700;">
+                                            {{ strtoupper(substr($asesmen->full_name, 0, 1)) }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold small">{{ $asesmen->full_name }}</div>
+                                            <div class="text-muted" style="font-size:.72rem;">{{ $asesmen->user?->email ?? '-' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-{{ $asesmen->status_badge }}">{{ $asesmen->status_label }}</span></td>
+                                <td class="text-center">
+                                    @if($asesmen->aplsatu)<span class="badge bg-{{ $asesmen->aplsatu->status_badge }}">{{ $asesmen->aplsatu->status_label }}</span>
+                                    @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
+                                </td>
+                                <td class="text-center">
+                                    @if($asesmen->apldua)<span class="badge bg-{{ $asesmen->apldua->status_badge }}">{{ $asesmen->apldua->status_label }}</span>
+                                    @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
+                                </td>
+                                <td class="text-center">
+                                    @if($asesmen->frak01)<span class="badge bg-{{ $asesmen->frak01->status_badge }}">{{ $asesmen->frak01->status_label }}</span>
+                                    @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
+                                </td>
+                                <td class="text-center">
+                                    @if($asesmen->result)
+                                    <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }}">{{ ucfirst($asesmen->result) }}</span>
+                                    @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-outline-primary" title="Lihat Detail Asesi">
+                                        <i class="bi bi-person-lines-fill"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {{-- ── TAB 2: Progress Asesmen ── --}}
+            <div class="tab-pane fade" id="tab-progress">
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0 peserta-table">
+                        <thead class="table-light" style="font-size:.78rem;">
+                            <tr>
+                                <th class="ps-3" width="40">#</th>
+                                <th>Asesi</th>
+                                <th class="text-center">Kehadiran</th>
+                                @if($pakaiTeori)<th class="text-center">Teori</th>@endif
+                                @if($totalObs)<th class="text-center">Observasi</th>@endif
+                                @if($pakaiPorto)<th class="text-center">Dok. Ujikom</th>@endif
+                                <th class="text-center">Umpan Balik</th>
+                                <th class="text-center pe-3">Rekomendasi BA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($peserta as $i => $asesmen)
+                            @php $pg = $progress[$asesmen->id]; @endphp
+                            <tr data-search="{{ strtolower($asesmen->full_name . ' ' . ($asesmen->user?->email ?? '') . ' ' . ($asesmen->institution ?? '')) }}">
+                                <td class="ps-3 text-muted small">{{ $i + 1 }}</td>
+                                <td>
                                     <div class="fw-semibold small">{{ $asesmen->full_name }}</div>
-                                    <div class="text-muted" style="font-size:.72rem;">{{ $asesmen->user?->email ?? '-' }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td><span class="badge bg-{{ $asesmen->status_badge }}">{{ $asesmen->status_label }}</span></td>
-                        <td class="text-center">
-                            @if($asesmen->aplsatu)<span class="badge bg-{{ $asesmen->aplsatu->status_badge }}">{{ $asesmen->aplsatu->status_label }}</span>
-                            @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
-                        </td>
-                        <td class="text-center">
-                            @if($asesmen->apldua)<span class="badge bg-{{ $asesmen->apldua->status_badge }}">{{ $asesmen->apldua->status_label }}</span>
-                            @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
-                        </td>
-                        <td class="text-center">
-                            @if($asesmen->frak01)<span class="badge bg-{{ $asesmen->frak01->status_badge }}">{{ $asesmen->frak01->status_label }}</span>
-                            @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
-                        </td>
-                        <td class="text-center">
-                            @if($asesmen->result)
-                            <span class="badge bg-{{ $asesmen->result === 'kompeten' ? 'success' : 'danger' }}">{{ ucfirst($asesmen->result) }}</span>
-                            @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
-                        </td>
-                        <td class="text-end pe-3">
-                            <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-outline-primary" title="Lihat Detail Asesi">
-                                <i class="bi bi-person-lines-fill"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                                    <div class="text-muted" style="font-size:.72rem;">{{ $asesmen->institution ?? ($asesmen->user?->email ?? '-') }}</div>
+                                </td>
+
+                                {{-- Kehadiran --}}
+                                <td class="text-center">
+                                    @if($pg['hadir'])
+                                    <span class="badge bg-success">Hadir</span>
+                                    @elseif($daftarHadirSigned)
+                                    <span class="badge bg-danger">Tidak hadir</span>
+                                    @else
+                                    <span class="text-muted" style="font-size:.75rem;">—</span>
+                                    @endif
+                                </td>
+
+                                {{-- Teori --}}
+                                @if($pakaiTeori)
+                                <td class="text-center">
+                                    @switch($pg['teori']['status'])
+                                        @case('selesai')
+                                            <span class="badge bg-success">Selesai</span>
+                                            <div class="small fw-bold mt-1">Nilai {{ $pg['teori']['nilai'] }}</div>
+                                            <div class="text-muted" style="font-size:.7rem;">{{ $pg['teori']['benar'] }}/{{ $pg['teori']['total'] }} benar</div>
+                                            @break
+                                        @case('mengerjakan')
+                                            <span class="badge bg-warning text-dark">Mengerjakan</span>
+                                            <div class="text-muted" style="font-size:.7rem;">{{ $pg['teori']['dijawab'] }}/{{ $pg['teori']['total'] }} dijawab</div>
+                                            @break
+                                        @case('belum')
+                                            <span class="badge bg-light text-muted border">Belum mulai</span>
+                                            @break
+                                        @default
+                                            <span class="badge bg-secondary">Belum dapat soal</span>
+                                    @endswitch
+                                </td>
+                                @endif
+
+                                {{-- Observasi --}}
+                                @if($totalObs)
+                                @php $od = $pg['observasi']['done']; @endphp
+                                <td class="text-center">
+                                    <span class="badge {{ $od >= $totalObs ? 'bg-success' : ($od > 0 ? 'bg-warning text-dark' : 'bg-light text-muted border') }}">
+                                        {{ $od }}/{{ $totalObs }} link
+                                    </span>
+                                </td>
+                                @endif
+
+                                {{-- Dok. Ujikom (portofolio) --}}
+                                @if($pakaiPorto)
+                                <td class="text-center">
+                                    @if($pg['ujikom'])
+                                    <a href="{{ $asesmen->apldua->gdrive_ujikom }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Buka
+                                    </a>
+                                    @else
+                                    <span class="badge bg-light text-muted border">Belum</span>
+                                    @endif
+                                </td>
+                                @endif
+
+                                {{-- Umpan Balik --}}
+                                <td class="text-center">
+                                    @if($pg['umpan_balik'])
+                                    <i class="bi bi-check-circle-fill text-success" title="Sudah mengisi FR.AK.03"></i>
+                                    @else
+                                    <i class="bi bi-dash-circle text-muted" title="Belum mengisi FR.AK.03"></i>
+                                    @endif
+                                </td>
+
+                                {{-- Rekomendasi BA --}}
+                                <td class="text-center pe-3">
+                                    @if($pg['rekomendasi'] === 'K')
+                                    <span class="badge bg-success">K</span>
+                                    @elseif($pg['rekomendasi'] === 'BK')
+                                    <span class="badge bg-danger">BK</span>
+                                    @else
+                                    <span class="text-muted" style="font-size:.75rem;">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
         @endif
     </div>
@@ -369,9 +566,10 @@ const CSRF        = document.querySelector('meta[name="csrf-token"]')?.content;
 const SCHEDULE_ID = {{ $schedule->id }};
 let selectedAsesorId = null;
 
+// Search peserta — berlaku untuk kedua tab
 document.getElementById('search-peserta')?.addEventListener('input', function() {
     const q = this.value.toLowerCase();
-    document.querySelectorAll('#peserta-table tbody tr').forEach(tr => {
+    document.querySelectorAll('.peserta-table tbody tr').forEach(tr => {
         tr.style.display = !q || tr.dataset.search?.includes(q) ? '' : 'none';
     });
 });

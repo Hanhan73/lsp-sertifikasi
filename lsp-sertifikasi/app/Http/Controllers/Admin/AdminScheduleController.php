@@ -234,13 +234,23 @@ public function show(Schedule $schedule)
     $schedule->load([
         'tuk', 'skema', 'asesor', 'approvedBy',
         'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+        'asesmens.frAk03',
+        'asesmens.soalTeoriAsesi.soalTeori',
+        'asesmens.jawabanObservasi',
+        'distribusiSoalTeori.paketSoalTeori',
+        'distribusiSoalObservasi.soalObservasi',
+        'distribusiPortofolio.portofolio',
+        'hasilObservasi',
+        'hasilPortofolio',
+        'beritaAcara.asesis',
     ]);
 
-    // Sort peserta A-Z
-    $peserta = $schedule->asesmens->sortBy('full_name')->values();
+    $peserta      = $schedule->asesmens->sortBy('full_name')->values();
     $pesertaCount = $peserta->count();
+    $progress     = $this->buildPesertaProgress($schedule, $peserta);
+    $checklist    = $this->buildChecklist($schedule, $peserta, $progress);
 
-    return view('admin.schedules.show', compact('schedule', 'peserta', 'pesertaCount'));
+    return view('admin.schedules.show', compact('schedule', 'peserta', 'pesertaCount', 'progress', 'checklist'));
 }
 
     /**
@@ -406,5 +416,226 @@ public function update(Request $request, Schedule $schedule)
         }, $filename, [
             'Content-Type' => $ext === 'pdf' ? 'application/pdf' : 'text/html',
         ]);
+    }
+
+
+    /**
+     * Progress asesmen per peserta: hadir, teori, observasi, dok. ujikom, umpan balik, rekomendasi BA.
+     */
+    private function buildPesertaProgress(Schedule $schedule, $peserta): array
+    {
+        $distTeori  = $schedule->distribusiSoalTeori;
+        $distObsIds = $schedule->distribusiSoalObservasi->pluck('id')->all();
+        $totalObs   = count($distObsIds);
+        $rekMap     = $schedule->beritaAcara?->asesis->pluck('rekomendasi', 'asesmen_id') ?? collect();
+
+        $result = [];
+        foreach ($peserta as $a) {
+            // ── Teori ──
+            $teori = ['status' => 'na'];
+            if ($distTeori) {
+                // Hanya soal dari distribusi aktif (abaikan sisa distribusi lama)
+                $soal      = $a->soalTeoriAsesi->where('distribusi_soal_teori_id', $distTeori->id);
+                $total     = $soal->count();
+                $dijawab   = $soal->filter(fn($s) => filled($s->jawaban))->count();
+                $submitted = $total > 0 && $soal->every(fn($s) => $s->submitted_at !== null);
+                $benar     = $soal->filter(fn($s) => filled($s->jawaban) && $s->soalTeori
+                                && strtolower($s->jawaban) === strtolower($s->soalTeori->jawaban_benar))->count();
+
+                $teori = [
+                    'status'  => $total === 0 ? 'kosong' : ($submitted ? 'selesai' : ($dijawab > 0 ? 'mengerjakan' : 'belum')),
+                    'total'   => $total,
+                    'dijawab' => $dijawab,
+                    'benar'   => $benar,
+                    'nilai'   => $total > 0 ? round($benar / $total * 100) : null,
+                ];
+            }
+
+            // ── Observasi: link GDrive per soal observasi yang didistribusikan ──
+            $obsDone = $totalObs
+                ? $a->jawabanObservasi
+                    ->whereIn('distribusi_soal_observasi_id', $distObsIds)
+                    ->filter(fn($j) => filled($j->gdrive_link))
+                    ->count()
+                : 0;
+
+            $result[$a->id] = [
+                'hadir'       => (bool) $a->hadir,
+                'teori'       => $teori,
+                'observasi'   => ['done' => $obsDone, 'total' => $totalObs],
+                'ujikom'      => filled($a->apldua?->gdrive_ujikom),
+                'umpan_balik' => $a->frAk03 !== null,
+                'rekomendasi' => $rekMap[$a->id] ?? null,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Checklist progress jadwal: persiapan (manajer), pelaksanaan (asesor), rekap peserta.
+     */
+    private function buildChecklist(Schedule $schedule, $peserta, array $progress): array
+    {
+        $total     = $peserta->count();
+        $dt        = $schedule->distribusiSoalTeori;
+        $distObs   = $schedule->distribusiSoalObservasi;
+        $distPorto = $schedule->distribusiPortofolio;
+        $ba        = $schedule->beritaAcara;
+        $p         = collect($progress);
+
+        // ── Persiapan ──────────────────────────────────────────
+        $persiapan = [
+            [
+                'label'  => 'Asesor ditugaskan',
+                'done'   => (bool) $schedule->asesor_id,
+                'detail' => $schedule->asesor?->nama,
+            ],
+            [
+                'label'  => 'Jadwal disetujui Direktur',
+                'done'   => $schedule->isApproved(),
+                'detail' => $schedule->sk_number ? 'SK ' . $schedule->sk_number : null,
+            ],
+            [
+                'label'  => 'Soal teori didistribusikan',
+                'done'   => (bool) $dt,
+                'detail' => $dt
+                    ? ($dt->paketSoalTeori ? 'Paket ' . $dt->paketSoalTeori->kode_paket . ' · ' : '')
+                    . "{$dt->jumlah_soal} soal · " . ($dt->durasi_menit ?? 30) . ' menit'
+                    : null,
+            ],
+            [
+                'label'  => 'Soal observasi / portofolio didistribusikan',
+                'done'   => $distObs->isNotEmpty() || $distPorto->isNotEmpty(),
+                'detail' => collect([
+                    $distObs->isNotEmpty() ? $distObs->count() . ' observasi' : null,
+                    $distPorto->isNotEmpty() ? $distPorto->count() . ' portofolio' : null,
+                ])->filter()->implode(' · ') ?: null,
+            ],
+        ];
+
+        if ($distObs->isNotEmpty()) {
+            $withForm = $distObs->filter(fn($d) => filled($d->form_penilaian_path))->count();
+            $persiapan[] = [
+                'label'  => 'Form penilaian observasi',
+                'done'   => $withForm === $distObs->count(),
+                'detail' => "{$withForm}/{$distObs->count()} diupload",
+            ];
+        }
+
+        if ($distPorto->isNotEmpty()) {
+            $c        = $distPorto->count();
+            $withForm = $distPorto->filter(fn($d) => filled($d->form_penilaian_path))->count();
+            $withKisi = $distPorto->filter(fn($d) => filled($d->kisi_kisi_path))->count();
+            $persiapan[] = [
+                'label'  => 'Kisi-kisi & form penilaian portofolio',
+                'done'   => $withForm === $c && $withKisi === $c,
+                'detail' => "Kisi-kisi {$withKisi}/{$c} · Form {$withForm}/{$c}",
+            ];
+        }
+
+        // ── Pelaksanaan (Asesor) ───────────────────────────────
+        $hadir = $p->where('hadir', true)->count();
+
+        $pelaksanaan = [
+            [
+                'label' => 'Asesmen dimulai',
+                'done'  => (bool) $schedule->assessment_start,
+            ],
+            [
+                'label'  => 'Daftar hadir ditandatangani',
+                'done'   => $schedule->isDaftarHadirSigned(),
+                'detail' => "{$hadir}/{$total} hadir"
+                    . ($schedule->daftar_hadir_signed_at ? ' · ' . $schedule->daftar_hadir_signed_at->translatedFormat('d M Y H:i') : ''),
+            ],
+        ];
+
+        foreach ($distObs as $d) {
+            $hasil = $schedule->hasilObservasi->firstWhere('soal_observasi_id', $d->soal_observasi_id);
+            $pelaksanaan[] = [
+                'label'  => 'Hasil observasi: ' . ($d->soalObservasi->judul ?? '-'),
+                'done'   => (bool) $hasil,
+                'detail' => $hasil?->file_name,
+            ];
+        }
+
+        foreach ($distPorto as $d) {
+            $hasil = $schedule->hasilPortofolio->firstWhere('portofolio_id', $d->portofolio_id);
+            $pelaksanaan[] = [
+                'label'  => 'Hasil portofolio: ' . ($d->portofolio->judul ?? '-'),
+                'done'   => (bool) $hasil,
+                'detail' => $hasil?->file_name,
+            ];
+        }
+
+        $rekCount = $ba ? $ba->asesis->filter(fn($x) => filled($x->rekomendasi))->count() : 0;
+        $k        = $ba ? $ba->asesis->where('rekomendasi', 'K')->count() : 0;
+        $bk       = $ba ? $ba->asesis->where('rekomendasi', 'BK')->count() : 0;
+
+        $pelaksanaan[] = [
+            'label'  => 'Berita acara',
+            'done'   => $ba && $total > 0 && $rekCount >= $total,
+            'detail' => $ba
+                ? "{$rekCount}/{$total} direkomendasikan · K: {$k} · BK: {$bk}" . ($ba->file_name ? " · {$ba->file_name}" : '')
+                : 'Belum dibuat',
+        ];
+
+        $foto = collect([$schedule->foto_dokumentasi_1, $schedule->foto_dokumentasi_2])->filter()->count();
+        $pelaksanaan[] = [
+            'label'  => 'Foto dokumentasi',
+            'done'   => $foto === 2,
+            'detail' => "{$foto}/2 foto",
+        ];
+
+        $pelaksanaan[] = [
+            'label'    => 'Catatan asesor',
+            'done'     => filled($schedule->catatan_asesor),
+            'optional' => true,
+            'detail'   => $schedule->catatan_asesor ? \Illuminate\Support\Str::limit($schedule->catatan_asesor, 60) : null,
+        ];
+
+        // ── Rekap Peserta ──────────────────────────────────────
+        $rekapPeserta = [];
+
+        if ($dt) {
+            $selesai = $p->where('teori.status', 'selesai');
+            $avg     = $selesai->avg('teori.nilai');
+            $rekapPeserta[] = [
+                'label'  => 'Ujian teori selesai',
+                'done'   => $total > 0 && $selesai->count() === $total,
+                'detail' => "{$selesai->count()}/{$total} peserta" . ($avg !== null ? ' · rata-rata nilai ' . round($avg) : ''),
+            ];
+        }
+
+        if ($distObs->isNotEmpty()) {
+            $lengkap = $p->filter(fn($x) => $x['observasi']['done'] >= $x['observasi']['total'])->count();
+            $rekapPeserta[] = [
+                'label'  => 'Link observasi terkumpul',
+                'done'   => $total > 0 && $lengkap === $total,
+                'detail' => "{$lengkap}/{$total} peserta lengkap",
+            ];
+        }
+
+        if ($distPorto->isNotEmpty()) {
+            $ujikom = $p->where('ujikom', true)->count();
+            $rekapPeserta[] = [
+                'label'  => 'Dokumen ujikom / portofolio terkumpul',
+                'done'   => $total > 0 && $ujikom === $total,
+                'detail' => "{$ujikom}/{$total} peserta",
+            ];
+        }
+
+        $umpanBalik = $p->where('umpan_balik', true)->count();
+        $rekapPeserta[] = [
+            'label'  => 'Umpan balik (FR.AK.03)',
+            'done'   => $total > 0 && $umpanBalik === $total,
+            'detail' => "{$umpanBalik}/{$total} peserta",
+        ];
+
+        return [
+            'Persiapan'          => $persiapan,
+            'Pelaksanaan Asesor' => $pelaksanaan,
+            'Peserta'            => $rekapPeserta,
+        ];
     }
 }

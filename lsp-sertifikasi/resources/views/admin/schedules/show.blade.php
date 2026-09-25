@@ -106,10 +106,10 @@
     $dateClass         = $isToday ? 'today' : ($isPast ? 'past' : 'future');
     $isOnline          = $schedule->location_type === 'online';
 
-    $pakaiTeori        = (bool) $schedule->distribusiSoalTeori;
+    $pakaiTeori = (bool) $schedule->distribusiSoalTeori
+    || collect($progress)->contains(fn($x) => $x['teori']['total'] > 0);
     $totalObs          = $schedule->distribusiSoalObservasi->count();
     $pakaiPorto        = $schedule->distribusiPortofolio->isNotEmpty();
-    $daftarHadirSigned = $schedule->isDaftarHadirSigned();
 
     $allItems  = collect($checklist)->flatten(1)->reject(fn($i) => $i['optional'] ?? false);
     $doneItems = $allItems->where('done', true)->count();
@@ -444,12 +444,12 @@
 
                                 {{-- Kehadiran --}}
                                 <td class="text-center">
-                                    @if($pg['hadir'])
-                                    <span class="badge bg-success">Hadir</span>
-                                    @elseif($daftarHadirSigned)
-                                    <span class="badge bg-danger">Tidak hadir</span>
-                                    @else
+                                    @if(!$asesmenDimulai)
                                     <span class="text-muted" style="font-size:.75rem;">—</span>
+                                    @elseif($pg['hadir'])
+                                    <span class="badge bg-success">Hadir</span>
+                                    @else
+                                    <span class="badge bg-danger">Tidak hadir</span>
                                     @endif
                                 </td>
 

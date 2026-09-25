@@ -229,29 +229,44 @@ class AdminScheduleController extends Controller
     /**
      * Detail jadwal.
      */
-public function show(Schedule $schedule)
-{
-    $schedule->load([
-        'tuk', 'skema', 'asesor', 'approvedBy',
-        'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
-        'asesmens.frAk03',
-        'asesmens.soalTeoriAsesi.soalTeori',
-        'asesmens.jawabanObservasi',
-        'distribusiSoalTeori.paketSoalTeori',
-        'distribusiSoalObservasi.soalObservasi',
-        'distribusiPortofolio.portofolio',
-        'hasilObservasi',
-        'hasilPortofolio',
-        'beritaAcara.asesis',
-    ]);
+    public function show(Schedule $schedule)
+    {
+        $schedule->load([
+            'tuk', 'skema', 'asesor.user', 'approvedBy',
+            'asesmens.user', 'asesmens.aplsatu', 'asesmens.apldua', 'asesmens.frak01',
+            'asesmens.frAk03',
+            'asesmens.soalTeoriAsesi.soalTeori',
+            'asesmens.jawabanObservasi',
+            'distribusiSoalTeori.paketSoalTeori',
+            'distribusiSoalObservasi.soalObservasi',
+            'distribusiPortofolio.portofolio',
+            'hasilObservasi',
+            'hasilPortofolio',
+            'beritaAcara.asesis',
+        ]);
 
-    $peserta      = $schedule->asesmens->sortBy('full_name')->values();
-    $pesertaCount = $peserta->count();
-    $progress     = $this->buildPesertaProgress($schedule, $peserta);
-    $checklist    = $this->buildChecklist($schedule, $peserta, $progress);
+        $peserta      = $schedule->asesmens->sortBy('full_name')->values();
+        $pesertaCount = $peserta->count();
 
-    return view('admin.schedules.show', compact('schedule', 'peserta', 'pesertaCount', 'progress', 'checklist'));
-}
+        // Status yang dipakai konsisten di semua bagian halaman
+        $asesmenDimulai = (bool) $schedule->assessment_start
+            || $peserta->contains(fn($a) => in_array($a->status, [
+                'asesmen_started', 'assessed', 'certified', 'certificate_distributed',
+            ]));
+
+        // TTD daftar hadir = kolom signed_at ATAU asesor sudah punya TTD profil
+        // (download daftar hadir di sisi asesor & manajer pakai TTD profil)
+        $daftarHadirSigned = $schedule->isDaftarHadirSigned()
+            || filled($schedule->asesor?->user?->signature);
+
+        $progress  = $this->buildPesertaProgress($schedule, $peserta);
+        $checklist = $this->buildChecklist($schedule, $peserta, $progress, $asesmenDimulai, $daftarHadirSigned);
+
+        return view('admin.schedules.show', compact(
+            'schedule', 'peserta', 'pesertaCount', 'progress', 'checklist',
+            'asesmenDimulai', 'daftarHadirSigned'
+        ));
+    }
 
     /**
      * Edit jadwal — hanya bisa diedit jika masih pending atau ditolak.
@@ -419,48 +434,52 @@ public function update(Request $request, Schedule $schedule)
     }
 
 
-    /**
-     * Progress asesmen per peserta: hadir, teori, observasi, dok. ujikom, umpan balik, rekomendasi BA.
-     */
     private function buildPesertaProgress(Schedule $schedule, $peserta): array
     {
-        $distTeori  = $schedule->distribusiSoalTeori;
-        $distObsIds = $schedule->distribusiSoalObservasi->pluck('id')->all();
-        $totalObs   = count($distObsIds);
-        $rekMap     = $schedule->beritaAcara?->asesis->pluck('rekomendasi', 'asesmen_id') ?? collect();
+        $distTeori = $schedule->distribusiSoalTeori;
+        $distObs   = $schedule->distribusiSoalObservasi;
+        $totalObs  = $distObs->count();
+        $rekMap    = $schedule->beritaAcara?->asesis->pluck('rekomendasi', 'asesmen_id') ?? collect();
 
         $result = [];
         foreach ($peserta as $a) {
             // ── Teori ──
-            $teori = ['status' => 'na'];
-            if ($distTeori) {
-                // Hanya soal dari distribusi aktif (abaikan sisa distribusi lama)
-                $soal      = $a->soalTeoriAsesi->where('distribusi_soal_teori_id', $distTeori->id);
-                $total     = $soal->count();
-                $dijawab   = $soal->filter(fn($s) => filled($s->jawaban))->count();
-                $submitted = $total > 0 && $soal->every(fn($s) => $s->submitted_at !== null);
-                $benar     = $soal->filter(fn($s) => filled($s->jawaban) && $s->soalTeori
-                                && strtolower($s->jawaban) === strtolower($s->soalTeori->jawaban_benar))->count();
+            // Samakan dengan sisi asesi: ambil semua soal milik asesmen ini.
+            // Kalau ada soal dari distribusi aktif, pakai itu saja (hindari sisa distribusi lama).
+            $semuaSoal = $a->soalTeoriAsesi;
+            $soal = $distTeori && $semuaSoal->contains('distribusi_soal_teori_id', $distTeori->id)
+                ? $semuaSoal->where('distribusi_soal_teori_id', $distTeori->id)
+                : $semuaSoal;
 
-                $teori = [
-                    'status'  => $total === 0 ? 'kosong' : ($submitted ? 'selesai' : ($dijawab > 0 ? 'mengerjakan' : 'belum')),
-                    'total'   => $total,
-                    'dijawab' => $dijawab,
-                    'benar'   => $benar,
-                    'nilai'   => $total > 0 ? round($benar / $total * 100) : null,
-                ];
+            $total     = $soal->count();
+            $dijawab   = $soal->filter(fn($s) => filled($s->jawaban))->count();
+            $submitted = $total > 0 && $soal->contains(fn($s) => $s->submitted_at !== null);
+            $mulai     = $soal->contains(fn($s) => $s->started_at !== null);
+            $benar     = $soal->filter(fn($s) => filled($s->jawaban) && $s->soalTeori
+                            && strtolower($s->jawaban) === strtolower($s->soalTeori->jawaban_benar))->count();
+
+            $teori = [
+                'status'  => $total === 0
+                    ? ($distTeori ? 'kosong' : 'na')
+                    : ($submitted ? 'selesai' : (($mulai || $dijawab > 0) ? 'mengerjakan' : 'belum')),
+                'total'   => $total,
+                'dijawab' => $dijawab,
+                'benar'   => $benar,
+                'nilai'   => $total > 0 ? round($benar / $total * 100) : null,
+            ];
+
+            // ── Observasi: cocokkan per paket aktif (fallback per distribusi) ──
+            $obsDone = 0;
+            foreach ($distObs as $d) {
+                $ada = $a->jawabanObservasi->contains(fn($j) => filled($j->gdrive_link) && (
+                    $j->paket_soal_observasi_id == $d->paket_soal_observasi_id
+                    || $j->distribusi_soal_observasi_id == $d->id
+                ));
+                if ($ada) $obsDone++;
             }
 
-            // ── Observasi: link GDrive per soal observasi yang didistribusikan ──
-            $obsDone = $totalObs
-                ? $a->jawabanObservasi
-                    ->whereIn('distribusi_soal_observasi_id', $distObsIds)
-                    ->filter(fn($j) => filled($j->gdrive_link))
-                    ->count()
-                : 0;
-
             $result[$a->id] = [
-                'hadir'       => (bool) $a->hadir,
+                'hadir'       => $a->hadir !== false, // null = default hadir (sama dengan sisi asesor)
                 'teori'       => $teori,
                 'observasi'   => ['done' => $obsDone, 'total' => $totalObs],
                 'ujikom'      => filled($a->apldua?->gdrive_ujikom),
@@ -472,10 +491,7 @@ public function update(Request $request, Schedule $schedule)
         return $result;
     }
 
-    /**
-     * Checklist progress jadwal: persiapan (manajer), pelaksanaan (asesor), rekap peserta.
-     */
-    private function buildChecklist(Schedule $schedule, $peserta, array $progress): array
+    private function buildChecklist(Schedule $schedule, $peserta, array $progress, bool $asesmenDimulai, bool $daftarHadirSigned): array
     {
         $total     = $peserta->count();
         $dt        = $schedule->distribusiSoalTeori;
@@ -483,8 +499,9 @@ public function update(Request $request, Schedule $schedule)
         $distPorto = $schedule->distribusiPortofolio;
         $ba        = $schedule->beritaAcara;
         $p         = collect($progress);
+        $adaTeori  = $dt || $p->contains(fn($x) => $x['teori']['total'] > 0);
 
-        // ── Persiapan ──────────────────────────────────────────
+        // ── Persiapan ──
         $persiapan = [
             [
                 'label'  => 'Asesor ditugaskan',
@@ -498,11 +515,11 @@ public function update(Request $request, Schedule $schedule)
             ],
             [
                 'label'  => 'Soal teori didistribusikan',
-                'done'   => (bool) $dt,
+                'done'   => $adaTeori,
                 'detail' => $dt
                     ? ($dt->paketSoalTeori ? 'Paket ' . $dt->paketSoalTeori->kode_paket . ' · ' : '')
                     . "{$dt->jumlah_soal} soal · " . ($dt->durasi_menit ?? 30) . ' menit'
-                    : null,
+                    : ($adaTeori ? 'Soal sudah ada di peserta' : null),
             ],
             [
                 'label'  => 'Soal observasi / portofolio didistribusikan',
@@ -534,19 +551,21 @@ public function update(Request $request, Schedule $schedule)
             ];
         }
 
-        // ── Pelaksanaan (Asesor) ───────────────────────────────
+        // ── Pelaksanaan (Asesor) ──
         $hadir = $p->where('hadir', true)->count();
 
         $pelaksanaan = [
             [
                 'label' => 'Asesmen dimulai',
-                'done'  => (bool) $schedule->assessment_start,
+                'done'  => $asesmenDimulai,
             ],
             [
                 'label'  => 'Daftar hadir ditandatangani',
-                'done'   => $schedule->isDaftarHadirSigned(),
+                'done'   => $daftarHadirSigned,
                 'detail' => "{$hadir}/{$total} hadir"
-                    . ($schedule->daftar_hadir_signed_at ? ' · ' . $schedule->daftar_hadir_signed_at->translatedFormat('d M Y H:i') : ''),
+                    . ($schedule->daftar_hadir_signed_at
+                        ? ' · ' . $schedule->daftar_hadir_signed_at->translatedFormat('d M Y H:i')
+                        : ($daftarHadirSigned ? ' · TTD asesor tersedia' : '')),
             ],
         ];
 
@@ -594,10 +613,10 @@ public function update(Request $request, Schedule $schedule)
             'detail'   => $schedule->catatan_asesor ? \Illuminate\Support\Str::limit($schedule->catatan_asesor, 60) : null,
         ];
 
-        // ── Rekap Peserta ──────────────────────────────────────
+        // ── Rekap Peserta ──
         $rekapPeserta = [];
 
-        if ($dt) {
+        if ($adaTeori) {
             $selesai = $p->where('teori.status', 'selesai');
             $avg     = $selesai->avg('teori.nilai');
             $rekapPeserta[] = [

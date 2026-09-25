@@ -26,6 +26,27 @@
     <span class="badge bg-success px-3 py-2">{{ $asesmens->count() }} asesi mandiri</span>
 </div>
 
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white fw-semibold border-bottom">
+        <i class="bi bi-calendar-event me-2 text-primary"></i>Jadwal Pelaksanaan
+        <span class="badge bg-light text-dark border ms-1">{{ $schedules->count() }}</span>
+    </div>
+    <div class="card-body">
+        @forelse($schedules as $s)
+        <a href="{{ route('admin.schedules.show', $s) }}"
+           class="btn btn-sm btn-outline-primary mb-1 me-1 text-start">
+            <i class="bi bi-calendar-event me-1"></i>{{ $s->assessment_date->translatedFormat('l, d M Y') }}
+            <span class="opacity-75 small ms-1">
+                · {{ $asesmens->where('schedule_id', $s->id)->count() }} asesi
+                @if($s->asesor) · {{ $s->asesor->nama }} @endif
+            </span>
+        </a>
+        @empty
+        <span class="text-muted small">Belum ada asesi mandiri yang dijadwalkan.</span>
+        @endforelse
+    </div>
+</div>
+
 {{-- ══ FORM EXPORT BLANKO — bungkus tabel supaya checkbox ikut ke-submit ══ --}}
 <form id="form-export-blanko" method="GET"
       action="{{ route('admin.asesi.mandiri-per-tuk.export-blanko', $tuk->id) }}">
@@ -120,7 +141,9 @@
 
                             <td class="small">
                                 @if($asesmen->schedule)
-                                {{ $asesmen->schedule->assessment_date->translatedFormat('d M Y') }}
+                                <a href="{{ route('admin.schedules.show', $asesmen->schedule) }}" class="text-decoration-none">
+                                    <i class="bi bi-calendar-event me-1"></i>{{ $asesmen->schedule->assessment_date->translatedFormat('d M Y') }}
+                                </a>
                                 @else
                                 <span class="text-muted">Belum dijadwalkan</span>
                                 @endif

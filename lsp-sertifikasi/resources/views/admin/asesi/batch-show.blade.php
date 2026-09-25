@@ -81,6 +81,25 @@
                         </table>
                     </div>
                 </div>
+
+                <hr class="my-3">
+                <div class="d-flex flex-wrap align-items-start gap-2">
+                    <span class="text-muted" style="min-width:130px;">Tgl Pelaksanaan</span>
+                    <div class="flex-grow-1">
+                        @forelse($schedules as $s)
+                        <a href="{{ route('admin.schedules.show', $s) }}"
+                        class="btn btn-sm btn-outline-primary mb-1 me-1 text-start"
+                        title="Lihat detail jadwal">
+                            <i class="bi bi-calendar-event me-1"></i>{{ $s->assessment_date->translatedFormat('l, d M Y') }}
+                            @if($s->asesor)
+                            <span class="opacity-75 small ms-1">· {{ $s->asesor->nama }}</span>
+                            @endif
+                        </a>
+                        @empty
+                        <span class="text-muted small">Belum dijadwalkan</span>
+                        @endforelse
+                    </div>
+                </div>
             </div>
         </div>
 

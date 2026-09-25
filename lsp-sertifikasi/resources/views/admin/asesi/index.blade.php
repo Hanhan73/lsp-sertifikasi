@@ -286,6 +286,25 @@
          TAB 2: PER TUK
     ══════════════════════════════════════════════════════════ --}}
     <div class="tab-pane fade" id="per-tuk" role="tabpanel">
+
+        {{-- Search global --}}
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-3">
+            <div class="input-group">
+                <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                <input type="text" id="tuk-global-search" class="form-control"
+                    placeholder="Cari nama sekolah / lembaga, batch ID, atau TUK..." autocomplete="off">
+                <button class="btn btn-outline-secondary" type="button" id="tuk-global-clear" style="display:none;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tuk-search-results" style="display:none;">
+        <div class="small text-muted mb-2" id="tuk-search-summary"></div>
+        <div class="list-group shadow-sm" id="tuk-search-list"></div>
+    </div>
     <div class="row g-3">
         @forelse($tuks as $tuk)
         @php
@@ -657,6 +676,88 @@ function escapeHtmlTuk(str) {
     const div = document.createElement('div');
     div.textContent = str ?? '';
     return div.innerHTML;
+}
+
+// ── Search global Per TUK ─────────────────────────────────
+const tukSearchIndex = @json($searchIndex);
+const tukSearchInput = document.getElementById('tuk-global-search');
+const tukSearchClear = document.getElementById('tuk-global-clear');
+const tukCardGrid    = document.getElementById('tuk-card-grid');
+const tukResultsBox  = document.getElementById('tuk-search-results');
+const TUK_SEARCH_MAX = 50;
+
+const normTuk = s => (s ?? '').toString().toLowerCase();
+tukSearchIndex.forEach(i => {
+    i._hay = normTuk([i.title, ...(i.institutions || []), i.tuk, i.skema].join(' '));
+});
+
+tukSearchInput.addEventListener('input', function () {
+    const term = normTuk(this.value).trim();
+    tukSearchClear.style.display = term ? '' : 'none';
+
+    if (term.length < 2) {
+        tukResultsBox.style.display = 'none';
+        tukCardGrid.style.display = '';
+        return;
+    }
+
+    const words   = term.split(/\s+/);
+    const matches = tukSearchIndex.filter(i => words.every(w => i._hay.includes(w)));
+
+    tukCardGrid.style.display = 'none';
+    tukResultsBox.style.display = 'block';
+    renderTukSearchResults(matches);
+});
+
+tukSearchClear.addEventListener('click', () => {
+    tukSearchInput.value = '';
+    tukSearchInput.dispatchEvent(new Event('input'));
+    tukSearchInput.focus();
+});
+
+function renderTukSearchResults(matches) {
+    const list    = document.getElementById('tuk-search-list');
+    const summary = document.getElementById('tuk-search-summary');
+    list.innerHTML = '';
+
+    if (matches.length === 0) {
+        summary.textContent = 'Tidak ada hasil.';
+        return;
+    }
+
+    summary.textContent = matches.length > TUK_SEARCH_MAX
+        ? `${matches.length} hasil (menampilkan ${TUK_SEARCH_MAX} teratas, persempit kata kunci)`
+        : `${matches.length} hasil`;
+
+    matches.slice(0, TUK_SEARCH_MAX).forEach(i => {
+        const isBatch = i.type === 'batch';
+        const heading = (i.institutions && i.institutions.length) ? i.institutions.join(', ') : i.title;
+        const dates   = i.dates.length ? i.dates.join(' · ') : 'Belum dijadwalkan';
+
+        const a = document.createElement('a');
+        a.href = i.url;
+        a.className = 'list-group-item list-group-item-action px-3 py-2';
+        a.innerHTML = `
+            <div class="d-flex justify-content-between align-items-start gap-2">
+                <div class="min-width-0">
+                    <div class="fw-semibold text-truncate">
+                        <i class="bi ${isBatch ? 'bi-layers text-primary' : 'bi-person text-success'} me-1"></i>${escapeHtmlTuk(heading)}
+                    </div>
+                    ${isBatch ? `<div class="small font-monospace text-muted">${escapeHtmlTuk(i.title)}</div>` : ''}
+                    <div class="text-muted" style="font-size:.78rem;">
+                        <i class="bi bi-building me-1"></i>${escapeHtmlTuk(i.tuk)} &bull; ${escapeHtmlTuk(i.skema)}
+                    </div>
+                    <div class="text-muted" style="font-size:.78rem;">
+                        <i class="bi bi-calendar-event me-1"></i>${escapeHtmlTuk(dates)}
+                    </div>
+                </div>
+                <div class="d-flex flex-column align-items-end gap-1 flex-shrink-0">
+                    <span class="badge ${isBatch ? 'bg-primary' : 'bg-success'}">${isBatch ? 'Kolektif' : 'Mandiri'}</span>
+                    <span class="badge bg-light text-dark border">${i.total} peserta</span>
+                </div>
+            </div>`;
+        list.appendChild(a);
+    });
 }
 </script>
 @endpush

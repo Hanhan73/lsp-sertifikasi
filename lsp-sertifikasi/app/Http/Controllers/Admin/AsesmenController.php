@@ -33,17 +33,18 @@ class AsesmenController extends Controller
 
     public function index()
     {
-        $asesmens = Asesmen::with(['user', 'tuk', 'skema', 'payment', 'schedule'])
+        $asesmens = Asesmen::with(['user', 'tuk', 'assignedTuk', 'skema', 'payment', 'schedule'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Untuk tab Per TUK: list semua TUK yang punya asesmen
         $tuks = Tuk::withCount('asesmens')
             ->has('asesmens')
             ->orderBy('name')
             ->get();
 
-        return view('admin.asesi.index', compact('asesmens', 'tuks'));
+        $searchIndex = $this->buildTukSearchIndex($asesmens);
+
+        return view('admin.asesi.index', compact('asesmens', 'tuks', 'searchIndex'));
     }
 
     // =========================================================
@@ -170,6 +171,8 @@ class AsesmenController extends Controller
         $scheduleIds = $asesmens->pluck('schedule_id')->filter()->unique();
         $schedules   = \App\Models\Schedule::with(['beritaAcara', 'asesor', 'asesmens'])
             ->whereIn('id', $scheduleIds)
+            ->orderBy('assessment_date')
+            ->orderBy('start_time')
             ->get();
 
         // Asesi mandiri yang ada di jadwal yang sama dengan batch ini
@@ -239,7 +242,13 @@ class AsesmenController extends Controller
 
         abort_if($asesmens->isEmpty(), 404, 'Tidak ada asesi mandiri untuk TUK ini.');
 
-        return view('admin.asesi.mandiri-per-tuk', compact('tuk', 'asesmens'));
+        $schedules = $asesmens->pluck('schedule')
+            ->filter()
+            ->unique('id')
+            ->sortBy(fn($s) => $s->assessment_date->format('Y-m-d') . ' ' . $s->start_time)
+            ->values();
+
+        return view('admin.asesi.mandiri-per-tuk', compact('tuk', 'asesmens', 'schedules'));
     }
 
 
@@ -1308,5 +1317,61 @@ public function tukBatches(Tuk $tuk)
         'mandiri_count' => $mandiri->count(),
         'mandiri_url'   => $mandiri->isNotEmpty() ? route('admin.asesi.mandiri-per-tuk', $tuk->id) : null,
     ]);
+}
+
+
+/**
+ * Data untuk search global di tab Per TUK.
+ * Batch  → 1 item per collective_batch_id
+ * Mandiri → 1 item per (TUK efektif + asal lembaga), link ke halaman mandiri-per-tuk
+ */
+private function buildTukSearchIndex($asesmens)
+{
+    $fmtDates = fn($group) => $group->pluck('schedule.assessment_date')
+        ->filter()
+        ->unique(fn($d) => $d->format('Y-m-d'))
+        ->sort()
+        ->map(fn($d) => $d->translatedFormat('d M Y'))
+        ->values()
+        ->all();
+
+    $batches = $asesmens
+        ->filter(fn($a) => $a->is_collective && $a->collective_batch_id)
+        ->groupBy('collective_batch_id')
+        ->map(function ($members, $batchId) use ($fmtDates) {
+            $first = $members->first();
+            return [
+                'type'         => 'batch',
+                'title'        => $batchId,
+                'institutions' => $members->pluck('institution')->filter()->unique()->values()->all(),
+                'tuk'          => $first->tuk->name ?? '-',
+                'skema'        => $first->skema->name ?? '-',
+                'total'        => $members->count(),
+                'dates'        => $fmtDates($members),
+                'url'          => route('admin.asesi.batch.show', $batchId),
+            ];
+        })
+        ->values();
+
+    $mandiri = $asesmens
+        ->filter(fn($a) => !$a->is_collective && $a->getEffectiveTuk())
+        ->groupBy(fn($a) => $a->getEffectiveTuk()->id . '|' . mb_strtolower(trim($a->institution ?? '')))
+        ->map(function ($members) use ($fmtDates) {
+            $first = $members->first();
+            $tuk   = $first->getEffectiveTuk();
+            return [
+                'type'         => 'mandiri',
+                'title'        => $first->institution ?: 'Tanpa asal lembaga',
+                'institutions' => array_values(array_filter([$first->institution])),
+                'tuk'          => $tuk->name,
+                'skema'        => $members->pluck('skema.name')->filter()->unique()->implode(', ') ?: '-',
+                'total'        => $members->count(),
+                'dates'        => $fmtDates($members),
+                'url'          => route('admin.asesi.mandiri-per-tuk', $tuk->id),
+            ];
+        })
+        ->values();
+
+    return $batches->concat($mandiri)->values();
 }
 }

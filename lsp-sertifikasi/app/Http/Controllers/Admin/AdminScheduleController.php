@@ -4,13 +4,16 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Asesmen;
+use App\Models\FrAk03UmpanBalik;
 use App\Models\Schedule;
 use App\Models\Tuk;
 use App\Models\Skema;
 use App\Services\AsesorAssignmentService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * AdminScheduleController
@@ -27,26 +30,22 @@ class AdminScheduleController extends Controller
 
     /**
      * Kriteria asesi siap dijadwalkan:
-     * - Status: pra_pra_asesmen_started (atau status yang setara)
-     * - APL-01: sudah diverifikasi (status verified/approved)
-     * - APL-02: sudah disubmit (tidak null, status bukan draft)
-     * - FR.AK.01: sudah disubmit (tidak null, status bukan draft)
+     * - APL-01: sudah diverifikasi
+     * - APL-02: sudah disubmit (bukan draft)
+     * - FR.AK.01: sudah disubmit (bukan draft)
      * - Belum punya schedule_id
      */
     private function readyToScheduleQuery()
     {
         return Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01'])
             ->whereNull('schedule_id')
-            // APL-01 harus sudah diverifikasi
             ->whereHas('aplsatu', function ($q) {
                 $q->where('status', 'verified');
             })
-            // APL-02 harus sudah disubmit (bukan draft)
             ->whereHas('apldua', function ($q) {
                 $q->whereNotIn('status', ['draft'])
                     ->whereNotNull('submitted_at');
             })
-            // FR.AK.01 harus sudah disubmit
             ->whereHas('frak01', function ($q) {
                 $q->whereNotIn('status', ['draft'])
                     ->whereNotNull('submitted_at');
@@ -82,7 +81,6 @@ class AdminScheduleController extends Controller
         $tuks   = Tuk::where('is_active', true)->orderBy('name')->get();
         $skemas = Skema::where('is_active', true)->orderBy('name')->get();
 
-        // Jumlah jadwal menunggu approval (untuk notif)
         $pendingApprovalCount = Schedule::pendingApproval()->count();
 
         return view('admin.schedules.index', compact(
@@ -111,14 +109,12 @@ class AdminScheduleController extends Controller
             ->orderBy('full_name')
             ->get();
 
-        // Daftar batch kolektif unik untuk dropdown filter
         $batches = $availableAsesmens
             ->pluck('collective_batch_id')
             ->filter()
             ->unique()
             ->values();
 
-        // Auto-hitung nama lembaga dari asesi yang sudah dipilih (modus)
         $autoInstitutionName = Schedule::computeInstitutionNameFromAsesmens($selectedAsesmens);
 
         return view('admin.schedules.create', compact(
@@ -134,7 +130,6 @@ class AdminScheduleController extends Controller
     /**
      * Simpan jadwal baru.
      * Status asesi TIDAK berubah ke 'scheduled' dulu — menunggu approval Direktur.
-     * Status asesi tetap, hanya schedule_id yang diisi.
      */
     public function store(Request $request)
     {
@@ -153,7 +148,6 @@ class AdminScheduleController extends Controller
             'institution_name' => 'nullable|string|max:255',
         ]);
 
-        // Validasi asesi: harus sudah memenuhi kriteria dan belum terjadwal
         $asesmens = $this->readyToScheduleQuery()
             ->whereIn('id', $request->asesmen_ids)
             ->get();
@@ -164,7 +158,6 @@ class AdminScheduleController extends Controller
                 ->with('error', 'Beberapa asesi tidak memenuhi syarat penjadwalan (APL-01 harus terverifikasi, APL-02 dan FR.AK.01 harus sudah disubmit).');
         }
 
-        // Validasi semua asesi punya skema sama
         $skemaIds = $asesmens->pluck('skema_id')->unique();
         if ($skemaIds->count() > 1) {
             return redirect()->back()
@@ -174,7 +167,6 @@ class AdminScheduleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Buat jadwal dengan status pending_approval
             $schedule = Schedule::create([
                 'tuk_id'           => $request->tuk_id,
                 'skema_id'         => $skemaIds->first(),
@@ -190,17 +182,14 @@ class AdminScheduleController extends Controller
                 'created_by'       => auth()->id(),
                 'approval_status'  => 'pending_approval',
                 'asesor_id'        => $request->asesor_id ?: null,
-                // Kalau admin kosongkan, hitung otomatis dari institution asesi terpilih
                 'institution_name' => $request->input('institution_name')
                                         ?: Schedule::computeInstitutionNameFromAsesmens($asesmens),
             ]);
 
-            // Hubungkan asesi ke jadwal — status asesi BELUM berubah ke 'scheduled'
             foreach ($asesmens as $asesmen) {
                 $asesmen->update(['schedule_id' => $schedule->id]);
             }
 
-            // Assign asesor jika dipilih
             if ($request->asesor_id) {
                 $asesor = \App\Models\Asesor::findOrFail($request->asesor_id);
                 $this->assignmentService->assignAsesor($schedule, $asesor, 'Ditugaskan saat pembuatan jadwal');
@@ -223,7 +212,7 @@ class AdminScheduleController extends Controller
     }
 
     /**
-     * Detail jadwal + progress asesmen.
+     * Detail jadwal + progress asesmen + dokumen.
      */
     public function show(Schedule $schedule)
     {
@@ -244,23 +233,25 @@ class AdminScheduleController extends Controller
         $peserta      = $schedule->asesmens->sortBy('full_name')->values();
         $pesertaCount = $peserta->count();
 
-        // Status yang dipakai konsisten di semua bagian halaman
         $asesmenDimulai = (bool) $schedule->assessment_start
             || $peserta->contains(fn($a) => in_array($a->status, [
                 'asesmen_started', 'assessed', 'certified', 'certificate_distributed',
             ]));
 
         // TTD daftar hadir = kolom signed_at ATAU asesor sudah punya TTD profil
-        // (download daftar hadir di sisi asesor & manajer pakai TTD profil)
         $daftarHadirSigned = $schedule->isDaftarHadirSigned()
             || filled($schedule->asesor?->user?->signature);
 
         $progress  = $this->buildPesertaProgress($schedule, $peserta);
         $checklist = $this->buildChecklist($schedule, $peserta, $progress, $asesmenDimulai, $daftarHadirSigned);
 
+        [$umpanBalik, $rekapUmpanBalik] = $this->buildUmpanBalik($peserta);
+        $pertanyaanUmpanBalik = FrAk03UmpanBalik::PERTANYAAN;
+
         return view('admin.schedules.show', compact(
             'schedule', 'peserta', 'pesertaCount', 'progress', 'checklist',
-            'asesmenDimulai', 'daftarHadirSigned'
+            'asesmenDimulai', 'daftarHadirSigned',
+            'umpanBalik', 'rekapUmpanBalik', 'pertanyaanUmpanBalik'
         ));
     }
 
@@ -306,7 +297,6 @@ class AdminScheduleController extends Controller
         ]);
         $data['meeting_link'] = $request->location_type === 'online' ? $request->meeting_link : null;
 
-        // Jika sebelumnya ditolak, kembalikan ke pending_approval setelah admin perbaiki
         if ($schedule->isRejected()) {
             $data['approval_status'] = 'pending_approval';
             $data['approval_notes']  = null;
@@ -328,8 +318,7 @@ class AdminScheduleController extends Controller
     }
 
     /**
-     * Hapus jadwal — kembalikan asesi ke status sebelumnya.
-     * Hanya bisa dihapus jika belum disetujui.
+     * Hapus jadwal — hanya bisa dihapus jika belum disetujui.
      */
     public function destroy(Schedule $schedule)
     {
@@ -343,7 +332,6 @@ class AdminScheduleController extends Controller
         DB::beginTransaction();
         try {
             foreach ($schedule->asesmens as $asesmen) {
-                // Kembalikan asesi — hapus schedule_id, status tetap karena belum berubah
                 $asesmen->update(['schedule_id' => null]);
             }
             $schedule->delete();
@@ -415,7 +403,7 @@ class AdminScheduleController extends Controller
             abort(404, 'SK belum tersedia untuk jadwal ini.');
         }
 
-        if (!\Illuminate\Support\Facades\Storage::disk('private')->exists($schedule->sk_path)) {
+        if (!Storage::disk('private')->exists($schedule->sk_path)) {
             abort(404, 'File SK tidak ditemukan.');
         }
 
@@ -423,15 +411,115 @@ class AdminScheduleController extends Controller
         $filename = 'SK_' . str_replace('/', '-', $schedule->sk_number) . '.' . $ext;
 
         return response()->streamDownload(function () use ($schedule) {
-            echo \Illuminate\Support\Facades\Storage::disk('private')->get($schedule->sk_path);
+            echo Storage::disk('private')->get($schedule->sk_path);
         }, $filename, [
             'Content-Type' => $ext === 'pdf' ? 'application/pdf' : 'text/html',
         ]);
     }
 
     // =========================================================================
+    // DOKUMEN ASESMEN — daftar hadir, berita acara, foto dokumentasi
+    // =========================================================================
+
+    /**
+     * Daftar hadir PDF. ?preview=1 → tampil di browser, default → download.
+     */
+    public function daftarHadir(Request $request, Schedule $schedule)
+    {
+        $schedule->load(['tuk', 'skema', 'asesor.user', 'asesmens.user']);
+
+        $pdf = Pdf::loadView('pdf.daftar-hadir', [
+            'schedule'  => $schedule,
+            'asesmens'  => $schedule->asesmens,
+            'asesor'    => $schedule->asesor,
+            'ttdAsesor' => $schedule->asesor?->user?->signature_image,
+        ])->setPaper('A4', 'portrait');
+
+        $filename = 'Daftar_Hadir_' . $this->safeName($schedule->skema->name ?? 'Asesmen')
+            . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
+
+        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+    }
+
+    /**
+     * Berita acara PDF (generate dari data BA). ?preview=1 → tampil di browser.
+     */
+    public function beritaAcaraPdf(Request $request, Schedule $schedule)
+    {
+        $schedule->load(['skema', 'tuk', 'asesor.user', 'asesmens', 'beritaAcara.asesis']);
+
+        $ba = $schedule->beritaAcara;
+        abort_unless($ba, 404, 'Berita acara belum tersedia.');
+
+        $pdf = Pdf::loadView('pdf.berita-acara', [
+            'schedule'    => $schedule,
+            'beritaAcara' => $ba,
+            'rekMap'      => $ba->asesis->pluck('rekomendasi', 'asesmen_id'),
+            'asesor'      => $schedule->asesor,
+        ])->setPaper('A4', 'portrait');
+
+        $filename = 'Berita_Acara_' . $this->safeName($schedule->skema->name ?? 'Asesmen')
+            . '_' . $schedule->assessment_date->format('d-m-Y') . '.pdf';
+
+        return $request->boolean('preview') ? $pdf->stream($filename) : $pdf->download($filename);
+    }
+
+    /**
+     * File berita acara asli yang diupload asesor.
+     */
+    public function beritaAcaraFile(Schedule $schedule)
+    {
+        $ba = $schedule->beritaAcara;
+
+        abort_unless($ba && $ba->file_path, 404, 'File berita acara belum diupload.');
+        abort_unless(Storage::disk('private')->exists($ba->file_path), 404, 'File berita acara tidak ditemukan di storage.');
+
+        return Storage::disk('private')->download($ba->file_path, $ba->file_name);
+    }
+
+    /**
+     * Foto dokumentasi (slot 1/2). ?download=1 → unduh, default → tampil.
+     */
+    public function foto(Request $request, Schedule $schedule, int $slot)
+    {
+        abort_unless(in_array($slot, [1, 2]), 404);
+
+        $path = $schedule->{"foto_dokumentasi_{$slot}"};
+        abort_unless($path && Storage::disk('private')->exists($path), 404, 'Foto tidak ditemukan.');
+
+        $mime = Storage::disk('private')->mimeType($path) ?: 'image/jpeg';
+        $ext  = pathinfo($path, PATHINFO_EXTENSION) ?: 'jpg';
+
+        $headers = [
+            'Content-Type'  => $mime,
+            'Cache-Control' => 'private, max-age=300',
+        ];
+
+        if ($request->boolean('download')) {
+            $nama = 'Foto_' . $slot . '_' . $this->safeName($schedule->skema->name ?? 'Asesmen')
+                . '_' . $schedule->assessment_date->format('Ymd') . '.' . $ext;
+            $headers['Content-Disposition'] = "attachment; filename=\"{$nama}\"";
+        }
+
+        return response(Storage::disk('private')->get($path), 200, $headers);
+    }
+
+    private function safeName(string $name): string
+    {
+        return preg_replace('/[\/\\\\\s]+/', '_', $name);
+    }
+
+    // =========================================================================
     // PROGRESS ASESMEN — helper untuk halaman detail jadwal
     // =========================================================================
+
+    /**
+     * Umpan balik FR.AK.03 dianggap terisi kalau sudah submit atau jawabannya ada.
+     */
+    private function umpanBalikTerisi(?FrAk03UmpanBalik $f): bool
+    {
+        return $f !== null && ($f->isSubmitted() || !empty($f->jawaban));
+    }
 
     /**
      * Progress per peserta: hadir, teori, observasi, dok. ujikom, umpan balik, rekomendasi BA.
@@ -453,17 +541,12 @@ class AdminScheduleController extends Controller
         $totalObs  = $distObs->count();
         $rekMap    = $schedule->beritaAcara?->asesis->pluck('rekomendasi', 'asesmen_id') ?? collect();
 
-        // Distribusi ada tapi tidak ada satu pun peserta yang punya data soal
         $teoriHilang = $distTeori && $peserta->every(fn($a) => $a->soalTeoriAsesi->isEmpty());
-
-        // Distribusi versi lama (sebelum ada paket soal)
         $teoriLegacy = $distTeori && $distTeori->paket_soal_teori_id === null;
 
         $result = [];
         foreach ($peserta as $a) {
             // ── Teori ──
-            // Samakan dengan sisi asesi: ambil semua soal milik asesmen ini.
-            // Kalau ada soal dari distribusi aktif, pakai itu saja (hindari sisa distribusi lama).
             $semuaSoal = $a->soalTeoriAsesi;
             $soal = $distTeori && $semuaSoal->contains('distribusi_soal_teori_id', $distTeori->id)
                 ? $semuaSoal->where('distribusi_soal_teori_id', $distTeori->id)
@@ -478,7 +561,6 @@ class AdminScheduleController extends Controller
 
             if ($total === 0) {
                 if ($teoriHilang) {
-                    // Jadwal lama tanpa paket + BA sudah keluar untuk asesi ini → anggap selesai
                     $statusTeori = ($teoriLegacy && filled($rekMap[$a->id] ?? null)) ? 'selesai_arsip' : 'hilang';
                 } else {
                     $statusTeori = $distTeori ? 'kosong' : 'na';
@@ -495,7 +577,7 @@ class AdminScheduleController extends Controller
                 'nilai'   => $total > 0 ? round($benar / $total * 100) : null,
             ];
 
-            // ── Observasi: cocokkan per paket aktif (fallback per distribusi) ──
+            // ── Observasi ──
             $obsDone = 0;
             foreach ($distObs as $d) {
                 $ada = $a->jawabanObservasi->contains(fn($j) => filled($j->gdrive_link) && (
@@ -506,16 +588,69 @@ class AdminScheduleController extends Controller
             }
 
             $result[$a->id] = [
-                'hadir'       => $a->hadir !== false, // null = default hadir (sama dengan sisi asesor)
+                'hadir'       => $a->hadir !== false, // null = default hadir
                 'teori'       => $teori,
                 'observasi'   => ['done' => $obsDone, 'total' => $totalObs],
                 'ujikom'      => filled($a->apldua?->gdrive_ujikom),
-                'umpan_balik' => $a->frAk03 !== null,
+                'umpan_balik' => $this->umpanBalikTerisi($a->frAk03),
                 'rekomendasi' => $rekMap[$a->id] ?? null,
             ];
         }
 
         return $result;
+    }
+
+    /**
+     * Detail umpan balik per asesi + rekap per pertanyaan.
+     *
+     * @return array{0: array, 1: array}
+     */
+    private function buildUmpanBalik($peserta): array
+    {
+        $normalisasi = function ($v): ?string {
+            $v = strtolower(trim((string) $v));
+            if (in_array($v, ['ya', 'y', '1', 'true', 'yes'], true))     return 'ya';
+            if (in_array($v, ['tidak', 't', '0', 'false', 'no'], true)) return 'tidak';
+            return null;
+        };
+
+        $detail = [];
+        $rekap  = [];
+
+        foreach ($peserta as $a) {
+            $f = $a->frAk03;
+            if (!$this->umpanBalikTerisi($f)) continue;
+
+            $jawabanRaw = $f->jawaban ?? [];
+            ksort($jawabanRaw);
+
+            $items = [];
+            foreach (array_values($jawabanRaw) as $i => $row) {
+                $val     = is_array($row) ? ($row['jawaban'] ?? null) : $row;
+                $catatan = is_array($row) ? ($row['catatan'] ?? null) : null;
+                $jawab   = $normalisasi($val);
+
+                $items[] = ['jawaban' => $jawab, 'catatan' => $catatan];
+
+                $rekap[$i]['ya']    = ($rekap[$i]['ya'] ?? 0) + ($jawab === 'ya' ? 1 : 0);
+                $rekap[$i]['tidak'] = ($rekap[$i]['tidak'] ?? 0) + ($jawab === 'tidak' ? 1 : 0);
+                $rekap[$i]['catatan'] = $rekap[$i]['catatan'] ?? [];
+                if (filled($catatan)) {
+                    $rekap[$i]['catatan'][] = ['nama' => $a->full_name, 'catatan' => $catatan];
+                }
+            }
+
+            $detail[$a->id] = [
+                'nama'         => $a->full_name,
+                'submitted_at' => $f->submitted_at?->translatedFormat('d M Y H:i'),
+                'jawaban'      => $items,
+                'catatan_lain' => $f->catatan_lain,
+            ];
+        }
+
+        ksort($rekap);
+
+        return [$detail, $rekap];
     }
 
     /**
@@ -641,7 +776,7 @@ class AdminScheduleController extends Controller
             'done'     => filled($schedule->catatan_asesor),
             'optional' => true,
             'detail'   => $schedule->catatan_asesor ? \Illuminate\Support\Str::limit($schedule->catatan_asesor, 60) : null,
-            'full'     => $schedule->catatan_asesor, // teks lengkap untuk collapsible
+            'full'     => $schedule->catatan_asesor,
         ];
 
         // ── Rekap Peserta ──────────────────────────────────────
@@ -657,11 +792,11 @@ class AdminScheduleController extends Controller
                 $rekapPeserta[] = [
                     'label'    => 'Ujian teori',
                     'done'     => false,
-                    'optional' => true, // tidak dihitung ke progress karena datanya sudah tidak ada
+                    'optional' => true,
                     'detail'   => 'Data jawaban tidak tersedia di sistem',
                 ];
             } else {
-                $avg = $selesaiReal->avg('teori.nilai'); // rata-rata hanya dari nilai yang benar-benar ada
+                $avg = $selesaiReal->avg('teori.nilai');
                 $rekapPeserta[] = [
                     'label'  => 'Ujian teori selesai',
                     'done'   => $total > 0 && $jmlSelesai === $total,

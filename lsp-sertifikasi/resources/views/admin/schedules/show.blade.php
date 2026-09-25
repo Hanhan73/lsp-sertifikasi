@@ -39,6 +39,17 @@
 .checklist-toggle[aria-expanded="true"] .bi-chevron-down { transform:rotate(180deg); }
 .checklist-toggle[aria-expanded="true"] .checklist-preview { display:none; }
 .checklist-full { background:#f8fafc; border-radius:6px; font-size:.78rem; white-space:pre-line; }
+
+/* Dokumen asesmen */
+.doc-box { border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; height:100%; }
+.doc-box .doc-title { font-size:.82rem; font-weight:600; margin-bottom:2px; }
+.doc-box .doc-sub { font-size:.72rem; color:#94a3b8; margin-bottom:10px; }
+.foto-thumb { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc; display:block; }
+.foto-empty { width:100%; aspect-ratio:4/3; border-radius:8px; border:1px dashed #cbd5e1; display:flex; align-items:center; justify-content:center; color:#cbd5e1; }
+
+/* Umpan balik */
+.ub-row td { font-size:.82rem; vertical-align:top; }
+.ub-catatan { font-size:.75rem; color:#64748b; white-space:pre-line; }
 </style>
 @endpush
 
@@ -119,6 +130,10 @@
     $allItems  = collect($checklist)->flatten(1)->reject(fn($i) => $i['optional'] ?? false);
     $doneItems = $allItems->where('done', true)->count();
     $pct       = $allItems->count() ? round($doneItems / $allItems->count() * 100) : 0;
+
+    $ba        = $schedule->beritaAcara;
+    $jmlUB     = count($umpanBalik);
+    $jmlPertanyaanUB = max(count($pertanyaanUmpanBalik), count($rekapUmpanBalik));
 @endphp
 
 {{-- ══════════════════════════════════════════════════════════
@@ -344,7 +359,125 @@
 </div>
 
 {{-- ══════════════════════════════════════════════════════════
-     ROW 3: Daftar Peserta (2 tab)
+     ROW 3: Dokumen Asesmen
+══════════════════════════════════════════════════════════ --}}
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-bottom d-flex align-items-center gap-2">
+        <div class="rounded-circle d-flex align-items-center justify-content-center" style="width:26px;height:26px;background:#fef3c7;">
+            <i class="bi bi-folder2-open text-warning" style="font-size:.8rem;"></i>
+        </div>
+        <span class="fw-semibold">Dokumen Asesmen</span>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+
+            {{-- Daftar Hadir --}}
+            <div class="col-md-6 col-xl-3">
+                <div class="doc-box">
+                    <div class="doc-title"><i class="bi bi-person-check me-1 text-success"></i>Daftar Hadir</div>
+                    @if($daftarHadirSigned)
+                    <div class="doc-sub">Sudah ditandatangani asesor</div>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('admin.schedules.daftar-hadir', $schedule) }}?preview=1" target="_blank" class="btn btn-sm btn-outline-secondary flex-fill">
+                            <i class="bi bi-eye me-1"></i>Lihat
+                        </a>
+                        <a href="{{ route('admin.schedules.daftar-hadir', $schedule) }}" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="bi bi-download me-1"></i>Unduh
+                        </a>
+                    </div>
+                    @else
+                    <div class="doc-sub">Asesor belum menandatangani</div>
+                    <button class="btn btn-sm btn-outline-secondary w-100" disabled>
+                        <i class="bi bi-hourglass-split me-1"></i>Belum tersedia
+                    </button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Berita Acara --}}
+            <div class="col-md-6 col-xl-3">
+                <div class="doc-box">
+                    <div class="doc-title"><i class="bi bi-file-earmark-text me-1 text-warning"></i>Berita Acara</div>
+                    @if($ba)
+                    <div class="doc-sub">
+                        {{ $ba->asesis->where('rekomendasi', 'K')->count() }} K ·
+                        {{ $ba->asesis->where('rekomendasi', 'BK')->count() }} BK
+                    </div>
+                    <div class="d-flex gap-2 mb-2">
+                        <a href="{{ route('admin.schedules.berita-acara.pdf', $schedule) }}?preview=1" target="_blank" class="btn btn-sm btn-outline-secondary flex-fill">
+                            <i class="bi bi-eye me-1"></i>Lihat
+                        </a>
+                        <a href="{{ route('admin.schedules.berita-acara.pdf', $schedule) }}" class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="bi bi-download me-1"></i>PDF
+                        </a>
+                    </div>
+                    @if($ba->file_path)
+                    <a href="{{ route('admin.schedules.berita-acara.file', $schedule) }}" class="btn btn-sm btn-light border w-100 text-truncate" title="{{ $ba->file_name }}">
+                        <i class="bi bi-file-earmark-excel me-1 text-success"></i>File asli asesor
+                    </a>
+                    @endif
+                    @else
+                    <div class="doc-sub">Belum dibuat asesor</div>
+                    <button class="btn btn-sm btn-outline-secondary w-100" disabled>
+                        <i class="bi bi-hourglass-split me-1"></i>Belum tersedia
+                    </button>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Foto Dokumentasi --}}
+            <div class="col-md-6 col-xl-3">
+                <div class="doc-box">
+                    <div class="doc-title"><i class="bi bi-camera me-1 text-primary"></i>Foto Dokumentasi</div>
+                    <div class="doc-sub">Klik foto untuk memperbesar</div>
+                    <div class="row g-2">
+                        @foreach([1, 2] as $slot)
+                        @php $adaFoto = filled($schedule->{"foto_dokumentasi_{$slot}"}); @endphp
+                        <div class="col-6">
+                            @if($adaFoto)
+                            @php $fotoUrl = route('admin.schedules.foto', [$schedule, $slot]); @endphp
+                            <a href="#" onclick="lihatFoto('{{ $fotoUrl }}', {{ $slot }}); return false;">
+                                <img src="{{ $fotoUrl }}" class="foto-thumb" alt="Foto {{ $slot }}" loading="lazy">
+                            </a>
+                            <a href="{{ $fotoUrl }}?download=1" class="btn btn-sm btn-link p-0 mt-1" style="font-size:.72rem;">
+                                <i class="bi bi-download me-1"></i>Unduh
+                            </a>
+                            @else
+                            <div class="foto-empty"><i class="bi bi-image fs-4"></i></div>
+                            <div class="text-muted mt-1" style="font-size:.72rem;">Foto {{ $slot }} belum ada</div>
+                            @endif
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+            </div>
+
+            {{-- Umpan Balik --}}
+            <div class="col-md-6 col-xl-3">
+                <div class="doc-box">
+                    <div class="doc-title"><i class="bi bi-chat-square-text me-1 text-info"></i>Umpan Balik (FR.AK.03)</div>
+                    <div class="doc-sub">{{ $jmlUB }}/{{ $pesertaCount }} peserta sudah mengisi</div>
+                    @if($jmlUB > 0)
+                    <button type="button" class="btn btn-sm btn-outline-primary w-100" data-bs-toggle="modal" data-bs-target="#modalRekapUB">
+                        <i class="bi bi-bar-chart me-1"></i>Lihat Rekap
+                    </button>
+                    <div class="text-muted mt-2" style="font-size:.72rem;">
+                        Jawaban per peserta ada di tab <strong>Progress Asesmen</strong> di bawah.
+                    </div>
+                    @else
+                    <button class="btn btn-sm btn-outline-secondary w-100" disabled>
+                        <i class="bi bi-hourglass-split me-1"></i>Belum ada
+                    </button>
+                    @endif
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════════
+     ROW 4: Daftar Peserta (2 tab)
 ══════════════════════════════════════════════════════════ --}}
 <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom d-flex align-items-center gap-2 flex-wrap">
@@ -539,8 +672,11 @@
 
                                 {{-- Umpan Balik --}}
                                 <td class="text-center">
-                                    @if($pg['umpan_balik'])
-                                    <i class="bi bi-check-circle-fill text-success" title="Sudah mengisi FR.AK.03"></i>
+                                    @if($pg['umpan_balik'] && isset($umpanBalik[$asesmen->id]))
+                                    <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:.72rem;"
+                                            onclick="lihatUmpanBalik({{ $asesmen->id }})">
+                                        <i class="bi bi-chat-square-text me-1"></i>Lihat
+                                    </button>
                                     @else
                                     <i class="bi bi-dash-circle text-muted" title="Belum mengisi FR.AK.03"></i>
                                     @endif
@@ -567,6 +703,137 @@
         @endif
     </div>
 </div>
+
+{{-- ══════════════════════════════════════════════════════════
+     MODALS
+══════════════════════════════════════════════════════════ --}}
+
+{{-- Modal Foto --}}
+<div class="modal fade" id="modalFoto" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title" id="modalFotoTitle">Foto Dokumentasi</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-2 text-center bg-light">
+                <img id="modalFotoImg" src="" alt="Foto dokumentasi" style="max-width:100%;max-height:75vh;border-radius:6px;">
+            </div>
+            <div class="modal-footer py-2">
+                <a id="modalFotoDownload" href="#" class="btn btn-sm btn-primary">
+                    <i class="bi bi-download me-1"></i>Unduh
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Umpan Balik per asesi --}}
+<div class="modal fade" id="modalUmpanBalik" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0"><i class="bi bi-chat-square-text me-2"></i>Umpan Balik — <span id="ubNama"></span></h5>
+                    <div class="text-muted small" id="ubTanggal"></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light" style="font-size:.75rem;">
+                        <tr>
+                            <th class="ps-3" width="36">No</th>
+                            <th>Komponen</th>
+                            <th class="text-center" width="80">Jawaban</th>
+                            <th width="30%">Catatan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ubBody"></tbody>
+                </table>
+                <div class="p-3 border-top" id="ubCatatanLainBox" style="display:none;">
+                    <div class="small fw-semibold mb-1">Catatan / komentar lainnya</div>
+                    <div class="ub-catatan" id="ubCatatanLain"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Rekap Umpan Balik --}}
+@if($jmlUB > 0)
+<div class="modal fade" id="modalRekapUB" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0"><i class="bi bi-bar-chart me-2"></i>Rekap Umpan Balik (FR.AK.03)</h5>
+                    <div class="text-muted small">{{ $jmlUB }} dari {{ $pesertaCount }} peserta sudah mengisi</div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light" style="font-size:.75rem;">
+                        <tr>
+                            <th class="ps-3" width="36">No</th>
+                            <th>Komponen</th>
+                            <th width="200">Ya / Tidak</th>
+                            <th width="30%">Catatan peserta</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for($i = 0; $i < $jmlPertanyaanUB; $i++)
+                        @php
+                            $r      = $rekapUmpanBalik[$i] ?? ['ya' => 0, 'tidak' => 0, 'catatan' => []];
+                            $totR   = $r['ya'] + $r['tidak'];
+                            $pctYa  = $totR ? round($r['ya'] / $totR * 100) : 0;
+                        @endphp
+                        <tr class="ub-row">
+                            <td class="ps-3 text-muted">{{ $i + 1 }}</td>
+                            <td>{{ $pertanyaanUmpanBalik[$i] ?? 'Pertanyaan ' . ($i + 1) }}</td>
+                            <td>
+                                <div class="d-flex justify-content-between" style="font-size:.72rem;">
+                                    <span class="text-success fw-semibold">Ya {{ $r['ya'] }}</span>
+                                    <span class="text-danger fw-semibold">Tidak {{ $r['tidak'] }}</span>
+                                </div>
+                                <div class="progress mt-1" style="height:6px;">
+                                    <div class="progress-bar bg-success" style="width:{{ $pctYa }}%"></div>
+                                    <div class="progress-bar bg-danger" style="width:{{ $totR ? 100 - $pctYa : 0 }}%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                @forelse($r['catatan'] as $c)
+                                <div class="ub-catatan mb-1"><strong>{{ $c['nama'] }}:</strong> {{ $c['catatan'] }}</div>
+                                @empty
+                                <span class="text-muted" style="font-size:.75rem;">—</span>
+                                @endforelse
+                            </td>
+                        </tr>
+                        @endfor
+                    </tbody>
+                </table>
+
+                @php $catatanLain = collect($umpanBalik)->filter(fn($u) => filled($u['catatan_lain'])); @endphp
+                @if($catatanLain->isNotEmpty())
+                <div class="p-3 border-top">
+                    <div class="small fw-semibold mb-2">Catatan / komentar lainnya</div>
+                    @foreach($catatanLain as $u)
+                    <div class="ub-catatan mb-2"><strong>{{ $u['nama'] }}:</strong> {{ $u['catatan_lain'] }}</div>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 {{-- Modal Assign Asesor --}}
 <div class="modal fade" id="modalAsesor" tabindex="-1">
@@ -603,7 +870,15 @@
 <script>
 const CSRF        = document.querySelector('meta[name="csrf-token"]')?.content;
 const SCHEDULE_ID = {{ $schedule->id }};
+const UMPAN_BALIK = @json($umpanBalik);
+const PERTANYAAN_UB = @json($pertanyaanUmpanBalik);
 let selectedAsesorId = null;
+
+function escHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
 
 // Search peserta — berlaku untuk kedua tab
 document.getElementById('search-peserta')?.addEventListener('input', function() {
@@ -613,6 +888,54 @@ document.getElementById('search-peserta')?.addEventListener('input', function() 
     });
 });
 
+// ── Foto dokumentasi ─────────────────────────────────────────
+function lihatFoto(url, slot) {
+    document.getElementById('modalFotoTitle').textContent = 'Foto Dokumentasi ' + slot;
+    document.getElementById('modalFotoImg').src = url;
+    document.getElementById('modalFotoDownload').href = url + '?download=1';
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalFoto')).show();
+}
+
+// ── Umpan balik per asesi ────────────────────────────────────
+function lihatUmpanBalik(asesmenId) {
+    const data = UMPAN_BALIK[asesmenId];
+    if (!data) return;
+
+    document.getElementById('ubNama').textContent    = data.nama;
+    document.getElementById('ubTanggal').textContent = data.submitted_at ? 'Diisi ' + data.submitted_at : '';
+
+    const jumlah = Math.max(PERTANYAAN_UB.length, data.jawaban.length);
+    let rows = '';
+    for (let i = 0; i < jumlah; i++) {
+        const item = data.jawaban[i] ?? { jawaban: null, catatan: null };
+        const badge = item.jawaban === 'ya'
+            ? '<span class="badge bg-success">Ya</span>'
+            : item.jawaban === 'tidak'
+                ? '<span class="badge bg-danger">Tidak</span>'
+                : '<span class="text-muted">—</span>';
+
+        rows += `
+            <tr class="ub-row">
+                <td class="ps-3 text-muted">${i + 1}</td>
+                <td>${escHtml(PERTANYAAN_UB[i] ?? 'Pertanyaan ' + (i + 1))}</td>
+                <td class="text-center">${badge}</td>
+                <td><div class="ub-catatan">${item.catatan ? escHtml(item.catatan) : '<span class="text-muted">—</span>'}</div></td>
+            </tr>`;
+    }
+    document.getElementById('ubBody').innerHTML = rows;
+
+    const box = document.getElementById('ubCatatanLainBox');
+    if (data.catatan_lain) {
+        document.getElementById('ubCatatanLain').textContent = data.catatan_lain;
+        box.style.display = '';
+    } else {
+        box.style.display = 'none';
+    }
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalUmpanBalik')).show();
+}
+
+// ── Asesor ───────────────────────────────────────────────────
 async function openAsesorModal() {
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalAsesor'));
     modal.show();

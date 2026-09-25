@@ -318,6 +318,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{schedule}/assign-asesor',      [AsesorAssignmentController::class, 'assign'])->name('assign-asesor');
         Route::post('/{schedule}/unassign-asesor',    [AsesorAssignmentController::class, 'unassign'])->name('unassign-asesor');
         Route::get('/{schedule}/assignment-history',  [AsesorAssignmentController::class, 'history'])->name('assignment-history');
+        // Dokumen asesmen
+        Route::get('/{schedule}/daftar-hadir',      [AdminScheduleController::class, 'daftarHadir'])->name('daftar-hadir');
+        Route::get('/{schedule}/berita-acara/pdf',  [AdminScheduleController::class, 'beritaAcaraPdf'])->name('berita-acara.pdf');
+        Route::get('/{schedule}/berita-acara/file', [AdminScheduleController::class, 'beritaAcaraFile'])->name('berita-acara.file');
+        Route::get('/{schedule}/foto/{slot}',       [AdminScheduleController::class, 'foto'])
+            ->whereIn('slot', ['1', '2'])->name('foto');
     });
 
     // ── Proses Asesmen — Dokumen APL ──────────────────────────────────────

@@ -45,4 +45,20 @@ class FrAk03UmpanBalik extends Model
         $jawaban = $this->jawaban ?? [];
         return $jawaban[$index] ?? ['jawaban' => null, 'catatan' => null];
     }
+
+    /**
+     * Komponen umpan balik FR.AK.03 — urutan harus sama dengan form asesi.
+     */
+    public const PERTANYAAN = [
+        'Saya mendapatkan penjelasan yang cukup memadai mengenai proses asesmen/uji kompetensi',
+        'Saya diberikan kesempatan untuk mempelajari standar kompetensi yang akan diujikan dan menilai diri sendiri terhadap pencapaiannya',
+        'Asesor memberikan kesempatan untuk mendiskusikan/menegosiasikan metoda, instrumen dan sumber asesmen serta jadwal asesmen',
+        'Asesor berusaha menggali seluruh bukti pendukung yang sesuai dengan latar belakang pelatihan dan pengalaman yang saya miliki',
+        'Saya sepenuhnya diberikan kesempatan untuk mendemonstrasikan kompetensi yang saya miliki selama asesmen',
+        'Saya mendapatkan penjelasan yang memadai mengenai keputusan asesmen',
+        'Asesor memberikan umpan balik yang mendukung setelah asesmen serta tindak lanjutnya',
+        'Asesor bersama saya mempelajari semua dokumen asesmen serta menandatanganinya',
+        'Saya mendapatkan jaminan kerahasiaan hasil asesmen serta penjelasan penanganan dokumen asesmen',
+        'Asesor menggunakan keterampilan komunikasi yang efektif selama asesmen',
+    ];
 }

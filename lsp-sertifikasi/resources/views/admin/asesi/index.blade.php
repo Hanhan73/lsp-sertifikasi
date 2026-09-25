@@ -305,7 +305,7 @@
         <div class="small text-muted mb-2" id="tuk-search-summary"></div>
         <div class="list-group shadow-sm" id="tuk-search-list"></div>
     </div>
-    <div class="row g-3">
+    <div class="row g-3" id="tuk-card-grid">
         @forelse($tuks as $tuk)
         @php
         $tukBatchCount = $asesmens

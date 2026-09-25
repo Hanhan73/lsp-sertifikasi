@@ -641,6 +641,7 @@ class AdminScheduleController extends Controller
             'done'     => filled($schedule->catatan_asesor),
             'optional' => true,
             'detail'   => $schedule->catatan_asesor ? \Illuminate\Support\Str::limit($schedule->catatan_asesor, 60) : null,
+            'full'     => $schedule->catatan_asesor, // teks lengkap untuk collapsible
         ];
 
         // ── Rekap Peserta ──────────────────────────────────────

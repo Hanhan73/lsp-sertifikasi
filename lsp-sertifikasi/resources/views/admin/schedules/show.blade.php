@@ -34,6 +34,11 @@
 .checklist-item { display:flex; gap:8px; padding:8px 0; border-bottom:1px solid #f1f5f9; }
 .checklist-item:last-child { border-bottom:none; }
 .min-width-0 { min-width:0; }
+.checklist-toggle { background:none; border:0; padding:0; width:100%; text-align:left; cursor:pointer; }
+.checklist-toggle .bi-chevron-down { transition:transform .2s; font-size:.7rem; }
+.checklist-toggle[aria-expanded="true"] .bi-chevron-down { transform:rotate(180deg); }
+.checklist-toggle[aria-expanded="true"] .checklist-preview { display:none; }
+.checklist-full { background:#f8fafc; border-radius:6px; font-size:.78rem; white-space:pre-line; }
 </style>
 @endpush
 
@@ -293,7 +298,11 @@
             <div class="col-lg-{{ intdiv(12, max(count($checklist), 1)) }}">
                 <div class="section-heading">{{ $group }}</div>
                 @foreach($items as $item)
-                @php $opt = $item['optional'] ?? false; @endphp
+                @php
+                    $opt        = $item['optional'] ?? false;
+                    $hasFull    = !empty($item['full']) && mb_strlen($item['full']) > 60;
+                    $collapseId = 'checklist-full-' . $loop->parent->index . '-' . $loop->index;
+                @endphp
                 <div class="checklist-item">
                     @if($item['done'])
                     <i class="bi bi-check-circle-fill text-success" style="margin-top:2px;"></i>
@@ -301,12 +310,29 @@
                     <i class="bi bi-circle text-muted {{ $opt ? 'opacity-50' : '' }}" style="margin-top:2px;"></i>
                     @endif
                     <div class="flex-grow-1 min-width-0">
+                        @if($hasFull)
+                        <button type="button" class="checklist-toggle" data-bs-toggle="collapse"
+                                data-bs-target="#{{ $collapseId }}" aria-expanded="false" aria-controls="{{ $collapseId }}">
+                            <div class="d-flex align-items-center gap-1">
+                                <span class="small fw-semibold {{ $item['done'] ? '' : 'text-muted' }}">
+                                    {{ $item['label'] }}
+                                    @if($opt)<span class="fw-normal text-muted">(opsional)</span>@endif
+                                </span>
+                                <i class="bi bi-chevron-down text-muted ms-auto"></i>
+                            </div>
+                            <div class="checklist-preview text-muted text-truncate" style="font-size:.75rem;">{{ $item['detail'] }}</div>
+                        </button>
+                        <div class="collapse" id="{{ $collapseId }}">
+                            <div class="checklist-full text-muted mt-1 p-2">{{ $item['full'] }}</div>
+                        </div>
+                        @else
                         <div class="small fw-semibold {{ $item['done'] ? '' : 'text-muted' }}">
                             {{ $item['label'] }}
                             @if($opt)<span class="fw-normal text-muted">(opsional)</span>@endif
                         </div>
                         @if(!empty($item['detail']))
                         <div class="text-muted text-truncate" style="font-size:.75rem;" title="{{ $item['detail'] }}">{{ $item['detail'] }}</div>
+                        @endif
                         @endif
                     </div>
                 </div>

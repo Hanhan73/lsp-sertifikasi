@@ -1359,3 +1359,44 @@ Route::get('/tmp-clear-cache', function () {
 Route::get('/test-route', function () {
     return 'Laravel reached! Path: ' . request()->path();
 });
+
+
+Route::get('/debug-teori/{scheduleId}', function ($scheduleId) {
+    $schedule    = \App\Models\Schedule::with('asesmens')->findOrFail($scheduleId);
+    $asesmenIds  = $schedule->asesmens->pluck('id');
+    $distribusis = \DB::table('distribusi_soal_teori')->where('schedule_id', $scheduleId)->get();
+    $table       = (new \App\Models\SoalTeoriAsesi)->getTable();
+
+    // Baris soal yang terikat ke distribusi jadwal ini
+    $rowsByDistribusi = \DB::table($table)
+        ->whereIn('distribusi_soal_teori_id', $distribusis->pluck('id'))
+        ->selectRaw('asesmen_id, distribusi_soal_teori_id, COUNT(*) as total,
+                     SUM(submitted_at IS NOT NULL) as submitted, SUM(jawaban IS NOT NULL) as dijawab')
+        ->groupBy('asesmen_id', 'distribusi_soal_teori_id')
+        ->get();
+
+    return response()->json([
+        'schedule_id'         => (int) $scheduleId,
+        'tabel_model'         => $table,
+        'distribusi_teori'    => $distribusis,
+        'asesmen_di_jadwal'   => $asesmenIds,
+
+        // Soal milik asesmen jadwal ini (lintas distribusi mana pun)
+        'soal_per_asesmen'    => \DB::table($table)
+            ->whereIn('asesmen_id', $asesmenIds)
+            ->selectRaw('asesmen_id, distribusi_soal_teori_id, COUNT(*) as total, SUM(submitted_at IS NOT NULL) as submitted')
+            ->groupBy('asesmen_id', 'distribusi_soal_teori_id')
+            ->get(),
+
+        // Soal di distribusi jadwal ini — lihat asesmen_id-nya siapa
+        'soal_per_distribusi' => $rowsByDistribusi,
+        'asesmen_id_nyasar'   => $rowsByDistribusi->pluck('asesmen_id')->diff($asesmenIds)->values(),
+
+        // User yang punya >1 asesmen (curiga firstOrFail() ambil asesmen lain)
+        'user_multi_asesmen'  => \App\Models\Asesmen::whereIn('user_id', $schedule->asesmens->pluck('user_id'))
+            ->select('user_id', \DB::raw('GROUP_CONCAT(id ORDER BY id) as asesmen_ids'), \DB::raw('COUNT(*) as jumlah'))
+            ->groupBy('user_id')
+            ->having('jumlah', '>', 1)
+            ->get(),
+    ], 200, [], JSON_PRETTY_PRINT);
+})->middleware('auth');

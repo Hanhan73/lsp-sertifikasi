@@ -46,6 +46,13 @@
     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 @endif
+{{-- [FIX] Tampilkan session('error') — dipakai GET fallback upload & import teori --}}
+@if(session('error'))
+<div class="alert alert-danger alert-dismissible fade show py-2 px-3 mb-3" style="font-size:.875rem">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ session('error') }}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+@endif
 @if($errors->any())
 <div class="alert alert-danger alert-dismissible fade show py-2 px-3 mb-3" style="font-size:.875rem">
     <i class="bi bi-exclamation-circle-fill me-1"></i>{{ $errors->first() }}
@@ -196,9 +203,11 @@
 
                             <div class="collapse" id="collapseObs{{ $obs->id }}">
                                 <div class="px-3 py-3 border-top bg-light">
+                                    {{-- [FIX] class form-upload-paket → di-handle via AJAX (lihat script di bawah) --}}
                                     <form method="POST"
                                           action="{{ route('manajer-sertifikasi.bank-soal.paket.store', [$skema, $obs]) }}"
-                                          enctype="multipart/form-data">
+                                          enctype="multipart/form-data"
+                                          class="form-upload-paket">
                                         @csrf
                                         <div class="row g-2 align-items-end">
                                             <div class="col-auto">
@@ -208,7 +217,7 @@
                                                     @php $ada = $obs->paket->contains('kode_paket', $kode); @endphp
                                                     <button type="button"
                                                             class="btn btn-sm {{ $ada ? 'btn-success disabled' : 'btn-outline-primary' }} kode-btn-{{ $obs->id }}"
-                                                            onclick="pilihKode('{{ $obs->id }}','{{ $kode }}')"
+                                                            onclick="pilihKode('{{ $obs->id }}','{{ $kode }}', this)"
                                                             {{ $ada ? 'disabled' : '' }}>
                                                         {{ $kode }}
                                                         @if($ada)<i class="bi bi-check-lg ms-1"></i>@endif
@@ -829,14 +838,15 @@
 @push('scripts')
 <script>
 // ── Observasi paket pilih kode ──────────────────────────────
-function pilihKode(obsId, kode) {
+// [FIX] btn dikirim eksplisit (sebelumnya pakai global `event` yang tidak reliable di Firefox)
+function pilihKode(obsId, kode, btn) {
     document.getElementById('kodeInput' + obsId).value = kode;
     document.querySelectorAll('.kode-btn-' + obsId + ':not(:disabled)').forEach(b => {
         b.classList.remove('btn-primary');
         b.classList.add('btn-outline-primary');
     });
-    event.target.classList.remove('btn-outline-primary');
-    event.target.classList.add('btn-primary');
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('btn-primary');
 }
 
 // ── Portofolio file preview ──────────────────────────────────
@@ -847,8 +857,113 @@ function previewPorto(skemaId, input) {
     }
 }
 
+// ── [FIX] Upload paket observasi via AJAX ────────────────────
+// - Cek ukuran di client sebelum kirim
+// - Progress bar selama upload
+// - Kalau koneksi diputus server/WAF → pesan jelas, halaman TIDAK pindah ke URL POST
+const UPLOAD_LIMIT_MB = { file: 10, lampiran: 20 };
+
+function formatMB(bytes) {
+    return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+}
+
+function initUploadPaket() {
+    document.querySelectorAll('.form-upload-paket').forEach(form => {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const pdf  = form.querySelector('[name=file]').files[0];
+            const lamp = form.querySelector('[name=lampiran]').files[0];
+            const kode = form.querySelector('[name=kode_paket]').value.trim();
+            const MB   = 1024 * 1024;
+
+            if (!kode) {
+                return Swal.fire('Kode paket kosong', 'Pilih atau ketik kode paket terlebih dahulu.', 'warning');
+            }
+            if (!pdf) {
+                return Swal.fire('File belum dipilih', 'Pilih file PDF soal terlebih dahulu.', 'warning');
+            }
+            if (pdf.size > UPLOAD_LIMIT_MB.file * MB) {
+                return Swal.fire('File terlalu besar',
+                    `PDF soal ${formatMB(pdf.size)} — maksimal ${UPLOAD_LIMIT_MB.file} MB. Silakan kompres PDF terlebih dahulu.`,
+                    'warning');
+            }
+            if (lamp && lamp.size > UPLOAD_LIMIT_MB.lampiran * MB) {
+                return Swal.fire('Lampiran terlalu besar',
+                    `Lampiran ${formatMB(lamp.size)} — maksimal ${UPLOAD_LIMIT_MB.lampiran} MB.`,
+                    'warning');
+            }
+
+            const totalSize = pdf.size + (lamp ? lamp.size : 0);
+            const submitBtn = form.querySelector('[type=submit]');
+            submitBtn.disabled = true;
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action);
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+
+            Swal.fire({
+                title: 'Mengupload paket ' + kode.toUpperCase(),
+                html: `<div class="small text-muted mb-2">Total ${formatMB(totalSize)} — jangan tutup halaman ini</div>
+                       <div class="progress" style="height:18px">
+                           <div id="upBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%">0%</div>
+                       </div>`,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+            });
+
+            xhr.upload.onprogress = ev => {
+                if (!ev.lengthComputable) return;
+                const pct = Math.round(ev.loaded / ev.total * 100);
+                const bar = document.getElementById('upBar');
+                if (bar) {
+                    bar.style.width = pct + '%';
+                    bar.textContent = pct < 100 ? pct + '%' : 'Memproses di server...';
+                }
+            };
+
+            xhr.onload = () => {
+                submitBtn.disabled = false;
+                let res = {};
+                try { res = JSON.parse(xhr.responseText); } catch (_) {}
+
+                if (xhr.status === 200) {
+                    Swal.fire({ icon: 'success', title: 'Berhasil', text: res.message, timer: 1500, showConfirmButton: false })
+                        .then(() => { window.location.hash = 'pane-observasi'; window.location.reload(); });
+                } else if (xhr.status === 422) {
+                    const msg = res.errors ? Object.values(res.errors)[0][0] : (res.message || 'Data tidak valid.');
+                    Swal.fire('Gagal', msg, 'error');
+                } else if (xhr.status === 413) {
+                    Swal.fire('File terlalu besar', 'Ukuran upload melebihi batas server. Coba kompres file atau upload tanpa lampiran dulu.', 'error');
+                } else if (xhr.status === 419) {
+                    Swal.fire('Sesi kedaluwarsa', 'Silakan refresh halaman lalu coba lagi.', 'warning');
+                } else if (xhr.status === 401) {
+                    Swal.fire('Sesi berakhir', 'Silakan login ulang.', 'warning');
+                } else if (xhr.status === 403) {
+                    Swal.fire('Diblokir server', 'Upload ditolak oleh firewall server. Hubungi admin sistem dan kirimkan file-nya.', 'error');
+                } else {
+                    Swal.fire('Gagal', `Terjadi kesalahan server (${xhr.status}). Silakan coba lagi.`, 'error');
+                }
+            };
+
+            xhr.onerror = () => {
+                submitBtn.disabled = false;
+                Swal.fire('Koneksi terputus',
+                    'Upload terputus di tengah jalan. Coba upload PDF soal dulu tanpa lampiran, perkecil ukuran file, atau gunakan koneksi lain. Kalau tetap gagal, kirim file-nya ke admin sistem.',
+                    'error');
+            };
+
+            xhr.send(new FormData(form));
+        });
+    });
+}
+
 // ── Tab restore ──────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
+    initUploadPaket();
+
     const urlParams = new URLSearchParams(window.location.search);
     const tabParam  = urlParams.get('tab');
     const hash      = window.location.hash;

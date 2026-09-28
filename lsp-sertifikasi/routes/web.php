@@ -406,7 +406,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/',                  [AdminPaymentController::class, 'index'])->name('index');
         Route::post('/{payment}/verify', [AdminPaymentController::class, 'verify'])->name('verify');
-        Route::get('/bukti/{payment}',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');  // ← TAMBAH INI
+        Route::get('/bukti/{payment}',   [AdminPaymentController::class, 'downloadBukti'])->name('bukti');
         Route::get('/{payment}/detail',  [AdminPaymentController::class, 'detail'])->name('detail');   // bisa hapus nanti
         Route::get('/{payment}',         [AdminPaymentController::class, 'show'])->name('show');
     });
@@ -588,7 +588,7 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
 
 /*
 |--------------------------------------------------------------------------
-| CONTROLLER
+| TUK
 |--------------------------------------------------------------------------
 */
 
@@ -617,7 +617,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::get('/asesi',           [TukController::class, 'asesi'])->name('asesi');
     Route::get('/asesi/{asesmen}', [TukController::class, 'asesiDetail'])->name('asesi.show');
     Route::get('/batch/{batchId}', [TukController::class, 'batchDetail'])->name('batch.detail');
-    Route::patch('/batch/{batchId}/change-skema', [TukController::class, 'changeBatchSkema'])->name('batch.change-skema'); // ← baru
+    Route::patch('/batch/{batchId}/change-skema', [TukController::class, 'changeBatchSkema'])->name('batch.change-skema');
     Route::post('/asesi/{asesmen}/request-hapus', [TukController::class, 'requestHapusMandiri'])->name('asesi.request-hapus');
 
     // Jadwal
@@ -647,7 +647,7 @@ Route::middleware(['auth', 'role:tuk'])->prefix('tuk')->name('tuk.')->group(func
     Route::prefix('invoice-kolektif')->name('invoice-kolektif.')->group(function () {
         Route::get('/',                                  [TukAngsuranController::class, 'index'])->name('index');
         Route::post('/angsuran/{payment}/upload-bukti',  [TukAngsuranController::class, 'uploadBukti'])->name('upload-bukti');
-        Route::get('/bukti/{payment}',                   [TukAngsuranController::class, 'downloadBukti'])->name('bukti'); // ← fix: hapus prefix duplikat
+        Route::get('/bukti/{payment}',                   [TukAngsuranController::class, 'downloadBukti'])->name('bukti');
         Route::get('/{invoice}',                         [TukAngsuranController::class, 'show'])->name('show');
         Route::post('/{invoice}/angsuran',               [TukAngsuranController::class, 'storeAngsuran'])->name('angsuran.store');
         Route::get('/{invoice}/pdf',                     [TukAngsuranController::class, 'pdf'])->name('pdf');
@@ -692,10 +692,9 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     // FR.AK.01 untuk asesor — hanya bisa akses asesmen yang dijadwalkan ke dia
     Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak01')->name('frak01.')->group(function () {
         Route::get('/',      [FrAk01Controller::class, 'show'])->name('show');
-        // DIHAPUS: Route::post('/bukti', ...) — asesor tidak isi checklist lagi di sini
         Route::post('/sign', [FrAk01Controller::class, 'signAsesor'])->name('sign');
         Route::get('/pdf',   [FrAk01Controller::class, 'previewPdf'])->name('pdf');
-        Route::post('/return', [FrAk01Controller::class, 'returnFrak01'])->name('return'); // ← TAMBAH
+        Route::post('/return', [FrAk01Controller::class, 'returnFrak01'])->name('return');
         Route::post('/reset-verified', [FrAk01Controller::class, 'resetVerified'])->name('reset-verified');
     });
 
@@ -708,7 +707,7 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
     // Alias untuk akses langsung dari dashboard (tanpa masuk ke detail asesmen)
     Route::get('/dokumen/sk', [AsesorController::class, 'dokumentSk'])->name('dokumen.sk');
 
-    // FR.AK.04 untuk asesor — hanya bisa akses asesmen yang dijadwalkan ke dia, dan hanya untuk preview PDF (tanpa tanda tangan)
+    // FR.AK.04 untuk asesor — hanya preview PDF (tanpa tanda tangan)
     Route::prefix('schedule/{schedule}/asesi/{asesmen}/frak04')->name('frak04.')->group(function () {
         Route::get('/pdf', [FrAk04AsesorController::class, 'previewPdf'])->name('pdf');
     });
@@ -737,7 +736,6 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::get('/portofolio/{portofolio}/download',         [HasilPenilaianController::class, 'downloadPortofolio'])->name('portofolio.download');
         Route::get('/portofolio/{portofolio}/form-penilaian',   [HasilPenilaianController::class, 'downloadFormPenilaianPortofolio'])->name('portofolio.form-penilaian');
         Route::get('/portofolio/{portofolio}/kisi-kisi', [HasilPenilaianController::class, 'downloadKisiKisiPortofolio'])->name('portofolio.kisi-kisi');
-        // [BARU]
 
         // Berita acara
         Route::get('/berita-acara',              [HasilPenilaianController::class, 'beritaAcara'])->name('berita-acara');
@@ -805,13 +803,14 @@ Route::delete('/profile/foto-asesor', [ProfileController::class, 'deleteFotoAses
 Route::put('/profile/asesor-data', [ProfileController::class, 'updateAsesorData'])
     ->name('profile.update-asesor-data')
     ->middleware('role:asesor');
+
 // ── Routes Direktur ─────────────────────────────────────────
 Route::prefix('direktur')
     ->name('direktur.')
     ->middleware(['auth', 'role:direktur'])
     ->group(function () {
 
-        // Dashboard (BARU)
+        // Dashboard
         Route::get('/', [DirekturDashboardController::class, 'index'])->name('dashboard');
 
         // Jadwal — approval workflow
@@ -892,61 +891,34 @@ Route::prefix('direktur')
                 // ══════════════════════════════════════════════════════════════════
 
                 // ── Pembayaran Mandiri ─────────────────────────────────────────────
-                Route::get(
-                    '/download/bukti-mandiri/{payment}',
-                    [BendaharaController::class, 'downloadBukti']
-                )
+                Route::get('/download/bukti-mandiri/{payment}', [BendaharaController::class, 'downloadBukti'])
                     ->name('download.bukti-mandiri');
 
-                Route::get(
-                    '/download/invoice-mandiri/{payment}',
-                    [BendaharaController::class, 'downloadInvoiceIndividu']
-                )
+                Route::get('/download/invoice-mandiri/{payment}', [BendaharaController::class, 'downloadInvoiceIndividu'])
                     ->name('download.invoice-mandiri');
 
-                Route::get(
-                    '/download/kwitansi-mandiri/{payment}',
-                    [BendaharaController::class, 'kwitansiIndividu']
-                )
+                Route::get('/download/kwitansi-mandiri/{payment}', [BendaharaController::class, 'kwitansiIndividu'])
                     ->name('download.kwitansi-mandiri');
 
                 // ── Pembayaran Kolektif ────────────────────────────────────────────
-                Route::get(
-                    '/download/invoice-kolektif/{invoice}',
-                    [BendaharaController::class, 'kolektifInvoicePdf']
-                )
+                Route::get('/download/invoice-kolektif/{invoice}', [BendaharaController::class, 'kolektifInvoicePdf'])
                     ->name('download.invoice-kolektif');
 
-                Route::get(
-                    '/download/kwitansi-kolektif/{invoice}',
-                    [BendaharaController::class, 'kolektifKwitansi']
-                )
+                Route::get('/download/kwitansi-kolektif/{invoice}', [BendaharaController::class, 'kolektifKwitansi'])
                     ->name('download.kwitansi-kolektif');
 
-                Route::get(
-                    '/download/bukti-angsuran/{payment}',
-                    [BendaharaController::class, 'kolektifBuktiBayar']
-                )
+                Route::get('/download/bukti-angsuran/{payment}', [BendaharaController::class, 'kolektifBuktiBayar'])
                     ->name('download.bukti-angsuran');
 
                 // ── Honor ──────────────────────────────────────────────────────────
-                Route::get(
-                    '/download/bukti-honor/{honor}',
-                    [HonorAsesorController::class, 'downloadBukti']
-                )
+                Route::get('/download/bukti-honor/{honor}', [HonorAsesorController::class, 'downloadBukti'])
                     ->name('download.bukti-honor');
 
-                Route::get(
-                    '/download/kwitansi-honor/{honor}',
-                    [HonorAsesorController::class, 'pdfKwitansi']
-                )
+                Route::get('/download/kwitansi-honor/{honor}', [HonorAsesorController::class, 'pdfKwitansi'])
                     ->name('download.kwitansi-honor');
 
                 // ── Rekap Pendapatan ───────────────────────────────────────────────
-                Route::get(
-                    '/download/rekap-pendapatan',
-                    [RekapPendapatanController::class, 'export']
-                )
+                Route::get('/download/rekap-pendapatan', [RekapPendapatanController::class, 'export'])
                     ->name('download.rekap-pendapatan');
             });
     });
@@ -1006,7 +978,6 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'index'])->name('index');
             Route::get('/batch/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBatch'])->name('batch');
             Route::get('/jadwal/{schedule}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportJadwal'])->name('jadwal');
-            // TAMBAH 2 ini:
             Route::get('/observasi/{batchId}',    [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportObservasi'])->name('observasi');
             Route::get('/berita-acara/{batchId}', [\App\Http\Controllers\ManajerSertifikasi\ExportHasilTeoriController::class, 'exportBeritaAcara'])->name('berita-acara');
         });
@@ -1029,6 +1000,12 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::get('/{soalObservasi}', [DistribusiSoalController::class, 'showSoalObservasi'])->name('show');
             Route::delete('/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasi'])->name('destroy');
             Route::post('/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketObservasi'])->name('paket.store');
+
+            // [FIX] GET fallback — kalau upload terputus lalu URL POST di-reload, jangan 405
+            Route::get('/{soalObservasi}/paket', function ($soalObservasi) {
+                return redirect()->route('manajer-sertifikasi.soal-observasi.show', $soalObservasi)
+                    ->with('error', 'Upload sebelumnya tidak terkirim. Silakan coba lagi.');
+            })->name('paket.store.fallback');
 
             Route::get('/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranObservasi'])->name('paket.download-lampiran');
         });
@@ -1056,8 +1033,7 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::delete('/{portofolio}', [DistribusiSoalController::class, 'destroyPortofolio'])->name('destroy');
         });
 
-        // ── DEPRECATED/DUPLICATE: Bank Soal (scoped per skema) ─────────────────────────────────
-        // This section duplicates the logic above. See the recommendation comment for how to consolidate.
+        // ── Bank Soal (scoped per skema) ─────────────────────────────────
         Route::prefix('bank-soal')->name('bank-soal.')->group(function () {
             Route::get('/', [DistribusiSoalController::class, 'indexBankSoal'])->name('index');
 
@@ -1076,6 +1052,14 @@ Route::middleware(['auth', 'role:manajer_sertifikasi'])
             Route::post('/{skema}/observasi', [DistribusiSoalController::class, 'storeSoalObservasiBySkema'])->name('observasi.store');
             Route::delete('/{skema}/observasi/{soalObservasi}', [DistribusiSoalController::class, 'destroySoalObservasiBySkema'])->name('observasi.destroy');
             Route::post('/{skema}/observasi/{soalObservasi}/paket', [DistribusiSoalController::class, 'storePaketBySkema'])->name('paket.store');
+
+            // [FIX] GET fallback — kalau upload terputus lalu URL POST di-reload, jangan 405
+            Route::get('/{skema}/observasi/{soalObservasi}/paket', function ($skema) {
+                return redirect()->route('manajer-sertifikasi.bank-soal.show', $skema)
+                    ->with('error', 'Upload sebelumnya tidak terkirim. Silakan coba lagi.')
+                    ->withFragment('pane-observasi');
+            })->name('paket.store.fallback');
+
             Route::get('/{skema}/paket/{paket}/download', [DistribusiSoalController::class, 'downloadPaketBySkema'])->name('paket.download');
             Route::delete('/{skema}/paket/{paket}', [DistribusiSoalController::class, 'destroyPaketBySkema'])->name('paket.destroy');
             Route::get('/{skema}/paket/{paket}/download-lampiran', [DistribusiSoalController::class, 'downloadLampiranBySkema'])->name('paket.download-lampiran');
@@ -1149,7 +1133,6 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
         Route::get('/payment/{honor}/bukti/download', [HonorAsesorController::class, 'downloadBukti'])->name('payment.bukti.download');
         Route::get('/payment/{honor}/kwitansi',       [HonorAsesorController::class, 'pdfKwitansi'])->name('payment.kwitansi');
         Route::delete('/bendahara/honor/payment/{honor}', [HonorAsesorController::class, 'destroy'])->name('payment.destroy');
-        // Ganti dari /payments/{honor}/nomor → /payment/{honor}/nomor (konsisten)
         Route::patch('/payment/{honor}/nomor',        [HonorAsesorController::class, 'updateNomor'])->name('payment.nomor.update');
     });
     // ── Rekap Pendapatan ──────────────────────────────────────────────────
@@ -1234,8 +1217,12 @@ Route::middleware(['auth', 'role:bendahara'])->prefix('bendahara')->name('bendah
 
 /*
 |--------------------------------------------------------------------------
-| Debug — hapus di production
+| Debug — HANYA aktif kalau APP_ENV=local
 |--------------------------------------------------------------------------
+| [SECURITY] Route /debug-paths, /debug-ba-parser, /debug-ba/{id},
+| /debug-teori/{id}, /tmp-fix-bukti-default, /tmp-clear-cache, /test-route
+| sudah DIHAPUS. Semuanya bisa diakses di production (sebagian tanpa auth).
+| Kalau butuh debug, pakai file-based tinker di server.
 */
 
 if (app()->isLocal()) {
@@ -1244,165 +1231,3 @@ if (app()->isLocal()) {
         Route::post('/journal', [\App\Http\Controllers\Debug\JournalTestController::class, 'test'])->name('journal.test');
     });
 }
-
-Route::get('/debug-paths', function () {
-    return [
-        'base_path'        => base_path(),
-        'public_path'      => public_path(),
-        'storage_path'     => storage_path(),
-        'public_exists'    => file_exists(public_path()),
-        'storage_exists'   => file_exists(storage_path()),
-        'index_php_exists' => file_exists(public_path('index.php')),
-    ];
-})->middleware('auth');
-
-Route::get('/debug-ba-parser', function () {
-    $python = null;
-
-    $test3 = shell_exec('python3 --version 2>&1');
-    if ($test3 && str_contains($test3, 'Python 3')) {
-        $python = 'python3';
-    } else {
-        $test = shell_exec('python --version 2>&1');
-        if ($test && str_contains($test, 'Python 3')) {
-            $python = 'python';
-        }
-    }
-
-    return [
-        'python_command'  => $python,
-        'python3_output'  => shell_exec('python3 --version 2>&1'),
-        'python_output'   => shell_exec('python --version 2>&1'),
-        'script_exists'   => file_exists(base_path('scripts/parse_berita_acara.py')),
-        'script_path'     => base_path('scripts/parse_berita_acara.py'),
-        'shell_exec_works' => function_exists('shell_exec'),
-        'openpyxl_check'  => $python
-            ? shell_exec($python . ' -c "import openpyxl; print(openpyxl.__version__)" 2>&1')
-            : 'python not found',
-    ];
-})->middleware('auth');
-
-
-Route::get('/debug-ba/{scheduleId}', function ($scheduleId) {
-    $schedule = \App\Models\Schedule::with(['asesmens', 'beritaAcara.asesis'])->find($scheduleId);
-
-    if (!$schedule) return response()->json(['error' => 'Schedule not found']);
-
-    // BA langsung dari DB (bypass model)
-    $baRaw      = \DB::table('berita_acara')->where('schedule_id', $scheduleId)->first();
-    $baAsesiRaw = \DB::table('berita_acara_asesi')
-        ->whereIn(
-            'berita_acara_id',
-            \DB::table('berita_acara')->where('schedule_id', $scheduleId)->pluck('id')
-        )->get();
-
-    // Python
-    $py3    = shell_exec('python3 --version 2>&1');
-    $py     = shell_exec('python --version 2>&1');
-    $python = null;
-    if ($py3 && str_contains($py3, 'Python 3'))      $python = 'python3';
-    elseif ($py && str_contains($py, 'Python 3'))    $python = 'python';
-
-    $scriptPath   = base_path('scripts/parse_berita_acara.py');
-    $scriptExists = file_exists($scriptPath);
-    $openpyxl     = $python
-        ? shell_exec($python . ' -c "import openpyxl; print(openpyxl.__version__)" 2>&1')
-        : 'no python';
-
-    // Cek hasil observasi/portofolio yang sudah diupload
-    $hasilObs   = \DB::table('hasil_observasi')->where('schedule_id', $scheduleId)->get();
-    $hasilPorto = \DB::table('hasil_portofolio')->where('schedule_id', $scheduleId)->get();
-
-    return response()->json([
-        'schedule_id'     => $scheduleId,
-        'asesmens'        => $schedule->asesmens->pluck('full_name'),
-
-        // Model relations exist?
-        'model_has_beritaAcara'    => method_exists($schedule, 'beritaAcara'),
-        'model_has_hasilObservasi' => method_exists($schedule, 'hasilObservasi'),
-        'model_has_hasilPortofolio' => method_exists($schedule, 'hasilPortofolio'),
-
-        // BA data
-        'ba_in_db'        => $baRaw,
-        'ba_asesi_in_db'  => $baAsesiRaw,
-        'ba_via_model'    => $schedule->beritaAcara
-            ? ['id' => $schedule->beritaAcara->id, 'asesis_count' => $schedule->beritaAcara->asesis->count()]
-            : null,
-
-        // File uploads
-        'hasil_observasi_uploaded'  => $hasilObs->map(fn($r) => ['id' => $r->id, 'file' => $r->file_name, 'path' => $r->file_path]),
-        'hasil_portofolio_uploaded' => $hasilPorto->map(fn($r) => ['id' => $r->id, 'file' => $r->file_name, 'path' => $r->file_path]),
-
-        // Python
-        'python_command'     => $python,
-        'python3_raw'        => trim($py3 ?? ''),
-        'python_raw'         => trim($py ?? ''),
-        'script_exists'      => $scriptExists,
-        'script_path'        => $scriptPath,
-        'openpyxl'           => trim($openpyxl ?? ''),
-        'shell_exec_enabled' => function_exists('shell_exec'),
-    ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-})->middleware('auth');
-
-
-
-Route::get('/tmp-fix-bukti-default', function () {
-    $updated = \App\Models\AplSatuBukti::where('status', 'Tidak Ada')
-        ->whereHas('aplSatu', fn($q) => $q->where('status', 'submitted'))
-        ->update(['status' => 'Ada Memenuhi Syarat']);
-    return "Updated: $updated rows";
-});
-
-Route::get('/tmp-clear-cache', function () {
-    Artisan::call('route:clear');
-    Artisan::call('view:clear');
-    Artisan::call('cache:clear');
-    Artisan::call('config:clear');
-    if (function_exists('opcache_reset')) opcache_reset();
-    return 'cleared at ' . now();
-});
-
-Route::get('/test-route', function () {
-    return 'Laravel reached! Path: ' . request()->path();
-});
-
-
-Route::get('/debug-teori/{scheduleId}', function ($scheduleId) {
-    $schedule    = \App\Models\Schedule::with('asesmens')->findOrFail($scheduleId);
-    $asesmenIds  = $schedule->asesmens->pluck('id');
-    $distribusis = \DB::table('distribusi_soal_teori')->where('schedule_id', $scheduleId)->get();
-    $table       = (new \App\Models\SoalTeoriAsesi)->getTable();
-
-    // Baris soal yang terikat ke distribusi jadwal ini
-    $rowsByDistribusi = \DB::table($table)
-        ->whereIn('distribusi_soal_teori_id', $distribusis->pluck('id'))
-        ->selectRaw('asesmen_id, distribusi_soal_teori_id, COUNT(*) as total,
-                     SUM(submitted_at IS NOT NULL) as submitted, SUM(jawaban IS NOT NULL) as dijawab')
-        ->groupBy('asesmen_id', 'distribusi_soal_teori_id')
-        ->get();
-
-    return response()->json([
-        'schedule_id'         => (int) $scheduleId,
-        'tabel_model'         => $table,
-        'distribusi_teori'    => $distribusis,
-        'asesmen_di_jadwal'   => $asesmenIds,
-
-        // Soal milik asesmen jadwal ini (lintas distribusi mana pun)
-        'soal_per_asesmen'    => \DB::table($table)
-            ->whereIn('asesmen_id', $asesmenIds)
-            ->selectRaw('asesmen_id, distribusi_soal_teori_id, COUNT(*) as total, SUM(submitted_at IS NOT NULL) as submitted')
-            ->groupBy('asesmen_id', 'distribusi_soal_teori_id')
-            ->get(),
-
-        // Soal di distribusi jadwal ini — lihat asesmen_id-nya siapa
-        'soal_per_distribusi' => $rowsByDistribusi,
-        'asesmen_id_nyasar'   => $rowsByDistribusi->pluck('asesmen_id')->diff($asesmenIds)->values(),
-
-        // User yang punya >1 asesmen (curiga firstOrFail() ambil asesmen lain)
-        'user_multi_asesmen'  => \App\Models\Asesmen::whereIn('user_id', $schedule->asesmens->pluck('user_id'))
-            ->select('user_id', \DB::raw('GROUP_CONCAT(id ORDER BY id) as asesmen_ids'), \DB::raw('COUNT(*) as jumlah'))
-            ->groupBy('user_id')
-            ->having('jumlah', '>', 1)
-            ->get(),
-    ], 200, [], JSON_PRETTY_PRINT);
-})->middleware('auth');

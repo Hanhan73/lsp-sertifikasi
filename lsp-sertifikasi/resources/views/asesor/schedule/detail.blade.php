@@ -607,42 +607,54 @@ if ($soal->whereNotNull('submitted_at')->count() > 0) $teoriSubmit++;
                 @endif
                 <div class="col-lg-7">
 
-                    <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white fw-semibold small py-2">
-        <i class="bi bi-people me-2 text-primary"></i>Daftar Nama Asesi
-    </div>
-    <table class="table table-sm table-bordered mb-0" style="font-size:.875rem;">
-        <thead class="table-light">
-            <tr>
-                <th class="ps-3" style="width:40px;">No</th>
-                <th>Nama</th>
-                <th class="text-center" style="width:110px;">GDrive Pra-Asesmen</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($schedule->asesmens as $i => $asesmen)
-            @php
-                $gdriveLink = $asesmen->aplsatu?->buktiKelengkapan
-                    ->whereNotNull('gdrive_file_url')
-                    ->first()?->gdrive_file_url;
-            @endphp
-            <tr>
-                <td class="ps-3 text-muted text-center">{{ $i + 1 }}</td>
-                <td>{{ $asesmen->full_name }}</td>
-                <td class="text-center">
-                    @if($gdriveLink)
-                    <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
-                        <i class="bi bi-box-arrow-up-right me-1"></i>Drive
-                    </a>
-                    @else
-                    <span class="text-muted small">—</span>
-                    @endif
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-</div>
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white fw-semibold small py-2">
+                        <i class="bi bi-people me-2 text-primary"></i>Daftar Nama Asesi
+                    </div>
+                    <table class="table table-sm table-bordered mb-0" style="font-size:.875rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3" style="width:40px;">No</th>
+                                <th>Nama</th>
+                                <th class="text-center" style="width:110px;">GDrive Pra-Asesmen</th>
+                                <th class="text-center" style="width:110px;">Dok. Ujikom</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($schedule->asesmens as $i => $asesmen)
+                            @php
+                                $gdriveLink = $asesmen->aplsatu?->buktiKelengkapan
+                                    ->whereNotNull('gdrive_file_url')
+                                    ->first()?->gdrive_file_url;
+                                $ujikomLink = $asesmen->apldua?->gdrive_ujikom;
+                            @endphp
+                            <tr>
+                                <td class="ps-3 text-muted text-center">{{ $i + 1 }}</td>
+                                <td>{{ $asesmen->full_name }}</td>
+                                <td class="text-center">
+                                    @if($gdriveLink)
+                                    <a href="{{ $gdriveLink }}" target="_blank" class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.72rem;">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Drive
+                                    </a>
+                                    @else
+                                    <span class="text-muted small">—</span>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    @if($ujikomLink)
+                                    <a href="{{ $ujikomLink }}" target="_blank" class="btn btn-sm btn-outline-success py-0 px-2" style="font-size:.72rem;"
+                                    title="Terakhir diupdate {{ $asesmen->apldua->updated_at?->translatedFormat('d M Y H:i') }}">
+                                        <i class="bi bi-box-arrow-up-right me-1"></i>Ujikom
+                                    </a>
+                                    @else
+                                    <span class="text-muted small">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
                     {{-- Observasi --}}
                     @php $distribusiObs = $schedule->distribusiSoalObservasi ?? collect(); @endphp
                     @if($distribusiObs->isNotEmpty())

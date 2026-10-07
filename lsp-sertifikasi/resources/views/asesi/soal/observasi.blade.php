@@ -24,7 +24,7 @@
 @endif
 
 {{-- ══ PERINGATAN: ada paket belum diisi ══ --}}
-@if($belumIsi > 0 && $isReopenActive)
+@if($belumIsi > 0 && ($isReopenActive || !$canEdit))
 <div class="alert d-flex gap-2 py-2 px-3 mb-3 border
             {{ $isReopenActive ? 'alert-warning' : 'alert-danger' }}"
      style="font-size:.82rem">
@@ -87,14 +87,9 @@
             @php
                 $jawaban = $jawabanMap[$paket->id] ?? null;
                 $hasLink = $jawaban?->hasLink();
-                // Input bisa diisi kalau: reopen aktif, atau belum pernah diisi (window normal)
-                // Tidak bisa diisi kalau: reopen sudah expired (set tapi masa lalu)
-                $reopenExpired = $asesmen->observasi_reopen_until
-                    && \Carbon\Carbon::parse($asesmen->observasi_reopen_until)->isPast();
-                $canEdit = !$reopenExpired || $isReopenActive;
             @endphp
             <div class="d-flex align-items-center gap-4 px-4 py-3 border-bottom flex-wrap
-                         {{ $hasLink ? 'bg-success-subtle' : ($reopenExpired && !$hasLink ? 'bg-danger-subtle' : '') }}">
+                         {{ $hasLink ? 'bg-success-subtle' : (!$canEdit ? 'bg-danger-subtle' : '') }}">
 
                 {{-- Kode Paket --}}
                 <div class="d-flex align-items-center gap-3 flex-shrink-0" style="min-width:200px">
@@ -120,7 +115,7 @@
                     <span class="badge bg-success" style="font-size:.72rem">
                         <i class="bi bi-check-circle me-1"></i>Sudah Upload
                     </span>
-                    @elseif($reopenExpired)
+                    @elseif(!$canEdit)
                     <span class="badge bg-danger" style="font-size:.72rem">
                         <i class="bi bi-x-circle me-1"></i>Waktu Habis
                     </span>

@@ -703,10 +703,9 @@ class AsesorController extends Controller
         abort_if($asesmen->schedule_id !== $schedule->id, 403);
 
         $asesmen->update([
-            'observasi_reopen_until' => null,
-            'observasi_reopen_by'    => null,
+            'observasi_reopen_until' => now(),
+            'observasi_reopen_by'    => auth()->id(),
         ]);
-
         return response()->json([
             'success' => true,
             'message' => 'Akses pengumpulan ditutup.',

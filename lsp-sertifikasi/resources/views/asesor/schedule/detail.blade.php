@@ -563,16 +563,17 @@ if ($soal->whereNotNull('submitted_at')->count() > 0) $teoriSubmit++;
                                                     <i class="bi bi-x-circle me-1"></i>Tutup
                                                 </button>
                                             </div>
-                                            @elseif($belumIsiCount > 0)
-                                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2"
+                                            @else
+                                            <button type="button"
+                                                class="btn {{ $belumIsiCount > 0 ? 'btn-outline-primary' : 'btn-outline-secondary' }} btn-sm py-0 px-2"
                                                 style="font-size:.7rem;"
                                                 data-reopen-url="{{ route('asesor.asesi.observasi.reopen', [$schedule, $asesmen]) }}"
                                                 data-asesi-name="{{ $asesmen->full_name }}"
-                                                onclick="showReopenModal(this)">
-                                                <i class="bi bi-arrow-counterclockwise me-1"></i>Buka Kembali
+                                                onclick="showReopenModal(this)"
+                                                title="{{ $belumIsiCount > 0 ? 'Buka akses agar asesi bisa mengisi link' : 'Buka akses agar asesi bisa mengganti link' }}">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i>
+                                                {{ $belumIsiCount > 0 ? 'Buka Kembali' : 'Buka untuk Ganti Link' }}
                                             </button>
-                                            @else
-                                            <span class="text-muted small">—</span>
                                             @endif
                                         </td>
                                     </tr>

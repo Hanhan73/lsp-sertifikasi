@@ -230,9 +230,11 @@ public function teoriSubmit(Request $request): JsonResponse
             ->get()
             ->keyBy('paket_soal_observasi_id');
 
+        $canEdit = $this->canEditObservasi($asesmen);
+
         // Pre-fill dari gdrive_ujikom APL-02 kalau paket belum punya link
         $gdriveUjikom = $asesmen->apldua?->gdrive_ujikom;
-        if ($gdriveUjikom) {
+        if ($gdriveUjikom && $canEdit) {
             foreach ($distribusiObservasi as $dist) {
                 foreach ($dist->soalObservasi->paket ?? [] as $paket) {
                     if (!isset($jawabanMap[$paket->id]) || !$jawabanMap[$paket->id]->hasLink()) {
@@ -264,9 +266,11 @@ public function teoriSubmit(Request $request): JsonResponse
         $sudahIsi   = $jawabanMap->filter(fn($j) => $j->hasLink())->count();
         $belumIsi   = $totalPaket - $sudahIsi;
 
+        
+
         return view('asesi.soal.observasi', compact(
             'asesmen', 'distribusiObservasi', 'jawabanMap',
-            'reopenUntil', 'isReopenActive', 'belumIsi', 'totalPaket'
+            'reopenUntil', 'isReopenActive', 'belumIsi', 'totalPaket', 'canEdit'
         ));
     }
 
@@ -291,16 +295,12 @@ public function teoriSubmit(Request $request): JsonResponse
         ]);
  
         $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
- 
-        // Cek apakah masih dalam window reopen (kalau ada)
-        if ($asesmen->observasi_reopen_until) {
-            $until = \Carbon\Carbon::parse($asesmen->observasi_reopen_until);
-            if ($until->isPast()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Waktu pengumpulan link sudah berakhir. Hubungi asesor untuk membuka kembali.',
-                ], 403);
-            }
+
+        if (!$this->canEditObservasi($asesmen)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Waktu pengumpulan link sudah berakhir. Hubungi asesor untuk membuka kembali.',
+            ], 403);
         }
  
         // Pastikan distribusi ini memang untuk schedule asesi ini
@@ -360,4 +360,16 @@ public function teoriSubmit(Request $request): JsonResponse
         ->download($paket->lampiran_path, $paket->lampiran_name);
 }
 
+/**
+ * Asesi boleh edit link observasi jika:
+ * - asesor pernah reopen  → hanya selama window masih aktif
+ * - belum pernah reopen   → hanya selama sesi asesmen berjalan
+ */
+private function canEditObservasi(Asesmen $asesmen): bool
+{
+    if ($asesmen->observasi_reopen_until) {
+        return \Carbon\Carbon::parse($asesmen->observasi_reopen_until)->isFuture();
+    }
+    return $asesmen->status === 'asesmen_started';
+}
 }

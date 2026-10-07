@@ -95,9 +95,9 @@
     <div class="card-body py-3 d-flex align-items-start gap-3">
         <i class="bi bi-magic text-primary flex-shrink-0 mt-1"></i>
         <div class="small text-muted">
-            Link ini akan <strong>otomatis terisi</strong> ke semua paket soal observasi
-            saat soal didistribusikan oleh Manajer Sertifikasi.
-            Anda tetap bisa mengganti link per paket jika diperlukan.
+            Link ini otomatis dipakai untuk paket soal observasi yang belum diisi.
+            Jika Anda ingin <strong>mengganti link hasil observasi</strong>, lakukan melalui
+            menu <strong>Soal Observasi</strong> di halaman Jadwal & Asesmen.
         </div>
     </div>
 </div>

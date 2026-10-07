@@ -500,4 +500,12 @@ class Asesmen extends Model
             default                    => '-',
         };
     }
+
+    public function canEditObservasi(): bool
+    {
+        if ($this->observasi_reopen_until) {
+            return \Carbon\Carbon::parse($this->observasi_reopen_until)->isFuture();
+        }
+        return $this->status === 'asesmen_started';
+    }
 }

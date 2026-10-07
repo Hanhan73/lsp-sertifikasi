@@ -1012,36 +1012,54 @@ public function aplsatuBuktiSave(Request $request)
         return view('asesi.ujikom', compact('asesmen', 'apldua'));
     }
 
-    public function ujikomSimpan(Request $request): JsonResponse
-    {
-        $request->validate([
-            'gdrive_ujikom' => [
-                'nullable', 'string', 'max:500',
-                function ($attr, $value, $fail) {
-                    if ($value && !preg_match('/^https?:\/\/(drive|docs)\.google\.com\//i', $value)) {
-                        $fail('Link harus berupa URL Google Drive yang valid.');
-                    }
-                },
-            ],
-        ]);
+   public function ujikomSimpan(Request $request): JsonResponse
+{
+    $request->validate([
+        'gdrive_ujikom' => [
+            'nullable', 'string', 'max:500',
+            function ($attr, $value, $fail) {
+                if ($value && !preg_match('/^https?:\/\/(drive|docs)\.google\.com\//i', $value)) {
+                    $fail('Link harus berupa URL Google Drive yang valid.');
+                }
+            },
+        ],
+    ]);
 
-        $asesmen = auth()->user()->asesmens()->latest()->firstOrFail();
-        $apldua  = $asesmen->apldua;
+    $asesmen = auth()->user()->asesmens()->latest()->firstOrFail();
+    $apldua  = $asesmen->apldua;
 
-        if (!$apldua) {
-            return response()->json([
-                'success' => false,
-                'message' => 'APL-02 belum dibuat. Isi APL-02 terlebih dahulu.',
-            ], 404);
-        }
-
-        $apldua->update(['gdrive_ujikom' => $request->gdrive_ujikom ?: null]);
-
+    if (!$apldua) {
         return response()->json([
-            'success' => true,
-            'message' => $request->gdrive_ujikom ? 'Link berhasil disimpan.' : 'Link dihapus.',
-        ]);
+            'success' => false,
+            'message' => 'APL-02 belum dibuat. Isi APL-02 terlebih dahulu.',
+        ], 404);
     }
+
+    $oldLink = $apldua->gdrive_ujikom;
+    $newLink = $request->gdrive_ujikom ?: null;
+
+    $apldua->update(['gdrive_ujikom' => $newLink]);
+
+    // Sinkron ke jawaban observasi yang masih kosong / masih pakai link ujikom lama
+    $synced = 0;
+    if ($newLink && $asesmen->canEditObservasi()) {
+        $synced = \App\Models\JawabanObservasiAsesi::where('asesmen_id', $asesmen->id)
+            ->where(function ($q) use ($oldLink) {
+                $q->whereNull('gdrive_link')->orWhere('gdrive_link', '');
+                if ($oldLink) {
+                    $q->orWhere('gdrive_link', $oldLink);
+                }
+            })
+            ->update(['gdrive_link' => $newLink, 'uploaded_at' => now()]);
+    }
+
+    $message = $newLink ? 'Link berhasil disimpan.' : 'Link dihapus.';
+    if ($synced > 0) {
+        $message .= " Link observasi ({$synced} paket) ikut diperbarui.";
+    }
+
+    return response()->json(['success' => true, 'message' => $message]);
+}
 
     public function sertifikatFisikForm()
 {
@@ -1078,4 +1096,6 @@ public function sertifikatFisikStore(Request $request)
     return redirect()->route('asesi.dashboard')
         ->with('success', 'Sertifikat fisik berhasil diupload!');
 }
+
+
 }

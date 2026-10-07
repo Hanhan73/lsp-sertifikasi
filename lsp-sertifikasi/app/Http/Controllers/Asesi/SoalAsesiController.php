@@ -230,7 +230,7 @@ public function teoriSubmit(Request $request): JsonResponse
             ->get()
             ->keyBy('paket_soal_observasi_id');
 
-        $canEdit = $this->canEditObservasi($asesmen);
+        $canEdit = $asesmen->canEditObservasi();
 
         // Pre-fill dari gdrive_ujikom APL-02 kalau paket belum punya link
         $gdriveUjikom = $asesmen->apldua?->gdrive_ujikom;
@@ -296,7 +296,7 @@ public function teoriSubmit(Request $request): JsonResponse
  
         $asesmen = Asesmen::where('user_id', auth()->id())->firstOrFail();
 
-        if (!$this->canEditObservasi($asesmen)) {
+        if (!$asesmen->canEditObservasi()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Waktu pengumpulan link sudah berakhir. Hubungi asesor untuk membuka kembali.',
@@ -372,4 +372,6 @@ private function canEditObservasi(Asesmen $asesmen): bool
     }
     return $asesmen->status === 'asesmen_started';
 }
+
+
 }

@@ -838,4 +838,110 @@ class AdminScheduleController extends Controller
             'Peserta'            => $rekapPeserta,
         ];
     }
+
+
+    /**
+ * Keluarkan satu asesi dari jadwal → kembali ke antrian pra-asesmen.
+ * Membersihkan data yang terikat ke jadwal ini (soal teori, link observasi, BA, kehadiran).
+ */
+public function keluarkanAsesi(Request $request, Schedule $schedule, Asesmen $asesmen)
+{
+    abort_if($asesmen->schedule_id !== $schedule->id, 404, 'Asesi tidak ada di jadwal ini.');
+
+    $request->validate([
+        'alasan'       => 'required|string|min:5|max:500',
+        'reset_frak01' => 'boolean',
+        'reset_apl02'  => 'boolean',
+    ], [
+        'alasan.required' => 'Alasan wajib diisi.',
+        'alasan.min'      => 'Alasan minimal 5 karakter.',
+    ]);
+
+    // Asesi yang sudah dinilai / bersertifikat tidak boleh dikeluarkan
+    if (in_array($asesmen->status, ['assessed', 'certified', 'certificate_distributed']) || filled($asesmen->result)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Asesi sudah memiliki hasil asesmen, tidak dapat dikeluarkan dari jadwal.',
+        ], 422);
+    }
+
+    $ba = $schedule->beritaAcara;
+    if ($ba && $ba->isSigned()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Berita acara jadwal ini sudah ditandatangani. Tidak dapat mengeluarkan asesi.',
+        ], 422);
+    }
+
+    $statusLama = $asesmen->status;
+    $statusBaru = $asesmen->shouldSkipPayment() ? 'verified' : 'paid'; // sama dengan logika TUK deleteSchedule
+
+    DB::beginTransaction();
+    try {
+        $hapusTeori = $asesmen->soalTeoriAsesi()->delete();
+        $hapusObs   = $asesmen->jawabanObservasi()->delete();
+
+        if ($ba) {
+            $ba->asesis()->where('asesmen_id', $asesmen->id)->delete();
+        }
+
+        if ($request->boolean('reset_frak01') && $asesmen->frak01 && $asesmen->frak01->ttd_asesor) {
+            $asesmen->frak01->update([
+                'status'             => 'submitted',
+                'ttd_asesor'         => null,
+                'nama_ttd_asesor'    => null,
+                'tanggal_ttd_asesor' => null,
+            ]);
+        }
+
+        if ($request->boolean('reset_apl02') && $asesmen->apldua
+            && in_array($asesmen->apldua->status, ['verified', 'approved'])) {
+            $asesmen->apldua->update([
+                'status'             => 'submitted',
+                'rekomendasi_asesor' => null,
+                'catatan_asesor'     => null,
+                'ttd_asesor'         => null,
+                'nama_ttd_asesor'    => null,
+                'tanggal_ttd_asesor' => null,
+                'verified_by'        => null,
+                'verified_at'        => null,
+            ]);
+        }
+
+        $asesmen->update([
+            'schedule_id'            => null,
+            'status'                 => $statusBaru,
+            'hadir'                  => null,
+            'assessed_by'            => null,
+            'assessed_at'            => null,
+            'observasi_reopen_until' => null,
+            'observasi_reopen_by'    => null,
+        ]);
+
+        DB::commit();
+    } catch (\Throwable $e) {
+        DB::rollBack();
+        Log::error('[JADWAL-KELUARKAN] Gagal', ['asesmen_id' => $asesmen->id, 'error' => $e->getMessage()]);
+        return response()->json(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()], 500);
+    }
+
+    Log::info('[JADWAL-KELUARKAN] Asesi dikeluarkan dari jadwal', [
+        'schedule_id'  => $schedule->id,
+        'asesmen_id'   => $asesmen->id,
+        'nama'         => $asesmen->full_name,
+        'status_lama'  => $statusLama,
+        'status_baru'  => $statusBaru,
+        'soal_teori'   => $hapusTeori,
+        'link_obs'     => $hapusObs,
+        'reset_frak01' => $request->boolean('reset_frak01'),
+        'reset_apl02'  => $request->boolean('reset_apl02'),
+        'alasan'       => $request->alasan,
+        'oleh'         => auth()->id(),
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => "{$asesmen->full_name} dikeluarkan dari jadwal dan kembali ke antrian pra-asesmen.",
+    ]);
+}
 }

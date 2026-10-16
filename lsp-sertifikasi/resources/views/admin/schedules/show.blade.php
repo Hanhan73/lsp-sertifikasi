@@ -564,9 +564,22 @@
                                     @else<span class="text-muted" style="font-size:.75rem;">—</span>@endif
                                 </td>
                                 <td class="text-end pe-3">
-                                    <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-outline-primary" title="Lihat Detail Asesi">
-                                        <i class="bi bi-person-lines-fill"></i>
-                                    </a>
+                                    <div class="d-inline-flex gap-1">
+                                        <a href="{{ route('admin.asesi.show', $asesmen) }}" class="btn btn-sm btn-outline-primary" title="Lihat Detail Asesi">
+                                            <i class="bi bi-person-lines-fill"></i>
+                                        </a>
+                                        @php
+                                            $bisaDikeluarkan = !in_array($asesmen->status, ['assessed', 'certified', 'certificate_distributed'])
+                                                && blank($asesmen->result)
+                                                && !($schedule->beritaAcara?->isSigned());
+                                        @endphp
+                                        @if($bisaDikeluarkan)
+                                        <button type="button" class="btn btn-sm btn-outline-danger" title="Keluarkan dari jadwal"
+                                                onclick="keluarkanAsesi('{{ route('admin.schedules.keluarkan-asesi', [$schedule, $asesmen]) }}', '{{ addslashes($asesmen->full_name) }}', {{ $asesmen->frak01?->ttd_asesor ? 'true' : 'false' }}, {{ in_array($asesmen->apldua?->status, ['verified','approved']) ? 'true' : 'false' }})">
+                                            <i class="bi bi-box-arrow-left"></i>
+                                        </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                             @endforeach
@@ -1038,6 +1051,65 @@ async function deleteSchedule(id, peserta) {
         if (data.success) { await Swal.fire({icon:'success',title:'Berhasil!',text:data.message,timer:1600,showConfirmButton:false}); window.location.href='{{ route("admin.schedules.index") }}'; }
         else Swal.fire('Gagal', data.message, 'error');
     } catch { Swal.fire('Error','Terjadi kesalahan.','error'); }
+}
+
+
+async function keluarkanAsesi(url, nama, adaTtdFrak01, apl02Verified) {
+    const { value: form } = await Swal.fire({
+        title: 'Keluarkan dari Jadwal?',
+        html: `
+            <p class="small text-muted mb-3"><strong>${escHtml(nama)}</strong> akan dikembalikan ke antrian pra-asesmen.
+            Data soal teori, link observasi, dan rekomendasi BA asesi ini di jadwal ini akan dihapus.</p>
+            <textarea id="swal-alasan" class="form-control form-control-sm mb-3" rows="3"
+                      placeholder="Alasan (wajib), cth: permintaan asesor, dipindah ke pra-asesmen Bangkalan"></textarea>
+            ${adaTtdFrak01 ? `
+            <div class="form-check text-start small mb-1">
+                <input class="form-check-input" type="checkbox" id="swal-reset-frak01" checked>
+                <label class="form-check-label" for="swal-reset-frak01">Reset TTD asesor di FR.AK.01</label>
+            </div>` : ''}
+            ${apl02Verified ? `
+            <div class="form-check text-start small">
+                <input class="form-check-input" type="checkbox" id="swal-reset-apl02" checked>
+                <label class="form-check-label" for="swal-reset-apl02">Reset verifikasi APL-02</label>
+            </div>` : ''}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Keluarkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#dc2626',
+        reverseButtons: true,
+        focusConfirm: false,
+        preConfirm: () => {
+            const alasan = document.getElementById('swal-alasan').value.trim();
+            if (alasan.length < 5) {
+                Swal.showValidationMessage('Alasan minimal 5 karakter.');
+                return false;
+            }
+            return {
+                alasan,
+                reset_frak01: document.getElementById('swal-reset-frak01')?.checked ?? false,
+                reset_apl02:  document.getElementById('swal-reset-apl02')?.checked ?? false,
+            };
+        },
+    });
+    if (!form) return;
+
+    try {
+        const res  = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+            body: JSON.stringify(form),
+        });
+        const data = await res.json();
+        if (data.success) {
+            await Swal.fire({ icon: 'success', title: 'Berhasil', text: data.message, timer: 2000, showConfirmButton: false });
+            location.reload();
+        } else {
+            Swal.fire('Gagal', data.message ?? 'Terjadi kesalahan.', 'error');
+        }
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    }
 }
 </script>
 @endpush

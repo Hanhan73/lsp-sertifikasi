@@ -313,6 +313,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::get('/{schedule}/edit',                [AdminScheduleController::class, 'edit'])->name('edit');
         Route::put('/{schedule}',                     [AdminScheduleController::class, 'update'])->name('update');
         Route::delete('/{schedule}',                  [AdminScheduleController::class, 'destroy'])->name('destroy');
+        Route::post('/{schedule}/asesi/{asesmen}/keluarkan', [AdminScheduleController::class, 'keluarkanAsesi'])
+            ->name('keluarkan-asesi');
         Route::get('/{schedule}/available-asesors',   [AdminScheduleController::class, 'availableAsesors'])->name('available-asesors');
         // Assign asesor tetap pakai AsesorAssignmentController
         Route::post('/{schedule}/assign-asesor',      [AsesorAssignmentController::class, 'assign'])->name('assign-asesor');

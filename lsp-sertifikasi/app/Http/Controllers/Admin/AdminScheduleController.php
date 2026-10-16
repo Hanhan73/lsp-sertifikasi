@@ -911,7 +911,7 @@ public function keluarkanAsesi(Request $request, Schedule $schedule, Asesmen $as
         $asesmen->update([
             'schedule_id'            => null,
             'status'                 => $statusBaru,
-            'hadir'                  => null,
+            'hadir'                  => true,
             'assessed_by'            => null,
             'assessed_at'            => null,
             'observasi_reopen_until' => null,

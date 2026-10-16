@@ -1061,7 +1061,7 @@ async function keluarkanAsesi(url, nama, adaTtdFrak01, apl02Verified) {
             <p class="small text-muted mb-3"><strong>${escHtml(nama)}</strong> akan dikembalikan ke antrian pra-asesmen.
             Data soal teori, link observasi, dan rekomendasi BA asesi ini di jadwal ini akan dihapus.</p>
             <textarea id="swal-alasan" class="form-control form-control-sm mb-3" rows="3"
-                      placeholder="Alasan (wajib), cth: permintaan asesor, dipindah ke pra-asesmen Bangkalan"></textarea>
+                      placeholder="Alasan (wajib), cth: permintaan asesor, dipindah ke pra-asesmen, dll"></textarea>
             ${adaTtdFrak01 ? `
             <div class="form-check text-start small mb-1">
                 <input class="form-check-input" type="checkbox" id="swal-reset-frak01" checked>

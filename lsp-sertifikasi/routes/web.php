@@ -338,6 +338,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
         Route::post('/{aplsatu}/return', [AplController::class, 'returnApl01'])->name('return');
         Route::get('/{aplsatu}/pdf',    [AplController::class, 'pdfApl01'])->name('pdf');
         Route::post('/{aplsatu}/reject', [AdminRejectController::class, 'rejectApl01'])->name('apl01.reject');
+        Route::post('/{aplsatu}/gdrive', [AplController::class, 'updateGdriveLink'])->name('gdrive');
     });
     Route::get('/apl', [AplController::class, 'index'])->name('apl01.index'); // alias lama
 
@@ -688,6 +689,7 @@ Route::middleware(['auth', 'role:asesor'])->prefix('asesor')->name('asesor.')->g
         Route::post('/observasi/reopen',       [AsesorController::class, 'reopenObservasi'])->name('observasi.reopen');
         Route::post('/observasi/close-reopen', [AsesorController::class, 'closeReopenObservasi'])->name('observasi.close-reopen');
         Route::get('/apl01/preview',  [AsesorController::class, 'previewApl01'])->name('apl01.preview');
+        Route::post('/apl01/gdrive',  [AsesorController::class, 'updateApl01Gdrive'])->name('apl01.gdrive');
         Route::get('/apl02/preview',  [AsesorController::class, 'previewApl02'])->name('apl02.preview');
     });
 

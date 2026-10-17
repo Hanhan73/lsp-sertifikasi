@@ -371,15 +371,44 @@
                         </table>
                     </div>
                 </div>
-                @if($aplsatu->ttd_asesi ?? false)
+                {{-- Bukti Kelengkapan: link GDrive (asesor bisa isi/ubah walau APL-01 sudah diverifikasi) --}}
+                @php $gdriveLink = $aplsatu->buktiKelengkapan->whereNotNull('gdrive_file_url')->first()?->gdrive_file_url; @endphp
+                <hr class="my-3">
+                <div class="small fw-semibold text-muted mb-2">Bukti Kelengkapan (Persyaratan Dasar &amp; Administratif)</div>
+                @if($gdriveLink)
+                <div class="alert alert-info d-flex align-items-center gap-3 mb-0 py-2">
+                    <i class="bi bi-google fs-4 flex-shrink-0"></i>
+                    <div class="flex-grow-1 overflow-hidden small">
+                        <div class="fw-semibold">Link Google Drive</div>
+                        <a href="{{ $gdriveLink }}" target="_blank" rel="noopener" class="text-break">{{ $gdriveLink }}</a>
+                    </div>
+                    <a href="{{ $gdriveLink }}" target="_blank" rel="noopener" class="btn btn-sm btn-primary flex-shrink-0">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>Buka
+                    </a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary flex-shrink-0"
+                            onclick="editGdriveLink(@js($gdriveLink))" title="Ubah link">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+                @else
+                <div class="alert alert-secondary d-flex align-items-center gap-2 mb-0 py-2 small">
+                    <i class="bi bi-exclamation-circle flex-shrink-0"></i>
+                    <span class="flex-grow-1">Asesi belum mengisi link Google Drive.</span>
+                    <button type="button" class="btn btn-sm btn-primary flex-shrink-0" onclick="editGdriveLink('')">
+                        <i class="bi bi-plus-lg me-1"></i>Isi Link
+                    </button>
+                </div>
+                @endif
+                {{-- TTD Asesi --}}
+                @if($aplsatu->ttd_pemohon)
                 <hr class="my-3">
                 <div class="d-flex align-items-center gap-3">
-                    <img src="{{ 'data:image/png;base64,' . $aplsatu->ttd_asesi }}"
+                    <img src="{{ $aplsatu->ttd_pemohon_image }}"
                          style="max-height:50px;border:1px solid #e2e8f0;border-radius:4px;padding:2px;" alt="TTD">
                     <div>
-                        <div class="text-muted small">Nama: <span class="fw-semibold">{{ $aplsatu->nama_ttd_asesi ?? $aplsatu->nama_lengkap }}</span></div>
-                        @if($aplsatu->submitted_at ?? false)
-                        <div class="text-muted small">Tanggal: {{ \Carbon\Carbon::parse($aplsatu->submitted_at)->translatedFormat('d M Y') }}</div>
+                        <div class="text-muted small">Nama: <span class="fw-semibold">{{ $aplsatu->nama_ttd_pemohon ?? $aplsatu->nama_lengkap }}</span></div>
+                        @if($aplsatu->submitted_at)
+                        <div class="text-muted small">Tanggal: {{ $aplsatu->submitted_at->translatedFormat('d M Y') }}</div>
                         @endif
                     </div>
                 </div>
@@ -810,7 +839,49 @@ const VERIFY_URL = '{{ route("asesor.apl02.verify", [$schedule, $asesmen]) }}';
 
 const RETURN_FRAK01_URL = '{{ route("asesor.frak01.return", [$schedule, $asesmen]) }}';
 const RESET_VERIFIED_URL = '{{ route("asesor.frak01.reset-verified", [$schedule, $asesmen]) }}';
+const GDRIVE_URL = '{{ route("asesor.asesi.apl01.gdrive", [$schedule, $asesmen]) }}';
 
+async function editGdriveLink(current) {
+    const { isConfirmed } = await Swal.fire({
+        title: current ? 'Ubah Link Google Drive' : 'Isi Link Google Drive',
+        html: '<p class="text-start small text-muted mb-2">Link folder bukti kelengkapan asesi. Status verifikasi APL-01 tidak berubah.</p>',
+        input: 'url',
+        inputValue: current,
+        inputPlaceholder: 'https://drive.google.com/drive/folders/...',
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal',
+        showLoaderOnConfirm: true,
+        allowOutsideClick: () => !Swal.isLoading(),
+        inputValidator: (v) => {
+            v = (v || '').trim();
+            if (!v) return 'Link wajib diisi.';
+            if (!/^https:\/\/(drive|docs)\.google\.com\//i.test(v)) return 'Link harus dari Google Drive (https://drive.google.com/...).';
+            if (v === current) return 'Link tidak berubah.';
+        },
+        preConfirm: async (v) => {
+            try {
+                const res  = await fetch(GDRIVE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+                    body: JSON.stringify({ gdrive_link: v.trim() }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    Swal.showValidationMessage(data.errors?.gdrive_link?.[0] ?? data.message ?? 'Gagal menyimpan link.');
+                    return false;
+                }
+                return true;
+            } catch (e) {
+                Swal.showValidationMessage('Koneksi gagal: ' + e.message);
+                return false;
+            }
+        },
+    });
+    if (!isConfirmed) return;
+    await Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Link Google Drive berhasil disimpan.', timer: 1500, showConfirmButton: false });
+    location.reload();
+}
 function showReturnFrak01() {
     document.getElementById('frak01-rejection-notes').value = '';
     document.getElementById('frak01-return-error').style.display = 'none';

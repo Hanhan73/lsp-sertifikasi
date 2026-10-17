@@ -158,4 +158,44 @@ class Apl01Service
             }
         }
     }
+
+     /**
+     * Set / ganti link Google Drive bukti kelengkapan APL-01 oleh admin/asesor.
+     * Dipakai saat asesi lupa mengisi link tapi APL-01 sudah diverifikasi (terkunci).
+     * Status verifikasi APL-01 & status tiap bukti TIDAK diubah.
+     */
+    public function setGdriveLink(AplSatu $aplsatu, string $url, int $userId, string $role): int
+    {
+        $old = $aplsatu->buktiKelengkapan()->whereNotNull('gdrive_file_url')->value('gdrive_file_url');
+
+        // Asesi menyimpan link yang sama ke semua baris bukti — ikuti pola itu.
+        $affected = $aplsatu->buktiKelengkapan()->update([
+            'gdrive_file_url' => $url,
+            'uploaded_by'     => $userId,
+            'uploaded_at'     => now(),
+        ]);
+
+        Log::info('[APL01-GDRIVE] Link diset oleh ' . $role, [
+            'aplsatu_id' => $aplsatu->id,
+            'user_id'    => $userId,
+            'old'        => $old,
+            'new'        => $url,
+            'affected'   => $affected,
+        ]);
+
+        return $affected;
+    }
+
+    /**
+     * Rule validasi link GDrive (dipakai admin & asesor).
+     */
+    public static function gdriveLinkRules(): array
+    {
+        return [
+            'gdrive_link' => [
+                'required', 'url', 'max:500',
+                'regex:#^https://(drive|docs)\.google\.com/#i',
+            ],
+        ];
+    }
 }

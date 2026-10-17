@@ -255,6 +255,36 @@ class AsesorController extends Controller
     }
 
     /**
+     * Isi / ganti link Google Drive bukti kelengkapan APL-01 (AJAX).
+     * Bisa dipakai walaupun APL-01 sudah diverifikasi.
+     */
+    public function updateApl01Gdrive(Request $request, Schedule $schedule, Asesmen $asesmen)
+    {
+        $asesor = auth()->user()->asesor;
+        abort_if($schedule->asesor_id !== $asesor->id, 403);
+        abort_if($asesmen->schedule_id !== $schedule->id, 403);
+
+        $request->validate(\App\Services\Apl01Service::gdriveLinkRules(), [
+            'gdrive_link.regex' => 'Link harus dari Google Drive (https://drive.google.com/...).',
+        ]);
+
+        $aplsatu = $asesmen->aplsatu;
+        if (!$aplsatu) {
+            return response()->json(['success' => false, 'message' => 'APL-01 belum ada.'], 404);
+        }
+
+        $affected = (new \App\Services\Apl01Service())->setGdriveLink(
+            $aplsatu, trim($request->gdrive_link), auth()->id(), 'asesor'
+        );
+
+        if ($affected === 0) {
+            return response()->json(['success' => false, 'message' => 'Data bukti kelengkapan APL-01 tidak ditemukan.'], 404);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Link Google Drive berhasil disimpan.']);
+    }
+    
+    /**
      * Preview PDF APL-01
      */
     public function previewApl01(Schedule $schedule, Asesmen $asesmen)

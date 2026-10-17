@@ -241,4 +241,25 @@ class AplController extends Controller
             'url'     => $result['gdrive_file_url'],
         ]);
     }
+
+       /**
+     * Isi / ganti link Google Drive bukti kelengkapan (AJAX).
+     * Bisa dipakai walaupun APL-01 sudah diverifikasi.
+     */
+    public function updateGdriveLink(Request $request, AplSatu $aplsatu)
+    {
+        $request->validate(Apl01Service::gdriveLinkRules(), [
+            'gdrive_link.regex' => 'Link harus dari Google Drive (https://drive.google.com/...).',
+        ]);
+
+        $affected = (new Apl01Service())->setGdriveLink(
+            $aplsatu, trim($request->gdrive_link), auth()->id(), 'admin'
+        );
+
+        if ($affected === 0) {
+            return response()->json(['success' => false, 'message' => 'Data bukti kelengkapan APL-01 tidak ditemukan.'], 404);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Link Google Drive berhasil disimpan.']);
+    }
 }

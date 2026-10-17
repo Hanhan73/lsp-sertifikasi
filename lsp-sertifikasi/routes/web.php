@@ -536,6 +536,7 @@ Route::middleware(['auth', 'role:asesi'])->prefix('asesi')->name('asesi.')->grou
         Route::post('/apl01/submit',  [AsesiController::class, 'aplsatuSubmit'])->name('apl01.submit');
         Route::get('/apl01/pdf',      [AsesiController::class, 'aplsatuPdf'])->name('apl01.pdf');
         Route::post('/apl01/bukti/save', [AsesiController::class, 'aplsatuBuktiSave'])->name('apl01.bukti.save');
+        Route::post('/apl01/gdrive', [AsesiController::class, 'aplsatuGdriveSave'])->name('apl01.gdrive');
 
         // APL-02
         Route::get('/apldua',         [AsesiController::class, 'apldua'])->name('apldua');

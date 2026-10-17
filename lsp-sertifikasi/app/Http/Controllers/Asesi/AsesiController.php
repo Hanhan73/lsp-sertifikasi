@@ -1098,4 +1098,47 @@ public function sertifikatFisikStore(Request $request)
 }
 
 
+    /**
+     * Asesi mengisi link GDrive bukti kelengkapan susulan
+     * (APL-01 sudah disubmit/diverifikasi tapi link masih kosong).
+     * Hanya boleh sekali — kalau sudah terisi, perubahan lewat admin/asesor.
+     */
+    public function aplsatuGdriveSave(Request $request)
+    {
+        $request->validate(Apl01Service::gdriveLinkRules(), [
+            'gdrive_link.regex' => 'Link harus dari Google Drive (https://drive.google.com/...).',
+        ]);
+
+        $asesmen = auth()->user()->asesmens()->latest()->first();
+        $aplsatu = $asesmen?->aplsatu;
+
+        if (!$aplsatu) {
+            return response()->json(['success' => false, 'message' => 'APL-01 tidak ditemukan.'], 404);
+        }
+
+        if (in_array($asesmen->status, ['assessed', 'certified', 'certificate_distributed'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Asesmen sudah selesai, link tidak bisa diisi lagi. Silakan hubungi admin LSP.',
+            ], 403);
+        }
+
+        if ($aplsatu->buktiKelengkapan()->whereNotNull('gdrive_file_url')->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Link Google Drive sudah terisi. Jika perlu diganti, silakan hubungi admin LSP.',
+            ], 403);
+        }
+
+        $affected = (new Apl01Service())->setGdriveLink(
+            $aplsatu, trim($request->gdrive_link), auth()->id(), 'asesi'
+        );
+
+        if ($affected === 0) {
+            return response()->json(['success' => false, 'message' => 'Data bukti kelengkapan tidak ditemukan.'], 404);
+        }
+
+        return response()->json(['success' => true, 'message' => 'Link Google Drive berhasil disimpan.']);
+    }
+
 }

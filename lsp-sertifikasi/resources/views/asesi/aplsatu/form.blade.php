@@ -70,6 +70,26 @@
 </div>
 @endif
 
+{{-- ── Pengingat link GDrive susulan ── --}}
+@php
+    $gdriveKosong = $aplsatu
+        && in_array($aplsatu->status, ['submitted','verified','approved'])
+        && !$aplsatu->buktiKelengkapan->whereNotNull('gdrive_file_url')->first()
+        && !in_array($asesmen->status, ['assessed','certified','certificate_distributed']);
+@endphp
+@if($gdriveKosong)
+<div class="alert alert-warning d-flex align-items-center gap-3 mb-4">
+    <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0"></i>
+    <div class="flex-grow-1">
+        <strong>Link Google Drive bukti kelengkapan belum diisi.</strong>
+        Silakan lengkapi di bagian <em>Bukti Kelengkapan</em> di bawah.
+    </div>
+    <a href="#bukti-kelengkapan" class="btn btn-sm btn-warning flex-shrink-0">
+        <i class="bi bi-arrow-down me-1"></i>Isi Sekarang
+    </a>
+</div>
+@endif
+
 {{-- ── Progress Steps ── --}}
 @if(!$aplsatu || $aplsatu->status === 'draft' || $aplsatu->status === 'returned')
 <div class="progress-steps mb-4">
@@ -116,13 +136,37 @@
             <tr><td>Tujuan Asesmen</td><td><strong>{{ $aplsatu->tujuan_asesmen }}</strong>@if($aplsatu->tujuan_asesmen==='Lainnya') : {{ $aplsatu->tujuan_asesmen_lainnya }}@endif</td></tr>
         </table>
 
-        {{-- Bukti read-only: hanya tampilkan link GDrive, tanpa status ceklis --}}
-        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">Bukti Kelengkapan</h6>
+{{-- Bukti: tampilkan link GDrive; kalau kosong, asesi boleh isi susulan (sekali) --}}
+        <h6 class="fw-bold text-primary border-bottom pb-2 mb-3" id="bukti-kelengkapan">Bukti Kelengkapan</h6>
         @php $gdrive = $aplsatu->buktiKelengkapan->whereNotNull('gdrive_file_url')->first()?->gdrive_file_url; @endphp
         @if($gdrive)
         <div class="alert alert-info mb-3">
             <i class="bi bi-google me-2"></i><strong>Link Google Drive:</strong>
-            <a href="{{ $gdrive }}" target="_blank">{{ $gdrive }}</a>
+            <a href="{{ $gdrive }}" target="_blank" rel="noopener">{{ $gdrive }}</a>
+        </div>
+        @elseif($gdriveKosong)
+        <div class="card border-warning mb-3">
+            <div class="card-header bg-warning bg-opacity-25 fw-semibold">
+                <i class="bi bi-google me-2"></i>Isi Link Google Drive Bukti Kelengkapan
+            </div>
+            <div class="card-body">
+                <ol class="small text-muted ps-3 mb-3">
+                    <li>Upload semua dokumen persyaratan dasar &amp; administratif ke satu folder Google Drive.</li>
+                    <li>Klik kanan folder → <strong>Share</strong> → ubah akses ke <em>"Anyone with the link can view"</em>.</li>
+                    <li>Salin link folder dan tempel di kolom berikut.</li>
+                </ol>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                    <input type="url" id="gdrive-link-susulan" class="form-control"
+                           placeholder="https://drive.google.com/drive/folders/...">
+                    <button type="button" class="btn btn-primary" id="btn-simpan-gdrive" onclick="simpanGdriveAsesi()">
+                        <i class="bi bi-save me-1"></i>Simpan Link
+                    </button>
+                </div>
+                <div class="form-text text-danger">
+                    <i class="bi bi-info-circle me-1"></i>Pastikan link sudah benar. Setelah disimpan, link hanya bisa diubah oleh admin LSP.
+                </div>
+            </div>
         </div>
         @else
         <div class="alert alert-secondary mb-3"><i class="bi bi-info-circle me-2"></i>Link Google Drive belum diisi.</div>
@@ -557,6 +601,53 @@
 <script>
 let currentSection = 1;
 const CSRF = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+
+// ── Isi link GDrive susulan (APL-01 sudah disubmit/diverifikasi) ──
+async function simpanGdriveAsesi() {
+    const input = document.getElementById('gdrive-link-susulan');
+    const link  = input?.value?.trim() ?? '';
+
+    if (!/^https:\/\/(drive|docs)\.google\.com\//i.test(link)) {
+        Swal.fire('Link Tidak Valid', 'Link harus dari Google Drive (https://drive.google.com/...).', 'warning');
+        input?.focus();
+        return;
+    }
+
+    const { isConfirmed } = await Swal.fire({
+        title: 'Simpan Link Google Drive?',
+        text: 'Pastikan folder sudah dibagikan "Anyone with the link can view". Setelah disimpan, link hanya bisa diubah oleh admin LSP.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Simpan',
+        cancelButtonText: 'Periksa Lagi',
+        reverseButtons: true,
+    });
+    if (!isConfirmed) return;
+
+    const btn = document.getElementById('btn-simpan-gdrive');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Menyimpan...';
+
+    try {
+        const res  = await fetch('{{ route("asesi.apl01.gdrive") }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF, Accept: 'application/json' },
+            body: JSON.stringify({ gdrive_link: link }),
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success) {
+            await Swal.fire({ icon: 'success', title: 'Tersimpan', text: data.message, timer: 1600, showConfirmButton: false });
+            location.reload();
+            return;
+        }
+        Swal.fire('Gagal', data.errors?.gdrive_link?.[0] ?? data.message ?? 'Gagal menyimpan link.', 'error');
+    } catch {
+        Swal.fire('Error', 'Terjadi kesalahan jaringan.', 'error');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-save me-1"></i>Simpan Link';
+}
 
 // ── Logger ─────────────────────────────────────────────────
 function log(label, data) {

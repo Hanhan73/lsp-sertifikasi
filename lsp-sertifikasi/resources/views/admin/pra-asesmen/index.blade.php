@@ -132,12 +132,12 @@
 {{-- ── Stats ── --}}
 <div class="row g-3 mb-4">
 @php
-$allAsesmens = $batches->flatten()->merge($mandiri);
-$statWaiting = $batches->flatten()->whereIn('status', ['data_completed','payment_pending'])->count()
-             + $mandiri->where('status', 'verified')->filter(fn($a) => $a->payment?->status === 'verified')->count();
-$statStarted = $allAsesmens->whereIn('status',
-    ['pra_asesmen_started','scheduled','pre_assessment_completed'])->count();
-$statAssessed = $allAsesmens->where('status','assessed')->count();
+$allAsesmens     = $batches->flatten()->merge($mandiri);
+$runningStatuses = ['pra_asesmen_started','scheduled','pra_asesmen_completed','asesmen_started'];
+$statWaiting  = $batches->flatten()->whereIn('status', ['data_completed','payment_pending'])->count()
+              + $mandiri->where('status', 'paid')->filter(fn($a) => $a->payment?->status === 'verified' && !$a->admin_started_at)->count();
+$statAssessed = $allAsesmens->filter->sudah_ujikom->count();
+$statStarted  = $allAsesmens->whereIn('status', $runningStatuses)->reject->sudah_ujikom->count();
 $totalBatches = $batches->count();
 @endphp
     <div class="col-6 col-md-3">
@@ -175,6 +175,19 @@ $totalBatches = $batches->count();
                 <div class="lbl">Total Batch</div>
             </div>
         </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end mb-2">
+    <div class="btn-group btn-group-sm">
+        <a href="{{ route('admin.praasesmen.index') }}"
+           class="btn {{ $showAll ? 'btn-outline-secondary' : 'btn-secondary' }}">
+            <i class="bi bi-hourglass-split me-1"></i>Belum Ujikom
+        </a>
+        <a href="{{ route('admin.praasesmen.index', ['semua' => 1]) }}"
+           class="btn {{ $showAll ? 'btn-secondary' : 'btn-outline-secondary' }}">
+            <i class="bi bi-list-ul me-1"></i>Tampilkan Semua
+        </a>
     </div>
 </div>
 
@@ -229,8 +242,8 @@ $totalBatches = $batches->count();
                     $first = $members->first();
                     $total = $members->count();
                     $countWaiting = $members->where('status','data_completed')->count();
-                    $countStarted = $members->whereIn('status',['pra_asesmen_started','scheduled'])->count();
-                    $countAssessed = $members->where('status','assessed')->count();
+                    $countStarted  = $members->whereIn('status', ['pra_asesmen_started','scheduled','pra_asesmen_completed','asesmen_started'])->reject->sudah_ujikom->count();
+                    $countAssessed = $members->filter->sudah_ujikom->count();
                     $batchStatusKey = $countAssessed === $total ? 'assessed'
                     : ($countWaiting === $total ? 'data_completed'
                     : ($countStarted > 0 ? 'pra_asesmen_started' : 'scheduled'));

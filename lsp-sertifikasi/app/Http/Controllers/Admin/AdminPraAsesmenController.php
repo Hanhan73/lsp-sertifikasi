@@ -14,25 +14,34 @@ class AdminPraAsesmenController extends Controller
      * List asesi KOLEKTIF yang sudah diverifikasi TUK, menunggu penetapan biaya Admin
      * Grouped by BATCH
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Mandiri — semua status relevan (bukan hanya data_completed)
-        $mandiri = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04', 'payment']) // ← tambah 'payment'
+        $showAll   = $request->boolean('semua');
+        $excluded  = ['registered'];
+        $relations = ['user', 'tuk', 'skema', 'schedule', 'aplsatu', 'apldua', 'frak01', 'frak04', 'beritaAcaraAsesi'];
+
+        $mandiri = Asesmen::with([...$relations, 'payment'])
             ->where('is_collective', false)
-            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered'])
+            ->whereNotIn('status', $excluded)
+            ->when(!$showAll, fn($q) => $q->belumUjikom())
             ->orderBy('created_at')
             ->get();
-            
 
-        // Kolektif — grouped by batch, semua status
-        $batches = Asesmen::with(['user', 'tuk', 'skema', 'aplsatu', 'apldua', 'frak01', 'frak04'])
+        $activeBatchIds = Asesmen::where('is_collective', true)
+            ->whereNotIn('status', $excluded)
+            ->belumUjikom()
+            ->distinct()
+            ->pluck('collective_batch_id');
+
+        $batches = Asesmen::with($relations)
             ->where('is_collective', true)
-            ->whereNotIn('status', ['certified', 'assessed', 'scheduled', 'registered'])
+            ->whereNotIn('status', $excluded)
+            ->when(!$showAll, fn($q) => $q->whereIn('collective_batch_id', $activeBatchIds))
             ->orderBy('created_at')
             ->get()
             ->groupBy('collective_batch_id');
 
-        return view('admin.pra-asesmen.index', compact('mandiri', 'batches'));
+        return view('admin.pra-asesmen.index', compact('mandiri', 'batches', 'showAll'));
     }
 
     /**

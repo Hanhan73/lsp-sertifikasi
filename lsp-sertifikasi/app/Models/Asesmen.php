@@ -217,13 +217,18 @@ class Asesmen extends Model
     }
 
     public function frAk03(): \Illuminate\Database\Eloquent\Relations\HasOne
-{
-    return $this->hasOne(\App\Models\FrAk03UmpanBalik::class, 'asesmen_id');
-}
+    {
+        return $this->hasOne(\App\Models\FrAk03UmpanBalik::class, 'asesmen_id');
+    }
 
     public function frak04()
     {
         return $this->hasOne(\App\Models\FrAk04::class, 'asesmen_id');
+    }
+
+    public function beritaAcaraAsesi()
+    {
+        return $this->hasOne(\App\Models\BeritaAcaraAsesi::class, 'asesmen_id');
     }
 
     public function soalTeoriAsesi()
@@ -446,6 +451,28 @@ class Asesmen extends Model
     // =========================================================================
     // Status helpers
     // =========================================================================
+
+
+    public const STATUS_SUDAH_UJIKOM = ['assessed', 'certified', 'certificate_distributed'];
+
+    public function scopeBelumUjikom($q)
+    {
+        return $q->whereNotIn('status', self::STATUS_SUDAH_UJIKOM)
+                ->whereNull('result')
+                ->whereDoesntHave('beritaAcaraAsesi')
+                ->where(fn($w) => $w
+                    ->whereNull('schedule_id')
+                    ->orWhereHas('schedule', fn($s) => $s->whereDate('assessment_date', '>=', today()))
+                );
+    }
+
+    public function getSudahUjikomAttribute(): bool
+    {
+        return in_array($this->status, self::STATUS_SUDAH_UJIKOM)
+            || $this->result !== null
+            || $this->beritaAcaraAsesi !== null
+            || ($this->schedule?->assessment_date?->lt(today()) ?? false);
+    }
 
     public function getStatusLabelAttribute(): string
     {

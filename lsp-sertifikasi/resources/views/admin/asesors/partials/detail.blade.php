@@ -82,6 +82,10 @@
                 <td><code>{{ $asesor->nik }}</code></td>
             </tr>
             <tr>
+                <td class="text-muted">NPWP</td>
+                <td><code>{{ $asesor->npwp ?? '-' }}</code></td>
+            </tr>
+            <tr>
                 <td class="text-muted">Tempat, Tgl Lahir</td>
                 <td>{{ $asesor->tempat_lahir }}, {{ $asesor->tanggal_lahir->translatedFormat('d F Y') }}</td>
             </tr>

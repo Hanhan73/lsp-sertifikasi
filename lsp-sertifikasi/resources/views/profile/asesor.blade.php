@@ -85,6 +85,10 @@
                         <span class="fw-semibold font-monospace">{{ $asesor?->nik ?? '-' }}</span>
                     </div>
                     <div class="d-flex justify-content-between py-1 border-bottom">
+                        <span class="text-muted">NPWP</span>
+                        <span class="fw-semibold font-monospace">{{ $asesor?->npwp ?? '-' }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between py-1 border-bottom">
                         <span class="text-muted">TTL</span>
                         <span>{{ $asesor?->tempat_lahir ?? '-' }}, {{ $asesor?->tanggal_lahir?->translatedFormat('d M Y') ?? '-' }}</span>
                     </div>
@@ -147,6 +151,14 @@
                                class="form-control form-control-sm @error('nik') is-invalid @enderror"
                                value="{{ old('nik', $asesor?->nik) }}" required>
                         @error('nik')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small mb-1">NPWP</label>
+                        <input type="text" name="npwp" maxlength="30"
+                               class="form-control form-control-sm @error('npwp') is-invalid @enderror"
+                               value="{{ old('npwp', $asesor?->npwp) }}" placeholder="Contoh: 12.345.678.9-012.345">
+                        @error('npwp')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
                     <div class="row g-2 mb-2">
@@ -339,7 +351,7 @@ function toggleEditAsesor() {
         : '<i class="bi bi-pencil"></i> Edit';
 }
 
-@if($errors->has('nama') || $errors->has('nik') || $errors->has('tempat_lahir') || $errors->has('tanggal_lahir') || $errors->has('jenis_kelamin') || $errors->has('no_reg_met') || $errors->has('no_blanko') || $errors->has('siap_kerja'))
+@if($errors->has('nama') || $errors->has('nik') || $errors->has('npwp') ||$errors->has('tempat_lahir') || $errors->has('tanggal_lahir') || $errors->has('jenis_kelamin') || $errors->has('no_reg_met') || $errors->has('no_blanko') || $errors->has('siap_kerja'))
 document.addEventListener('DOMContentLoaded', toggleEditAsesor);
 @endif
 </script>

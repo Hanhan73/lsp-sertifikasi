@@ -95,6 +95,7 @@ class ProfileController extends Controller
         $validated = $request->validate([
             'nama'          => 'required|string|max:255',
             'nik'           => 'required|string|max:16|unique:asesors,nik,' . $asesor->id,
+            'npwp'          => 'nullable|string|max:30',
             'tempat_lahir'  => 'required|string|max:255',
             'tanggal_lahir' => 'required|date',
             'jenis_kelamin' => 'required|in:L,P',

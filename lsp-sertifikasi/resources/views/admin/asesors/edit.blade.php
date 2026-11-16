@@ -46,6 +46,15 @@
                                 </div>
 
                                 <div class="col-md-6">
+                                    <label class="form-label">NPWP</label>
+                                    <input type="text" name="npwp"
+                                        class="form-control @error('npwp') is-invalid @enderror"
+                                        value="{{ old('npwp', $asesor->npwp) }}" maxlength="30"
+                                        placeholder="Contoh: 12.345.678.9-012.345">
+                                    @error('npwp')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+
+                                <div class="col-md-6">
                                     <label class="form-label">Jenis Kelamin <span class="text-danger">*</span></label>
                                     <select name="jenis_kelamin" class="form-select" required>
                                         <option value="L"

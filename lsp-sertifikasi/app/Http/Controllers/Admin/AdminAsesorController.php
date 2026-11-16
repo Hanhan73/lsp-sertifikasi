@@ -65,6 +65,7 @@ class AdminAsesorController extends Controller
         $request->validate([
             'nama'          => 'required|string|max:255',
             'nik'           => 'required|string|size:16|unique:asesors,nik',
+            'npwp'          => 'nullable|string|max:30',
             'tempat_lahir'  => 'required|string|max:100',
             'tanggal_lahir' => 'required|date|before:today',
             'jenis_kelamin' => 'required|in:L,P',
@@ -106,6 +107,7 @@ class AdminAsesorController extends Controller
             Asesor::create([
                 'nama'          => $request->nama,
                 'nik'           => $request->nik,
+                'npwp'          => $request->npwp,
                 'tempat_lahir'  => $request->tempat_lahir,
                 'tanggal_lahir' => $request->tanggal_lahir,
                 'jenis_kelamin' => $request->jenis_kelamin,
@@ -171,6 +173,7 @@ class AdminAsesorController extends Controller
         $request->validate([
             'nama'          => 'required|string|max:255',
             'nik'           => 'required|string|size:16|unique:asesors,nik,' . $asesor->id,
+            'npwp'          => 'nullable|string|max:30',
             'tempat_lahir'  => 'required|string|max:100',
             'tanggal_lahir' => 'required|date|before:today',
             'jenis_kelamin' => 'required|in:L,P',
@@ -201,6 +204,7 @@ class AdminAsesorController extends Controller
             $asesor->update([
                 'nama'          => $request->nama,
                 'nik'           => $request->nik,
+                'npwp'          => $request->npwp,
                 'tempat_lahir'  => $request->tempat_lahir,
                 'tanggal_lahir' => $request->tanggal_lahir,
                 'jenis_kelamin' => $request->jenis_kelamin,

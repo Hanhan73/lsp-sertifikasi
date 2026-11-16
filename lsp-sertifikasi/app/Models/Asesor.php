@@ -10,7 +10,7 @@ class Asesor extends Model
     use HasFactory;
 
     protected $fillable = [
-        'no', 'nama', 'nik', 'tempat_lahir', 'tanggal_lahir',
+        'no', 'nama', 'nik', 'npwp', 'tempat_lahir', 'tanggal_lahir',
         'jenis_kelamin', 'alamat', 'kota', 'provinsi',
         'telepon', 'email', 'no_reg_met', 'no_blanko',
         'siap_kerja', 'keterangan', 'status_reg', 'expire_date',

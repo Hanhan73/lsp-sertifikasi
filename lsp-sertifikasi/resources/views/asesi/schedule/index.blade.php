@@ -18,9 +18,14 @@
 
     $asesmenDimulai     = in_array($asesmen->status, ['asesmen_started']);
     $asesmenSelesai     = in_array($asesmen->status, ['assessed', 'certified']);
+    // Sesi sudah dimulai asesor tapi asesi ini belum ikut.
+    // Hari-H → tunggu asesor memulai per asesi; setelah hari-H → dianggap lewat.
     $ketinggalanSesi    = $asesmen->status === 'scheduled'
                        && ($schedule->assessment_start ?? false)
-                       && $daysLeft <= 0;
+                       && $daysLeft < 0;
+    $menungguMulaiSingle = $asesmen->status === 'scheduled'
+                       && ($schedule->assessment_start ?? false)
+                       && (int) $daysLeft === 0;
     $jadwalLewatStarted = $daysLeft < 0
                        && !$asesmenDimulai
                        && ($schedule->assessment_start ?? false);
@@ -324,6 +329,21 @@
                     <i class="bi bi-upload me-1"></i>Upload Link Observasi ({{ $obsUpload }}/{{ $obsTotal }})
                 </a>
                 @endif
+            </div>
+
+            @elseif($menungguMulaiSingle)
+            {{-- Hari-H, sesi sudah berjalan, asesi ini belum dimulaikan asesor --}}
+            <div class="card-body d-flex flex-column align-items-center justify-content-center text-center py-5 px-4">
+                <div class="rounded-circle bg-warning bg-opacity-10 d-flex align-items-center justify-content-center mb-3"
+                    style="width:64px;height:64px;">
+                    <i class="bi bi-hourglass-split text-warning" style="font-size:1.6rem;"></i>
+                </div>
+                <p class="fw-semibold mb-1">Menunggu Asesor</p>
+                <p class="text-muted small mb-0">
+                    Sesi asesmen sudah berjalan, namun sesi Anda belum dimulai oleh asesor.
+                    Pastikan FR.AK.01 dan APL-02 sudah disubmit, lalu hubungi asesor agar sesi Anda dimulai.
+                    Muat ulang halaman ini setelahnya.
+                </p>
             </div>
 
             @elseif(!$asesmenDimulai)

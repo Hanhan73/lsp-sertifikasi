@@ -766,13 +766,14 @@ class AsesorController extends Controller
         abort_if($schedule->asesor_id !== $asesor->id, 403);
         abort_if($asesmen->schedule_id !== $schedule->id, 403);
 
-        $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved']);
-        $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved']);
+        // Syarat disamakan dengan mulaiAsesmen() (bulk): submitted juga diterima
+        $frak01Ready = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified', 'approved', 'submitted']);
+        $apl02Ready  = $asesmen->apldua && in_array($asesmen->apldua->status, ['verified', 'approved', 'submitted']);
 
         if (!$frak01Ready || !$apl02Ready) {
             return response()->json([
                 'success' => false,
-                'message' => 'FR.AK.01 dan APL-02 harus sudah diverifikasi.',
+                'message' => 'FR.AK.01 dan APL-02 harus sudah disubmit asesi.',
             ], 422);
         }
 

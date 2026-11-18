@@ -281,12 +281,12 @@ if ($soal->whereNotNull('submitted_at')->count() > 0) $teoriSubmit++;
 
                     @if($schedule->assessment_start && $asesmen->status === 'scheduled')
                     @php
-                    $bisaMulaiSingle = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified','approved'])
-                    && $asesmen->apldua && in_array($asesmen->apldua->status, ['verified','approved']);
+                    $bisaMulaiSingle = $asesmen->frak01 && in_array($asesmen->frak01->status, ['verified','approved','submitted'])
+                    && $asesmen->apldua && in_array($asesmen->apldua->status, ['verified','approved','submitted']);
                     @endphp
                     <button type="button" class="btn btn-sm btn-warning flex-shrink-0"
                         {{ !$bisaMulaiSingle ? 'disabled' : '' }}
-                        title="{{ !$bisaMulaiSingle ? 'FR.AK.01 atau APL-02 belum diverifikasi' : 'Mulai asesmen untuk asesi ini' }}"
+                        title="{{ !$bisaMulaiSingle ? 'FR.AK.01 atau APL-02 belum disubmit asesi' : 'Mulai asesmen untuk asesi ini' }}"
                         onclick="mulaiSingle({{ $asesmen->id }}, '{{ addslashes($asesmen->full_name) }}')">
                         <i class="bi bi-play-fill me-1"></i>Mulai
                     </button>

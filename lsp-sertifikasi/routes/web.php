@@ -34,6 +34,7 @@ use App\Http\Controllers\Admin\AdminBeritaAcaraController;
 use App\Http\Controllers\Admin\AdminDummyAccountController;
 use App\Http\Controllers\Admin\SertifikatDistribusiController;
 use App\Http\Controllers\Admin\ArsipSertifikatController;
+use App\Http\Controllers\Admin\RekapAsesiController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -219,6 +220,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // ── Laporan ────────────────────────────────────────────────────────────
     Route::get('/reports',         [AdminController::class, 'reports'])->name('reports');
     Route::post('/reports/export', [AdminController::class, 'exportReport'])->name('reports.export');
+
+    // ── Rekap Asesi (statis /export sebelum index) ─────────────────────────
+    Route::get('/rekap-asesi/export', [RekapAsesiController::class, 'export'])->name('rekap-asesi.export');
+    Route::get('/rekap-asesi',        [RekapAsesiController::class, 'index'])->name('rekap-asesi.index');
 
     // ── TUK ────────────────────────────────────────────────────────────────
     Route::prefix('tuks')->name('tuks.')->group(function () {

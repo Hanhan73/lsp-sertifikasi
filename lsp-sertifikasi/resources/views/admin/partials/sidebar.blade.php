@@ -149,3 +149,8 @@ $pendingPayments = \App\Models\Payment::where('status', 'pending')->count();
 <a href="{{ route('admin.asesi') }}" class="nav-link {{ Str::startsWith($route, 'admin.asesi') ? 'active' : '' }}">
     <i class="bi bi-people"></i> Semua Asesi
 </a>
+
+<a href="{{ route('admin.rekap-asesi.index') }}"
+    class="nav-link {{ Str::startsWith($route, 'admin.rekap-asesi') ? 'active' : '' }}">
+    <i class="bi bi-bar-chart-line"></i> Rekap Asesi
+</a>

@@ -115,4 +115,25 @@ foreach (['daftar', 'kompeten', 'bk', 'belum', 'asesor'] as $k) {
 }
 echo "\n=== Perbandingan dengan controller: " . (empty($diffs) ? 'SEMUA COCOK' : 'ADA SELISIH') . " ===\n";
 foreach ($diffs as $d) echo " - {$d}\n";
+
+// ── 3. Detail batch: total batch per baris harus = angka Daftar baris ──
+$ctrlObj = app(\App\Http\Controllers\Admin\RekapAsesiController::class);
+$bad = [];
+$nRows = 0;
+$nBatch = 0;
+foreach ($ctrl['rows'] as $tab => $list) {
+    foreach ($list as $r) {
+        $nRows++;
+        $params = array_filter($filters, fn($v) => $v !== null) + ['bagian' => $tab, 'key' => $r['key']];
+        $json = $ctrlObj->detail(\Illuminate\Http\Request::create('/', 'GET', $params))->getData(true);
+        $nBatch += count(array_filter($json['batches'], fn($b) => $b['batch_id'] !== null));
+        foreach (['daftar', 'kompeten', 'bk', 'belum'] as $k) {
+            if ($json['total'][$k] !== $r[$k]) {
+                $bad[] = "{$tab} / {$r['label']}: {$k} baris {$r[$k]} ≠ total batch {$json['total'][$k]}";
+            }
+        }
+    }
+}
+echo "=== Detail batch ({$nRows} baris dicek, {$nBatch} batch): " . (empty($bad) ? 'SEMUA COCOK' : 'ADA SELISIH') . " ===\n";
+foreach (array_slice($bad, 0, 20) as $d) echo " - {$d}\n";
 echo "\n";

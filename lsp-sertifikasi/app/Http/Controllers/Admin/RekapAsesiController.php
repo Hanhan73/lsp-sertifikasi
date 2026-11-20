@@ -16,17 +16,20 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
- * Laporan Rekap Asesi â€” statistik jumlah daftar & hasil asesmen.
+ * Laporan Rekap Asesi — statistik jumlah daftar & hasil asesmen.
  *
  * Definisi:
  *  - Daftar          : semua asesmen (tanpa filter status), dikecualikan data dummy.
  *  - Hasil           : asesmens.result, fallback berita_acara_asesi.rekomendasi.
  *  - TUK             : COALESCE(assigned_tuk_id, tuk_id, schedules.tuk_id).
- *  - Bulan           : schedules.assessment_date (null â†’ "Belum Dijadwalkan").
+ *  - Bulan           : schedules.assessment_date (null → "Belum Dijadwalkan").
  *  - Jumlah Asesor   : COUNT(DISTINCT schedules.asesor_id).
  */
 class RekapAsesiController extends Controller
 {
+    /** Penanda kelompok kosong (Tanpa Skema/TUK, Belum Dijadwalkan, Belum Ada Asesor) */
+    private const NULL_KEY = '_null';
+
     private const TABS = [
         'skema'  => ['title' => 'Per Skema',  'label' => 'Skema'],
         'tuk'    => ['title' => 'Per TUK',    'label' => 'TUK'],
@@ -60,21 +63,113 @@ class RekapAsesiController extends Controller
         $filterText  = $this->filterText($filters);
         $fileSuffix  = $this->fileSuffix($filters);
 
-        if ($request->get('format') === 'excel') {
-            return $this->exportExcel($rekap, $periodeText, $filterText, $fileSuffix);
+        // Download per bagian (?bagian=skema|tuk|bulan|asesor) atau semua bagian
+        $bagian = $request->validate([
+            'bagian' => ['nullable', 'in:' . implode(',', array_keys(self::TABS))],
+        ])['bagian'] ?? null;
+        $tabs = $bagian ? [$bagian => self::TABS[$bagian]] : self::TABS;
+        if ($bagian) {
+            $fileSuffix = str_replace(' ', '_', self::TABS[$bagian]['title']) . "_{$fileSuffix}";
         }
 
-        $tabs = self::TABS;
-        $pdf  = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.rekap-asesi.pdf', compact(
+        if ($request->get('format') === 'excel') {
+            return $this->exportExcel($tabs, $rekap, $periodeText, $filterText, $fileSuffix);
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.rekap-asesi.pdf', compact(
             'rekap', 'tabs', 'periodeText', 'filterText'
-        ))->setPaper('A4', 'portrait');
+        ))->setPaper('A4', 'landscape');
 
         return $pdf->download("Rekap_Asesi_{$fileSuffix}.pdf");
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    /**
+     * Detail satu baris rekap: daftar batch (collective_batch_id) di kelompok tsb.
+     * Asesi tanpa batch (mandiri) digabung jadi satu baris agar total = angka baris.
+     * GET ?bagian=skema|tuk|bulan|asesor&key=<id|YYYY-MM|_null> + filter halaman.
+     */
+    public function detail(Request $request)
+    {
+        $filters = $this->filters($request);
+        $v = $request->validate([
+            'bagian' => ['required', 'in:' . implode(',', array_keys(self::TABS))],
+            'key'    => ['required', 'string', 'max:20'],
+        ]);
+        $bagian = $v['bagian'];
+        $key    = $v['key'];
+
+        if ($key !== self::NULL_KEY) {
+            $valid = $bagian === 'bulan' ? preg_match('/^\d{4}-\d{2}$/', $key) : ctype_digit($key);
+            abort_unless($valid, 422, 'Key tidak valid.');
+        }
+
+        $q = DB::query()->fromSub($this->baseQuery($filters), 'r');
+
+        $column = [
+            'skema'  => 'r.skema_id',
+            'tuk'    => 'r.tuk_id',
+            'asesor' => 'r.asesor_id',
+            'bulan'  => "DATE_FORMAT(r.assessment_date, '%Y-%m')",
+        ][$bagian];
+
+        $key === self::NULL_KEY
+            ? $q->whereRaw("{$column} IS NULL")
+            : $q->whereRaw("{$column} = ?", [$key]);
+
+        $batches = $q
+            ->leftJoin('tuks as tk', 'tk.id', '=', 'r.tuk_id')
+            ->leftJoin('skemas as sk', 'sk.id', '=', 'r.skema_id')
+            ->selectRaw("
+                r.collective_batch_id AS batch_id,
+                GROUP_CONCAT(DISTINCT tk.name ORDER BY tk.name SEPARATOR ', ') AS tuk,
+                GROUP_CONCAT(DISTINCT sk.name ORDER BY sk.name SEPARATOR ', ') AS skema,
+                COUNT(DISTINCT r.tuk_id)   AS n_tuk,
+                COUNT(DISTINCT r.skema_id) AS n_skema,
+                MIN(r.assessment_date) AS tgl_awal,
+                MAX(r.assessment_date) AS tgl_akhir,
+                {$this->aggregateSelect()}
+            ")
+            ->groupBy('r.collective_batch_id')
+            // Batch terbaru di atas; belum dijadwalkan & mandiri (tanpa batch) di bawah
+            ->orderByRaw('r.collective_batch_id IS NULL, MIN(r.assessment_date) IS NULL, MIN(r.assessment_date) DESC, r.collective_batch_id')
+            ->get()
+            ->map(function ($b) {
+                $fmt     = fn($d) => $d ? Carbon::parse($d)->translatedFormat('d M Y') : null;
+                $awal    = $fmt($b->tgl_awal);
+                $akhir   = $fmt($b->tgl_akhir);
+                return [
+                    'batch_id' => $b->batch_id,
+                    'label'    => $b->batch_id ?? 'Mandiri (tanpa batch)',
+                    'url'      => $b->batch_id ? route('admin.asesi.batch.show', $b->batch_id) : null,
+                    // > 2 nama (biasanya baris Mandiri) diringkas; nama lengkap di tooltip
+                    'tuk'        => $b->n_tuk > 2 ? "{$b->n_tuk} TUK" : ($b->tuk ?: '-'),
+                    'tuk_full'   => $b->tuk ?: '-',
+                    'skema'      => $b->n_skema > 2 ? "{$b->n_skema} skema" : ($b->skema ?: '-'),
+                    'skema_full' => $b->skema ?: '-',
+                    'tanggal'  => $awal ? ($awal === $akhir ? $awal : "{$awal} – {$akhir}") : 'Belum dijadwalkan',
+                    'tgl_iso'  => $b->tgl_awal ? substr($b->tgl_awal, 0, 10) : '',
+                    'daftar'   => (int) $b->daftar,
+                    'kompeten' => (int) $b->kompeten,
+                    'bk'       => (int) $b->bk,
+                    'belum'    => (int) $b->belum,
+                    'asesor'   => (int) $b->asesor,
+                ];
+            });
+
+        return response()->json([
+            'batches' => $batches,
+            'total'   => [
+                'daftar'   => $batches->sum('daftar'),
+                'kompeten' => $batches->sum('kompeten'),
+                'bk'       => $batches->sum('bk'),
+                'belum'    => $batches->sum('belum'),
+            ],
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Data
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
 
     private function filters(Request $request): array
     {
@@ -115,12 +210,13 @@ class RekapAsesiController extends Controller
             ->leftJoin('users as ut', 'ut.id', '=', 't.user_id')
             ->leftJoin('asesors as x', 'x.id', '=', 's.asesor_id')
             ->leftJoin('users as ux', 'ux.id', '=', 'x.user_id')
-            // â”€â”€ Exclude data dummy (asesi / TUK / asesor dummy) â”€â”€
+            // ── Exclude data dummy (asesi / TUK / asesor dummy) ──
             ->whereRaw('COALESCE(ua.is_dummy, 0) = 0')
             ->whereRaw('COALESCE(ut.is_dummy, 0) = 0')
             ->whereRaw('COALESCE(ux.is_dummy, 0) = 0')
             ->selectRaw("
                 a.id,
+                a.collective_batch_id,
                 a.skema_id,
                 {$tukExpr} AS tuk_id,
                 s.asesor_id,
@@ -176,8 +272,9 @@ class RekapAsesiController extends Controller
             ->get()
             ->map(fn($r) => $this->row(
                 $r,
-                $r->name ? trim(($r->code ? "{$r->code} â€” " : '') . $r->name) : 'Tanpa Skema',
-                $r->name ?? 'zzz'
+                $r->name ? trim(($r->code ? "{$r->code} — " : '') . $r->name) : 'Tanpa Skema',
+                $r->name ?? 'zzz',
+                $r->gid
             ));
 
         $tuk = DB::query()->fromSub($base, 'r')
@@ -186,7 +283,7 @@ class RekapAsesiController extends Controller
             ->groupBy('r.tuk_id', 'tk.name')
             ->orderBy('tk.name')
             ->get()
-            ->map(fn($r) => $this->row($r, $r->name ?? 'Tanpa TUK', $r->name ?? 'zzz'));
+            ->map(fn($r) => $this->row($r, $r->name ?? 'Tanpa TUK', $r->name ?? 'zzz', $r->gid));
 
         $bulan = DB::query()->fromSub($base, 'r')
             ->selectRaw("DATE_FORMAT(r.assessment_date, '%Y-%m') AS ym, {$agg}")
@@ -196,7 +293,8 @@ class RekapAsesiController extends Controller
             ->map(fn($r) => $this->row(
                 $r,
                 $r->ym ? Carbon::createFromFormat('Y-m-d', $r->ym . '-01')->translatedFormat('F Y') : 'Belum Dijadwalkan',
-                $r->ym ?? '9999-12' // ISO, "Belum Dijadwalkan" selalu terakhir
+                $r->ym ?? '9999-12', // ISO, "Belum Dijadwalkan" selalu terakhir
+                $r->ym
             ));
 
         $asesor = DB::query()->fromSub($base, 'r')
@@ -205,9 +303,9 @@ class RekapAsesiController extends Controller
             ->groupBy('r.asesor_id', 'xs.nama')
             ->orderByRaw('r.asesor_id IS NULL, xs.nama')
             ->get()
-            ->map(fn($r) => $this->row($r, $r->nama ?? 'Belum Ada Asesor', $r->nama ?? 'zzz'));
+            ->map(fn($r) => $this->row($r, $r->nama ?? 'Belum Ada Asesor', $r->nama ?? 'zzz', $r->gid));
 
-        // Total keseluruhan â€” jumlah asesor = DISTINCT keseluruhan, bukan jumlah kolom
+        // Total keseluruhan — jumlah asesor = DISTINCT keseluruhan, bukan jumlah kolom
         $t = DB::query()->fromSub($base, 'r')->selectRaw($agg)->first();
         $total = [
             'daftar'   => (int) $t->daftar,
@@ -223,11 +321,17 @@ class RekapAsesiController extends Controller
         ];
     }
 
-    private function row(object $r, string $label, string $order): array
+    /**
+     * $key = id kelompok (skema/tuk/asesor id, atau 'YYYY-MM'); null = baris
+     * "Tanpa Skema/TUK", "Belum Dijadwalkan", "Belum Ada Asesor" (dikirim sebagai '_null').
+     */
+    private function row(object $r, string $label, string $order, int|string|null $key): array
     {
         return [
             'label'    => $label,
             'order'    => $order,
+            'key'      => $key === null ? self::NULL_KEY : (string) $key,
+            'kosong'   => $key === null,
             'daftar'   => (int) $r->daftar,
             'kompeten' => (int) $r->kompeten,
             'bk'       => (int) $r->bk,
@@ -236,9 +340,9 @@ class RekapAsesiController extends Controller
         ];
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
     // Label helpers
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
 
     private function periodeText(array $f): string
     {
@@ -273,28 +377,29 @@ class RekapAsesiController extends Controller
             . '-' . ($f['sampai'] ? Carbon::parse($f['sampai'])->format('Ymd') : 'akhir');
     }
 
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
     // Export Excel (satu sheet per tab)
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─────────────────────────────────────────────────────────────────────
 
-    private function exportExcel(array $rekap, string $periodeText, string $filterText, string $fileSuffix)
+    private function exportExcel(array $tabs, array $rekap, string $periodeText, string $filterText, string $fileSuffix)
     {
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
 
-        foreach (self::TABS as $key => $tab) {
+        foreach ($tabs as $key => $tab) {
             $isAsesor = $key === 'asesor';
             $sheet    = $spreadsheet->createSheet();
             $sheet->setTitle($tab['title']);
 
             $headers = $isAsesor
-                ? ['No', $tab['label'], 'Jumlah Asesi Ditangani', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil']
-                : ['No', $tab['label'], 'Daftar', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil', 'Jumlah Asesor Ditugaskan'];
-            $lastCol = $isAsesor ? 'F' : 'G';
+                ? ['No', $tab['label'], 'Jumlah Asesi Ditangani', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil', '% Kompeten']
+                : ['No', $tab['label'], 'Daftar', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil', '% Kompeten', 'Jumlah Asesor Ditugaskan'];
+            $lastCol = $isAsesor ? 'G' : 'H';
+            $pctFormula = fn(int $row) => "=IF(C{$row}>0,D{$row}/C{$row},0)";
 
-            // â”€â”€ Judul â”€â”€
+            // ── Judul ──
             $sheet->mergeCells("A1:{$lastCol}1");
-            $sheet->setCellValue('A1', 'REKAP ASESI â€” ' . strtoupper($tab['title']));
+            $sheet->setCellValue('A1', 'REKAP ASESI — ' . strtoupper($tab['title']));
             $sheet->getStyle('A1')->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
@@ -304,13 +409,13 @@ class RekapAsesiController extends Controller
             $sheet->mergeCells("A2:{$lastCol}2");
             $sheet->setCellValue('A2', 'Periode Asesmen: ' . $periodeText . ($filterText ? ' | ' . $filterText : ''));
             $sheet->mergeCells("A3:{$lastCol}3");
-            $sheet->setCellValue('A3', 'LSP-KAP â€” Dicetak ' . now()->translatedFormat('d F Y'));
+            $sheet->setCellValue('A3', 'LSP-KAP — Dicetak ' . now()->translatedFormat('d F Y'));
             $sheet->getStyle('A2:A3')->applyFromArray([
                 'font'      => ['size' => 10, 'color' => ['rgb' => '666666']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
 
-            // â”€â”€ Header â”€â”€
+            // ── Header ──
             $headerRow = 5;
             $sheet->fromArray($headers, null, "A{$headerRow}");
             $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray([
@@ -320,11 +425,11 @@ class RekapAsesiController extends Controller
                 'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
             ]);
 
-            // â”€â”€ Data â”€â”€
+            // ── Data ──
             $row = $headerRow;
             foreach ($rekap['rows'][$key] as $i => $r) {
                 $row++;
-                $values = [$i + 1, $r['label'], $r['daftar'], $r['kompeten'], $r['bk'], $r['belum']];
+                $values = [$i + 1, $r['label'], $r['daftar'], $r['kompeten'], $r['bk'], $r['belum'], $pctFormula($row)];
                 if (!$isAsesor) {
                     $values[] = $r['asesor'];
                 }
@@ -335,10 +440,10 @@ class RekapAsesiController extends Controller
                 ]);
             }
 
-            // â”€â”€ Total â”€â”€
+            // ── Total ──
             $row++;
             $t      = $rekap['total'];
-            $values = ['', 'TOTAL', $t['daftar'], $t['kompeten'], $t['bk'], $t['belum']];
+            $values = ['', 'TOTAL', $t['daftar'], $t['kompeten'], $t['bk'], $t['belum'], $pctFormula($row)];
             if (!$isAsesor) {
                 $values[] = $t['asesor'];
             }
@@ -351,6 +456,7 @@ class RekapAsesiController extends Controller
 
             $sheet->getStyle("A" . ($headerRow + 1) . ":A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("C" . ($headerRow + 1) . ":{$lastCol}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("G" . ($headerRow + 1) . ":G{$row}")->getNumberFormat()->setFormatCode('0.0%');
 
             if (!$isAsesor) {
                 $sheet->setCellValue('A' . ($row + 2), '* Total Jumlah Asesor Ditugaskan = jumlah asesor berbeda secara keseluruhan (bukan penjumlahan kolom).');
@@ -359,7 +465,7 @@ class RekapAsesiController extends Controller
 
             $sheet->getColumnDimension('A')->setWidth(6);
             $sheet->getColumnDimension('B')->setWidth(48);
-            foreach (['C', 'D', 'E', 'F', 'G'] as $col) {
+            foreach (['C', 'D', 'E', 'F', 'G', 'H'] as $col) {
                 $sheet->getColumnDimension($col)->setWidth(16);
             }
             $sheet->getRowDimension($headerRow)->setRowHeight(30);

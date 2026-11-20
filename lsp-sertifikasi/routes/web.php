@@ -223,6 +223,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ── Rekap Asesi (statis /export sebelum index) ─────────────────────────
     Route::get('/rekap-asesi/export', [RekapAsesiController::class, 'export'])->name('rekap-asesi.export');
+    Route::get('/rekap-asesi/detail', [RekapAsesiController::class, 'detail'])->name('rekap-asesi.detail');
     Route::get('/rekap-asesi',        [RekapAsesiController::class, 'index'])->name('rekap-asesi.index');
 
     // ── TUK ────────────────────────────────────────────────────────────────

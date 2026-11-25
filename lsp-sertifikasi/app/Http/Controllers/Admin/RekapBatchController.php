@@ -303,7 +303,8 @@ class RekapBatchController extends RekapAsesiController
             foreach ($data['tabs'][$key] as $g) {
                 // ── Baris kelompok (subtotal) ──
                 $row++;
-                $info = "{$g['label']} — {$g['n_batch']} batch" . ($g['asesor'] !== null ? ", {$g['asesor']} asesor" : '');
+                $info = "{$g['label']} — " . ($g['n_batch'] ? "{$g['n_batch']} batch" : 'hanya asesi mandiri')
+                    . ($g['asesor'] !== null ? ", {$g['asesor']} asesor" : '');
                 $sheet->mergeCells("A{$row}:{$lastText}{$row}");
                 $sheet->setCellValue("A{$row}", $info);
                 $sheet->fromArray([$g['daftar'], $g['kompeten'], $g['bk'], $g['belum'], $pct($row)], null, "{$cDaftar}{$row}", true);

@@ -28,9 +28,9 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 class RekapAsesiController extends Controller
 {
     /** Penanda kelompok kosong (Tanpa Skema/TUK, Belum Dijadwalkan, Belum Ada Asesor) */
-    private const NULL_KEY = '_null';
+    protected const NULL_KEY = '_null';
 
-    private const TABS = [
+    protected const TABS = [
         'skema'  => ['title' => 'Per Skema',  'label' => 'Skema'],
         'tuk'    => ['title' => 'Per TUK',    'label' => 'TUK'],
         'bulan'  => ['title' => 'Per Bulan',  'label' => 'Bulan-Tahun'],

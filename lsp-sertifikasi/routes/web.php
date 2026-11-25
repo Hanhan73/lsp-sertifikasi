@@ -35,6 +35,7 @@ use App\Http\Controllers\Admin\AdminDummyAccountController;
 use App\Http\Controllers\Admin\SertifikatDistribusiController;
 use App\Http\Controllers\Admin\ArsipSertifikatController;
 use App\Http\Controllers\Admin\RekapAsesiController;
+use App\Http\Controllers\Admin\RekapBatchController;
 
 // Asesi
 use App\Http\Controllers\Asesi\AsesiController;
@@ -225,6 +226,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/rekap-asesi/export', [RekapAsesiController::class, 'export'])->name('rekap-asesi.export');
     Route::get('/rekap-asesi/detail', [RekapAsesiController::class, 'detail'])->name('rekap-asesi.detail');
     Route::get('/rekap-asesi',        [RekapAsesiController::class, 'index'])->name('rekap-asesi.index');
+
+    // ── Rekap Per Batch (statis /export sebelum index) ─────────────────────
+    Route::get('/rekap-batch/export', [RekapBatchController::class, 'export'])->name('rekap-batch.export');
+    Route::get('/rekap-batch',        [RekapBatchController::class, 'index'])->name('rekap-batch.index');
 
     // ── TUK ────────────────────────────────────────────────────────────────
     Route::prefix('tuks')->name('tuks.')->group(function () {

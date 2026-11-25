@@ -961,6 +961,7 @@ class AsesmenController extends Controller
             'KODE KEMENTERIAN',        // dikosongkan, isi manual
             'K/BK',
             'ASAL SEKOLAH/LEMBAGA',
+            'NAMA SKEMA',
         ];
 
         $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
@@ -1024,6 +1025,7 @@ class AsesmenController extends Controller
             $sheet->setCellValue("R{$row}", '');  // Kode Kementerian — kosong
             $sheet->setCellValue("S{$row}", $kbk);
             $sheet->setCellValue("T{$row}", $a->institution ?? '');
+            $sheet->setCellValue("U{$row}", $a->skema->name ?? '');
 
             $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
             $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
@@ -1035,6 +1037,12 @@ class AsesmenController extends Controller
             $sheet->getStyle("T{$row}")->applyFromArray([
                 'font'      => ['name' => 'Arial', 'size' => 10],
                 'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFDE7']],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
+            ]);
+            $sheet->getStyle("U{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => $bgColor]],
                 'alignment' => ['vertical' => 'center'],
                 'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
             ]);
@@ -1073,6 +1081,7 @@ class AsesmenController extends Controller
                 'R' => 16,
                 'S' => 8,
                 'T' => 35,
+                'U' => 40,
             ] as $col => $width
         ) {
             $sheet->getColumnDimension($col)->setWidth($width);
@@ -1154,6 +1163,7 @@ class AsesmenController extends Controller
             'KODE KEMENTERIAN',
             'K/BK',
             'ASAL SEKOLAH/LEMBAGA',
+            'NAMA SKEMA',
         ];
 
         $lastCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($headers));
@@ -1221,6 +1231,7 @@ class AsesmenController extends Controller
             $sheet->setCellValue("R{$row}", ''); // Kode Kementerian — kosong
             $sheet->setCellValue("S{$row}", $kbk);
             $sheet->setCellValue("T{$row}", $a->institution ?? '');
+            $sheet->setCellValue("U{$row}", $a->skema->name ?? '');
 
             $bgColor = ($i % 2 === 0) ? 'EFF4FB' : 'FFFFFF';
             $sheet->getStyle("A{$row}:S{$row}")->applyFromArray([
@@ -1232,6 +1243,12 @@ class AsesmenController extends Controller
             $sheet->getStyle("T{$row}")->applyFromArray([
                 'font'      => ['name' => 'Arial', 'size' => 10],
                 'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => 'FFFDE7']],
+                'alignment' => ['vertical' => 'center'],
+                'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
+            ]);
+            $sheet->getStyle("U{$row}")->applyFromArray([
+                'font'      => ['name' => 'Arial', 'size' => 10],
+                'fill'      => ['fillType' => 'solid', 'startColor' => ['rgb' => $bgColor]],
                 'alignment' => ['vertical' => 'center'],
                 'borders'   => ['allBorders' => ['borderStyle' => 'thin', 'color' => ['rgb' => 'D0D0D0']]],
             ]);
@@ -1251,7 +1268,7 @@ class AsesmenController extends Controller
                 'A' => 5, 'B' => 32, 'C' => 22, 'D' => 18, 'E' => 16, 'F' => 8,
                 'G' => 42, 'H' => 12, 'I' => 12, 'J' => 16, 'K' => 28, 'L' => 14,
                 'M' => 14, 'N' => 16, 'O' => 18, 'P' => 26, 'Q' => 18, 'R' => 16,
-                'S' => 8, 'T' => 35,
+                'S' => 8, 'T' => 35, 'U' => 40,
             ] as $col => $width
         ) {
             $sheet->getColumnDimension($col)->setWidth($width);

@@ -171,7 +171,7 @@ class RekapAsesiController extends Controller
     // Data
     // ─────────────────────────────────────────────────────────────────────
 
-    private function filters(Request $request): array
+    protected function filters(Request $request): array
     {
         $v = $request->validate([
             'dari'     => ['nullable', 'date'],
@@ -217,6 +217,8 @@ class RekapAsesiController extends Controller
             ->selectRaw("
                 a.id,
                 a.collective_batch_id,
+                a.institution,
+                s.institution_name,
                 a.skema_id,
                 {$tukExpr} AS tuk_id,
                 s.asesor_id,
@@ -246,7 +248,7 @@ class RekapAsesiController extends Controller
         return $q;
     }
 
-    private function aggregateSelect(bool $withAsesor = true): string
+    protected function aggregateSelect(bool $withAsesor = true): string
     {
         return "
             COUNT(*)                                         AS daftar,
@@ -344,7 +346,7 @@ class RekapAsesiController extends Controller
     // Label helpers
     // ─────────────────────────────────────────────────────────────────────
 
-    private function periodeText(array $f): string
+    protected function periodeText(array $f): string
     {
         $fmt = fn($d) => Carbon::parse($d)->translatedFormat('d F Y');
 
@@ -356,7 +358,7 @@ class RekapAsesiController extends Controller
         };
     }
 
-    private function filterText(array $f): string
+    protected function filterText(array $f): string
     {
         $parts = [];
         if ($f['skema_id']) {
@@ -368,7 +370,7 @@ class RekapAsesiController extends Controller
         return implode(' | ', $parts);
     }
 
-    private function fileSuffix(array $f): string
+    protected function fileSuffix(array $f): string
     {
         if (!$f['dari'] && !$f['sampai']) {
             return 'Semua_Periode';

@@ -229,6 +229,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // ── Rekap Per Batch (statis /export sebelum index) ─────────────────────
     Route::get('/rekap-batch/export', [RekapBatchController::class, 'export'])->name('rekap-batch.export');
+    Route::get('/rekap-batch/detail', [RekapBatchController::class, 'detail'])->name('rekap-batch.detail');
     Route::get('/rekap-batch',        [RekapBatchController::class, 'index'])->name('rekap-batch.index');
 
     // ── TUK ────────────────────────────────────────────────────────────────

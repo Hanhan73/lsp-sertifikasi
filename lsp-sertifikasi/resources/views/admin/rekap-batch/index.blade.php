@@ -9,10 +9,15 @@
 
 @section('content')
 @php
-    $total = $data['total'];
+    $total = $rekap['total'];
     $query = array_filter($filters, fn($v) => $v !== null && $v !== '');
     $pct   = fn($n, $d) => $d > 0 ? number_format($n / $d * 100, 1, ',', '.') . '%' : '0%';
-    $kolektif = $total['daftar'] - $total['mandiri'];
+    $chartNotes = [
+        'skema'  => 'Diurutkan dari jumlah batch terbanyak.',
+        'tuk'    => 'Diurutkan dari jumlah batch terbanyak.',
+        'bulan'  => 'Berdasarkan bulan tanggal asesmen.',
+        'asesor' => 'Menampilkan 15 asesor dengan batch terbanyak. Daftar lengkap ada di tabel.',
+    ];
 @endphp
 
 {{-- ── Filter ─────────────────────────────────────────────────────────── --}}
@@ -59,7 +64,7 @@
         <div class="alert alert-danger mt-3 mb-0 py-2">{{ $errors->first() }}</div>
         @endif
         <small class="text-muted d-block mt-2">
-            Periode berdasarkan <strong>tanggal asesmen</strong>. Jika periode diisi, batch yang belum dijadwalkan tidak ikut ditampilkan.
+            Periode berdasarkan <strong>tanggal asesmen</strong>. Jika periode diisi, batch yang belum dijadwalkan tidak ikut dihitung.
         </small>
     </div>
 </div>
@@ -67,21 +72,21 @@
 {{-- ── Ringkasan ──────────────────────────────────────────────────────── --}}
 <div class="row g-3 mb-4">
     @foreach([
-        ['Jumlah Batch',   $total['n_batch'],  null,                                    'collection'],
-        ['Total Asesi',    $total['daftar'],   null,                                    'people'],
-        ['Asesi Kolektif', $kolektif,          $pct($kolektif, $total['daftar']),         'diagram-3'],
-        ['Asesi Mandiri',  $total['mandiri'],  $pct($total['mandiri'], $total['daftar']), 'person'],
-        ['Kompeten',       $total['kompeten'], $pct($total['kompeten'], $total['daftar']), 'check-circle'],
-    ] as [$lbl, $val, $persen, $icon])
+        ['Jumlah Batch',       $total['n_batch'], null,                                     'collection',      'secondary'],
+        ['Batch Selesai',      $total['selesai'], $pct($total['selesai'], $total['n_batch']) . ' dari batch', 'check-circle', 'k'],
+        ['Batch Masih Proses', $total['proses'],  $pct($total['proses'], $total['n_batch']) . ' dari batch',  'hourglass-split', 'bk'],
+        ['Asesi dalam Batch',  $total['asesi'],   null,                                     'people',          'secondary'],
+        ['Asesi Mandiri',      $total['mandiri'], 'tidak termasuk batch',                   'person',          'secondary'],
+    ] as [$lbl, $val, $sub, $icon, $tone])
     <div class="col">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body d-flex align-items-center gap-3">
-                <i class="bi bi-{{ $icon }} fs-2 text-secondary"></i>
+                <i class="bi bi-{{ $icon }} fs-2 rekap-ico-{{ $tone }}"></i>
                 <div>
                     <div class="small text-muted">{{ $lbl }}</div>
                     <div class="fs-4 fw-bold lh-sm">{{ number_format($val, 0, ',', '.') }}</div>
-                    @if($persen)
-                    <div class="small text-muted">{{ $persen }} dari total asesi</div>
+                    @if($sub)
+                    <div class="small text-muted">{{ $sub }}</div>
                     @endif
                 </div>
             </div>
@@ -109,9 +114,9 @@
             @foreach($tabs as $key => $tab)
             <li class="nav-item" role="presentation">
                 <button class="nav-link {{ $loop->first ? 'active' : '' }}" data-bs-toggle="tab"
-                    data-bs-target="#tab-{{ $key }}" type="button" role="tab">
+                    data-bs-target="#tab-{{ $key }}" data-chart="{{ $key }}" type="button" role="tab">
                     {{ $tab['title'] }}
-                    <span class="badge bg-secondary ms-1">{{ count($data['tabs'][$key]) }}</span>
+                    <span class="badge bg-secondary ms-1">{{ count($rekap['rows'][$key]) }}</span>
                 </button>
             </li>
             @endforeach
@@ -119,17 +124,20 @@
 
         <div class="tab-content">
             @foreach($tabs as $key => $tab)
-            @php $cols = \App\Http\Controllers\Admin\RekapBatchController::columnsFor($key); @endphp
+            @php
+                $isAsesor = $key === 'asesor';
+                $rows     = $rekap['rows'][$key];
+                $kosong   = collect($rows)->firstWhere('kosong', true);
+                $nChart   = $key === 'bulan' ? 0 : min($isAsesor ? 15 : 999, collect($rows)->reject(fn($r) => $isAsesor && $r['kosong'])->count());
+                $height   = $key === 'bulan' ? 340 : max(200, $nChart * 30 + 90);
+            @endphp
             <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" id="tab-{{ $key }}" role="tabpanel">
 
                 {{-- Toolbar bagian --}}
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                    <div class="d-flex gap-2 align-items-center">
-                        <input type="search" class="form-control form-control-sm batch-search" data-tab="{{ $key }}"
-                            placeholder="Cari batch, lembaga, TUK, asesor…" style="width: 280px;" aria-label="Cari di {{ strtolower($tab['title']) }}">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle-all="{{ $key }}" data-open="1">
-                            <i class="bi bi-arrows-collapse"></i> <span>Tutup semua</span>
-                        </button>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Mode grafik">
+                        <button type="button" class="btn btn-outline-secondary active" data-mode="jumlah" data-target="{{ $key }}">Jumlah</button>
+                        <button type="button" class="btn btn-outline-secondary" data-mode="persen" data-target="{{ $key }}">Persentase</button>
                     </div>
                     <div class="d-flex gap-2 align-items-center">
                         <span class="small text-muted">Unduh {{ strtolower($tab['title']) }}:</span>
@@ -142,108 +150,98 @@
                     </div>
                 </div>
 
+                {{-- Grafik --}}
+                @if(count($rows) > 0)
+                <div class="rekap-chart-box mb-1" style="height: {{ $height }}px;">
+                    <canvas id="chart-{{ $key }}" role="img"
+                        aria-label="Grafik jumlah batch {{ strtolower($tab['title']) }}: Batch Selesai dan Masih Proses. Angka lengkap ada di tabel di bawah."></canvas>
+                </div>
+                <p class="small text-muted mb-3">
+                    {{ $chartNotes[$key] }}
+                    @if($key === 'bulan' && $kosong)
+                    <strong>{{ $kosong['n_batch'] }}</strong> batch belum dijadwalkan dan tidak ditampilkan di grafik.
+                    @elseif($isAsesor && $kosong)
+                    <strong>{{ $kosong['n_batch'] }}</strong> batch belum punya asesor dan tidak ditampilkan di grafik.
+                    @endif
+                </p>
+                @endif
+
+                {{-- Tabel --}}
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered align-middle w-100 small batch-table" id="table-{{ $key }}">
+                    <table class="table table-bordered table-hover align-middle rekap-table w-100">
                         <thead class="table-dark">
                             <tr>
-                                @foreach($cols as $label)
-                                <th>{{ $label }}</th>
-                                @endforeach
-                                <th class="text-center">Daftar</th>
-                                <th class="text-center">Kompeten</th>
-                                <th class="text-center">Belum Kompeten</th>
-                                <th class="text-center">Belum Ada Hasil</th>
-                                <th class="text-center">% Kompeten</th>
+                                <th>{{ $tab['label'] }}</th>
+                                <th class="text-center">Jumlah Batch</th>
+                                <th class="text-center">Batch Selesai</th>
+                                <th class="text-center">Batch Masih Proses</th>
+                                <th class="text-center">% Selesai</th>
+                                <th class="text-center">Jumlah Asesi</th>
+                                @unless($isAsesor)
+                                <th class="text-center">Jumlah Asesor</th>
+                                @endunless
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($data['tabs'][$key] as $gi => $g)
-                            @php $gid = $key . '-' . $gi; @endphp
-                            <tr class="group-row" data-group="{{ $gid }}" tabindex="0" aria-expanded="true">
-                                <td colspan="{{ count($cols) }}">
-                                    <i class="bi bi-chevron-down group-chevron me-1" aria-hidden="true"></i>
-                                    <strong>{{ $g['label'] }}</strong>
-                                    <span class="text-muted ms-2">
-                                        {{ $g['n_batch'] ? $g['n_batch'] . ' batch' : 'hanya asesi mandiri' }}
-                                        @if($g['asesor'] !== null) · {{ $g['asesor'] }} asesor @endif
-                                    </span>
+                            @foreach($rows as $r)
+                            @php $rate = $r['n_batch'] > 0 ? $r['selesai'] / $r['n_batch'] * 100 : 0; @endphp
+                            <tr class="rekap-row" data-bagian="{{ $key }}" data-key="{{ $r['key'] }}" data-label="{{ $r['label'] }}"
+                                tabindex="0" title="Klik untuk melihat daftar batch">
+                                <td data-order="{{ $r['order'] }}">
+                                    {{ $r['label'] }}
+                                    <i class="bi bi-chevron-right text-muted small float-end mt-1" aria-hidden="true"></i>
                                 </td>
-                                <td class="text-center fw-bold">{{ $g['daftar'] }}</td>
-                                <td class="text-center fw-bold">{{ $g['kompeten'] }}</td>
-                                <td class="text-center fw-bold">{{ $g['bk'] }}</td>
-                                <td class="text-center fw-bold">{{ $g['belum'] }}</td>
-                                <td class="text-center fw-bold">{{ $pct($g['kompeten'], $g['daftar']) }}</td>
-                            </tr>
-                            @foreach($g['batches'] as $b)
-                            <tr class="batch-row {{ $b['url'] ? 'is-link' : '' }}" data-group="{{ $gid }}"
-                                @if($b['url']) data-href="{{ $b['url'] }}" tabindex="0"
-                                title="{{ $b['is_mandiri'] ? 'Buka daftar asesi mandiri di TUK ini' : 'Buka detail batch' }}" @endif>
-                                @foreach(array_keys($cols) as $c)
-                                @switch($c)
-                                    @case('batch')
-                                    <td class="text-nowrap ps-4 {{ $b['is_mandiri'] ? 'fst-italic text-muted' : 'fw-semibold' }}">{{ $b['label'] }}</td>
-                                    @break
-                                    @case('lembaga')
-                                    <td>
-                                        {{ $b['lembaga'] }}
-                                        @if($b['lembaga_src'] === 'asesi' && !$b['is_mandiri'])
-                                        <span class="badge text-bg-light border fw-normal" title="Nama lembaga di jadwal belum diisi, diambil dari isian asesi terbanyak">dari isian asesi</span>
-                                        @endif
-                                        @if($b['lembaga_lain'] > 0)
-                                        <span class="text-muted" title="Ada {{ $b['lembaga_lain'] }} penulisan nama lembaga lain di batch ini">+{{ $b['lembaga_lain'] }} variasi</span>
-                                        @endif
-                                    </td>
-                                    @break
-                                    @case('tuk')
-                                    <td title="{{ $b['tuk_full'] }}">{{ $b['tuk'] }}</td>
-                                    @break
-                                    @case('skema')
-                                    <td title="{{ $b['skema_full'] }}">{{ $b['skema'] }}</td>
-                                    @break
-                                    @case('asesor')
-                                    <td title="{{ $b['asesor_full'] }}">{{ $b['asesor'] }}</td>
-                                    @break
-                                    @case('tanggal')
-                                    <td class="text-nowrap">{{ $b['tanggal'] }}</td>
-                                    @break
-                                @endswitch
-                                @endforeach
-                                <td class="text-center">{{ $b['daftar'] }}</td>
-                                <td class="text-center">{{ $b['kompeten'] }}</td>
-                                <td class="text-center">{{ $b['bk'] }}</td>
-                                <td class="text-center">{{ $b['belum'] }}</td>
-                                <td class="text-center">{{ $pct($b['kompeten'], $b['daftar']) }}</td>
+                                <td class="text-center fw-semibold">{{ $r['n_batch'] }}</td>
+                                <td class="text-center">{{ $r['selesai'] }}</td>
+                                <td class="text-center">{{ $r['proses'] }}</td>
+                                <td class="text-center" data-order="{{ number_format($rate, 2, '.', '') }}">{{ number_format($rate, 1, ',', '.') }}%</td>
+                                <td class="text-center">{{ $r['asesi'] }}</td>
+                                @unless($isAsesor)
+                                <td class="text-center">{{ $r['asesor'] }}</td>
+                                @endunless
                             </tr>
                             @endforeach
-                            @empty
-                            <tr><td colspan="{{ count($cols) + 5 }}" class="text-center text-muted py-4">Tidak ada data</td></tr>
-                            @endforelse
-                            <tr class="no-result d-none">
-                                <td colspan="{{ count($cols) + 5 }}" class="text-center text-muted py-4">Tidak ada batch yang cocok dengan pencarian.</td>
-                            </tr>
                         </tbody>
                         <tfoot class="table-secondary fw-bold">
                             <tr>
-                                <td colspan="{{ count($cols) }}">
-                                    TOTAL — {{ $total['n_batch'] }} batch{{ $total['mandiri'] ? ' + asesi mandiri' : '' }}
-                                    @if($key !== 'asesor') · <span title="Jumlah asesor berbeda secara keseluruhan">{{ $total['asesor'] }} asesor</span> @endif
-                                </td>
-                                <td class="text-center">{{ $total['daftar'] }}</td>
-                                <td class="text-center">{{ $total['kompeten'] }}</td>
-                                <td class="text-center">{{ $total['bk'] }}</td>
-                                <td class="text-center">{{ $total['belum'] }}</td>
-                                <td class="text-center">{{ $pct($total['kompeten'], $total['daftar']) }}</td>
+                                <td>TOTAL</td>
+                                <td class="text-center" title="Jumlah batch berbeda secara keseluruhan">{{ $total['n_batch'] }}*</td>
+                                <td class="text-center">{{ $total['selesai'] }}*</td>
+                                <td class="text-center">{{ $total['proses'] }}*</td>
+                                <td class="text-center">{{ $pct($total['selesai'], $total['n_batch']) }}</td>
+                                <td class="text-center">{{ $total['asesi'] }}</td>
+                                @unless($isAsesor)
+                                <td class="text-center" title="Jumlah asesor berbeda secara keseluruhan">{{ $total['asesor'] }}*</td>
+                                @endunless
                             </tr>
                         </tfoot>
                     </table>
                 </div>
                 <small class="text-muted d-block">
-                    <i class="bi bi-hand-index"></i> Klik judul kelompok untuk membuka/menutup, klik baris batch untuk membuka detailnya.
-                    Angka kelompok sama dengan halaman Rekap Asesi. Batch yang punya beberapa jadwal bisa muncul di lebih dari satu kelompok dengan jumlah bagiannya saja.
-                    Asal lembaga diambil dari nama lembaga di jadwal; jika belum diisi, dari isian asesi terbanyak.
+                    <i class="bi bi-hand-index"></i> Klik salah satu baris untuk melihat daftar batch-nya.
+                    &nbsp;* Total = jumlah berbeda secara keseluruhan, bukan penjumlahan kolom (batch dengan beberapa jadwal bisa masuk ke lebih dari satu kelompok).
+                    Batch Selesai = semua asesi di batch sudah punya hasil K/BK.
                 </small>
             </div>
             @endforeach
+        </div>
+    </div>
+</div>
+
+{{-- ── Modal daftar batch ─────────────────────────────────────────────── --}}
+<div class="modal fade" id="batchModal" tabindex="-1" aria-labelledby="batchModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title mb-0" id="batchModalTitle">Daftar Batch</h5>
+                    <small class="text-muted" id="batchModalSub"></small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div id="batchModalBody" class="p-3"></div>
+            </div>
         </div>
     </div>
 </div>
@@ -251,76 +249,209 @@
 
 @push('styles')
 <style>
+/* Palet kategorikal tervalidasi (CVD-safe): biru / oranye */
+.rekap-ico-k         { color: #2a78d6; }
+.rekap-ico-bk        { color: #eb6834; }
+.rekap-ico-secondary { color: #52514e; }
+.rekap-chart-box     { position: relative; width: 100%; }
 /* Layout punya aturan global `.nav-link .badge {position:absolute}` untuk sidebar */
 .rekap-tabs .nav-link .badge { position: static; margin-left: .4rem; }
-.batch-table thead th { vertical-align: middle; }
-.batch-table td.text-center { width: 1%; white-space: nowrap; }
-.batch-table tr.group-row td { background: #eef3f9; cursor: pointer; }
-.batch-table tr.group-row:hover td { background: #e2eaf4; }
-.batch-table tr.batch-row.is-link { cursor: pointer; }
-.batch-table tr.batch-row:hover td { background: #f8f9fa; }
-.batch-table tr:focus-visible { outline: 2px solid #2a78d6; outline-offset: -2px; }
-.batch-table .group-chevron { display: inline-block; transition: transform .15s; }
-.batch-table tr.group-row[aria-expanded="false"] .group-chevron { transform: rotate(-90deg); }
+.rekap-row { cursor: pointer; }
+.rekap-row:focus-visible { outline: 2px solid #2a78d6; outline-offset: -2px; }
+#batchModal thead th { position: sticky; top: 0; z-index: 1; }
 </style>
 @endpush
 
 @push('scripts')
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script>
 $(function () {
-    function setGroup($g, open) {
-        $g.attr('aria-expanded', open ? 'true' : 'false');
-        $(`.batch-row[data-group="${$g.data('group')}"]`).toggleClass('d-none', !open);
+    // ── Tabel ──────────────────────────────────────────────────────────
+    $('.rekap-table').DataTable({
+        language: { url: 'https://cdn.datatables.net/plug-ins/1.13.6/i18n/id.json' },
+        paging: false,
+        info: false,
+        order: [[0, 'asc']],
+    });
+
+    // ── Grafik ─────────────────────────────────────────────────────────
+    const ROWS = @json($rekap['rows']);
+    const SERIES = [
+        { key: 'selesai', label: 'Batch Selesai',      color: '#2a78d6' },
+        { key: 'proses',  label: 'Batch Masih Proses', color: '#eb6834' },
+    ];
+    const INK = { primary: '#0b0b0b', secondary: '#52514e', muted: '#898781', grid: '#e1e0d9', axis: '#c3c2b7' };
+    const fmt = n => n.toLocaleString('id-ID');
+    const pct = (n, d) => d > 0 ? (n / d * 100) : 0;
+    const shorten = (s, n = 40) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+
+    function prepare(key) {
+        let rows = ROWS[key] || [];
+        if (key === 'bulan') return rows.filter(r => !r.kosong); // urut waktu, tanpa yang belum punya jadwal
+        rows = [...rows].sort((a, b) => b.n_batch - a.n_batch);
+        if (key === 'asesor') rows = rows.filter(r => !r.kosong).slice(0, 15);
+        return rows;
     }
 
-    // Buka/tutup kelompok
-    $(document).on('click', '.group-row', function () {
-        setGroup($(this), $(this).attr('aria-expanded') !== 'true');
-    });
-    $(document).on('keydown', '.group-row', function (e) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(this).trigger('click'); }
-    });
+    const charts = {}, modes = {};
 
-    // Tutup / buka semua kelompok di satu tab
-    $('[data-toggle-all]').on('click', function () {
-        const open = $(this).data('open') !== 1;
-        $(`#table-${$(this).data('toggle-all')} .group-row`).each((_, g) => setGroup($(g), open));
-        $(this).data('open', open ? 1 : 0)
-            .html(open ? '<i class="bi bi-arrows-collapse"></i> <span>Tutup semua</span>'
-                       : '<i class="bi bi-arrows-expand"></i> <span>Buka semua</span>');
-    });
+    function build(key) {
+        const el = document.getElementById('chart-' + key);
+        if (!el || charts[key]) return;
+        const rows = prepare(key);
+        const horizontal = key !== 'bulan';
+        const mode = modes[key] || 'jumlah';
+        const valueAxis = horizontal ? 'x' : 'y', catAxis = horizontal ? 'y' : 'x';
 
-    // Klik / Enter pada baris batch → halaman detail
-    $(document).on('click', '.batch-row.is-link', function () { window.location = this.dataset.href; });
-    $(document).on('keydown', '.batch-row.is-link', function (e) {
-        if (e.key === 'Enter') window.location = this.dataset.href;
-    });
-
-    // Pencarian per tab: tampilkan batch yang cocok beserta judul kelompoknya
-    $('.batch-search').on('input', function () {
-        const q = this.value.trim().toLowerCase();
-        const $table = $(`#table-${$(this).data('tab')}`);
-        let any = false;
-        $table.find('.group-row').each(function () {
-            const $g = $(this);
-            const $rows = $table.find(`.batch-row[data-group="${$g.data('group')}"]`);
-            if (!q) {
-                $g.removeClass('d-none');
-                setGroup($g, true);
-                any = true;
-                return;
-            }
-            const groupHit = $g.text().toLowerCase().includes(q);
-            let hits = 0;
-            $rows.each(function () {
-                const hit = groupHit || this.textContent.toLowerCase().includes(q);
-                $(this).toggleClass('d-none', !hit);
-                if (hit) hits++;
-            });
-            $g.toggleClass('d-none', hits === 0).attr('aria-expanded', 'true');
-            if (hits) any = true;
+        charts[key] = new Chart(el, {
+            type: 'bar',
+            data: {
+                labels: rows.map(r => r.label),
+                datasets: SERIES.map(s => ({
+                    label: s.label,
+                    data: rows.map(r => mode === 'persen' ? pct(r[s.key], r.n_batch) : r[s.key]),
+                    backgroundColor: s.color, hoverBackgroundColor: s.color,
+                    borderColor: '#ffffff', borderWidth: 2, borderSkipped: false, // 2px surface gap
+                    barPercentage: 0.8, categoryPercentage: 0.85, maxBarThickness: 34,
+                })),
+            },
+            options: {
+                indexAxis: horizontal ? 'y' : 'x',
+                responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+                interaction: { mode: 'index', intersect: false, axis: catAxis },
+                scales: {
+                    [valueAxis]: {
+                        stacked: true, beginAtZero: true, max: mode === 'persen' ? 100 : undefined,
+                        grid: { color: INK.grid, drawTicks: false }, border: { display: false },
+                        ticks: { color: INK.muted, padding: 6, precision: 0, callback: v => mode === 'persen' ? v + '%' : fmt(v) },
+                    },
+                    [catAxis]: {
+                        stacked: true, grid: { display: false }, border: { color: INK.axis },
+                        ticks: { color: INK.secondary, autoSkip: false,
+                            callback: function (v) { return shorten(this.getLabelForValue(v), horizontal ? 40 : 20); } },
+                    },
+                },
+                plugins: {
+                    legend: { position: 'top', align: 'start',
+                        labels: { color: INK.secondary, usePointStyle: true, pointStyle: 'rectRounded', boxWidth: 10, boxHeight: 10, padding: 16 } },
+                    tooltip: {
+                        backgroundColor: '#ffffff', borderColor: 'rgba(11,11,11,0.10)', borderWidth: 1,
+                        titleColor: INK.primary, bodyColor: INK.secondary, footerColor: INK.primary,
+                        padding: 10, boxPadding: 4, usePointStyle: true,
+                        callbacks: {
+                            title: items => rows[items[0].dataIndex].label,
+                            label: ctx => {
+                                const r = rows[ctx.dataIndex], s = SERIES[ctx.datasetIndex];
+                                return ` ${s.label}: ${fmt(r[s.key])} (${pct(r[s.key], r.n_batch).toFixed(1).replace('.', ',')}%)`;
+                            },
+                            footer: items => {
+                                const r = rows[items[0].dataIndex];
+                                return `Jumlah batch: ${fmt(r.n_batch)}  ·  Asesi: ${fmt(r.asesi)}`;
+                            },
+                        },
+                    },
+                },
+            },
         });
-        $table.find('.no-result').toggleClass('d-none', any);
+    }
+
+    $('[data-mode]').on('click', function () {
+        const key = $(this).data('target');
+        modes[key] = $(this).data('mode');
+        $(`[data-target="${key}"]`).removeClass('active');
+        $(this).addClass('active');
+        if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+        build(key);
+    });
+
+    // Grafik dibuat saat tab pertama kali tampil (agar ukuran canvas benar)
+    build($('.nav-link.active[data-chart]').data('chart'));
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function () {
+        build($(this).data('chart'));
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+    });
+
+    // ── Detail: daftar batch per baris ────────────────────────────────
+    const DETAIL_URL = @json(route('admin.rekap-batch.detail'));
+    const FILTERS    = @json($query);
+    const PERIODE    = @json($periodeText);
+    const TAB_LABEL  = { skema: 'Skema', tuk: 'TUK', bulan: 'Bulan', asesor: 'Asesor' };
+    const modal      = new bootstrap.Modal(document.getElementById('batchModal'));
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const rate = (n, d) => d ? (n / d * 100).toFixed(1).replace('.', ',') + '%' : '0%';
+    let detailReq = 0;
+
+    function openDetail(tr) {
+        const { bagian, key, label } = tr.dataset;
+        const reqId = ++detailReq;
+        $('#batchModalTitle').text('Daftar Batch — ' + label);
+        $('#batchModalSub').text(TAB_LABEL[bagian] + ' · Periode: ' + PERIODE);
+        $('#batchModalBody').html('<div class="text-center text-muted py-5"><div class="spinner-border spinner-border-sm me-2"></div>Memuat…</div>');
+        modal.show();
+
+        fetch(DETAIL_URL + '?' + new URLSearchParams({ ...FILTERS, bagian, key }),
+            { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(data => { if (reqId === detailReq) renderDetail(data); })
+            .catch(err => {
+                if (reqId !== detailReq) return;
+                $('#batchModalBody').html('<div class="alert alert-danger m-0">Gagal memuat detail (' + esc(err.message) + '). Coba lagi.</div>');
+            });
+    }
+
+    function cell(col, b) {
+        switch (col) {
+            case 'batch':
+                return `<td class="fw-semibold text-nowrap">${esc(b.batch_id)}</td>`;
+            case 'lembaga':
+                return `<td class="small">${esc(b.lembaga)}`
+                    + (b.lembaga_src === 'asesi' ? ' <span class="badge text-bg-light border fw-normal" title="Nama lembaga di jadwal belum diisi, diambil dari isian asesi terbanyak">dari isian asesi</span>' : '')
+                    + (b.lembaga_lain > 0 ? ` <span class="text-muted">+${b.lembaga_lain} variasi</span>` : '') + '</td>';
+            case 'tuk':     return `<td class="small" title="${esc(b.tuk_full)}">${esc(b.tuk)}</td>`;
+            case 'skema':   return `<td class="small" title="${esc(b.skema_full)}">${esc(b.skema)}</td>`;
+            case 'asesor':  return `<td class="small" title="${esc(b.asesor_full)}">${esc(b.asesor)}</td>`;
+            case 'tanggal': return `<td class="small text-nowrap">${esc(b.tanggal)}</td>`;
+        }
+        return '<td></td>';
+    }
+
+    function renderDetail(data) {
+        const list = data.batches || [], cols = Object.keys(data.columns), t = data.total;
+        if (!list.length) {
+            $('#batchModalBody').html('<div class="text-center text-muted py-5">Tidak ada batch.</div>');
+            return;
+        }
+        let html = `<p class="small text-muted mb-2">${t.n_batch} batch · ${t.selesai} selesai · ${t.n_batch - t.selesai} masih proses · ${fmt(t.daftar)} asesi</p>
+            <table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr>
+            ${cols.map(c => `<th>${esc(data.columns[c])}</th>`).join('')}
+            <th class="text-center">Asesi</th><th class="text-center">K</th><th class="text-center">BK</th>
+            <th class="text-center">Belum</th><th class="text-center">% K</th><th>Status</th><th></th>
+            </tr></thead><tbody>`;
+        list.forEach(b => {
+            html += `<tr>${cols.map(c => cell(c, b)).join('')}
+                <td class="text-center fw-semibold">${fmt(b.daftar)}</td>
+                <td class="text-center">${fmt(b.kompeten)}</td>
+                <td class="text-center">${fmt(b.bk)}</td>
+                <td class="text-center">${fmt(b.belum)}</td>
+                <td class="text-center">${rate(b.kompeten, b.daftar)}</td>
+                <td class="text-nowrap small">${b.selesai
+                    ? '<i class="bi bi-check-circle rekap-ico-k"></i> Selesai'
+                    : '<i class="bi bi-hourglass-split rekap-ico-bk"></i> Masih proses'}</td>
+                <td class="text-end"><a href="${esc(b.url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary text-nowrap">Lihat <i class="bi bi-box-arrow-up-right"></i></a></td>
+            </tr>`;
+        });
+        html += `</tbody><tfoot class="table-light fw-bold"><tr>
+            <td colspan="${cols.length}">TOTAL</td>
+            <td class="text-center">${fmt(t.daftar)}</td><td class="text-center">${fmt(t.kompeten)}</td>
+            <td class="text-center">${fmt(t.bk)}</td><td class="text-center">${fmt(t.belum)}</td>
+            <td class="text-center">${rate(t.kompeten, t.daftar)}</td><td colspan="2"></td>
+        </tr></tfoot></table>`;
+        $('#batchModalBody').html(html);
+    }
+
+    $(document).on('click', '.rekap-row', function () { openDetail(this); });
+    $(document).on('keydown', '.rekap-row', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDetail(this); }
     });
 });
 </script>

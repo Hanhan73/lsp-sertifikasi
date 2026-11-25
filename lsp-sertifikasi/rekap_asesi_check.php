@@ -145,59 +145,74 @@ $mode = function ($values) {
     $max = $c->max();
     return $c->filter(fn($n) => $n === $max)->keys()->sort()->first(); // seri → alfabetis
 };
-$batchKey = fn($r) => $r->collective_batch_id ?? ('#M' . ($r->tuk_id ?? 0));
-$byBatch  = $data->groupBy($batchKey);
+$kolektif = $data->filter(fn($r) => $r->collective_batch_id !== null);
+$byBatch  = $kolektif->groupBy('collective_batch_id');
+// Batch selesai = semua asesi batch (dalam filter) sudah punya hasil K/BK
+$selesai  = $byBatch->map(fn($rows) => $rows->every(fn($r) => $r->hasil !== null));
 $groupKey = [
     'skema'  => fn($r) => $r->skema_id === null ? '_null' : (string) $r->skema_id,
     'tuk'    => fn($r) => $r->tuk_id === null ? '_null' : (string) $r->tuk_id,
     'bulan'  => fn($r) => $r->assessment_date ? substr($r->assessment_date, 0, 7) : '_null',
     'asesor' => fn($r) => $r->asesor_id === null ? '_null' : (string) $r->asesor_id,
 ];
-$pageB = app(\App\Http\Controllers\Admin\RekapBatchController::class)->buildBatchRekap($filters);
+$batchSumm = function ($rows) use ($selesai) {
+    $ids = $rows->pluck('collective_batch_id')->unique();
+    return [
+        'n_batch' => $ids->count(),
+        'selesai' => $ids->filter(fn($id) => $selesai[$id])->count(),
+        'proses'  => $ids->reject(fn($id) => $selesai[$id])->count(),
+        'asesi'   => $rows->count(),
+        'asesor'  => $rows->pluck('asesor_id')->filter()->unique()->count(),
+    ];
+};
+$batchCtrl = app(\App\Http\Controllers\Admin\RekapBatchController::class);
+$pageB = $batchCtrl->buildBatchSummary($filters);
 $badB  = [];
-$nBatchIndep = $data->pluck('collective_batch_id')->filter()->unique()->count();
-if ($pageB['total']['n_batch'] !== $nBatchIndep) $badB[] = "Jumlah batch {$pageB['total']['n_batch']} ≠ independen {$nBatchIndep}";
-if ($pageB['total']['daftar'] !== $t['daftar'])  $badB[] = "Total daftar halaman batch {$pageB['total']['daftar']} ≠ {$t['daftar']}";
+
+$tot = $batchSumm($kolektif);
+foreach (['n_batch', 'selesai', 'proses', 'asesi', 'asesor'] as $k) {
+    if ($pageB['total'][$k] !== $tot[$k]) $badB[] = "Total {$k}: halaman {$pageB['total'][$k]} ≠ independen {$tot[$k]}";
+}
+if ($pageB['total']['asesi'] + $pageB['total']['mandiri'] !== $t['daftar']) {
+    $badB[] = "Asesi batch + mandiri ≠ total daftar {$t['daftar']}";
+}
+echo "\n--- Rekap Per Batch: TOTAL {$tot['n_batch']} batch ({$tot['selesai']} selesai, {$tot['proses']} masih proses), {$tot['asesi']} asesi dalam batch, {$pageB['total']['mandiri']} mandiri ---\n";
 
 $lembagaSeen = [];
 $srcCount = ['jadwal' => 0, 'asesi' => 0, 'kosong' => 0];
-$nPair = 0;
-foreach ($pageB['tabs'] as $tab => $groups) {
-    $indepTab = $data->groupBy($groupKey[$tab]);
-    $ctrlRows = collect($ctrl['rows'][$tab])->keyBy('key');
-    if (count($groups) !== $ctrlRows->count()) $badB[] = "Tab {$tab}: jumlah kelompok " . count($groups) . " ≠ Rekap Asesi {$ctrlRows->count()}";
-    $sumTab = 0;
+$nDetail = 0;
+foreach ($pageB['rows'] as $tab => $groups) {
+    $indepTab = $kolektif->groupBy($groupKey[$tab]);
+    if (count($groups) !== $indepTab->count()) $badB[] = "Tab {$tab}: jumlah kelompok " . count($groups) . " ≠ independen {$indepTab->count()}";
+    printf("\n%-50s %7s %8s %7s %7s\n", "Per " . strtoupper($tab), 'Batch', 'Selesai', 'Proses', 'Asesi');
     foreach ($groups as $g) {
-        $sumTab += $g['daftar'];
-        // subtotal kelompok = baris yang sama di Rekap Asesi
-        foreach (['daftar', 'kompeten', 'bk', 'belum'] as $k) {
-            if (($ctrlRows[$g['key']][$k] ?? null) !== $g[$k]) $badB[] = "Tab {$tab} / {$g['label']}: {$k} {$g[$k]} ≠ Rekap Asesi";
-            if ($g['batches']->sum($k) !== $g[$k]) $badB[] = "Tab {$tab} / {$g['label']}: jumlah {$k} batch {$g['batches']->sum($k)} ≠ subtotal {$g[$k]}";
+        $s = $batchSumm($indepTab[$g['key']] ?? collect());
+        printf("%-50s %7d %8d %7d %7d\n", mb_strimwidth($g['label'], 0, 50), $g['n_batch'], $g['selesai'], $g['proses'], $g['asesi']);
+        foreach (['n_batch', 'selesai', 'proses', 'asesi', 'asesor'] as $k) {
+            if ($tab === 'asesor' && $k === 'asesor') continue;
+            if ($s[$k] !== $g[$k]) $badB[] = "Tab {$tab} / {$g['label']}: {$k} {$g[$k]} ≠ independen {$s[$k]}";
         }
-        // tiap (kelompok, batch) vs data mentah
-        $indepPairs = ($indepTab[$g['key']] ?? collect())->groupBy($batchKey);
-        if ($g['batches']->count() !== $indepPairs->count()) $badB[] = "Tab {$tab} / {$g['label']}: {$g['batches']->count()} batch ≠ independen {$indepPairs->count()}";
-        foreach ($g['batches'] as $b) {
-            $nPair++;
-            $s = $summ($indepPairs[$b['bkey']] ?? collect());
-            foreach (['daftar', 'kompeten', 'bk', 'belum'] as $k) {
-                if ($s[$k] !== $b[$k]) $badB[] = "Tab {$tab} / {$g['label']} / {$b['label']}: {$k} {$b[$k]} ≠ independen {$s[$k]}";
-            }
-            // asal lembaga dihitung per batch (sama di semua tab)
-            if (!$b['is_mandiri'] && !isset($lembagaSeen[$b['bkey']])) {
-                $lembagaSeen[$b['bkey']] = true;
-                $all = $byBatch[$b['bkey']];
+        // isi modal detail kelompok ini
+        $params = array_filter($filters, fn($v) => $v !== null) + ['bagian' => $tab, 'key' => $g['key']];
+        $json = $batchCtrl->detail(\Illuminate\Http\Request::create('/', 'GET', $params))->getData(true);
+        $nDetail++;
+        if ($json['total']['n_batch'] !== $g['n_batch']) $badB[] = "Detail {$tab} / {$g['label']}: {$json['total']['n_batch']} batch ≠ {$g['n_batch']}";
+        if ($json['total']['daftar'] !== $g['asesi'])    $badB[] = "Detail {$tab} / {$g['label']}: {$json['total']['daftar']} asesi ≠ {$g['asesi']}";
+        foreach ($json['batches'] as $b) {
+            if ($b['selesai'] !== $selesai[$b['batch_id']]) $badB[] = "Detail {$b['batch_id']}: status selesai salah";
+            if (!isset($lembagaSeen[$b['batch_id']])) {
+                $lembagaSeen[$b['batch_id']] = true;
+                $all = $byBatch[$b['batch_id']];
                 $exp = $mode($all->pluck('institution_name'))
                     ?? $mode($all->pluck('institution')->map(fn($v) => mb_strtoupper(trim((string) $v))))
                     ?? '-';
-                if ($exp !== $b['lembaga']) $badB[] = "{$b['label']}: lembaga '{$b['lembaga']}' ≠ independen '{$exp}'";
+                if ($exp !== $b['lembaga']) $badB[] = "{$b['batch_id']}: lembaga '{$b['lembaga']}' ≠ independen '{$exp}'";
                 $srcCount[$b['lembaga_src'] ?? 'kosong']++;
             }
         }
     }
-    if ($sumTab !== $t['daftar']) $badB[] = "Tab {$tab}: total {$sumTab} ≠ {$t['daftar']}";
 }
-echo "=== Rekap Per Batch ({$pageB['total']['n_batch']} batch, {$nPair} baris kelompok×batch dicek; asal lembaga dari jadwal: {$srcCount['jadwal']}, dari isian asesi: {$srcCount['asesi']}, kosong: {$srcCount['kosong']}): "
+echo "\n=== Rekap Per Batch ({$nDetail} kelompok & modal detail dicek; asal lembaga dari jadwal: {$srcCount['jadwal']}, dari isian asesi: {$srcCount['asesi']}, kosong: {$srcCount['kosong']}): "
     . (empty($badB) ? 'SEMUA COCOK' : 'ADA SELISIH') . " ===\n";
 foreach (array_slice($badB, 0, 20) as $d) echo " - {$d}\n";
 echo "\n";

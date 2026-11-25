@@ -12,24 +12,25 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 /**
- * Laporan Rekap Per Batch — tab sama dengan Rekap Asesi (Per Skema / TUK / Bulan / Asesor),
- * tiap kelompok berisi daftar batch-nya.
+ * Laporan Rekap Per Batch — tampilan sama dengan Rekap Asesi (4 tab, grafik, klik baris → detail),
+ * tetapi yang dihitung adalah BATCH (collective_batch_id), bukan asesi.
  *
- *  - Subtotal kelompok  : diambil dari RekapAsesiController::buildRekap() → identik dgn Rekap Asesi.
- *  - Baris batch        : satu per (kelompok, collective_batch_id). Batch yang tersebar di beberapa
- *                         kelompok (mis. 2 jadwal beda bulan) muncul di tiap kelompok dengan
- *                         jumlah bagiannya saja → total tidak dobel.
- *  - Baris Mandiri      : asesi tanpa batch, satu baris per TUK di dalam kelompok.
- *  - Asal lembaga       : schedules.institution_name terbanyak → fallback isian asesi terbanyak.
+ * Definisi:
+ *  - Batch            : satu collective_batch_id. Asesi mandiri (tanpa batch) tidak dihitung sebagai batch.
+ *  - Batch Selesai    : semua asesi di batch sudah punya hasil K/BK (result → fallback rekomendasi BA).
+ *  - Batch Masih Proses: masih ada asesi yang belum punya hasil.
+ *  - Jumlah batch total = COUNT(DISTINCT) keseluruhan — satu batch dengan beberapa jadwal bisa masuk
+ *    ke lebih dari satu kelompok (mis. dua bulan), jadi total bukan penjumlahan kolom.
+ *  - Asal lembaga     : schedules.institution_name terbanyak → fallback isian asesi terbanyak.
+ *
+ * Memakai baseQuery() Rekap Asesi (exclude dummy, fallback hasil, penentuan TUK) agar konsisten.
  */
 class RekapBatchController extends RekapAsesiController
 {
-    /** Kunci batch: id batch, atau "#M<tuk_id>" untuk asesi mandiri per TUK */
-    private const BATCH_KEY = "COALESCE(r.collective_batch_id, CONCAT('#M', COALESCE(r.tuk_id, 0)))";
-
     /** Kolom pengelompokan per tab (sama dengan Rekap Asesi) */
     private const GROUP_EXPR = [
         'skema'  => 'r.skema_id',
@@ -38,7 +39,7 @@ class RekapBatchController extends RekapAsesiController
         'asesor' => 'r.asesor_id',
     ];
 
-    /** Kolom teks tabel batch; kolom yang sama dengan pengelompokan tab disembunyikan */
+    /** Kolom teks daftar batch; kolom yang sama dengan tab disembunyikan */
     private const TEXT_COLUMNS = [
         'batch'   => 'Batch',
         'lembaga' => 'Asal Lembaga',
@@ -56,7 +57,7 @@ class RekapBatchController extends RekapAsesiController
     public function index(Request $request)
     {
         $filters = $this->filters($request);
-        $data    = $this->buildBatchRekap($filters);
+        $rekap   = $this->buildBatchSummary($filters);
 
         $skemas = Skema::orderBy('name')->get(['id', 'code', 'name']);
         $tuks   = Tuk::where(fn($q) => $q->whereNull('user_id')
@@ -66,13 +67,48 @@ class RekapBatchController extends RekapAsesiController
         $tabs        = self::TABS;
         $periodeText = $this->periodeText($filters);
 
-        return view('admin.rekap-batch.index', compact('filters', 'data', 'tabs', 'skemas', 'tuks', 'periodeText'));
+        return view('admin.rekap-batch.index', compact('filters', 'rekap', 'tabs', 'skemas', 'tuks', 'periodeText'));
+    }
+
+    /**
+     * Modal detail: daftar batch dalam satu kelompok.
+     * GET ?bagian=skema|tuk|bulan|asesor&key=<id|YYYY-MM|_null> + filter halaman.
+     */
+    public function detail(Request $request)
+    {
+        $filters = $this->filters($request);
+        $v = $request->validate([
+            'bagian' => ['required', 'in:' . implode(',', array_keys(self::TABS))],
+            'key'    => ['required', 'string', 'max:20'],
+        ]);
+        $bagian = $v['bagian'];
+        $key    = $v['key'];
+
+        if ($key !== self::NULL_KEY) {
+            $valid = $bagian === 'bulan' ? preg_match('/^\d{4}-\d{2}$/', $key) : ctype_digit($key);
+            abort_unless($valid, 422, 'Key tidak valid.');
+        }
+
+        $batches = $this->batchRows($this->baseQuery($filters), $bagian, $key);
+
+        return response()->json([
+            'columns' => self::columnsFor($bagian),
+            'batches' => $batches,
+            'total'   => [
+                'n_batch'  => $batches->count(),
+                'selesai'  => $batches->where('selesai', true)->count(),
+                'daftar'   => $batches->sum('daftar'),
+                'kompeten' => $batches->sum('kompeten'),
+                'bk'       => $batches->sum('bk'),
+                'belum'    => $batches->sum('belum'),
+            ],
+        ]);
     }
 
     public function export(Request $request)
     {
         $filters     = $this->filters($request);
-        $data        = $this->buildBatchRekap($filters);
+        $rekap       = $this->buildBatchSummary($filters);
         $periodeText = $this->periodeText($filters);
         $filterText  = $this->filterText($filters);
         $fileSuffix  = $this->fileSuffix($filters);
@@ -86,12 +122,19 @@ class RekapBatchController extends RekapAsesiController
             $fileSuffix = str_replace(' ', '_', self::TABS[$bagian]['title']) . "_{$fileSuffix}";
         }
 
+        // Lampiran: daftar batch per kelompok (1 query per tab)
+        $base     = $this->baseQuery($filters);
+        $lampiran = [];
+        foreach (array_keys($tabs) as $tab) {
+            $lampiran[$tab] = $this->batchRows($base, $tab)->groupBy('gkey');
+        }
+
         if ($request->get('format') === 'excel') {
-            return $this->exportBatchExcel($tabs, $data, $periodeText, $filterText, $fileSuffix);
+            return $this->exportBatchExcel($tabs, $rekap, $lampiran, $periodeText, $filterText, $fileSuffix);
         }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('admin.rekap-batch.pdf', compact(
-            'data', 'tabs', 'periodeText', 'filterText'
+            'rekap', 'tabs', 'lampiran', 'periodeText', 'filterText'
         ))->setPaper('A4', 'landscape');
 
         return $pdf->download("Rekap_Per_Batch_{$fileSuffix}.pdf");
@@ -101,65 +144,133 @@ class RekapBatchController extends RekapAsesiController
     // Data
     // ─────────────────────────────────────────────────────────────────────
 
-    /**
-     * ['tabs' => [tab => [kelompok + 'batches' => [...]]], 'total' => [...]]
-     * Query: 5 (buildRekap) + 4 (batch per tab) + 2 (asal lembaga) + 1 (ringkasan) — tanpa N+1.
-     */
-    public function buildBatchRekap(array $filters): array
+    /** Status per batch: selesai = semua asesi (dalam filter) sudah punya hasil */
+    private function batchStatus(Builder $base): Builder
     {
-        $rekap = $this->buildRekap($filters);   // subtotal kelompok, identik dgn Rekap Asesi
-        $base  = $this->baseQuery($filters);
+        return DB::query()->fromSub($base, 'b')
+            ->selectRaw('b.collective_batch_id AS bid,
+                CASE WHEN SUM(CASE WHEN b.hasil IS NULL THEN 1 ELSE 0 END) = 0 THEN 1 ELSE 0 END AS selesai')
+            ->whereNotNull('b.collective_batch_id')
+            ->groupBy('b.collective_batch_id');
+    }
 
-        $fromSchedule = $this->institutionCounts($base, 'TRIM(r.institution_name)');
-        $fromAsesi    = $this->institutionCounts($base, 'UPPER(TRIM(r.institution))');
-
-        $tabs = [];
-        foreach (self::GROUP_EXPR as $tab => $expr) {
-            $batches = $this->batchRows($base, $expr, $fromSchedule, $fromAsesi)->groupBy('gkey');
-
-            $tabs[$tab] = collect($rekap['rows'][$tab])->map(function ($g) use ($batches) {
-                $list = ($batches[$g['key']] ?? collect())
-                    // batch terbaru di atas; belum dijadwalkan lalu mandiri di bawah
-                    ->sortBy([['is_mandiri', 'asc'], ['tgl_iso', 'desc'], ['label', 'asc']])
-                    ->values();
-
-                return $g + [
-                    'n_batch' => $list->where('is_mandiri', false)->count(),
-                    'batches' => $list,
-                ];
-            })->values();
-        }
-
-        $extra = DB::query()->fromSub($base, 'r')->selectRaw('
+    /**
+     * Ringkasan per tab: jumlah batch, selesai, masih proses, asesi, asesor.
+     * Agregasi di SQL: 4 query (1 per tab) + 1 query total, tanpa N+1.
+     */
+    public function buildBatchSummary(array $filters): array
+    {
+        $base   = $this->baseQuery($filters);
+        $status = $this->batchStatus($base);
+        $agg    = '
             COUNT(DISTINCT r.collective_batch_id) AS n_batch,
-            SUM(CASE WHEN r.collective_batch_id IS NULL THEN 1 ELSE 0 END) AS mandiri
-        ')->first();
+            COUNT(DISTINCT CASE WHEN st.selesai = 1 THEN r.collective_batch_id END) AS selesai,
+            COUNT(DISTINCT CASE WHEN st.selesai = 0 THEN r.collective_batch_id END) AS proses,
+            COUNT(*) AS asesi,
+            COUNT(DISTINCT r.asesor_id) AS asesor
+        ';
+        $from = fn() => DB::query()->fromSub($base, 'r')
+            ->joinSub($status, 'st', 'st.bid', '=', 'r.collective_batch_id'); // hanya asesi kolektif
+
+        $rows = [];
+
+        $rows['skema'] = $from()
+            ->leftJoin('skemas as sk', 'sk.id', '=', 'r.skema_id')
+            ->selectRaw("r.skema_id AS gid, sk.code, sk.name, {$agg}")
+            ->groupBy('r.skema_id', 'sk.code', 'sk.name')
+            ->orderByRaw('sk.name IS NULL, sk.name')
+            ->get()
+            ->map(fn($r) => $this->summaryRow($r, $r->gid,
+                $r->name ? trim(($r->code ? "{$r->code} — " : '') . $r->name) : 'Tanpa Skema', $r->name ?? 'zzz'));
+
+        $rows['tuk'] = $from()
+            ->leftJoin('tuks as tk', 'tk.id', '=', 'r.tuk_id')
+            ->selectRaw("r.tuk_id AS gid, tk.name, {$agg}")
+            ->groupBy('r.tuk_id', 'tk.name')
+            ->orderByRaw('tk.name IS NULL, tk.name')
+            ->get()
+            ->map(fn($r) => $this->summaryRow($r, $r->gid, $r->name ?? 'Tanpa TUK', $r->name ?? 'zzz'));
+
+        $rows['bulan'] = $from()
+            ->selectRaw("DATE_FORMAT(r.assessment_date, '%Y-%m') AS ym, {$agg}")
+            ->groupBy('ym')
+            ->orderByRaw('ym IS NULL, ym')
+            ->get()
+            ->map(fn($r) => $this->summaryRow($r, $r->ym,
+                $r->ym ? Carbon::createFromFormat('Y-m-d', $r->ym . '-01')->translatedFormat('F Y') : 'Belum Dijadwalkan',
+                $r->ym ?? '9999-12'));
+
+        $rows['asesor'] = $from()
+            ->leftJoin('asesors as xs', 'xs.id', '=', 'r.asesor_id')
+            ->selectRaw("r.asesor_id AS gid, xs.nama, {$agg}")
+            ->groupBy('r.asesor_id', 'xs.nama')
+            ->orderByRaw('r.asesor_id IS NULL, xs.nama')
+            ->get()
+            ->map(fn($r) => $this->summaryRow($r, $r->gid, $r->nama ?? 'Belum Ada Asesor', $r->nama ?? 'zzz'));
+
+        // Total: jumlah batch & asesor = DISTINCT keseluruhan (bukan penjumlahan kolom)
+        $t = DB::query()->fromSub($base, 'r')
+            ->leftJoinSub($status, 'st', 'st.bid', '=', 'r.collective_batch_id')
+            ->selectRaw("
+                COUNT(DISTINCT r.collective_batch_id) AS n_batch,
+                COUNT(DISTINCT CASE WHEN st.selesai = 1 THEN r.collective_batch_id END) AS selesai,
+                COUNT(DISTINCT CASE WHEN st.selesai = 0 THEN r.collective_batch_id END) AS proses,
+                SUM(CASE WHEN r.collective_batch_id IS NOT NULL THEN 1 ELSE 0 END) AS asesi,
+                SUM(CASE WHEN r.collective_batch_id IS NULL THEN 1 ELSE 0 END) AS mandiri,
+                COUNT(DISTINCT CASE WHEN r.collective_batch_id IS NOT NULL THEN r.asesor_id END) AS asesor
+            ")->first();
 
         return [
-            'tabs'  => $tabs,
-            'total' => $rekap['total'] + [
-                'n_batch' => (int) $extra->n_batch,
-                'mandiri' => (int) $extra->mandiri,
+            'rows'  => $rows,
+            'total' => [
+                'n_batch' => (int) $t->n_batch,
+                'selesai' => (int) $t->selesai,
+                'proses'  => (int) $t->proses,
+                'asesi'   => (int) $t->asesi,
+                'mandiri' => (int) $t->mandiri,
+                'asesor'  => (int) $t->asesor,
             ],
         ];
     }
 
-    private function batchRows(Builder $base, string $groupExpr, array $fromSchedule, array $fromAsesi)
+    private function summaryRow(object $r, int|string|null $key, string $label, string $order): array
     {
-        $bkey = self::BATCH_KEY;
-        $fmt  = fn($d) => $d ? Carbon::parse($d)->translatedFormat('d M Y') : null;
-        $compact = fn(int $n, ?string $names, string $unit, string $empty) =>
+        return [
+            'key'     => $key === null ? self::NULL_KEY : (string) $key,
+            'kosong'  => $key === null,
+            'label'   => $label,
+            'order'   => $order,
+            'n_batch' => (int) $r->n_batch,
+            'selesai' => (int) $r->selesai,
+            'proses'  => (int) $r->proses,
+            'asesi'   => (int) $r->asesi,
+            'asesor'  => (int) $r->asesor,
+        ];
+    }
+
+    /**
+     * Daftar batch per (kelompok, batch) untuk satu tab; opsional hanya satu kelompok ($key).
+     * Asal lembaga dihitung per batch (2 query agregat) agar sama di semua tab.
+     */
+    public function batchRows(Builder $base, string $tab, ?string $key = null)
+    {
+        $groupExpr = self::GROUP_EXPR[$tab];
+        $fmt       = fn($d) => $d ? Carbon::parse($d)->translatedFormat('d M Y') : null;
+        $compact   = fn(int $n, ?string $names, string $unit, string $empty) =>
             $n > 2 ? "{$n} {$unit}" : ($names ?: $empty);
 
-        return DB::query()->fromSub($base, 'r')
+        $fromSchedule = $this->institutionCounts($base, 'TRIM(r.institution_name)');
+        $fromAsesi    = $this->institutionCounts($base, 'UPPER(TRIM(r.institution))');
+
+        $q = DB::query()->fromSub($base, 'r')
+            ->joinSub($this->batchStatus($base), 'st', 'st.bid', '=', 'r.collective_batch_id')
             ->leftJoin('tuks as tk', 'tk.id', '=', 'r.tuk_id')
             ->leftJoin('skemas as sk', 'sk.id', '=', 'r.skema_id')
             ->leftJoin('asesors as xs', 'xs.id', '=', 'r.asesor_id')
             ->selectRaw("
                 {$groupExpr} AS gkey,
-                {$bkey} AS bkey,
-                MAX(r.collective_batch_id) AS batch_id,
-                MAX(r.tuk_id) AS tuk_id,
+                r.collective_batch_id AS batch_id,
+                MAX(st.selesai) AS selesai,
                 GROUP_CONCAT(DISTINCT tk.name ORDER BY tk.name SEPARATOR ', ') AS tuk,
                 GROUP_CONCAT(DISTINCT sk.name ORDER BY sk.name SEPARATOR ', ') AS skema,
                 GROUP_CONCAT(DISTINCT xs.nama ORDER BY xs.nama SEPARATOR ', ') AS asesor_nama,
@@ -170,194 +281,212 @@ class RekapBatchController extends RekapAsesiController
                 MAX(r.assessment_date) AS tgl_akhir,
                 {$this->aggregateSelect(false)}
             ")
-            ->groupByRaw("{$groupExpr}, {$bkey}")
-            ->get()
-            ->map(function ($r) use ($fromSchedule, $fromAsesi, $fmt, $compact) {
-                $isMandiri = $r->batch_id === null;
-                [$lembaga, $sumber, $lain] = $this->lembagaFor(
-                    $isMandiri, $fromSchedule[$r->bkey] ?? [], $fromAsesi[$r->bkey] ?? []
-                );
-                $awal  = $fmt($r->tgl_awal);
-                $akhir = $fmt($r->tgl_akhir);
+            ->groupByRaw("{$groupExpr}, r.collective_batch_id")
+            // batch terbaru di atas; belum dijadwalkan di bawah
+            ->orderByRaw('MIN(r.assessment_date) IS NULL, MIN(r.assessment_date) DESC, r.collective_batch_id');
 
-                return [
-                    'gkey'         => $r->gkey === null ? self::NULL_KEY : (string) $r->gkey,
-                    'bkey'         => $r->bkey,
-                    'batch_id'     => $r->batch_id,
-                    'label'        => $isMandiri ? 'Mandiri (tanpa batch)' : $r->batch_id,
-                    'is_mandiri'   => $isMandiri,
-                    'url'          => $isMandiri
-                        ? ($r->tuk_id ? route('admin.asesi.mandiri-per-tuk', $r->tuk_id) : null)
-                        : route('admin.asesi.batch.show', $r->batch_id),
-                    'lembaga'      => $lembaga,
-                    'lembaga_src'  => $sumber,
-                    'lembaga_lain' => $lain,
-                    // > 2 nama diringkas di halaman; Excel/PDF memakai *_full
-                    'tuk'          => $compact($r->n_tuk, $r->tuk, 'TUK', 'Tanpa TUK'),
-                    'tuk_full'     => $r->tuk ?: 'Tanpa TUK',
-                    'skema'        => $compact($r->n_skema, $r->skema, 'skema', '-'),
-                    'skema_full'   => $r->skema ?: '-',
-                    'asesor'       => $compact($r->n_asesor, $r->asesor_nama, 'asesor', 'Belum ada asesor'),
-                    'asesor_full'  => $r->asesor_nama ?: 'Belum ada asesor',
-                    'tanggal'      => $awal ? ($awal === $akhir ? $awal : "{$awal} – {$akhir}") : 'Belum dijadwalkan',
-                    'tgl_iso'      => $r->tgl_awal ? substr($r->tgl_awal, 0, 10) : '0000-00-00',
-                    'daftar'       => (int) $r->daftar,
-                    'kompeten'     => (int) $r->kompeten,
-                    'bk'           => (int) $r->bk,
-                    'belum'        => (int) $r->belum,
-                ];
-            });
+        if ($key !== null) {
+            $key === self::NULL_KEY
+                ? $q->whereRaw("{$groupExpr} IS NULL")
+                : $q->whereRaw("{$groupExpr} = ?", [$key]);
+        }
+
+        return $q->get()->map(function ($r) use ($fromSchedule, $fromAsesi, $fmt, $compact) {
+            $jadwal = $fromSchedule[$r->batch_id] ?? [];
+            $asesi  = $fromAsesi[$r->batch_id] ?? [];
+            [$lembaga, $sumber, $lain] = $jadwal
+                ? [array_key_first($jadwal), 'jadwal', count($jadwal) - 1]
+                : ($asesi ? [array_key_first($asesi), 'asesi', count($asesi) - 1] : ['-', null, 0]);
+            $awal  = $fmt($r->tgl_awal);
+            $akhir = $fmt($r->tgl_akhir);
+
+            return [
+                'gkey'         => $r->gkey === null ? self::NULL_KEY : (string) $r->gkey,
+                'batch_id'     => $r->batch_id,
+                'url'          => route('admin.asesi.batch.show', $r->batch_id),
+                'selesai'      => (bool) $r->selesai,
+                'lembaga'      => $lembaga,
+                'lembaga_src'  => $sumber,
+                'lembaga_lain' => $lain,
+                // > 2 nama diringkas di halaman; export memakai *_full
+                'tuk'          => $compact($r->n_tuk, $r->tuk, 'TUK', 'Tanpa TUK'),
+                'tuk_full'     => $r->tuk ?: 'Tanpa TUK',
+                'skema'        => $compact($r->n_skema, $r->skema, 'skema', '-'),
+                'skema_full'   => $r->skema ?: '-',
+                'asesor'       => $compact($r->n_asesor, $r->asesor_nama, 'asesor', 'Belum ada asesor'),
+                'asesor_full'  => $r->asesor_nama ?: 'Belum ada asesor',
+                'tanggal'      => $awal ? ($awal === $akhir ? $awal : "{$awal} – {$akhir}") : 'Belum dijadwalkan',
+                'daftar'       => (int) $r->daftar,
+                'kompeten'     => (int) $r->kompeten,
+                'bk'           => (int) $r->bk,
+                'belum'        => (int) $r->belum,
+            ];
+        });
     }
 
-    /** [nama, sumber 'jadwal'|'asesi'|null, jumlah variasi lain] */
-    private function lembagaFor(bool $isMandiri, array $jadwal, array $asesi): array
-    {
-        if ($isMandiri) {
-            // Asesi mandiri memang dari lembaga yang berbeda-beda
-            $nama = count($asesi) > 1 ? 'Beragam (' . count($asesi) . ' lembaga)' : (array_key_first($asesi) ?? '-');
-            return [$nama, $asesi ? 'asesi' : null, 0];
-        }
-        if ($jadwal) {
-            return [array_key_first($jadwal), 'jadwal', count($jadwal) - 1];
-        }
-        if ($asesi) {
-            return [array_key_first($asesi), 'asesi', count($asesi) - 1];
-        }
-        return ['-', null, 0];
-    }
-
-    /**
-     * [batch key => [nama lembaga => jumlah asesi]] urut terbanyak, kosong diabaikan.
-     * Dihitung per batch (bukan per kelompok) agar asal lembaga sama di semua tab.
-     */
+    /** [batch id => [nama lembaga => jumlah asesi]] urut terbanyak, kosong diabaikan. */
     private function institutionCounts(Builder $base, string $expr): array
     {
         $out = [];
         DB::query()->fromSub($base, 'r')
-            ->selectRaw(self::BATCH_KEY . " AS bkey, {$expr} AS nama, COUNT(*) AS n")
+            ->selectRaw("r.collective_batch_id AS bid, {$expr} AS nama, COUNT(*) AS n")
+            ->whereNotNull('r.collective_batch_id')
             ->whereRaw("NULLIF({$expr}, '') IS NOT NULL")
-            ->groupByRaw(self::BATCH_KEY . ", {$expr}")
-            ->orderByRaw('bkey, n DESC, nama')
+            ->groupByRaw("r.collective_batch_id, {$expr}")
+            ->orderByRaw('bid, n DESC, nama')
             ->get()
             ->each(function ($r) use (&$out) {
-                $out[$r->bkey][$r->nama] = (int) $r->n;
+                $out[$r->bid][$r->nama] = (int) $r->n;
             });
 
         return $out;
     }
 
     // ─────────────────────────────────────────────────────────────────────
-    // Export Excel (satu sheet per tab)
+    // Export Excel: sheet ringkasan per tab + sheet lampiran daftar batch
     // ─────────────────────────────────────────────────────────────────────
 
-    private function exportBatchExcel(array $tabs, array $data, string $periodeText, string $filterText, string $fileSuffix)
+    private function exportBatchExcel(array $tabs, array $rekap, array $lampiran, string $periodeText, string $filterText, string $fileSuffix)
     {
         $spreadsheet = new Spreadsheet();
         $spreadsheet->removeSheetByIndex(0);
-        $t = $data['total'];
+        $t = $rekap['total'];
+        $sub = 'Periode Asesmen: ' . $periodeText . ($filterText ? ' | ' . $filterText : '');
 
-        foreach ($tabs as $key => $tab) {
-            $sheet   = $spreadsheet->createSheet();
-            $sheet->setTitle($tab['title']);
-            $textCols = self::columnsFor($key);
-            $nText    = count($textCols) + 1; // + No
-            $col      = fn(int $i) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
-            $cDaftar  = $col($nText + 1);
-            $cK       = $col($nText + 2);
-            $cPct     = $col($nText + 5);
-            $lastCol  = $cPct;
-            $lastText = $col($nText);
-            $pct      = fn(int $row) => "=IF({$cDaftar}{$row}>0,{$cK}{$row}/{$cDaftar}{$row},0)";
-
-            // ── Judul ──
+        $headStyle = [
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2C3E50']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
+            'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
+        ];
+        $totalStyle = [
+            'font'    => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2C3E50']],
+            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
+        ];
+        $title = function (Worksheet $sheet, string $text, string $lastCol) use ($sub, $t) {
             $sheet->mergeCells("A1:{$lastCol}1");
-            $sheet->setCellValue('A1', 'REKAP PER BATCH — ' . strtoupper($tab['title']));
+            $sheet->setCellValue('A1', $text);
             $sheet->getStyle('A1')->applyFromArray([
                 'font'      => ['bold' => true, 'size' => 14],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
             $sheet->getRowDimension(1)->setRowHeight(24);
             $sheet->mergeCells("A2:{$lastCol}2");
-            $sheet->setCellValue('A2', 'Periode Asesmen: ' . $periodeText . ($filterText ? ' | ' . $filterText : ''));
+            $sheet->setCellValue('A2', $sub);
             $sheet->mergeCells("A3:{$lastCol}3");
-            $sheet->setCellValue('A3', "LSP-KAP — Dicetak " . now()->translatedFormat('d F Y')
-                . " — {$t['n_batch']} batch, {$t['daftar']} asesi");
+            $sheet->setCellValue('A3', 'LSP-KAP — Dicetak ' . now()->translatedFormat('d F Y')
+                . " — {$t['n_batch']} batch ({$t['selesai']} selesai, {$t['proses']} masih proses), {$t['mandiri']} asesi mandiri tidak termasuk");
             $sheet->getStyle('A2:A3')->applyFromArray([
                 'font'      => ['size' => 10, 'color' => ['rgb' => '666666']],
                 'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
             ]);
+        };
 
-            // ── Header ──
+        // ── Sheet ringkasan per tab ──
+        foreach ($tabs as $key => $tab) {
+            $isAsesor = $key === 'asesor';
+            $sheet = $spreadsheet->createSheet();
+            $sheet->setTitle($tab['title']);
+            $headers = ['No', $tab['label'], 'Jumlah Batch', 'Batch Selesai', 'Batch Masih Proses', '% Selesai', 'Jumlah Asesi'];
+            if (!$isAsesor) $headers[] = 'Jumlah Asesor';
+            $lastCol = $isAsesor ? 'G' : 'H';
+            $pct = fn(int $row) => "=IF(C{$row}>0,D{$row}/C{$row},0)";
+
+            $title($sheet, 'REKAP PER BATCH — ' . strtoupper($tab['title']), $lastCol);
             $headerRow = 5;
-            $sheet->fromArray(array_merge(['No'], array_values($textCols),
-                ['Daftar', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil', '% Kompeten']), null, "A{$headerRow}");
-            $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray([
-                'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2C3E50']],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
-                'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
-            ]);
+            $sheet->fromArray($headers, null, "A{$headerRow}");
+            $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray($headStyle);
             $sheet->getRowDimension($headerRow)->setRowHeight(30);
 
             $row = $headerRow;
-            foreach ($data['tabs'][$key] as $g) {
-                // ── Baris kelompok (subtotal) ──
+            foreach ($rekap['rows'][$key] as $i => $r) {
                 $row++;
-                $info = "{$g['label']} — " . ($g['n_batch'] ? "{$g['n_batch']} batch" : 'hanya asesi mandiri')
-                    . ($g['asesor'] !== null ? ", {$g['asesor']} asesor" : '');
-                $sheet->mergeCells("A{$row}:{$lastText}{$row}");
-                $sheet->setCellValue("A{$row}", $info);
-                $sheet->fromArray([$g['daftar'], $g['kompeten'], $g['bk'], $g['belum'], $pct($row)], null, "{$cDaftar}{$row}", true);
+                $vals = [$i + 1, $r['label'], $r['n_batch'], $r['selesai'], $r['proses'], $pct($row), $r['asesi']];
+                if (!$isAsesor) $vals[] = $r['asesor'];
+                $sheet->fromArray($vals, null, "A{$row}", true);
                 $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
-                    'font'    => ['bold' => true],
-                    'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCE6F1']],
-                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'BBBBBB']]],
+                    'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $i % 2 === 0 ? 'FFFFFF' : 'F9F9F9']],
+                    'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DDDDDD']]],
                 ]);
+            }
+            $row++;
+            $vals = ['', 'TOTAL', $t['n_batch'], $t['selesai'], $t['proses'], $pct($row), $t['asesi']];
+            if (!$isAsesor) $vals[] = $t['asesor'];
+            $sheet->fromArray($vals, null, "A{$row}", true);
+            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray($totalStyle);
 
-                // ── Baris batch ──
-                foreach ($g['batches'] as $i => $b) {
+            $first = $headerRow + 1;
+            $sheet->getStyle("A{$first}:A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("C{$first}:{$lastCol}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle("F{$first}:F{$row}")->getNumberFormat()->setFormatCode('0.0%');
+            $sheet->setCellValue('A' . ($row + 2), '* Total jumlah batch & asesor = jumlah berbeda secara keseluruhan (bukan penjumlahan kolom); '
+                . 'satu batch dengan beberapa jadwal dapat masuk ke lebih dari satu kelompok.');
+            $sheet->setCellValue('A' . ($row + 3), 'Batch Selesai = semua asesi di batch sudah punya hasil K/BK. Detail batch ada di sheet "Detail ' . $tab['title'] . '".');
+            $sheet->getStyle('A' . ($row + 2) . ':A' . ($row + 3))->getFont()->setItalic(true)->setSize(9);
+            $sheet->getColumnDimension('A')->setWidth(6);
+            $sheet->getColumnDimension('B')->setWidth(48);
+            foreach (['C', 'D', 'E', 'F', 'G', 'H'] as $c) $sheet->getColumnDimension($c)->setWidth(15);
+        }
+
+        // ── Sheet lampiran daftar batch per tab ──
+        foreach ($tabs as $key => $tab) {
+            $sheet    = $spreadsheet->createSheet();
+            $sheet->setTitle('Detail ' . $tab['title']);
+            $textCols = self::columnsFor($key);
+            $col      = fn(int $i) => \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i);
+            $nText    = count($textCols) + 1;
+            $cDaftar  = $col($nText + 1);
+            $cK       = $col($nText + 2);
+            $cPct     = $col($nText + 5);
+            $lastCol  = $col($nText + 6); // kolom Status
+            $pct      = fn(int $row) => "=IF({$cDaftar}{$row}>0,{$cK}{$row}/{$cDaftar}{$row},0)";
+
+            $title($sheet, 'DAFTAR BATCH — ' . strtoupper($tab['title']), $lastCol);
+            $headerRow = 5;
+            $sheet->fromArray(array_merge(['No'], array_values($textCols),
+                ['Asesi', 'Kompeten', 'Belum Kompeten', 'Belum Ada Hasil', '% Kompeten', 'Status']), null, "A{$headerRow}");
+            $sheet->getStyle("A{$headerRow}:{$lastCol}{$headerRow}")->applyFromArray($headStyle);
+            $sheet->getRowDimension($headerRow)->setRowHeight(30);
+
+            $row = $headerRow;
+            foreach ($rekap['rows'][$key] as $g) {
+                $row++;
+                $sheet->mergeCells("A{$row}:{$lastCol}{$row}");
+                $sheet->setCellValue("A{$row}", "{$g['label']} — {$g['n_batch']} batch ({$g['selesai']} selesai, {$g['proses']} masih proses)");
+                $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
+                    'font' => ['bold' => true],
+                    'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'DCE6F1']],
+                ]);
+                foreach (($lampiran[$key][$g['key']] ?? collect())->values() as $i => $b) {
                     $row++;
                     $text = [];
                     foreach (array_keys($textCols) as $c) {
                         $text[] = match ($c) {
-                            'batch'   => $b['label'],
-                            'lembaga' => $b['lembaga'] . ($b['lembaga_src'] === 'asesi' && !$b['is_mandiri'] ? ' *' : ''),
+                            'batch'   => $b['batch_id'],
+                            'lembaga' => $b['lembaga'] . ($b['lembaga_src'] === 'asesi' ? ' *' : ''),
                             'tuk'     => $b['tuk_full'],
                             'skema'   => $b['skema_full'],
                             'asesor'  => $b['asesor_full'],
                             'tanggal' => $b['tanggal'],
                         };
                     }
-                    $sheet->fromArray(array_merge([$i + 1], $text,
-                        [$b['daftar'], $b['kompeten'], $b['bk'], $b['belum'], $pct($row)]), null, "A{$row}", true);
+                    $sheet->fromArray(array_merge([$i + 1], $text, [
+                        $b['daftar'], $b['kompeten'], $b['bk'], $b['belum'], $pct($row),
+                        $b['selesai'] ? 'Selesai' : 'Masih proses',
+                    ]), null, "A{$row}", true);
                     $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
                         'borders'   => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'DDDDDD']]],
                         'alignment' => ['vertical' => Alignment::VERTICAL_TOP, 'wrapText' => true],
                     ]);
-                    if ($b['is_mandiri']) {
-                        $sheet->getStyle("B{$row}")->getFont()->setItalic(true);
-                    }
                 }
             }
 
-            // ── Total ──
-            $row++;
-            $sheet->mergeCells("A{$row}:{$lastText}{$row}");
-            $sheet->setCellValue("A{$row}", "TOTAL — {$t['n_batch']} batch");
-            $sheet->fromArray([$t['daftar'], $t['kompeten'], $t['bk'], $t['belum'], $pct($row)], null, "{$cDaftar}{$row}", true);
-            $sheet->getStyle("A{$row}:{$lastCol}{$row}")->applyFromArray([
-                'font'    => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill'    => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '2C3E50']],
-                'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'FFFFFF']]],
-            ]);
-
             $first = $headerRow + 1;
-            // Kolom A rata kiri: berisi No sekaligus judul kelompok (sel gabungan)
-            $sheet->getStyle("A{$first}:A{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
             $sheet->getStyle("{$cDaftar}{$first}:{$lastCol}{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle("{$cPct}{$first}:{$cPct}{$row}")->getNumberFormat()->setFormatCode('0.0%');
-
-            $sheet->setCellValue('A' . ($row + 2), '* Asal lembaga diambil dari isian asesi karena nama lembaga di jadwal belum diisi.');
+            $sheet->setCellValue('A' . ($row + 2), '* Asal lembaga diambil dari isian asesi karena nama lembaga di jadwal belum diisi. '
+                . 'Batch yang punya beberapa jadwal dapat muncul di lebih dari satu kelompok dengan jumlah bagiannya saja.');
             $sheet->getStyle('A' . ($row + 2))->getFont()->setItalic(true)->setSize(9);
 
             $widths = ['batch' => 28, 'lembaga' => 34, 'tuk' => 32, 'skema' => 32, 'asesor' => 28, 'tanggal' => 24];
@@ -366,7 +495,7 @@ class RekapBatchController extends RekapAsesiController
             foreach (array_keys($textCols) as $c) {
                 $sheet->getColumnDimension($col($i++))->setWidth($widths[$c]);
             }
-            for ($j = $nText + 1; $j <= $nText + 5; $j++) {
+            for ($j = $nText + 1; $j <= $nText + 6; $j++) {
                 $sheet->getColumnDimension($col($j))->setWidth(12);
             }
             $sheet->freezePane('A' . ($headerRow + 1));

@@ -1048,6 +1048,15 @@ if ($soal->whereNotNull('submitted_at')->count() > 0) $teoriSubmit++;
                             </div>
                         </div>
                         <div class="card-body">
+                            @if($ba && $ba->created_at)
+                            <div class="d-flex align-items-center gap-2 small text-muted mb-2">
+                                <i class="bi bi-clipboard-check text-success"></i>
+                                <div>
+                                    Penilaian selesai (berita acara disimpan) pada
+                                    <strong class="text-dark">{{ $ba->created_at->translatedFormat('d M Y, H:i') }}</strong>
+                                </div>
+                            </div>
+                            @endif
                             @if($baLocked)
                             <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3"
                                 style="font-size:.82rem;">

@@ -97,7 +97,15 @@
                                     {{ $sch->location ?? '-' }}
                                 @endif
                             </td>
-                            <td class="small">{{ optional($sch->assessment_date)->translatedFormat('d M Y') }}</td>
+                            <td class="small">
+                                {{ optional($sch->assessment_date)->translatedFormat('d M Y') }}
+                                @if($sch->beritaAcara)
+                                <div class="text-success" style="font-size:.7rem;" title="Waktu asesor menyelesaikan penilaian (berita acara disimpan)">
+                                    <i class="bi bi-clipboard-check"></i>
+                                    Selesai: {{ $sch->beritaAcara->created_at?->translatedFormat('d M Y, H:i') ?? '-' }}
+                                </div>
+                                @endif
+                            </td>
                             <td class="small">
                                 @forelse($batches as $batch)
                                     <span class="badge bg-primary bg-opacity-75 font-monospace" style="font-size:.65rem;">

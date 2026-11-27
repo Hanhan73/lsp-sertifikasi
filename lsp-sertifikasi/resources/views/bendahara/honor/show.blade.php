@@ -129,6 +129,26 @@
                                         TUK: {{ $jadwal->tuk->name ?? '-' }} &bull;
                                         {{ optional($jadwal->assessment_date)->translatedFormat('d F Y') }}
                                     </div>
+                                    @if($jadwal->beritaAcara)
+                                    <div class="small mt-1 d-flex flex-wrap gap-1">
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle"
+                                              title="Waktu asesor pertama kali menyimpan berita acara (tagihan honor mulai muncul)">
+                                            <i class="bi bi-clipboard-check me-1"></i>Penilaian selesai:
+                                            {{ $jadwal->beritaAcara->created_at?->translatedFormat('d M Y, H:i') ?? '-' }}
+                                        </span>
+                                        @if($jadwal->beritaAcara->signed_at)
+                                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                                              title="Waktu asesor menandatangani dan mengunci berita acara">
+                                            <i class="bi bi-pen me-1"></i>TTD BA:
+                                            {{ $jadwal->beritaAcara->signed_at->translatedFormat('d M Y, H:i') }}
+                                        </span>
+                                        @else
+                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">
+                                            <i class="bi bi-hourglass-split me-1"></i>BA belum ditandatangani
+                                        </span>
+                                        @endif
+                                    </div>
+                                    @endif
                                     <div class="text-muted small">
                                         <i class="bi bi-geo-alt me-1"></i>
                                         @if($jadwal->location_type === 'online')

@@ -212,6 +212,7 @@ class HonorAsesorController extends Controller
             'details.schedule.skema',
             'details.schedule.tuk',
             'details.schedule.asesmens',
+            'details.schedule.beritaAcara',
             'dibuatOleh',
             'dibayarOleh',
             'deductionReceivable',
